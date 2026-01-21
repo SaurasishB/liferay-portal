@@ -6,7 +6,6 @@
 package com.liferay.portlet.documentlibrary.util;
 
 import com.liferay.document.library.kernel.exception.InvalidFolderException;
-import com.liferay.document.library.kernel.model.DLFileEntry;
 import com.liferay.document.library.kernel.model.DLFileEntryConstants;
 import com.liferay.document.library.kernel.model.DLFileEntryType;
 import com.liferay.document.library.kernel.model.DLFileEntryTypeConstants;
@@ -30,13 +29,7 @@ import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Company;
-import com.liferay.portal.kernel.model.LayoutConstants;
 import com.liferay.portal.kernel.module.service.Snapshot;
-import com.liferay.portal.kernel.portlet.PortletLayoutFinder;
-import com.liferay.portal.kernel.portlet.PortletLayoutFinderRegistryUtil;
-import com.liferay.portal.kernel.portlet.PortletProvider;
-import com.liferay.portal.kernel.portlet.PortletProviderUtil;
-import com.liferay.portal.kernel.portlet.PortletURLFactoryUtil;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.FileVersion;
 import com.liferay.portal.kernel.repository.model.Folder;
@@ -49,7 +42,6 @@ import com.liferay.portal.kernel.theme.PortletDisplay;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.trash.helper.TrashHelper;
 import com.liferay.portal.kernel.util.ArrayUtil;
-import com.liferay.portal.kernel.util.Constants;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
@@ -67,13 +59,9 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.URLCodec;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
-import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.kernel.workflow.WorkflowHandlerRegistryUtil;
 
 import jakarta.portlet.PortletRequest;
-import jakarta.portlet.PortletURL;
-
-import jakarta.servlet.http.HttpServletRequest;
 
 import java.io.Serializable;
 
@@ -84,7 +72,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -782,9 +769,6 @@ public class DLImpl implements DL {
 
 		Map<String, Serializable> workflowContext =
 			HashMapBuilder.<String, Serializable>put(
-				WorkflowConstants.CONTEXT_URL,
-				getEntryURL(dlFileVersion, serviceContext)
-			).put(
 				"event", syncEventType
 			).build();
 
@@ -793,81 +777,6 @@ public class DLImpl implements DL {
 			DLFileEntryConstants.getClassName(),
 			dlFileVersion.getFileVersionId(), dlFileVersion, serviceContext,
 			workflowContext);
-	}
-
-	protected String getEntryURL(
-			DLFileVersion dlFileVersion, ServiceContext serviceContext)
-		throws PortalException {
-
-		if (Objects.equals(serviceContext.getCommand(), Constants.ADD_WEBDAV) ||
-			Objects.equals(
-				serviceContext.getCommand(), Constants.UPDATE_WEBDAV)) {
-
-			return serviceContext.getPortalURL() +
-				serviceContext.getCurrentURL();
-		}
-
-		String entryURL = GetterUtil.getString(
-			serviceContext.getAttribute("entryURL"));
-
-		if (Validator.isNotNull(entryURL)) {
-			return entryURL;
-		}
-
-		boolean hasAssetDisplayPage = GetterUtil.getBoolean(
-			serviceContext.getAttribute("hasAssetDisplayPage"));
-
-		if (hasAssetDisplayPage) {
-			return StringPool.BLANK;
-		}
-
-		HttpServletRequest httpServletRequest = serviceContext.getRequest();
-		ThemeDisplay themeDisplay = serviceContext.getThemeDisplay();
-
-		if ((httpServletRequest == null) || (themeDisplay == null)) {
-			return StringPool.BLANK;
-		}
-
-		PortletURL portletURL = null;
-
-		long plid = serviceContext.getPlid();
-		long controlPanelPlid = PortalUtil.getControlPanelPlid(
-			serviceContext.getCompanyId());
-		String portletId = PortletProviderUtil.getPortletId(
-			FileEntry.class.getName(), PortletProvider.Action.VIEW);
-
-		DLFileEntry fileEntry = dlFileVersion.getFileEntry();
-
-		PortletLayoutFinder portletLayoutFinder =
-			PortletLayoutFinderRegistryUtil.getPortletLayoutFinder(
-				DLFileEntryConstants.getClassName());
-
-		PortletLayoutFinder.Result result = portletLayoutFinder.find(
-			themeDisplay, fileEntry.getGroupId());
-
-		if (result != null) {
-			portletId = result.getPortletId();
-			plid = result.getPlid();
-		}
-
-		if ((plid == controlPanelPlid) ||
-			(plid == LayoutConstants.DEFAULT_PLID)) {
-
-			portletURL = PortalUtil.getControlPanelPortletURL(
-				httpServletRequest, portletId, PortletRequest.RENDER_PHASE);
-		}
-		else {
-			portletURL = PortletURLFactoryUtil.create(
-				httpServletRequest, portletId, plid,
-				PortletRequest.RENDER_PHASE);
-		}
-
-		portletURL.setParameter(
-			"mvcRenderCommandName", "/document_library/view_file_entry");
-		portletURL.setParameter(
-			"fileEntryId", String.valueOf(dlFileVersion.getFileEntryId()));
-
-		return portletURL.toString();
 	}
 
 	protected String getImageSrc(
