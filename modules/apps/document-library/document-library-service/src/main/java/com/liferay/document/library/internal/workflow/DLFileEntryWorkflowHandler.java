@@ -75,16 +75,6 @@ public class DLFileEntryWorkflowHandler
 			Map<String, Serializable> workflowContext)
 		throws PortalException {
 
-		if (Validator.isNotNull(
-				workflowContext.get(WorkflowConstants.CONTEXT_URL)) &&
-			!workflowContext.get(
-				WorkflowConstants.CONTEXT_URL
-			).toString(
-			).isBlank()) {
-
-			return;
-		}
-
 		ServiceContext serviceContext = (ServiceContext)workflowContext.get(
 			WorkflowConstants.CONTEXT_SERVICE_CONTEXT);
 
