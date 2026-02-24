@@ -12,6 +12,7 @@ import com.liferay.fragment.internal.upgrade.v2_0_0.util.FragmentEntryLinkTable;
 import com.liferay.fragment.internal.upgrade.v2_0_0.util.FragmentEntryTable;
 import com.liferay.fragment.internal.upgrade.v2_1_0.SchemaUpgradeProcess;
 import com.liferay.fragment.internal.upgrade.v2_4_0.FragmentEntryLinkUpgradeProcess;
+import com.liferay.fragment.internal.upgrade.v2_7_1.BrowserSnifferFragmentEntryTemplateUpgradeProcess;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.dao.db.DBType;
 import com.liferay.portal.kernel.dao.db.DBTypeToSQLMap;
@@ -149,7 +150,9 @@ public class FragmentServiceUpgradeStepRegistrator
 
 			});
 
-		registry.register("2.7.0", "2.7.1", new DummyUpgradeStep());
+		registry.register(
+			"2.7.0", "2.7.1",
+			new BrowserSnifferFragmentEntryTemplateUpgradeProcess());
 
 		registry.register(
 			"2.7.1", "2.8.0",
