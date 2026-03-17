@@ -1681,6 +1681,7 @@ public class LayoutStructureRenderer {
 		if (Objects.equals(layout.getType(), LayoutConstants.TYPE_PORTLET)) {
 			jspWriter.write("</div>");
 		}
+		_httpServletRequest.removeAttribute(InfoDisplayWebKeys.INFO_ITEM_DETAILS);
 	}
 
 	private void _renderLayoutStructure() throws Exception {
