@@ -16,6 +16,12 @@ import com.liferay.dynamic.data.mapping.service.DDMStructureLocalService;
 import com.liferay.dynamic.data.mapping.test.util.DDMFormTestUtil;
 import com.liferay.dynamic.data.mapping.test.util.DDMStructureTestUtil;
 import com.liferay.dynamic.data.mapping.test.util.DDMTemplateTestUtil;
+import com.liferay.fragment.constants.FragmentConstants;
+import com.liferay.fragment.model.FragmentCollection;
+import com.liferay.fragment.model.FragmentEntry;
+import com.liferay.fragment.service.FragmentCollectionService;
+import com.liferay.fragment.service.FragmentEntryLinkLocalService;
+import com.liferay.fragment.service.FragmentEntryService;
 import com.liferay.info.field.InfoField;
 import com.liferay.info.field.InfoFieldValue;
 import com.liferay.info.field.type.HTMLInfoFieldType;
@@ -27,8 +33,14 @@ import com.liferay.journal.constants.JournalFolderConstants;
 import com.liferay.journal.model.JournalArticle;
 import com.liferay.journal.service.JournalArticleLocalService;
 import com.liferay.journal.test.util.JournalTestUtil;
+import com.liferay.layout.page.template.service.LayoutPageTemplateStructureLocalService;
+import com.liferay.layout.page.template.service.LayoutPageTemplateStructureRelLocalService;
+import com.liferay.layout.provider.LayoutStructureProvider;
+import com.liferay.layout.test.util.ContentLayoutTestUtil;
 import com.liferay.layout.test.util.LayoutTestUtil;
+import com.liferay.layout.util.LayoutServiceContextHelper;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutTypePortlet;
@@ -50,10 +62,12 @@ import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.Tuple;
 import com.liferay.portal.kernel.util.WebKeys;
+import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 import com.liferay.portlet.display.template.PortletDisplayTemplate;
+import com.liferay.segments.service.SegmentsExperienceLocalService;
 
 import java.io.File;
 
@@ -91,6 +105,14 @@ public class JournalArticleInfoItemFieldValuesProviderTest {
 	@Before
 	public void setUp() throws Exception {
 		_group = GroupTestUtil.addGroup();
+
+		_layout = LayoutTestUtil.addTypeContentLayout(_group);
+
+		_serviceContext = ServiceContextTestUtil.getServiceContext(
+			_group.getGroupId(), TestPropsValues.getUserId());
+
+		ContentLayoutTestUtil.publishLayout(
+			_layout.fetchDraftLayout(), _layout);
 	}
 
 	@Test
@@ -335,6 +357,74 @@ public class JournalArticleInfoItemFieldValuesProviderTest {
 		}
 	}
 
+	@Test
+	public void testPageRenderWhenFirstFragmentHasWebContentTemplate()
+		throws Exception {
+
+		JournalArticle journalArticle = JournalTestUtil.addArticle(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		JournalArticle basicJournalArticle =
+			JournalTestUtil.addArticleWithXMLContent(
+				_read("basic_journal_article_content.xml"), "BASIC-WEB-CONTENT",
+				null);
+
+		FragmentCollection fragmentCollection =
+			_fragmentCollectionService.addFragmentCollection(
+				null, _group.getGroupId(), "Fragment Collection",
+				StringPool.BLANK, _serviceContext);
+
+		FragmentEntry editableFragment = _addFragmentEntry(
+			null, fragmentCollection, "fragment_editable_type_html.html",
+			"Editable FragmentEntry");
+
+		FragmentEntry configurableFragment = _addFragmentEntry(
+			"configuration_journal_article.json", fragmentCollection,
+			"fragment_configurable.html", "Configurable FragmentEntry");
+
+		_addFragmentEntryLinkToLayout(
+			editableFragment, _buildEditableFragmentValue(journalArticle));
+
+		_addFragmentEntryLinkToLayout(
+			configurableFragment,
+			_buildConfigurableFragmentValue(basicJournalArticle));
+
+		String html = ContentLayoutTestUtil.getRenderLayoutHTML(
+			_layout, _layoutServiceContextHelper, _layoutStructureProvider,
+			_segmentsExperienceLocalService.fetchDefaultSegmentsExperienceId(
+				_layout.getPlid()));
+
+		Assert.assertTrue(html.contains(basicJournalArticle.getTitle()));
+	}
+
+	private FragmentEntry _addFragmentEntry(
+			String configFile, FragmentCollection fragmentCollection,
+			String htmlFile, String name)
+		throws Exception {
+
+		return _fragmentEntryService.addFragmentEntry(
+			null, _group.getGroupId(),
+			fragmentCollection.getFragmentCollectionId(), null, name, null,
+			_read(htmlFile), null, false,
+			(configFile != null) ? _read(configFile) : null, null, 0, false,
+			false, FragmentConstants.TYPE_COMPONENT, null,
+			WorkflowConstants.STATUS_APPROVED, _serviceContext);
+	}
+
+	private void _addFragmentEntryLinkToLayout(
+			FragmentEntry fragmentEntry, String value)
+		throws Exception {
+
+		ContentLayoutTestUtil.addFragmentEntryLinkToLayout(
+			value, fragmentEntry.getCss(), fragmentEntry.getConfiguration(),
+			fragmentEntry.getExternalReferenceCode(), null,
+			fragmentEntry.getHtml(), fragmentEntry.getJs(), _layout, null,
+			FragmentConstants.TYPE_COMPONENT, null, 0,
+			_segmentsExperienceLocalService.fetchDefaultSegmentsExperienceId(
+				_layout.getPlid()));
+	}
+
 	private void _assertInfoFieldValue(
 		String fieldName, JournalArticle journalArticle) {
 
@@ -345,6 +435,48 @@ public class JournalArticleInfoItemFieldValuesProviderTest {
 			LocaleUtil.getSiteDefault());
 
 		Assert.assertTrue(infoItemFieldValuesMap.containsKey(fieldName));
+	}
+
+	private String _buildConfigurableFragmentValue(JournalArticle article) {
+		return JSONUtil.put(
+			"com.liferay.fragment.entry.processor.freemarker." +
+				"FreeMarkerFragmentEntryProcessor",
+			JSONUtil.put(
+				"contentSelector",
+				JSONUtil.put(
+					"className", JournalArticle.class.getName()
+				).put(
+					"classNameId",
+					String.valueOf(
+						_portal.getClassNameId(JournalArticle.class.getName()))
+				).put(
+					"classPK", String.valueOf(article.getResourcePrimKey())
+				).put(
+					"classTypeId", String.valueOf(article.getDDMStructureId())
+				))
+		).toString();
+	}
+
+	private String _buildEditableFragmentValue(JournalArticle article) {
+		return JSONUtil.put(
+			"com.liferay.fragment.entry.processor.editable." +
+				"EditableFragmentEntryProcessor",
+			JSONUtil.put(
+				"template_1",
+				JSONUtil.put(
+					"className", JournalArticle.class.getName()
+				).put(
+					"classNameId",
+					String.valueOf(
+						_portal.getClassNameId(JournalArticle.class.getName()))
+				).put(
+					"classPK", String.valueOf(article.getResourcePrimKey())
+				).put(
+					"classTypeId", String.valueOf(article.getDDMStructureId())
+				).put(
+					"fieldId", "_ddmTemplate_" + article.getDDMTemplateKey()
+				))
+		).toString();
 	}
 
 	private Tuple _createJournalArticleWithPredefinedValues(String ddmName)
@@ -484,6 +616,11 @@ public class JournalArticleInfoItemFieldValuesProviderTest {
 		return themeDisplay;
 	}
 
+	private String _read(String fileName) throws Exception {
+		return new String(
+			FileUtil.getBytes(getClass(), "dependencies/" + fileName));
+	}
+
 	@Inject
 	private ClassNameLocalService _classNameLocalService;
 
@@ -492,6 +629,15 @@ public class JournalArticleInfoItemFieldValuesProviderTest {
 
 	@Inject
 	private DDMStructureLocalService _ddmStructureLocalService;
+
+	@Inject
+	private FragmentCollectionService _fragmentCollectionService;
+
+	@Inject
+	private FragmentEntryLinkLocalService _fragmentEntryLinkLocalService;
+
+	@Inject
+	private FragmentEntryService _fragmentEntryService;
 
 	@DeleteAfterTestRun
 	private Group _group;
@@ -504,7 +650,28 @@ public class JournalArticleInfoItemFieldValuesProviderTest {
 	@Inject
 	private JournalArticleLocalService _journalArticleLocalService;
 
+	private Layout _layout;
+
+	@Inject
+	private LayoutPageTemplateStructureLocalService
+		_layoutPageTemplateStructureLocalService;
+
+	@Inject
+	private LayoutPageTemplateStructureRelLocalService
+		_layoutPageTemplateStructureRelLocalService;
+
+	@Inject
+	private LayoutServiceContextHelper _layoutServiceContextHelper;
+
+	@Inject
+	private LayoutStructureProvider _layoutStructureProvider;
+
 	@Inject
 	private Portal _portal;
+
+	@Inject
+	private SegmentsExperienceLocalService _segmentsExperienceLocalService;
+
+	private ServiceContext _serviceContext;
 
 }
