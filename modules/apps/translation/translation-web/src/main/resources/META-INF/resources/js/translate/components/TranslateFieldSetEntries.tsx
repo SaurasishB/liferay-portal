@@ -148,6 +148,7 @@ const TranslateFieldEditor = ({
 	const [content, setContent] = useState(targetContent);
 
 	const editorRef = useRef<any>();
+	const ckeditor5Ref = useRef<TEditor>();
 	const internalUpdateRef = useRef(true);
 
 	const handleOnChange = (data: string) => {
@@ -157,6 +158,8 @@ const TranslateFieldEditor = ({
 	};
 
 	const handleOnReady = (editor: TEditor) => {
+		ckeditor5Ref.current = editor;
+
 		const sourceEditingPlugin: SourceEditing =
 			editor.plugins.get('SourceEditing');
 
@@ -199,6 +202,27 @@ const TranslateFieldEditor = ({
 		}
 		else {
 			internalUpdateRef.current = false;
+		}
+
+		const editor = ckeditor5Ref.current;
+
+		const sourceEditingPlugin: SourceEditing | undefined =
+			editor?.plugins.get('SourceEditing');
+
+		if (sourceEditingPlugin?.isSourceEditingMode) {
+			for (const [rootName] of editor!.editing.view.domRoots) {
+				const replacedRoot =
+
+					// @ts-ignore
+
+					sourceEditingPlugin._replacedRoots?.get(rootName);
+
+				const textarea = replacedRoot?.querySelector('textarea');
+
+				if (textarea) {
+					textarea.value = targetContent;
+				}
+			}
 		}
 
 		setContent(targetContent);
