@@ -22,6 +22,15 @@ jest.mock('frontend-editor-ckeditor-web', () => {
 				const textarea = wrapper.querySelector('textarea');
 
 				textarea.value = data;
+				wrapper.dataset.value = data;
+
+				// Mirror the SourceEditing plugin: the cached value the editor
+				// restores on exiting source mode is only updated by the
+				// textarea's input event, never by a direct value assignment.
+
+				textarea.addEventListener('input', () => {
+					wrapper.dataset.value = textarea.value;
+				});
 
 				const sourceEditingPlugin = {
 					_replacedRoots: new Map([['main', wrapper]]),
@@ -35,7 +44,7 @@ jest.mock('frontend-editor-ckeditor-web', () => {
 							domRoots: new Map([['main', wrapper]]),
 						},
 					},
-					getData: () => textarea.value,
+					getData: () => wrapper.dataset.value,
 					plugins: {
 						get: () => sourceEditingPlugin,
 					},
@@ -125,5 +134,13 @@ describe('TranslateFieldSetEntries', () => {
 		);
 
 		expect(textarea).toHaveValue(TRANSLATED_TARGET);
+
+		// The value the editor restores when leaving source mode must also
+		// reflect the translation, not the original content.
+
+		expect(textarea.closest('div')).toHaveAttribute(
+			'data-value',
+			TRANSLATED_TARGET
+		);
 	});
 });
