@@ -37,6 +37,33 @@ const getISO639LanguageCode = (localeId: string): string => {
 	return localeId;
 };
 
+const forEachSourceEditingTextarea = (
+	editor: TEditor,
+	callback: (textarea: HTMLTextAreaElement) => void
+) => {
+	const sourceEditingPlugin: SourceEditing =
+		editor.plugins.get('SourceEditing');
+
+	if (!sourceEditingPlugin?.isSourceEditingMode) {
+		return;
+	}
+
+	for (const [rootName] of editor.editing.view.domRoots) {
+		const replacedRoot =
+
+			// @ts-ignore
+
+			sourceEditingPlugin._replacedRoots?.get(rootName);
+
+		const textarea: HTMLTextAreaElement =
+			replacedRoot?.querySelector('textarea');
+
+		if (textarea) {
+			callback(textarea);
+		}
+	}
+};
+
 const TranslateAutoTranslateRow = ({
 	autoTranslateEnabled,
 	children,
@@ -168,31 +195,11 @@ const TranslateFieldEditor = ({
 		}
 
 		sourceEditingPlugin.on('change:isSourceEditingMode', () => {
-			if (!sourceEditingPlugin.isSourceEditingMode) {
-				return;
-			}
-
-			for (const [rootName] of editor.editing.view.domRoots) {
-				const replacedRoot =
-
-					// @ts-ignore
-
-					sourceEditingPlugin._replacedRoots?.get(rootName);
-
-				if (!replacedRoot) {
-					continue;
-				}
-
-				const textarea = replacedRoot.querySelector('textarea');
-
-				if (!textarea) {
-					continue;
-				}
-
+			forEachSourceEditingTextarea(editor, (textarea) => {
 				textarea.addEventListener('input', () => {
 					handleOnChange(editor.getData());
 				});
-			}
+			});
 		});
 	};
 
@@ -206,23 +213,17 @@ const TranslateFieldEditor = ({
 
 		const editor = ckeditor5Ref.current;
 
-		const sourceEditingPlugin: SourceEditing | undefined =
-			editor?.plugins.get('SourceEditing');
-
-		if (sourceEditingPlugin?.isSourceEditingMode) {
-			for (const [rootName] of editor!.editing.view.domRoots) {
-				const replacedRoot =
-
-					// @ts-ignore
-
-					sourceEditingPlugin._replacedRoots?.get(rootName);
-
-				const textarea = replacedRoot?.querySelector('textarea');
-
-				if (textarea) {
+		if (editor) {
+			forEachSourceEditingTextarea(editor, (textarea) => {
+				if (textarea.value !== targetContent) {
 					textarea.value = targetContent;
+
+					// Let SourceEditing sync its cached value, so toggling back
+					// to WYSIWYG keeps the translation instead of reverting.
+
+					textarea.dispatchEvent(new Event('input', {bubbles: true}));
 				}
-			}
+			});
 		}
 
 		setContent(targetContent);
