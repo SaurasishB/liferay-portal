@@ -29,15 +29,15 @@ public class DepotRolesConstants {
 		ASSET_LIBRARY_OWNER
 	};
 
-	public static final String SUBTYPE_CATALOG = "catalog";
+	public static final String SUBTYPE_DESIGN_LIBRARY = "design-library";
 
 	public static final String SUBTYPE_PROJECT = "project";
 
 	public static final String SUBTYPE_SPACE = "space";
 
 	public static String getSubtype(int depotType) {
-		if (depotType == DepotConstants.TYPE_CATALOG) {
-			return SUBTYPE_CATALOG;
+		if (depotType == DepotConstants.TYPE_DESIGN_LIBRARY) {
+			return SUBTYPE_DESIGN_LIBRARY;
 		}
 
 		if (depotType == DepotConstants.TYPE_PROJECT) {

@@ -2508,6 +2508,15 @@
 		"to": "_trashHelper.${prefixMethodName}(${variableName})"
 	},
 	{
+		"from": "regex:liferay-ui:membership-policy-error",
+		"issueKey": "LPD-27743",
+		"to": "liferay-site:membership-policy-error",
+		"validExtensions": [
+			"jsp",
+			"jspf"
+		]
+	},
+	{
 		"from": "XMLUtil.formatXML(String param)",
 		"issueKey": "LPD-27744",
 		"newImports": [
@@ -3094,6 +3103,16 @@
 				"to": "@Override\n\tpublic boolean ${methodName}${methodDeclaration}{${methodContent}return ${methodReturn}"
 			}
 		]
+	},
+	{
+		"from": "regex:!company\\.isSendPassword\\(\\) && (?<condition>!company\\.isSendPasswordResetLink\\(\\))",
+		"issueKey": "LPD-28363",
+		"to": "${condition}"
+	},
+	{
+		"from": "regex:PropsKeys\\.COMPANY_SECURITY_SEND_PASSWORD,\\s+(?<suffix>PropsKeys\\.COMPANY_SECURITY_SEND_PASSWORD_RESET_LINK)",
+		"issueKey": "LPD-28363",
+		"to": "${suffix}"
 	},
 	{
 		"classNames": [
@@ -5918,6 +5937,14 @@
 		"from": "getCompanyByMx(String paramName)",
 		"hasMessage": true,
 		"issueKey": "LPD-82354"
+	},
+	{
+		"from": "regex:(?<varName>\\w*?FileEntryType)\\.getDDMStructures\\(\\)",
+		"issueKey": "LPD-84010",
+		"newImports": [
+			"com.liferay.document.library.util.DLFileEntryTypeUtil"
+		],
+		"to": "DLFileEntryTypeUtil.getDDMStructures(${varName})"
 	},
 	{
 		"classNames": [
