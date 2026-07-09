@@ -795,14 +795,20 @@ export class PageEditorPage {
 	) {
 		await this.selectFragment(fragmentId, isDesktop);
 
+		const optionsButton = this.page
+			.locator('.page-editor__topper__item')
+			.getByRole('button', {name: 'Options'});
+
+		await optionsButton.evaluate((element) =>
+			element.scrollIntoView({block: 'center', inline: 'center'})
+		);
+
 		await clickAndExpectToBeVisible({
 			autoClick: true,
 			target: this.page
 				.locator('.dropdown-menu.show')
 				.getByText(name, {exact: true}),
-			trigger: this.page
-				.locator('.page-editor__topper__item')
-				.getByRole('button', {name: 'Options'}),
+			trigger: optionsButton,
 		});
 	}
 
@@ -2098,9 +2104,7 @@ export class PageEditorPage {
 			target: iframe.locator('.card', {
 				hasText: fragmentName,
 			}),
-			trigger: iframe.locator('.card', {
-				hasText: folder,
-			}),
+			trigger: iframe.getByRole('link', {name: folder}),
 		});
 
 		await clickAndExpectToBeHidden({
