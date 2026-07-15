@@ -18,6 +18,7 @@ import com.liferay.friendly.url.constants.FriendlyURLEntryConstants;
 import com.liferay.friendly.url.model.FriendlyURLEntry;
 import com.liferay.friendly.url.service.FriendlyURLEntryLocalService;
 import com.liferay.layout.constants.LayoutTypeSettingsConstants;
+import com.liferay.layout.content.creator.LayoutContentVersionCreator;
 import com.liferay.layout.friendly.url.LayoutFriendlyURLEntryHelper;
 import com.liferay.layout.model.LayoutClassedModelUsage;
 import com.liferay.layout.page.template.constants.LayoutPageTemplateEntryTypeConstants;
@@ -139,9 +140,16 @@ public class LayoutLocalServiceWrapper
 					return targetSegmentsExperience.getSegmentsExperienceId();
 				});
 
-		return _copyLayoutContent(
+		Layout layout = _copyLayoutContent(
 			false, sourceLayout, sourceSegmentsExperiencesIds, targetLayout,
 			targetSegmentsExperiencesIds);
+
+		if (sourceLayout.getClassPK() == targetLayout.getPlid()) {
+			_layoutContentVersionCreator.createLayoutContentVersion(
+				sourceLayout);
+		}
+
+		return layout;
 	}
 
 	@Override
@@ -549,9 +557,10 @@ public class LayoutLocalServiceWrapper
 				addOrUpdateLayoutPageTemplateStructureRelElementVariation(
 					PortalUUIDUtil.generate(), user.getUserId(),
 					targetLayout.getGroupId(),
-					audienceEntryERCs.toArray(new String[0]),
 					sourceLayoutPageTemplateStructureRelElementVariation.
-						getHideMap(),
+						isActive(),
+					sourceLayoutPageTemplateStructureRelElementVariation.
+						getHide(),
 					sourceLayoutPageTemplateStructureRelElementVariation.
 						getHtmlMap(),
 					sourceLayoutPageTemplateStructureRelElementVariation.
@@ -561,6 +570,7 @@ public class LayoutLocalServiceWrapper
 					targetLayout.getPlid(), segmentsExperienceERC,
 					sourceLayoutPageTemplateStructureRelElementVariation.
 						getTargetElement(),
+					audienceEntryERCs.toArray(new String[0]),
 					ServiceContextThreadLocal.getServiceContext());
 		}
 	}
@@ -1384,6 +1394,9 @@ public class LayoutLocalServiceWrapper
 	@Reference
 	private LayoutClassedModelUsageLocalService
 		_layoutClassedModelUsageLocalService;
+
+	@Reference
+	private LayoutContentVersionCreator _layoutContentVersionCreator;
 
 	@Reference
 	private LayoutFriendlyURLEntryHelper _layoutFriendlyURLEntryHelper;

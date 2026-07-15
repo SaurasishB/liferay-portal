@@ -5172,6 +5172,16 @@
 		]
 	},
 	{
+		"from": "JournalServiceConfigurationKeys",
+		"hasMessage": true,
+		"issueKey": "LPD-58184"
+	},
+	{
+		"from": "JournalServiceConfigurationValues",
+		"hasMessage": true,
+		"issueKey": "LPD-58184"
+	},
+	{
 		"classNames": [
 			"DDMTemplateLocalService",
 			"DDMTemplateLocalServiceUtil"
@@ -5537,6 +5547,7 @@
 	},
 	{
 		"classNames": [
+			"CPCompareHelper",
 			"CPCompareHelperUtil"
 		],
 		"from": "getCPDefinitionIds(long paramName, long paramName, HttpSession paramName)",

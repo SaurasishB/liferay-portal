@@ -50,11 +50,11 @@ public interface LayoutPageTemplateStructureRelElementVariationService
 	 */
 	public LayoutPageTemplateStructureRelElementVariation
 			addOrUpdateLayoutPageTemplateStructureRelElementVariation(
-				String externalReferenceCode, long groupId,
-				String[] audienceEntryERCs, Map<Locale, String> hideMap,
-				Map<Locale, String> htmlMap, Map<Locale, String> jsMap,
-				String name, long plid, String segmentsExperienceERC,
-				String targetElement, ServiceContext serviceContext)
+				String externalReferenceCode, long groupId, boolean active,
+				String hide, Map<Locale, String> htmlMap,
+				Map<Locale, String> jsMap, String name, long plid,
+				String segmentsExperienceERC, String targetElement,
+				String[] audienceEntryERCs, ServiceContext serviceContext)
 		throws PortalException;
 
 	public void deleteLayoutPageTemplateStructureRelElementVariation(
@@ -74,4 +74,4 @@ public interface LayoutPageTemplateStructureRelElementVariationService
 	public String getOSGiServiceIdentifier();
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1465290773
+// LIFERAY-SERVICE-BUILDER-HASH:-967527342

@@ -55,15 +55,16 @@ public class SaveLayoutPageTemplateStructureRelElementVariationMVCActionCommand
 			addOrUpdateLayoutPageTemplateStructureRelElementVariation(
 				jsonObject.getString("externalReferenceCode"),
 				themeDisplay.getScopeGroupId(),
-				JSONUtil.toStringArray(
-					jsonObject.getJSONArray("audienceEntryERCs")),
-				_toLocalizedMap(jsonObject.getJSONObject("hideMap")),
+				jsonObject.getBoolean("active", true),
+				jsonObject.getString("hide"),
 				_toLocalizedMap(jsonObject.getJSONObject("htmlMap")),
 				_toLocalizedMap(jsonObject.getJSONObject("jsMap")),
 				jsonObject.getString("name"),
 				ParamUtil.getLong(actionRequest, "plid"),
 				jsonObject.getString("segmentsExperienceERC"),
 				jsonObject.getString("targetElement"),
+				JSONUtil.toStringArray(
+					jsonObject.getJSONArray("audienceEntryERCs")),
 				ServiceContextFactory.getInstance(actionRequest));
 
 		return _jsonFactory.createJSONObject();
