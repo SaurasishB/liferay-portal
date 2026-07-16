@@ -38,13 +38,16 @@ import com.liferay.batch.engine.thread.local.BatchEngineThreadLocal;
 import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.osgi.service.tracker.collections.list.ServiceTrackerList;
 import com.liferay.osgi.service.tracker.collections.list.ServiceTrackerListFactory;
+import com.liferay.osgi.service.tracker.collections.map.PropertyServiceReferenceMapper;
+import com.liferay.osgi.service.tracker.collections.map.ServiceReferenceMapper;
+import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMap;
+import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMapFactory;
 import com.liferay.petra.function.UnsafeFunction;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
 import com.liferay.portal.kernel.backgroundtask.BackgroundTaskStatusMessageSender;
 import com.liferay.portal.kernel.change.tracking.CTCollectionThreadLocal;
-import com.liferay.portal.kernel.lazy.referencing.LazyReferencingThreadLocal;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.User;
@@ -209,8 +212,6 @@ public class BatchEngineImportTaskExecutorImpl
 	protected void activate(
 		BundleContext bundleContext, Map<String, Object> properties) {
 
-		_batchEngineContentProcessors = ServiceTrackerListFactory.open(
-			bundleContext, BatchEngineContentProcessor.class);
 		_batchEngineImportTaskExceptionHandlers =
 			ServiceTrackerListFactory.open(
 				bundleContext, BatchEngineImportTaskExceptionHandler.class);
@@ -220,6 +221,22 @@ public class BatchEngineImportTaskExecutorImpl
 			bundleContext, ImportTaskPreAction.class);
 		_itemReaderPostActions = ServiceTrackerListFactory.open(
 			bundleContext, ItemReaderPostAction.class);
+
+		ServiceReferenceMapper<String, BatchEngineContentProcessor>
+			propertyServiceReferenceMapper =
+				new PropertyServiceReferenceMapper<>("field.name");
+
+		_serviceTrackerMap = ServiceTrackerMapFactory.openMultiValueMap(
+			bundleContext, BatchEngineContentProcessor.class, null,
+			(serviceReference, emitter) -> {
+				if (serviceReference.getProperty("field.name") == null) {
+					emitter.emit("*");
+				}
+				else {
+					propertyServiceReferenceMapper.map(
+						serviceReference, emitter);
+				}
+			});
 	}
 
 	protected <T> void addBatchEngineImportTaskError(
@@ -228,8 +245,15 @@ public class BatchEngineImportTaskExecutorImpl
 		Exception exception, T item, int itemIndex) {
 
 		try {
+
+			// Record the error in a nested savepoint on the shared connection.
+			// The failing item has already rolled back to its own savepoint, so
+			// the connection is usable again and the error survives with the
+			// enclosing transaction. A separate connection is not needed and
+			// would risk deadlocking against the outer import transaction.
+
 			TransactionInvokerUtil.invoke(
-				_requiresNewTransactionConfig,
+				_nestedTransactionConfig,
 				() -> {
 					String errorMessage = ErrorMessageUtil.getErrorMessage(
 						exception, batchEngineImportTask.getUserId());
@@ -258,11 +282,11 @@ public class BatchEngineImportTaskExecutorImpl
 
 	@Deactivate
 	protected void deactivate() {
-		_batchEngineContentProcessors.close();
 		_batchEngineImportTaskExceptionHandlers.close();
 		_importTaskPostActions.close();
 		_importTaskPreActions.close();
 		_itemReaderPostActions.close();
+		_serviceTrackerMap.close();
 	}
 
 	private <T> BatchEngineImportTask _commitItems(
@@ -532,18 +556,17 @@ public class BatchEngineImportTaskExecutorImpl
 			unsafeFunction);
 
 		try {
-			if (LazyReferencingThreadLocal.isEnabled()) {
 
-				// A nested savepoint shares the enclosing transaction's
-				// connection; a REQUIRES_NEW transaction would deadlock on
-				// the row locks held by the outer import transaction
+			// Run every item in a nested savepoint. A failing item rolls back
+			// to the savepoint, which restores the shared connection to a
+			// usable state even on PostgreSQL, where any statement error
+			// otherwise aborts the whole transaction. Because the savepoint
+			// shares the enclosing connection, there is no second connection
+			// that could deadlock against the outer import transaction on
+			// databases that take table level write locks.
 
-				TransactionInvokerUtil.invoke(
-					_nestedTransactionConfig, importItemCallable);
-			}
-			else {
-				importItemCallable.call();
-			}
+			TransactionInvokerUtil.invoke(
+				_nestedTransactionConfig, importItemCallable);
 		}
 		catch (Throwable throwable) {
 			Exception exception =
@@ -568,33 +591,57 @@ public class BatchEngineImportTaskExecutorImpl
 		}
 	}
 
+	private String _invokeBatchEngineContentProcessors(
+		String fieldName, String value) {
+
+		List<BatchEngineContentProcessor> batchEngineContentProcessors =
+			_serviceTrackerMap.getService(fieldName);
+
+		if (ListUtil.isEmpty(batchEngineContentProcessors)) {
+			return value;
+		}
+
+		for (BatchEngineContentProcessor batchEngineContentProcessor :
+				batchEngineContentProcessors) {
+
+			value = batchEngineContentProcessor.process(value);
+		}
+
+		return value;
+	}
+
 	private Map<String, Object> _processFieldNameValueMap(
-		Map<String, Object> map) {
+		Map<String, Object> map, String name) {
 
 		for (Map.Entry<String, Object> entry : map.entrySet()) {
-			entry.setValue(_processValue(entry.getValue()));
+			entry.setValue(
+				_processValue(entry.getKey(), name, entry.getValue()));
 		}
 
 		return map;
 	}
 
-	private Object _processValue(Object value) {
+	private Object _processValue(
+		String fieldName, String parentFieldName, Object value) {
+
 		if (value instanceof List) {
 			List<Object> list = (List<Object>)value;
 
-			list.replaceAll(this::_processValue);
+			list.replaceAll(
+				item -> _processValue(fieldName, parentFieldName, item));
 		}
 		else if (value instanceof Map) {
-			_processFieldNameValueMap((Map<String, Object>)value);
+			_processFieldNameValueMap((Map<String, Object>)value, fieldName);
 		}
 		else if (value instanceof String valueString) {
-			for (BatchEngineContentProcessor batchEngineContentProcessor :
-					_batchEngineContentProcessors) {
+			valueString = _invokeBatchEngineContentProcessors("*", valueString);
 
-				valueString = batchEngineContentProcessor.process(valueString);
+			if (parentFieldName != null) {
+				valueString = _invokeBatchEngineContentProcessors(
+					parentFieldName + "." + fieldName, valueString);
 			}
 
-			return valueString;
+			return _invokeBatchEngineContentProcessors(fieldName, valueString);
 		}
 
 		return value;
@@ -616,10 +663,8 @@ public class BatchEngineImportTaskExecutorImpl
 		_languageKeyResolver.expand(
 			batchEngineImportTask.getCompanyId(), fieldNameValueMap);
 
-		if (!_batchEngineContentProcessors.isEmpty() &&
-			ExportImportThreadLocal.isImportInProcess()) {
-
-			_processFieldNameValueMap(fieldNameValueMap);
+		if (ExportImportThreadLocal.isImportInProcess()) {
+			_processFieldNameValueMap(fieldNameValueMap, null);
 		}
 
 		return (T)BatchEngineImportTaskItemReaderUtil.convertValue(
@@ -669,16 +714,10 @@ public class BatchEngineImportTaskExecutorImpl
 	private static final TransactionConfig _nestedTransactionConfig =
 		TransactionConfig.Factory.create(
 			Propagation.NESTED, new Class<?>[] {Exception.class});
-	private static final TransactionConfig _requiresNewTransactionConfig =
-		TransactionConfig.Factory.create(
-			Propagation.REQUIRES_NEW, new Class<?>[] {Exception.class});
 
 	@Reference
 	private BackgroundTaskStatusMessageSender
 		_backgroundTaskStatusMessageSender;
-
-	private ServiceTrackerList<BatchEngineContentProcessor>
-		_batchEngineContentProcessors;
 
 	@Reference
 	private BatchEngineImportTaskErrorLocalService
@@ -714,6 +753,9 @@ public class BatchEngineImportTaskExecutorImpl
 
 	@Reference
 	private LanguageKeyResolver _languageKeyResolver;
+
+	private ServiceTrackerMap<String, List<BatchEngineContentProcessor>>
+		_serviceTrackerMap;
 
 	@Reference
 	private UserLocalService _userLocalService;
