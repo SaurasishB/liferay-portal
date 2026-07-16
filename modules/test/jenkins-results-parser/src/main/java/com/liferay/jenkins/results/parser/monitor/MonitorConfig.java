@@ -15,23 +15,25 @@ import java.util.Map;
 public class MonitorConfig {
 
 	public MonitorConfig(
-		long cadence, String id, Map<String, String> parameters,
-		Severity severity, Map<String, String> thresholds, String type) {
+		String id, long intervalSeconds, Map<String, String> parameters,
+		Severity severity, Map<String, String> thresholds, long timeoutSeconds,
+		String type) {
 
-		_cadence = cadence;
 		_id = id;
+		_intervalSeconds = intervalSeconds;
 		_parameters = _newUnmodifiableMap(parameters);
 		_severity = severity;
 		_thresholds = _newUnmodifiableMap(thresholds);
+		_timeoutSeconds = timeoutSeconds;
 		_type = type;
-	}
-
-	public long getCadence() {
-		return _cadence;
 	}
 
 	public String getId() {
 		return _id;
+	}
+
+	public long getIntervalSeconds() {
+		return _intervalSeconds;
 	}
 
 	public Map<String, String> getParameters() {
@@ -44,6 +46,10 @@ public class MonitorConfig {
 
 	public Map<String, String> getThresholds() {
 		return _thresholds;
+	}
+
+	public long getTimeoutSeconds() {
+		return _timeoutSeconds;
 	}
 
 	public String getType() {
@@ -64,11 +70,12 @@ public class MonitorConfig {
 		return Collections.unmodifiableMap(new LinkedHashMap<>(map));
 	}
 
-	private final long _cadence;
 	private final String _id;
+	private final long _intervalSeconds;
 	private final Map<String, String> _parameters;
 	private final Severity _severity;
 	private final Map<String, String> _thresholds;
+	private final long _timeoutSeconds;
 	private final String _type;
 
 }
