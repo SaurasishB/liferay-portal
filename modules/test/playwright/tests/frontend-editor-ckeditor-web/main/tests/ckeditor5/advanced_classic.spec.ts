@@ -42,6 +42,7 @@ test(
 				'Accessibility help',
 				'Undo',
 				'Redo',
+				'Find and replace',
 				'Styles',
 				'Normal',
 				'Bold',
@@ -397,5 +398,18 @@ test(
 
 			await expect(hiddenInput).toHaveValue('');
 		});
+	}
+);
+
+test(
+	'Find and Replace button is shown in the toolbar',
+	{tag: '@LPD-95091'},
+	async ({classicPage}) => {
+		await expect(
+			classicPage.toolbar.container.getByRole('button', {
+				exact: true,
+				name: 'Find and replace',
+			})
+		).toBeVisible();
 	}
 );

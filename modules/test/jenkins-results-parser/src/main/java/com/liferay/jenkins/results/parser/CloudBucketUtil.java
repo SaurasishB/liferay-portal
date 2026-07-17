@@ -450,18 +450,38 @@ public class CloudBucketUtil {
 	}
 
 	public static String readS3Object(String s3ObjectPath) throws IOException {
+		s3ObjectPath = _replaceS3ObjectPath(s3ObjectPath);
+
 		String suffix = ".temp";
 
 		if (s3ObjectPath.endsWith(".gz")) {
 			suffix = ".temp.gz";
 		}
 
-		File s3TempFile = File.createTempFile("s3-", suffix);
+		File s3TempFile = _createTempFile(suffix);
 
 		try {
-			downloadS3File(s3TempFile, s3ObjectPath);
+			Process process = JenkinsResultsParserUtil.executeBashCommands(
+				new File("."), true, false, 1000 * 60 * 10,
+				JenkinsResultsParserUtil.combine(
+					"aws s3 cp --quiet \"", s3ObjectPath, "\" \"",
+					JenkinsResultsParserUtil.getCanonicalPath(s3TempFile),
+					"\""));
+
+			if (process.exitValue() != 0) {
+				String errorMessage = JenkinsResultsParserUtil.readInputStream(
+					process.getErrorStream());
+
+				throw new IOException(
+					JenkinsResultsParserUtil.combine(
+						"Unable to download ", s3ObjectPath, "\n",
+						errorMessage));
+			}
 
 			return JenkinsResultsParserUtil.read(s3TempFile);
+		}
+		catch (TimeoutException timeoutException) {
+			throw new IOException(timeoutException);
 		}
 		finally {
 			JenkinsResultsParserUtil.delete(s3TempFile);
@@ -605,12 +625,12 @@ public class CloudBucketUtil {
 			String s3ObjectContent, String s3ObjectPath)
 		throws IOException {
 
-		File s3TempFile = File.createTempFile("s3-", ".temp");
+		File s3TempFile = _createTempFile(".temp");
 
 		File s3TempGzipFile = null;
 
 		if (s3ObjectPath.endsWith(".gz")) {
-			s3TempGzipFile = File.createTempFile("s3-", ".temp.gz");
+			s3TempGzipFile = _createTempFile(".temp.gz");
 		}
 
 		try {
@@ -653,6 +673,16 @@ public class CloudBucketUtil {
 			s3DestinationPath + _CHECKSUM_FILE_EXTENSION, sourceChecksumFile);
 
 		sourceChecksumFile.delete();
+	}
+
+	private static File _createTempFile(String suffix) throws IOException {
+		File tempDir = new File(System.getProperty("java.io.tmpdir"));
+
+		if (!tempDir.exists()) {
+			tempDir.mkdirs();
+		}
+
+		return File.createTempFile("s3-", suffix, tempDir);
 	}
 
 	private static String _escapeParentheses(String s) {

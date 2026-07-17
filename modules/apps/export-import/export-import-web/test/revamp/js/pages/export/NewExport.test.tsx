@@ -31,6 +31,12 @@ const expandSection = async (label: string) => {
 	await userEvent.click(button);
 };
 
+const getExportCall = () =>
+	fetch.mock.calls.find(
+		([url, init]) =>
+			String(url).includes('export-processes') && init?.method === 'POST'
+	);
+
 const DEFAULT_PROPS = {
 	backURL: '/some/back/url',
 	exportPreviewAPIURL: '/o/export-import/v1.0/export-preview',
@@ -105,6 +111,35 @@ describe('NewExport', () => {
 		expect(
 			screen.getByRole('checkbox', {name: 'Content & Data'})
 		).toBeChecked();
+	});
+
+	it('renders the root model handler tag and description', async () => {
+		renderComponent({
+			exportPreview: {
+				...mockExportPreview,
+				previewPortletDataHandlerSections: [
+					{
+						label: 'Content & Data',
+						name: 'category.site_administration.content',
+						previewPortletDataHandlers: [
+							{
+								description: 'Child 1, Child 2',
+								label: 'Root Handler',
+								name: 'handler',
+								tag: 'root-object',
+							},
+						],
+					},
+				],
+			},
+		});
+
+		await screen.findByText('loaded');
+
+		await expandSection('Content & Data');
+
+		expect(screen.getByText('Child 1, Child 2')).toBeInTheDocument();
+		expect(screen.getByText('root-object')).toBeInTheDocument();
 	});
 
 	it('renders the error alert when the API fails', async () => {
@@ -239,9 +274,7 @@ describe('NewExport', () => {
 		await userEvent.click(screen.getByRole('button', {name: /^export$/i}));
 
 		await waitFor(() => {
-			const exportCall = fetch.mock.calls.find(
-				([, init]) => init?.method === 'POST'
-			);
+			const exportCall = getExportCall();
 
 			const body = JSON.parse(exportCall![1]!.body as string);
 
@@ -333,15 +366,8 @@ describe('NewExport', () => {
 			privateLayoutsAvailable: true,
 		};
 
-		const getExportRequest = () => {
-			const exportProcessCall = fetch.mock.calls.find(
-				([url, init]) =>
-					String(url).includes('export-processes') &&
-					init?.method === 'POST'
-			);
-
-			return JSON.parse(String(exportProcessCall?.[1]?.body));
-		};
+		const getExportRequest = () =>
+			JSON.parse(String(getExportCall()?.[1]?.body));
 
 		const typeFileName = () =>
 			userEvent.type(
@@ -568,14 +594,7 @@ describe('NewExport', () => {
 		await userEvent.click(screen.getByRole('button', {name: /^export$/i}));
 
 		await waitFor(() => {
-			const exportCall = fetch.mock.calls.find(([, init]) => {
-				const body = init?.body;
-
-				return (
-					typeof body === 'string' &&
-					body.includes('"requestPortletDataHandlers"')
-				);
-			});
+			const exportCall = getExportCall();
 
 			expect(exportCall).toBeDefined();
 
@@ -611,14 +630,7 @@ describe('NewExport', () => {
 		await userEvent.click(screen.getByRole('button', {name: /^export$/i}));
 
 		await waitFor(() => {
-			const exportCall = fetch.mock.calls.find(([, init]) => {
-				const body = init?.body;
-
-				return (
-					typeof body === 'string' &&
-					body.includes('"requestPortletDataHandlers"')
-				);
-			});
+			const exportCall = getExportCall();
 
 			expect(exportCall).toBeDefined();
 
@@ -628,6 +640,60 @@ describe('NewExport', () => {
 			expect(body.logo).toBe(true);
 			expect(body.sitePagesSettings).toBe(true);
 			expect(body.siteTemplateSettings).toBe(true);
+		});
+	});
+
+	it('does not submit the permissions flag by default', async () => {
+		renderComponent();
+
+		await screen.findByText('loaded');
+
+		const nameInput = await screen.findByRole('textbox', {
+			name: /^name/i,
+		});
+
+		await userEvent.type(nameInput, 'test-file');
+
+		fetch.mockResponseOnce(JSON.stringify({}));
+
+		await userEvent.click(screen.getByRole('button', {name: /^export$/i}));
+
+		await waitFor(() => {
+			const exportCall = getExportCall();
+
+			expect(exportCall).toBeDefined();
+
+			const body = JSON.parse(exportCall![1]!.body as string);
+
+			expect(body.permissions).toBe(false);
+		});
+	});
+
+	it('submits the permissions flag when the checkbox is checked', async () => {
+		renderComponent();
+
+		await screen.findByText('loaded');
+
+		const nameInput = await screen.findByRole('textbox', {
+			name: /^name/i,
+		});
+
+		await userEvent.type(nameInput, 'test-file');
+
+		await userEvent.click(screen.getByLabelText(/^export-permissions/));
+
+		fetch.mockResponseOnce(JSON.stringify({}));
+
+		await userEvent.click(screen.getByRole('button', {name: /^export$/i}));
+
+		await waitFor(() => {
+			const exportCall = getExportCall();
+
+			expect(exportCall).toBeDefined();
+
+			const body = JSON.parse(exportCall![1]!.body as string);
+
+			expect(body.permissions).toBe(true);
 		});
 	});
 
@@ -650,14 +716,7 @@ describe('NewExport', () => {
 		await userEvent.click(screen.getByRole('button', {name: /^export$/i}));
 
 		await waitFor(() => {
-			const exportCall = fetch.mock.calls.find(([, init]) => {
-				const body = init?.body;
-
-				return (
-					typeof body === 'string' &&
-					body.includes('"requestPortletDataHandlers"')
-				);
-			});
+			const exportCall = getExportCall();
 
 			expect(exportCall).toBeDefined();
 

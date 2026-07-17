@@ -9,10 +9,11 @@ import ClayForm, {ClayCheckbox, ClayInput, ClayToggle} from '@clayui/form';
 import ClayIcon from '@clayui/icon';
 import ClayMultiSelect from '@clayui/multi-select';
 import {useId} from 'frontend-js-components-web';
-import React from 'react';
+import React, {useState} from 'react';
 
 import CodeEditorField from './CodeEditorField';
 import {Action, ElementVariation} from './elementVariationsReducer';
+import getAvailableAudiences from './getAvailableAudiences';
 import {EditableElementOption} from './getEditableElementOptions';
 
 type ElementVariationFormData = Pick<
@@ -22,6 +23,7 @@ type ElementVariationFormData = Pick<
 	| 'hide'
 	| 'html'
 	| 'js'
+	| 'key'
 	| 'name'
 	| 'targetElement'
 >;
@@ -32,6 +34,7 @@ interface Props {
 	dispatch: React.Dispatch<Action>;
 	editableElementOptions: EditableElementOption[];
 	elementVariation: ElementVariationFormData;
+	elementVariations: ElementVariation[];
 	languageId: string;
 	locales: Array<{id: string; label: string; symbol: string}>;
 	onCancel: () => void;
@@ -47,6 +50,7 @@ export default function ElementVariationForm({
 	dispatch,
 	editableElementOptions,
 	elementVariation,
+	elementVariations,
 	languageId,
 	locales,
 	onCancel,
@@ -71,6 +75,21 @@ export default function ElementVariationForm({
 		(targetElementItem) =>
 			targetElementItem.value === elementVariation.targetElement
 	);
+
+	const availableAudiences = getAvailableAudiences(
+		audiences,
+		elementVariations,
+		elementVariation
+	);
+
+	const [errors, setErrors] = useState<{
+		audience?: boolean;
+		name?: boolean;
+		targetElement?: boolean;
+	}>({});
+
+	const clearError = (field: 'audience' | 'name' | 'targetElement') =>
+		setErrors((previousErrors) => ({...previousErrors, [field]: false}));
 
 	const translating = languageId !== defaultLanguageId;
 
@@ -124,7 +143,10 @@ export default function ElementVariationForm({
 			</div>
 
 			<div className="flex-grow-1 overflow-auto p-3">
-				<ClayForm.Group small>
+				<ClayForm.Group
+					className={errors.name ? 'has-error' : undefined}
+					small
+				>
 					<label htmlFor={nameId}>
 						{Liferay.Language.get('name')}
 
@@ -139,13 +161,21 @@ export default function ElementVariationForm({
 					<ClayInput
 						defaultValue={elementVariation.name}
 						id={nameId}
-						onBlur={(event) => onChange({name: event.target.value})}
+						onBlur={(event) => {
+							onChange({name: event.target.value});
+							clearError('name');
+						}}
 						readOnly={translating}
 						type="text"
 					/>
+
+					{errors.name ? <RequiredFieldFeedback /> : null}
 				</ClayForm.Group>
 
-				<ClayForm.Group small>
+				<ClayForm.Group
+					className={errors.targetElement ? 'has-error' : undefined}
+					small
+				>
 					<label htmlFor={targetElementId}>
 						{Liferay.Language.get('page-element')}
 
@@ -173,6 +203,8 @@ export default function ElementVariationForm({
 							onChange({
 								targetElement: targetElementItem?.value ?? '',
 							});
+
+							clearError('targetElement');
 						}}
 						selectedKey={selectedTargetElementItem?.key}
 					>
@@ -199,11 +231,18 @@ export default function ElementVariationForm({
 							</Option>
 						)}
 					</Picker>
+
+					{errors.targetElement ? <RequiredFieldFeedback /> : null}
 				</ClayForm.Group>
 
 				{elementVariation.targetElement ? (
 					<>
-						<ClayForm.Group small>
+						<ClayForm.Group
+							className={
+								errors.audience ? 'has-error' : undefined
+							}
+							small
+						>
 							<label htmlFor={audienceId}>
 								{Liferay.Language.get('audience')}
 
@@ -252,9 +291,13 @@ export default function ElementVariationForm({
 												(audience) => audience.value
 											),
 									});
+
+									clearError('audience');
 								}}
-								sourceItems={audiences}
+								sourceItems={availableAudiences}
 							/>
+
+							{errors.audience ? <RequiredFieldFeedback /> : null}
 						</ClayForm.Group>
 
 						<ClayForm.Group className="align-items-center d-flex my-4">
@@ -321,21 +364,6 @@ export default function ElementVariationForm({
 									description={Liferay.Language.get(
 										'changes-persist-in-the-preview.-reload-to-update'
 									)}
-									footer={
-										<ClayButton
-											className="mt-2"
-											displayType="secondary"
-											onClick={onReloadPreview}
-											size="sm"
-										>
-											<ClayIcon
-												className="mr-2"
-												symbol="reload"
-											/>
-
-											{Liferay.Language.get('reload')}
-										</ClayButton>
-									}
 									initialValue={
 										elementVariation.js[languageId] ?? ''
 									}
@@ -353,6 +381,18 @@ export default function ElementVariationForm({
 								/>
 							</>
 						)}
+
+						<div className="mb-4">
+							<ClayButton
+								displayType="secondary"
+								onClick={onReloadPreview}
+								size="xs"
+							>
+								<ClayIcon className="mr-2" symbol="reload" />
+
+								{Liferay.Language.get('reload')}
+							</ClayButton>
+						</div>
 
 						<ClayForm.Group className="my-4" small>
 							<ClayCheckbox
@@ -383,12 +423,44 @@ export default function ElementVariationForm({
 				<ClayButton
 					className="ml-2"
 					displayType="primary"
-					onClick={onSave}
+					onClick={() => {
+						const nextErrors = {
+							audience:
+								Boolean(elementVariation.targetElement) &&
+								!elementVariation.audienceEntryERCs.length,
+							name: !elementVariation.name,
+							targetElement: !elementVariation.targetElement,
+						};
+
+						if (
+							nextErrors.audience ||
+							nextErrors.name ||
+							nextErrors.targetElement
+						) {
+							setErrors(nextErrors);
+
+							return;
+						}
+
+						onSave();
+					}}
 					size="sm"
 				>
 					{Liferay.Language.get('save')}
 				</ClayButton>
 			</div>
 		</>
+	);
+}
+
+function RequiredFieldFeedback() {
+	return (
+		<ClayForm.FeedbackGroup role="alert">
+			<ClayForm.FeedbackItem>
+				<ClayForm.FeedbackIndicator symbol="times-circle-full" />
+
+				{Liferay.Language.get('this-field-is-required')}
+			</ClayForm.FeedbackItem>
+		</ClayForm.FeedbackGroup>
 	);
 }

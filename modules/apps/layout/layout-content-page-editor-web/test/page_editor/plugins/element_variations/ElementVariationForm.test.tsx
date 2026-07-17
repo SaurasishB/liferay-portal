@@ -23,6 +23,7 @@ const BASE_ELEMENT_VARIATION: ElementVariationProp = {
 	hide: false,
 	html: {},
 	js: {},
+	key: 'variation-1',
 	name: 'My Variation',
 	targetElement: '',
 };
@@ -60,6 +61,7 @@ function renderForm(
 					...BASE_ELEMENT_VARIATION,
 					...elementVariation,
 				}}
+				elementVariations={[]}
 				languageId="en_US"
 				locales={LOCALES}
 				onCancel={jest.fn()}
@@ -199,6 +201,81 @@ describe('ElementVariationForm', () => {
 		expect(
 			screen.getAllByText('there-is-no-default-value-to-localize')
 		).toHaveLength(2);
+	});
+
+	it('shows a required error and blocks saving when no name is provided', async () => {
+		const onSave = jest.fn();
+
+		renderForm(
+			{
+				audienceEntryERCs: ['audience-1'],
+				name: '',
+				targetElement: '.title',
+			},
+			{onSave}
+		);
+
+		await userEvent.click(screen.getByText('save'));
+
+		expect(screen.getByText('this-field-is-required')).toBeInTheDocument();
+		expect(onSave).not.toHaveBeenCalled();
+	});
+
+	it('shows a required error and blocks saving when no page element is selected', async () => {
+		const onSave = jest.fn();
+
+		renderForm({targetElement: ''}, {onSave});
+
+		await userEvent.click(screen.getByText('save'));
+
+		expect(screen.getByText('this-field-is-required')).toBeInTheDocument();
+		expect(onSave).not.toHaveBeenCalled();
+	});
+
+	it('shows a required error and blocks saving when no audience is selected', async () => {
+		const onSave = jest.fn();
+
+		renderForm({targetElement: '.title'}, {onSave});
+
+		await userEvent.click(screen.getByText('save'));
+
+		expect(screen.getByText('this-field-is-required')).toBeInTheDocument();
+		expect(onSave).not.toHaveBeenCalled();
+	});
+
+	it('clears the required error when the offending field is updated', async () => {
+		renderForm({
+			audienceEntryERCs: ['audience-1'],
+			name: '',
+			targetElement: '.title',
+		});
+
+		await userEvent.click(screen.getByText('save'));
+
+		expect(screen.getByText('this-field-is-required')).toBeInTheDocument();
+
+		await userEvent.type(screen.getByLabelText('name'), 'New name');
+		await userEvent.tab();
+
+		expect(
+			screen.queryByText('this-field-is-required')
+		).not.toBeInTheDocument();
+	});
+
+	it('saves when an audience is selected', async () => {
+		const onSave = jest.fn();
+
+		renderForm(
+			{audienceEntryERCs: ['audience-1'], targetElement: '.title'},
+			{onSave}
+		);
+
+		await userEvent.click(screen.getByText('save'));
+
+		expect(
+			screen.queryByText('this-field-is-required')
+		).not.toBeInTheDocument();
+		expect(onSave).toHaveBeenCalledTimes(1);
 	});
 
 	it('has no accessibility violations', async () => {

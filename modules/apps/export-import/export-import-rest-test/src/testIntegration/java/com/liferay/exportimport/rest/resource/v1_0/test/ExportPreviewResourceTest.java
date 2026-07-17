@@ -21,12 +21,14 @@ import com.liferay.object.constants.ObjectEntryFolderConstants;
 import com.liferay.object.constants.ObjectFieldConstants;
 import com.liferay.object.field.util.ObjectFieldUtil;
 import com.liferay.object.model.ObjectDefinition;
+import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.object.service.ObjectDefinitionSettingLocalService;
 import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.object.test.util.ObjectDefinitionTestUtil;
 import com.liferay.petra.function.UnsafeBiFunction;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.model.Layout;
@@ -34,6 +36,7 @@ import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
+import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
@@ -55,6 +58,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.Objects;
 
 import org.junit.After;
@@ -187,6 +191,7 @@ public class ExportPreviewResourceTest
 		_testGetExportPreviewWithDifferentScope(
 			exportPreviewResource.getExportPreview(null, null),
 			_depotObjectDefinition, _siteObjectDefinition);
+		_testGetExportPreviewWithDeletions();
 	}
 
 	@FeatureFlag("LPD-38869")
@@ -276,22 +281,15 @@ public class ExportPreviewResourceTest
 	private long _getAdditionCount(
 		ExportPreview exportPreview, String portletId) {
 
-		String name = "PORTLET_DATA_" + portletId;
+		PreviewPortletDataHandler previewPortletDataHandler =
+			_getPreviewPortletDataHandler(
+				exportPreview, "PORTLET_DATA_" + portletId);
 
-		for (PreviewPortletDataHandlerSection previewPortletDataHandlerSection :
-				exportPreview.getPreviewPortletDataHandlerSections()) {
-
-			for (PreviewPortletDataHandler previewPortletDataHandler :
-					previewPortletDataHandlerSection.
-						getPreviewPortletDataHandlers()) {
-
-				if (name.equals(previewPortletDataHandler.getName())) {
-					return previewPortletDataHandler.getAdditionCount();
-				}
-			}
+		if (previewPortletDataHandler == null) {
+			return 0L;
 		}
 
-		return 0L;
+		return previewPortletDataHandler.getAdditionCount();
 	}
 
 	private Choice _getChoice(
@@ -436,14 +434,43 @@ public class ExportPreviewResourceTest
 				portletId));
 	}
 
+	@TestInfo({"LPD-37317", "LPD-90359"})
+	private void _testGetExportPreviewWithDeletions() throws Exception {
+		ObjectDefinition objectDefinition = _publishObjectDefinitionWithEntries(
+			GroupConstants.DEFAULT_PARENT_GROUP_ID,
+			ObjectDefinitionConstants.SCOPE_COMPANY);
+
+		List<ObjectEntry> objectEntries =
+			_objectEntryLocalService.getObjectEntries(
+				GroupConstants.DEFAULT_PARENT_GROUP_ID,
+				objectDefinition.getObjectDefinitionId(), QueryUtil.ALL_POS,
+				QueryUtil.ALL_POS);
+
+		Assert.assertEquals(objectEntries.toString(), 2, objectEntries.size());
+
+		_objectEntryLocalService.deleteObjectEntry(objectEntries.get(0));
+
+		PreviewPortletDataHandler previewPortletDataHandler =
+			_getPreviewPortletDataHandler(
+				exportPreviewResource.getExportPreview(null, null),
+				"PORTLET_DATA_" + objectDefinition.getPortletId());
+
+		Assert.assertEquals(
+			Long.valueOf(1), previewPortletDataHandler.getAdditionCount());
+		Assert.assertEquals(
+			Long.valueOf(1), previewPortletDataHandler.getDeletionCount());
+
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
+	}
+
 	private void _testGetExportPreviewWithDifferentScope(
 		ExportPreview exportPreview, ObjectDefinition... objectDefinitions) {
 
 		for (ObjectDefinition objectDefinition : objectDefinitions) {
-			long additionCount = _getAdditionCount(
-				exportPreview, objectDefinition.getPortletId());
-
-			Assert.assertTrue(additionCount <= 0);
+			Assert.assertNull(
+				_getPreviewPortletDataHandler(
+					exportPreview,
+					"PORTLET_DATA_" + objectDefinition.getPortletId()));
 		}
 	}
 
