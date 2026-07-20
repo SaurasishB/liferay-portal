@@ -201,9 +201,7 @@ public class SearchSolrQueryAssembler {
 		Set<String> selectedFieldNames = SetUtil.fromArray(
 			searchSearchRequest.getSelectedFieldNames());
 
-		if (!selectedFieldNames.contains(Field.UID)) {
-			selectedFieldNames.add(Field.UID);
-		}
+		selectedFieldNames.add(Field.UID);
 
 		solrQuery.setFields(selectedFieldNames.toArray(new String[0]));
 	}
@@ -233,11 +231,9 @@ public class SearchSolrQueryAssembler {
 
 			String sortFieldName = getSortFieldName(sort, "score");
 
-			if (sortFieldNames.contains(sortFieldName)) {
+			if (!sortFieldNames.add(sortFieldName)) {
 				continue;
 			}
-
-			sortFieldNames.add(sortFieldName);
 
 			solrQuery.addSort(getSortClause(sort, sortFieldName));
 		}

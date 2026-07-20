@@ -154,25 +154,24 @@ public class FragmentLayoutStructureItemImporter
 			return fragmentStyledLayoutStructureItem;
 		}
 
-		if (definitionMap.containsKey("cssClasses")) {
-			List<String> cssClasses = (List<String>)definitionMap.get(
-				"cssClasses");
-
+		if (definitionMap.get("cssClasses") instanceof List<?> cssClasses) {
 			fragmentStyledLayoutStructureItem.setCssClasses(
-				new HashSet<>(cssClasses));
+				new HashSet<>((List<String>)cssClasses));
 		}
 
-		if (definitionMap.containsKey("customCSS")) {
+		Object customCSS = definitionMap.get("customCSS");
+
+		if (customCSS != null) {
 			fragmentStyledLayoutStructureItem.setCustomCSS(
-				String.valueOf(definitionMap.get("customCSS")));
+				String.valueOf(customCSS));
 		}
 
-		if (definitionMap.containsKey("customCSSViewports")) {
-			List<Map<String, Object>> customCSSViewports =
-				(List<Map<String, Object>>)definitionMap.get(
-					"customCSSViewports");
+		if (definitionMap.get("customCSSViewports") instanceof
+				List<?> customCSSViewports) {
 
-			for (Map<String, Object> customCSSViewport : customCSSViewports) {
+			for (Map<String, Object> customCSSViewport :
+					(List<Map<String, Object>>)customCSSViewports) {
+
 				fragmentStyledLayoutStructureItem.setCustomCSSViewport(
 					(String)customCSSViewport.get("id"),
 					(String)customCSSViewport.get("customCSS"));
@@ -223,12 +222,12 @@ public class FragmentLayoutStructureItemImporter
 			fragmentStyledLayoutStructureItem.updateItemConfig(jsonObject);
 		}
 
-		if (definitionMap.containsKey("fragmentViewports")) {
-			List<Map<String, Object>> fragmentViewports =
-				(List<Map<String, Object>>)definitionMap.get(
-					"fragmentViewports");
+		if (definitionMap.get("fragmentViewports") instanceof
+				List<?> fragmentViewports) {
 
-			for (Map<String, Object> fragmentViewport : fragmentViewports) {
+			for (Map<String, Object> fragmentViewport :
+					(List<Map<String, Object>>)fragmentViewports) {
+
 				JSONObject jsonObject = JSONUtil.put(
 					(String)fragmentViewport.get("id"),
 					toFragmentViewportStylesJSONObject(fragmentViewport));
@@ -237,14 +236,17 @@ public class FragmentLayoutStructureItemImporter
 			}
 		}
 
-		if (definitionMap.containsKey("indexed")) {
+		Object indexed = definitionMap.get("indexed");
+
+		if (indexed != null) {
 			fragmentStyledLayoutStructureItem.setIndexed(
-				GetterUtil.getBoolean(definitionMap.get("indexed")));
+				GetterUtil.getBoolean(indexed));
 		}
 
-		if (definitionMap.containsKey("name")) {
-			fragmentStyledLayoutStructureItem.setName(
-				GetterUtil.getString(definitionMap.get("name")));
+		String name = GetterUtil.getString(definitionMap.get("name"), null);
+
+		if (name != null) {
+			fragmentStyledLayoutStructureItem.setName(name);
 		}
 
 		return fragmentStyledLayoutStructureItem;
@@ -1007,14 +1009,9 @@ public class FragmentLayoutStructureItemImporter
 				"interaction",
 				ActionEditableElementConstants.INTERACTION_DISPLAY_PAGE);
 
-			if ((valueMap == null) || !valueMap.containsKey("mapping")) {
-				return;
-			}
+			if ((valueMap == null) ||
+				!(valueMap.get("mapping") instanceof Map<?, ?> mappingMap)) {
 
-			Map<String, Object> mappingMap = (Map<String, Object>)valueMap.get(
-				"mapping");
-
-			if (mappingMap == null) {
 				return;
 			}
 
@@ -1085,21 +1082,18 @@ public class FragmentLayoutStructureItemImporter
 			resultJSONObject.put(
 				"interaction", ActionEditableElementConstants.INTERACTION_PAGE);
 
-			if ((valueMap == null) || !valueMap.containsKey("itemReference")) {
-				return;
-			}
+			if ((valueMap == null) ||
+				!(valueMap.get("itemReference") instanceof
+					Map<?, ?> itemReference)) {
 
-			Map<String, Object> itemReference =
-				(Map<String, Object>)valueMap.get("itemReference");
-
-			if (itemReference == null) {
 				return;
 			}
 
 			resultJSONObject.put(
 				"page",
 				getLayoutFromItemReferenceJSONObject(
-					itemReference, layoutStructureItemImporterContext));
+					(Map<String, Object>)itemReference,
+					layoutStructureItemImporterContext));
 		}
 		else if (Objects.equals(
 					onResultMap.get("type"),
@@ -1364,29 +1358,33 @@ public class FragmentLayoutStructureItemImporter
 					JSONFactoryUtil.createJSONObject();
 
 				if (fragmentImageMap != null) {
-					if (fragmentImageMap.containsKey("url")) {
+					if (fragmentImageMap.get("url") instanceof
+							Map<?, ?> urlMap) {
+
 						baseFragmentFieldJSONObject =
 							_createBaseFragmentFieldJSONObject(
 								layoutStructureItemImporterContext,
-								(Map<String, Object>)fragmentImageMap.get(
-									"url"));
+								(Map<String, Object>)urlMap);
 					}
 
-					if (fragmentImageMap.containsKey(
-							"fragmentImageClassPKReference")) {
+					if (
+							fragmentImageMap.get(
+								"fragmentImageClassPKReference") instanceof
+									Map<?, ?>
+										fragmentImageClassPKReferenceMap) {
 
-						Map<String, Object> fragmentImageClassPKReferenceMap =
-							(Map<String, Object>)fragmentImageMap.get(
-								"fragmentImageClassPKReference");
+						Map<String, Object> fragmentImageClassPKReferences =
+							(Map<String, Object>)
+								fragmentImageClassPKReferenceMap;
 
 						baseFragmentFieldJSONObject = _createImageJSONObject(
 							(Map<String, Object>)
-								fragmentImageClassPKReferenceMap.get(
+								fragmentImageClassPKReferences.get(
 									"classPKReferences"));
 
 						Map<String, String> fragmentImageConfigurationMap =
 							(Map<String, String>)
-								fragmentImageClassPKReferenceMap.get(
+								fragmentImageClassPKReferences.get(
 									"fragmentImageConfiguration");
 
 						JSONObject amImageConfigurationJSONObject =

@@ -123,6 +123,8 @@ const FrontendDataSetContent = ({
 	hideManagementBarInEmptyState = false,
 	id,
 	infoPanelComponent,
+	infoPanelContainerRef,
+	infoPanelPosition,
 	inlineAddingSettings,
 	inlineEditingSettings,
 	inlineNotificationComponent,
@@ -1758,7 +1760,10 @@ const FrontendDataSetContent = ({
 		items: any;
 	}): void {
 		const updatedItems = new Map(
-			[...items, ...itemsChanged].map((item) => [item[itemKey], item])
+			[...items, ...itemsChanged].map((item) => [
+				getObjectValueFromPath({object: item, path: itemKey}),
+				item,
+			])
 		);
 
 		setItems(Array.from(updatedItems.values()));
@@ -2173,10 +2178,11 @@ const FrontendDataSetContent = ({
 							<InfoPanel
 								className="fds-info-panel"
 								component={infoPanelComponent}
-								containerRef={fdsRef}
+								containerRef={infoPanelContainerRef ?? fdsRef}
 								id={dataSetSupportInfoPanelIdRef.current}
 								onOpenChange={setInfoPanelOpen}
 								open={infoPanelOpen}
+								position={infoPanelPosition}
 							/>
 						)}
 

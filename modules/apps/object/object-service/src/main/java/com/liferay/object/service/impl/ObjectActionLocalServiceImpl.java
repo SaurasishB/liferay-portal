@@ -44,13 +44,13 @@ import com.liferay.object.service.ObjectFieldLocalService;
 import com.liferay.object.service.ObjectFolderLocalService;
 import com.liferay.object.service.base.ObjectActionLocalServiceBaseImpl;
 import com.liferay.object.service.persistence.ObjectDefinitionPersistence;
+import com.liferay.object.service.persistence.ObjectFieldPersistence;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.reflect.ReflectionUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONObject;
@@ -620,10 +620,7 @@ public class ObjectActionLocalServiceImpl
 			ObjectDefinition objectDefinition)
 		throws PortalException {
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				objectDefinition.getCompanyId(), "LPD-34594") ||
-			objectDefinition.isRootNode()) {
-
+		if (objectDefinition.isRootNode()) {
 			return;
 		}
 
@@ -784,9 +781,7 @@ public class ObjectActionLocalServiceImpl
 			ObjectDefinition objectDefinition)
 		throws PortalException {
 
-		if (FeatureFlagManagerUtil.isEnabled(
-				objectDefinition.getCompanyId(), "LPD-34594") &&
-			StringUtil.equals(
+		if (StringUtil.equals(
 				objectActionTriggerKey,
 				ObjectActionTriggerConstants.KEY_ON_AFTER_ROOT_UPDATE) &&
 			!objectDefinition.isRootNode()) {
@@ -1112,7 +1107,8 @@ public class ObjectActionLocalServiceImpl
 		}
 
 		for (ObjectField objectField :
-				_objectFieldLocalService.getObjectFields(objectDefinitionId)) {
+				_objectFieldPersistence.findByObjectDefinitionId(
+					objectDefinitionId)) {
 
 			if (!objectField.isRequired() ||
 				Validator.isNotNull(
@@ -1157,6 +1153,9 @@ public class ObjectActionLocalServiceImpl
 
 	@Reference
 	private ObjectFieldLocalService _objectFieldLocalService;
+
+	@Reference
+	private ObjectFieldPersistence _objectFieldPersistence;
 
 	@Reference
 	private ObjectFolderLocalService _objectFolderLocalService;

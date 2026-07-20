@@ -39,11 +39,7 @@ public class JenkinsMaster implements JenkinsNode<JenkinsMaster> {
 	public static final Integer SLAVES_PER_HOST_DEFAULT = 2;
 
 	public static synchronized JenkinsMaster getInstance(String masterName) {
-		if (!_jenkinsMasters.containsKey(masterName)) {
-			_jenkinsMasters.put(masterName, new JenkinsMaster(masterName));
-		}
-
-		return _jenkinsMasters.get(masterName);
+		return _jenkinsMasters.computeIfAbsent(masterName, JenkinsMaster::new);
 	}
 
 	public static Integer getSlaveRAMMinimumDefault() {
@@ -295,11 +291,8 @@ public class JenkinsMaster implements JenkinsNode<JenkinsMaster> {
 		List<DefaultBuild> oldDefaultBuilds = new ArrayList<>();
 
 		for (DefaultBuild defaultBuild : _defaultBuilds) {
-			if (!buildURLs.contains(defaultBuild.getBuildURL())) {
+			if (!buildURLs.remove(defaultBuild.getBuildURL())) {
 				oldDefaultBuilds.add(defaultBuild);
-			}
-			else {
-				buildURLs.remove(defaultBuild.getBuildURL());
 			}
 		}
 
@@ -1434,8 +1427,11 @@ public class JenkinsMaster implements JenkinsNode<JenkinsMaster> {
 	}
 
 	private List<String> _getLabels(String labelExpression) {
-		if (_labelExpressionLabels.containsKey(labelExpression)) {
-			return _labelExpressionLabels.get(labelExpression);
+		List<String> labelExpressionLabels = _labelExpressionLabels.get(
+			labelExpression);
+
+		if (labelExpressionLabels != null) {
+			return labelExpressionLabels;
 		}
 
 		Set<String> labels = new HashSet<>();

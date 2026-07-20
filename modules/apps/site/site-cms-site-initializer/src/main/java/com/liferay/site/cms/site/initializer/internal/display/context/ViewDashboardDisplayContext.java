@@ -6,9 +6,12 @@
 package com.liferay.site.cms.site.initializer.internal.display.context;
 
 import com.liferay.analytics.settings.rest.manager.AnalyticsSettingsManager;
+import com.liferay.document.library.configuration.DLConfiguration;
 import com.liferay.learn.LearnMessageUtil;
 import com.liferay.object.constants.ObjectFolderConstants;
+import com.liferay.object.service.ObjectDefinitionService;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.license.util.LicenseManagerUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -21,6 +24,9 @@ import com.liferay.portal.kernel.service.RoleLocalService;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.site.cms.site.initializer.internal.util.CommentUtil;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.Map;
 
@@ -31,31 +37,23 @@ public class ViewDashboardDisplayContext {
 
 	public ViewDashboardDisplayContext(
 		AnalyticsSettingsManager analyticsSettingsManager,
-		GroupLocalService groupLocalService, RoleLocalService roleLocalService,
-		ThemeDisplay themeDisplay) {
+		DLConfiguration dlConfiguration, GroupLocalService groupLocalService,
+		HttpServletRequest httpServletRequest,
+		ObjectDefinitionService objectDefinitionService,
+		RoleLocalService roleLocalService, ThemeDisplay themeDisplay) {
 
 		_analyticsSettingsManager = analyticsSettingsManager;
+		_dlConfiguration = dlConfiguration;
 		_groupLocalService = groupLocalService;
+		_httpServletRequest = httpServletRequest;
+		_objectDefinitionService = objectDefinitionService;
 		_roleLocalService = roleLocalService;
 		_themeDisplay = themeDisplay;
 	}
 
 	public Map<String, Object> getConstants() {
 		return HashMapBuilder.<String, Object>put(
-			"cmsGroupId",
-			() -> {
-				try {
-					Group group = _groupLocalService.getGroup(
-						_themeDisplay.getCompanyId(), GroupConstants.CMS);
-
-					return group.getGroupId();
-				}
-				catch (PortalException portalException) {
-					_log.error(portalException);
-				}
-
-				return null;
-			}
+			"cmsGroupId", () -> _getCMSGroupId()
 		).put(
 			"ercContentStructures",
 			ObjectFolderConstants.EXTERNAL_REFERENCE_CODE_CONTENT_STRUCTURES
@@ -67,6 +65,8 @@ public class ViewDashboardDisplayContext {
 
 	public Map<String, Object> getReactData() throws PortalException {
 		return HashMapBuilder.<String, Object>put(
+			"additionalProps", _getAdditionalProps()
+		).put(
 			"admin",
 			() -> _roleLocalService.hasUserRole(
 				_themeDisplay.getUserId(), _themeDisplay.getCompanyId(),
@@ -100,11 +100,96 @@ public class ViewDashboardDisplayContext {
 		).build();
 	}
 
+	private Map<String, Object> _getAdditionalProps() {
+		return HashMapBuilder.<String, Object>put(
+			"autocompleteURL", SectionDisplayContextUtil.getAutocompleteURL()
+		).put(
+			"breadcrumbProps",
+			HashMapBuilder.<String, Object>put(
+				"breadcrumbItems",
+				JSONUtil.putAll(
+					JSONUtil.put(
+						"active", false
+					).put(
+						"label",
+						SectionDisplayContextUtil.getLayoutName(_themeDisplay)
+					))
+			).put(
+				"hideSpace", true
+			).build()
+		).put(
+			"candidateAssetLibraries",
+			SectionDisplayContextUtil.getDepotEntriesJSONArray(
+				_httpServletRequest)
+		).put(
+			"cmsGroupId", () -> _getCMSGroupId()
+		).put(
+			"collaboratorURLs",
+			() -> SectionDisplayContextUtil.getCollaboratorURLs(
+				_themeDisplay.getCompanyId(), _objectDefinitionService,
+				new String[] {
+					ObjectFolderConstants.
+						EXTERNAL_REFERENCE_CODE_CONTENT_STRUCTURES,
+					ObjectFolderConstants.EXTERNAL_REFERENCE_CODE_FILE_TYPES
+				})
+		).put(
+			"commentsProps", CommentUtil.getCommentsProps(_httpServletRequest)
+		).put(
+			"contentViewURL",
+			SectionDisplayContextUtil.getContentViewURL(_themeDisplay)
+		).put(
+			"fileMimeTypeCssClasses",
+			() -> {
+				if (_dlConfiguration == null) {
+					return null;
+				}
+
+				return SectionDisplayContextUtil.getFileMimeTypeCssClasses(
+					_dlConfiguration);
+			}
+		).put(
+			"fileMimeTypeIcons",
+			() -> {
+				if (_dlConfiguration == null) {
+					return null;
+				}
+
+				return SectionDisplayContextUtil.getFileMimeTypeIcons(
+					_dlConfiguration);
+			}
+		).put(
+			"objectDefinitionCssClasses",
+			SectionDisplayContextUtil.getObjectDefinitionCssClasses()
+		).put(
+			"objectDefinitionIcons",
+			SectionDisplayContextUtil.getObjectDefinitionIcons()
+		).put(
+			"redirect", _themeDisplay.getURLCurrent()
+		).build();
+	}
+
+	private Long _getCMSGroupId() {
+		try {
+			Group group = _groupLocalService.getGroup(
+				_themeDisplay.getCompanyId(), GroupConstants.CMS);
+
+			return group.getGroupId();
+		}
+		catch (PortalException portalException) {
+			_log.error(portalException);
+		}
+
+		return null;
+	}
+
 	private static final Log _log = LogFactoryUtil.getLog(
 		ViewDashboardDisplayContext.class);
 
 	private final AnalyticsSettingsManager _analyticsSettingsManager;
+	private final DLConfiguration _dlConfiguration;
 	private final GroupLocalService _groupLocalService;
+	private final HttpServletRequest _httpServletRequest;
+	private final ObjectDefinitionService _objectDefinitionService;
 	private final RoleLocalService _roleLocalService;
 	private final ThemeDisplay _themeDisplay;
 

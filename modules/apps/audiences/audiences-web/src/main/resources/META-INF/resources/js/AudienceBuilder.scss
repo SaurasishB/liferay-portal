@@ -9,6 +9,7 @@ $toolbar-height: 55px;
 
 .audience-builder-attribute {
 	border: 2px solid transparent;
+	border-radius: 0.5rem;
 	cursor: grab;
 	height: 55px;
 
@@ -43,12 +44,6 @@ $toolbar-height: 55px;
 	}
 }
 
-.audience-builder-conjunction-menu {
-	.dropdown-item {
-		text-transform: uppercase;
-	}
-}
-
 .audience-builder-drop-zone {
 	background-color: $white;
 	border: 2px dashed transparent;
@@ -62,6 +57,29 @@ $toolbar-height: 55px;
 
 	&--over {
 		background-color: var(--primary-l3);
+	}
+}
+
+.audience-builder-group {
+	position: relative;
+
+	&--drop-bottom::after,
+	&--drop-top::before {
+		background-color: $primary;
+		content: '';
+		height: 4px;
+		left: 0;
+		position: absolute;
+		right: 0;
+		z-index: 1;
+	}
+
+	&--drop-bottom::after {
+		bottom: 0;
+	}
+
+	&--drop-top::before {
+		top: 0;
 	}
 }
 
@@ -94,10 +112,17 @@ $toolbar-height: 55px;
 	}
 
 	&--drop-bottom {
+		background-color: var(--primary-l3);
 		box-shadow: inset 0 -4px 0 0 $primary;
 	}
 
+	&--drop-group {
+		background-color: var(--primary-l3);
+		box-shadow: inset 0 0 0 4px $primary;
+	}
+
 	&--drop-top {
+		background-color: var(--primary-l3);
 		box-shadow: inset 0 4px 0 0 $primary;
 	}
 

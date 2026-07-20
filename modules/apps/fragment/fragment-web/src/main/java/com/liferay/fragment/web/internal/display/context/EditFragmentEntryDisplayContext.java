@@ -18,6 +18,7 @@ import com.liferay.fragment.web.internal.info.field.type.CaptchaInfoFieldType;
 import com.liferay.fragment.web.internal.info.field.type.FormButtonInfoFieldType;
 import com.liferay.fragment.web.internal.info.field.type.LocalizationSelectInfoFieldType;
 import com.liferay.fragment.web.internal.info.field.type.StepperInfoFieldType;
+import com.liferay.fragment.web.internal.util.DesignLibraryUtil;
 import com.liferay.info.field.type.BooleanInfoFieldType;
 import com.liferay.info.field.type.DateInfoFieldType;
 import com.liferay.info.field.type.DateTimeInfoFieldType;
@@ -99,7 +100,7 @@ public class EditFragmentEntryDisplayContext {
 		_themeDisplay = (ThemeDisplay)httpServletRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
 
-		_setViewAttributes();
+		_updatePortletDisplay();
 	}
 
 	public long getFragmentCollectionId() {
@@ -527,7 +528,7 @@ public class EditFragmentEntryDisplayContext {
 		).put(
 			"resources", resources
 		).put(
-			"showFieldTypes", _showFieldTypes()
+			"showFieldTypes", _isShowFieldTypes()
 		).put(
 			"spritemap", _themeDisplay.getPathThemeSpritemap()
 		).put(
@@ -628,8 +629,24 @@ public class EditFragmentEntryDisplayContext {
 		return _readOnly;
 	}
 
-	private void _setViewAttributes() {
+	private boolean _isShowFieldTypes() {
+		FragmentEntry fragmentEntry = getFragmentEntry();
+
+		if ((fragmentEntry == null) || !fragmentEntry.isTypeInput()) {
+			return false;
+		}
+
+		return true;
+	}
+
+	private void _updatePortletDisplay() {
 		PortletDisplay portletDisplay = _themeDisplay.getPortletDisplay();
+
+		if (DesignLibraryUtil.isDesignLibraryScope(
+				_themeDisplay.getScopeGroup())) {
+
+			portletDisplay.setPortletDecoratorId("barebone");
+		}
 
 		portletDisplay.setShowBackIcon(true);
 		portletDisplay.setURLBack(getRedirect());
@@ -651,16 +668,6 @@ public class EditFragmentEntryDisplayContext {
 					WorkflowConstants.getStatusLabel(
 						fragmentEntry.getStatus())),
 				")"));
-	}
-
-	private boolean _showFieldTypes() {
-		FragmentEntry fragmentEntry = getFragmentEntry();
-
-		if ((fragmentEntry == null) || !fragmentEntry.isTypeInput()) {
-			return false;
-		}
-
-		return true;
 	}
 
 	private static final InfoFieldType[] _INFO_FIELD_TYPES = {

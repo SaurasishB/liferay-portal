@@ -91,7 +91,9 @@ export class DigitalSalesRoomsPage {
 			name: 'Save as Template',
 		});
 		this.shareMenuItem = page.getByRole('menuitem', {name: 'Share'});
-		this.settingsMenuItem = page.getByRole('menuitem', {name: 'Settings'});
+		this.settingsMenuItem = page.getByRole('menuitem', {
+			name: 'Room Settings',
+		});
 		this.showResultsButton = page.getByRole('button', {
 			name: 'Show Results',
 		});
@@ -111,6 +113,8 @@ export class DigitalSalesRoomsPage {
 
 	async archiveRoom(roomName: string) {
 		await this.clickRowActionsMenuItem(roomName, this.archiveMenuItem);
+
+		await expect(this.archiveButton).toHaveClass(/btn-warning/);
 
 		await this.archiveButton.click();
 

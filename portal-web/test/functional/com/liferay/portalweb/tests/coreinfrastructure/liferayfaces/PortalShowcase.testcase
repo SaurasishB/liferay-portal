@@ -4,6 +4,7 @@ definition {
 	property ci.retries.disabled = "true";
 	property liferay.faces = "true";
 	property liferay.faces.war.file.names = "com.liferay.faces.demo.portal.showcase.portlet";
+	property portal.acceptance = "true";
 	property portal.release = "true";
 	property portal.upstream = "true";
 	property testray.main.component.name = "Liferay Faces";
@@ -50,6 +51,8 @@ definition {
 
 	@priority = 5
 	test InputRichTextSmoke {
+		property portal.upstream = "quarantine";
+
 		Navigator.openWithAppendToBaseURL(urlAppend = "web/portal-showcase/portal-showcase/-/portal-tag/portal/inputrichtext/general");
 
 		AssertElementPresent(locator1 = "PortalShowcase#CHECKED_RENDERED_CHECKBOX");

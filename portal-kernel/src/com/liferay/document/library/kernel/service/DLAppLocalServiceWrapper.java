@@ -448,6 +448,14 @@ public class DLAppLocalServiceWrapper
 	}
 
 	@Override
+	public com.liferay.portal.kernel.repository.model.FileEntry
+			fetchFileEntryByUuidAndGroupId(String uuid, long groupId)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		return _dlAppLocalService.fetchFileEntryByUuidAndGroupId(uuid, groupId);
+	}
+
+	@Override
 	public com.liferay.portal.kernel.repository.model.FileShortcut
 			fetchFileShortcut(long fileShortcutId)
 		throws com.liferay.portal.kernel.exception.PortalException {
@@ -463,6 +471,14 @@ public class DLAppLocalServiceWrapper
 
 		return _dlAppLocalService.fetchFileShortcutByExternalReferenceCode(
 			externalReferenceCode, groupId);
+	}
+
+	@Override
+	public com.liferay.portal.kernel.repository.model.Folder fetchFolder(
+			long folderId)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		return _dlAppLocalService.fetchFolder(folderId);
 	}
 
 	@Override
@@ -1075,4 +1091,4 @@ public class DLAppLocalServiceWrapper
 	private DLAppLocalService _dlAppLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1650995868
+// LIFERAY-SERVICE-BUILDER-HASH:150245717

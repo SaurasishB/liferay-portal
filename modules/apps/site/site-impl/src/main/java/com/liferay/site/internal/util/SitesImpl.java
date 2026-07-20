@@ -25,6 +25,7 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.change.tracking.CTTransactionException;
 import com.liferay.portal.kernel.dao.orm.EntityCacheUtil;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.lock.Lock;
 import com.liferay.portal.kernel.lock.LockManagerUtil;
 import com.liferay.portal.kernel.log.Log;
@@ -253,10 +254,8 @@ public class SitesImpl implements Sites {
 		UnicodeProperties prototypeTypeSettingsUnicodeProperties =
 			layoutPrototypeLayout.getTypeSettingsProperties();
 
-		if (prototypeTypeSettingsUnicodeProperties.containsKey(
-				MERGE_FAIL_COUNT)) {
-
-			prototypeTypeSettingsUnicodeProperties.remove(MERGE_FAIL_COUNT);
+		if (prototypeTypeSettingsUnicodeProperties.remove(MERGE_FAIL_COUNT) !=
+				null) {
 
 			_layoutLocalService.updateLayout(layoutPrototypeLayout);
 		}
@@ -571,6 +570,13 @@ public class SitesImpl implements Sites {
 	public void mergeLayoutSetPrototypeLayouts(
 			LayoutSetPrototype layoutSetPrototype, long userId)
 		throws Exception {
+
+		if (!FeatureFlagManagerUtil.isEnabled(
+				layoutSetPrototype.getCompanyId(), "LPD-82107")) {
+
+			throw new UnsupportedOperationException(
+				"The site template merge is not available");
+		}
 
 		if (ExportImportThreadLocal.isExportInProcess() ||
 			ExportImportThreadLocal.isImportInProcess() ||

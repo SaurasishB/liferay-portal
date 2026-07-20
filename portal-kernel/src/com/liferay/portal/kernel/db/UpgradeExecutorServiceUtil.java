@@ -30,7 +30,8 @@ public class UpgradeExecutorServiceUtil {
 		int jdbcDefaultMaximumPoolSize = GetterUtil.getInteger(
 			PropsUtil.get("jdbc.default.maximumPoolSize"));
 
-		return Math.max(1, (int)(0.9 * jdbcDefaultMaximumPoolSize));
+		return Math.max(
+			1, (jdbcDefaultMaximumPoolSize - _RESERVED_CONNECTION_COUNT) / 2);
 	}
 
 	public static ExecutorService getSchemaExecutorService() {
@@ -62,6 +63,8 @@ public class UpgradeExecutorServiceUtil {
 
 		return threadPoolExecutor;
 	}
+
+	private static final int _RESERVED_CONNECTION_COUNT = 4;
 
 	private static final DCLSingleton<ExecutorService>
 		_dataExecutorServiceDCLSingleton = new DCLSingleton<>();

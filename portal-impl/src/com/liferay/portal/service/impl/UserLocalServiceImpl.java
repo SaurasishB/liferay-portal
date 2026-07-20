@@ -124,7 +124,6 @@ import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.ContactLocalService;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ImageLocalService;
-import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.MembershipRequestLocalService;
 import com.liferay.portal.kernel.service.OrganizationLocalService;
 import com.liferay.portal.kernel.service.PasswordPolicyLocalService;
@@ -145,11 +144,9 @@ import com.liferay.portal.kernel.service.UserIdMapperLocalService;
 import com.liferay.portal.kernel.service.WorkflowInstanceLinkLocalService;
 import com.liferay.portal.kernel.service.persistence.CompanyPersistence;
 import com.liferay.portal.kernel.service.persistence.ContactPersistence;
-import com.liferay.portal.kernel.service.persistence.GroupPersistence;
-import com.liferay.portal.kernel.service.persistence.OrganizationPersistence;
-import com.liferay.portal.kernel.service.persistence.RolePersistence;
-import com.liferay.portal.kernel.service.persistence.TeamPersistence;
-import com.liferay.portal.kernel.service.persistence.UserGroupPersistence;
+import com.liferay.portal.kernel.service.persistence.LayoutPersistence;
+import com.liferay.portal.kernel.service.persistence.PasswordPolicyPersistence;
+import com.liferay.portal.kernel.service.persistence.TicketPersistence;
 import com.liferay.portal.kernel.service.persistence.UserGroupRolePersistence;
 import com.liferay.portal.kernel.systemevent.SystemEvent;
 import com.liferay.portal.kernel.transaction.Propagation;
@@ -316,10 +313,10 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 
 		long[] organizationIds = null;
 
-		Role adminRole = _roleLocalService.getRole(
+		Role adminRole = rolePersistence.findByC_N(
 			companyId, RoleConstants.ADMINISTRATOR);
 
-		Role powerUserRole = _roleLocalService.getRole(
+		Role powerUserRole = rolePersistence.findByC_N(
 			companyId, RoleConstants.POWER_USER);
 
 		long[] roleIds = {adminRole.getRoleId(), powerUserRole.getRoleId()};
@@ -334,7 +331,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 
 		ServiceContext serviceContext = new ServiceContext();
 
-		Company company = _companyLocalService.getCompany(companyId);
+		Company company = _companyPersistence.findByPrimaryKey(companyId);
 
 		serviceContext.setPathMain(PortalUtil.getPathMain());
 		serviceContext.setPortalURL(company.getPortalURL(0));
@@ -394,7 +391,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 				defaultGroupName = GroupConstants.GUEST;
 			}
 
-			Group group = _groupPersistence.fetchByC_GK(
+			Group group = groupPersistence.fetchByC_GK(
 				user.getCompanyId(), defaultGroupName);
 
 			if (group != null) {
@@ -414,7 +411,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 			defaultOrganizationGroupName +=
 				GroupLocalServiceImpl.ORGANIZATION_NAME_SUFFIX;
 
-			Group group = _groupPersistence.fetchByC_GK(
+			Group group = groupPersistence.fetchByC_GK(
 				user.getCompanyId(), defaultOrganizationGroupName);
 
 			if (group != null) {
@@ -491,9 +488,9 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 			return defaultServiceAccountUser;
 		}
 
-		Company company = _companyLocalService.getCompany(companyId);
+		Company company = _companyPersistence.findByPrimaryKey(companyId);
 
-		Role adminRole = _roleLocalService.getRole(
+		Role adminRole = rolePersistence.findByC_N(
 			company.getCompanyId(), RoleConstants.ADMINISTRATOR);
 
 		String screenName = UserConstants.SCREEN_NAME_DEFAULT_SERVICE_ACCOUNT;
@@ -538,7 +535,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 			StringPool.NEW_LINE, PropsValues.ADMIN_DEFAULT_USER_GROUP_NAMES);
 
 		for (String defaultUserGroupName : defaultUserGroupNames) {
-			UserGroup userGroup = _userGroupPersistence.fetchByC_N(
+			UserGroup userGroup = userGroupPersistence.fetchByC_N(
 				user.getCompanyId(), defaultUserGroupName);
 
 			if ((userGroup != null) &&
@@ -775,7 +772,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 				contact.getSkypeSn(), contact.getTwitterSn(), jobTitle,
 				user.getGroupIds(), user.getOrganizationIds(),
 				user.getRoleIds(),
-				_userGroupRoleLocalService.getUserGroupRoles(user.getUserId()),
+				_userGroupRolePersistence.findByUserId(user.getUserId()),
 				user.getUserGroupIds(), serviceContext);
 		}
 
@@ -1992,7 +1989,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	public void deleteRoleUser(long roleId, long userId)
 		throws PortalException {
 
-		_rolePersistence.removeUser(roleId, userId);
+		rolePersistence.removeUser(roleId, userId);
 
 		reindex(userId);
 	}
@@ -2119,7 +2116,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 
 		// Contact
 
-		Contact contact = _contactLocalService.fetchContact(
+		Contact contact = _contactPersistence.fetchByPrimaryKey(
 			user.getContactId());
 
 		if (contact != null) {
@@ -2168,7 +2165,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	public void deleteUserGroupUser(long userGroupId, long userId)
 		throws PortalException {
 
-		_userGroupPersistence.removeUser(userGroupId, userId);
+		userGroupPersistence.removeUser(userGroupId, userId);
 
 		reindex(userId);
 	}
@@ -2399,7 +2396,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	 */
 	@Override
 	public long[] getGroupUserIds(long groupId) {
-		return _groupPersistence.getUserPrimaryKeys(groupId);
+		return groupPersistence.getUserPrimaryKeys(groupId);
 	}
 
 	/**
@@ -2419,7 +2416,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 			OrderByComparator<User> orderByComparator)
 		throws PortalException {
 
-		Group group = _groupPersistence.findByPrimaryKey(groupId);
+		Group group = groupPersistence.findByPrimaryKey(groupId);
 
 		return search(
 			group.getCompanyId(), null, status,
@@ -2459,7 +2456,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	public int getGroupUsersCount(long groupId, int status)
 		throws PortalException {
 
-		Group group = _groupPersistence.findByPrimaryKey(groupId);
+		Group group = groupPersistence.findByPrimaryKey(groupId);
 
 		return searchCount(
 			group.getCompanyId(), null, status,
@@ -2508,7 +2505,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 			OrderByComparator<User> orderByComparator)
 		throws PortalException {
 
-		Role role = _rolePersistence.findByPrimaryKey(roleId);
+		Role role = rolePersistence.findByPrimaryKey(roleId);
 
 		return search(
 			role.getCompanyId(), null, WorkflowConstants.STATUS_APPROVED,
@@ -2559,7 +2556,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	 */
 	@Override
 	public long[] getOrganizationUserIds(long organizationId) {
-		return _organizationPersistence.getUserPrimaryKeys(organizationId);
+		return organizationPersistence.getUserPrimaryKeys(organizationId);
 	}
 
 	/**
@@ -2579,7 +2576,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 			OrderByComparator<User> orderByComparator)
 		throws PortalException {
 
-		Organization organization = _organizationPersistence.findByPrimaryKey(
+		Organization organization = organizationPersistence.findByPrimaryKey(
 			organizationId);
 
 		return search(
@@ -2622,7 +2619,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	public int getOrganizationUsersCount(long organizationId, int status)
 		throws PortalException {
 
-		Organization organization = _organizationPersistence.findByPrimaryKey(
+		Organization organization = organizationPersistence.findByPrimaryKey(
 			organizationId);
 
 		return searchCount(
@@ -2640,12 +2637,12 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	 */
 	@Override
 	public long[] getRoleUserIds(long roleId) {
-		return _rolePersistence.getUserPrimaryKeys(roleId);
+		return rolePersistence.getUserPrimaryKeys(roleId);
 	}
 
 	@Override
 	public long[] getRoleUserIds(long roleId, long type) {
-		List<User> users = _rolePersistence.getUsers(roleId);
+		List<User> users = rolePersistence.getUsers(roleId);
 
 		users = ListUtil.filter(users, user -> user.getType() == type);
 
@@ -2663,7 +2660,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	public int getRoleUsersCount(long roleId, int status)
 		throws PortalException {
 
-		Role role = _rolePersistence.findByPrimaryKey(roleId);
+		Role role = rolePersistence.findByPrimaryKey(roleId);
 
 		return searchCount(
 			role.getCompanyId(), null, status,
@@ -2970,7 +2967,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	public int getUserGroupUsersCount(long userGroupId, int status)
 		throws PortalException {
 
-		UserGroup userGroup = _userGroupPersistence.findByPrimaryKey(
+		UserGroup userGroup = userGroupPersistence.findByPrimaryKey(
 			userGroupId);
 
 		return searchCount(
@@ -3049,7 +3046,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 			long companyId, String roleName, int start, int end)
 		throws PortalException {
 
-		Role role = _roleLocalService.getRole(companyId, roleName);
+		Role role = rolePersistence.findByC_N(companyId, roleName);
 
 		return getUsersByRoleId(role.getRoleId(), start, end);
 	}
@@ -3702,7 +3699,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 
 		try {
 			for (long groupId : groupIds) {
-				Group group = _groupPersistence.fetchByPrimaryKey(groupId);
+				Group group = groupPersistence.fetchByPrimaryKey(groupId);
 
 				if (group == null) {
 					continue;
@@ -3859,7 +3856,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 		long plid = serviceContext.getPlid();
 
 		if (plid > 0) {
-			Layout layout = _layoutLocalService.fetchLayout(plid);
+			Layout layout = _layoutPersistence.fetchByPrimaryKey(plid);
 
 			if (layout != null) {
 				Group group = layout.getGroup();
@@ -3894,7 +3891,8 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 		String body = _getLocalizedValue(
 			localizedBodyMap, user.getLocale(), LocaleUtil.getDefault());
 
-		Company company = _companyLocalService.getCompany(user.getCompanyId());
+		Company company = _companyPersistence.findByPrimaryKey(
+			user.getCompanyId());
 
 		MailTemplateContextBuilder mailTemplateContextBuilder =
 			MailTemplateFactoryUtil.createMailTemplateContextBuilder();
@@ -4296,14 +4294,14 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	public void setRoleUsers(long roleId, long[] userIds)
 		throws PortalException {
 
-		long[] oldUserIds = _rolePersistence.getUserPrimaryKeys(roleId);
+		long[] oldUserIds = rolePersistence.getUserPrimaryKeys(roleId);
 
 		Set<Long> updatedUserIdsSet = SetUtil.symmetricDifference(
 			userIds, oldUserIds);
 
 		long[] updateUserIds = ArrayUtil.toLongArray(updatedUserIdsSet);
 
-		_rolePersistence.setUsers(roleId, userIds);
+		rolePersistence.setUsers(roleId, userIds);
 
 		reindex(updateUserIds);
 	}
@@ -4319,7 +4317,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	public void setUserGroupUsers(long userGroupId, long[] userIds)
 		throws PortalException {
 
-		long[] oldUserIds = _userGroupPersistence.getUserPrimaryKeys(
+		long[] oldUserIds = userGroupPersistence.getUserPrimaryKeys(
 			userGroupId);
 
 		Set<Long> updatedUserIdsSet = SetUtil.symmetricDifference(
@@ -4327,7 +4325,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 
 		long[] updateUserIds = ArrayUtil.toLongArray(updatedUserIdsSet);
 
-		_userGroupPersistence.setUsers(userGroupId, userIds);
+		userGroupPersistence.setUsers(userGroupId, userIds);
 
 		reindex(updateUserIds);
 	}
@@ -4342,7 +4340,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	public void unsetGroupTeamsUsers(long groupId, long[] userIds)
 		throws PortalException {
 
-		List<Team> teams = _teamPersistence.findByGroupId(groupId);
+		List<Team> teams = teamPersistence.findByGroupId(groupId);
 
 		for (Team team : teams) {
 			unsetTeamUsers(team.getTeamId(), userIds);
@@ -4369,7 +4367,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 
 		unsetGroupTeamsUsers(groupId, userIds);
 
-		_groupPersistence.removeUsers(groupId, userIds);
+		groupPersistence.removeUsers(groupId, userIds);
 
 		reindex(userIds);
 	}
@@ -4384,7 +4382,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	public void unsetOrganizationUsers(long organizationId, long[] userIds)
 		throws PortalException {
 
-		Organization organization = _organizationPersistence.findByPrimaryKey(
+		Organization organization = organizationPersistence.findByPrimaryKey(
 			organizationId);
 
 		Group group = organization.getGroup();
@@ -4392,7 +4390,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 		_userGroupRoleLocalService.deleteUserGroupRoles(
 			userIds, group.getGroupId());
 
-		_organizationPersistence.removeUsers(organizationId, userIds);
+		organizationPersistence.removeUsers(organizationId, userIds);
 
 		reindex(userIds);
 	}
@@ -4421,7 +4419,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	public void unsetRoleUsers(long roleId, List<User> users)
 		throws PortalException {
 
-		Role role = _rolePersistence.findByPrimaryKey(roleId);
+		Role role = rolePersistence.findByPrimaryKey(roleId);
 
 		String roleName = role.getName();
 
@@ -4435,7 +4433,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 			throw new RequiredRoleException.MustNotRemoveUserRole();
 		}
 
-		_rolePersistence.removeUsers(roleId, users);
+		rolePersistence.removeUsers(roleId, users);
 
 		reindex(users);
 	}
@@ -4453,7 +4451,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 		List<User> users = new ArrayList<>(userIds.length);
 
 		for (Long userId : userIds) {
-			User user = userLocalService.fetchUser(userId);
+			User user = userPersistence.fetchByPrimaryKey(userId);
 
 			if (user != null) {
 				users.add(user);
@@ -4473,7 +4471,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	public void unsetTeamUsers(long teamId, long[] userIds)
 		throws PortalException {
 
-		_teamPersistence.removeUsers(teamId, userIds);
+		teamPersistence.removeUsers(teamId, userIds);
 
 		reindex(userIds);
 	}
@@ -4488,7 +4486,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	public void unsetUserGroupUsers(long userGroupId, long[] userIds)
 		throws PortalException {
 
-		_userGroupPersistence.removeUsers(userGroupId, userIds);
+		userGroupPersistence.removeUsers(userGroupId, userIds);
 
 		reindex(userIds);
 	}
@@ -5411,8 +5409,9 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 
 		// Group
 
-		Group group = _groupLocalService.getUserGroup(
-			user.getCompanyId(), userId);
+		Group group = groupPersistence.findByC_C_C(
+			user.getCompanyId(),
+			_classNameLocalService.getClassNameId(User.class), userId);
 
 		_groupLocalService.updateFriendlyURL(
 			group.getGroupId(), StringPool.SLASH + screenName);
@@ -5690,8 +5689,9 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 		// Group
 
 		if (screenNameModified) {
-			Group group = _groupLocalService.getUserGroup(
-				user.getCompanyId(), userId);
+			Group group = groupPersistence.findByC_C_C(
+				user.getCompanyId(),
+				_classNameLocalService.getClassNameId(User.class), userId);
 
 			user.setGroup(
 				_groupLocalService.updateFriendlyURL(
@@ -5839,7 +5839,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 			0L);
 
 		for (long defaultSiteRoleId : defaultSiteRoleIds) {
-			Role defaultSiteRole = _rolePersistence.fetchByPrimaryKey(
+			Role defaultSiteRole = rolePersistence.fetchByPrimaryKey(
 				defaultSiteRoleId);
 
 			if (defaultSiteRole == null) {
@@ -5859,7 +5859,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 			typeSettingsUnicodeProperties.getProperty("defaultTeamIds"), 0L);
 
 		for (long defaultTeamId : defaultTeamIds) {
-			Team defaultTeam = _teamPersistence.findByPrimaryKey(defaultTeamId);
+			Team defaultTeam = teamPersistence.findByPrimaryKey(defaultTeamId);
 
 			if (defaultTeam == null) {
 				if (_log.isWarnEnabled()) {
@@ -6536,7 +6536,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 			long plid = serviceContext.getPlid();
 
 			if (plid > 0) {
-				Layout layout = _layoutLocalService.fetchLayout(plid);
+				Layout layout = _layoutPersistence.fetchByPrimaryKey(plid);
 
 				if (layout != null) {
 					Group group = layout.getGroup();
@@ -6638,7 +6638,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 		Indexer<User> indexer = IndexerRegistryUtil.nullSafeGetIndexer(
 			User.class);
 
-		User user = userLocalService.fetchUser(userId);
+		User user = userPersistence.fetchByPrimaryKey(userId);
 
 		indexer.reindex(user);
 	}
@@ -6650,7 +6650,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 		List<User> users = new ArrayList<>(userIds.length);
 
 		for (Long userId : userIds) {
-			User user = userLocalService.fetchUser(userId);
+			User user = userPersistence.fetchByPrimaryKey(userId);
 
 			users.add(user);
 		}
@@ -6833,7 +6833,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 
 		for (UserGroupRole userGroupRole : userGroupRoles) {
 			if (ArrayUtil.contains(groupIds, userGroupRole.getGroupId())) {
-				Role role = _rolePersistence.findByPrimaryKey(
+				Role role = rolePersistence.findByPrimaryKey(
 					userGroupRole.getRoleId());
 
 				if ((role.getType() == RoleConstants.TYPE_DEPOT) ||
@@ -6868,7 +6868,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 
 		for (int i = 0; i < organizationIds.length; i++) {
 			Organization organization =
-				_organizationPersistence.findByPrimaryKey(organizationIds[i]);
+				organizationPersistence.findByPrimaryKey(organizationIds[i]);
 
 			groupIds[i] = organization.getGroupId();
 		}
@@ -6951,10 +6951,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 		userGroupRoles = new ArrayList<>(userGroupRoles);
 
 		for (UserGroupRole userGroupRole : previousUserGroupRoles) {
-			if (userGroupRoles.contains(userGroupRole)) {
-				userGroupRoles.remove(userGroupRole);
-			}
-			else {
+			if (!userGroupRoles.remove(userGroupRole)) {
 				_userGroupRoleLocalService.deleteUserGroupRole(userGroupRole);
 			}
 		}
@@ -6989,7 +6986,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 
 		for (long organizationId : organizationIds) {
 			Organization organization =
-				_organizationPersistence.findByPrimaryKey(organizationId);
+				organizationPersistence.findByPrimaryKey(organizationId);
 
 			if (!ArrayUtil.contains(validGroupIds, organization.getGroupId())) {
 				validGroupIds = ArrayUtil.append(
@@ -7029,9 +7026,8 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 			if (!LDAPSettingsUtil.isPasswordPolicyEnabled(
 					ldapServerId, companyId)) {
 
-				passwordPolicy =
-					_passwordPolicyLocalService.getDefaultPasswordPolicy(
-						companyId);
+				passwordPolicy = _passwordPolicyPersistence.fetchByC_N(
+					companyId, PropsValues.PASSWORDS_DEFAULT_POLICY_NAME);
 			}
 
 			PwdToolkitUtil.validate(0, password1, password2, passwordPolicy);
@@ -7053,7 +7049,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 		if (organizationIds != null) {
 			for (long organizationId : organizationIds) {
 				Organization organization =
-					_organizationPersistence.fetchByPrimaryKey(organizationId);
+					organizationPersistence.fetchByPrimaryKey(organizationId);
 
 				if (organization == null) {
 					throw new NoSuchOrganizationException(
@@ -7344,7 +7340,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 			StringPool.NEW_LINE, PropsValues.ADMIN_DEFAULT_ROLE_NAMES);
 
 		for (String defaultRoleName : defaultRoleNames) {
-			Role role = _rolePersistence.fetchByC_N(
+			Role role = rolePersistence.fetchByC_N(
 				user.getCompanyId(), defaultRoleName);
 
 			if ((role != null) &&
@@ -7377,9 +7373,10 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	}
 
 	private void _invalidateTicket(User user) throws PortalException {
-		List<Ticket> tickets = _ticketLocalService.getTickets(
-			user.getCompanyId(), User.class.getName(), user.getUserId(),
-			TicketConstants.TYPE_PASSWORD);
+		List<Ticket> tickets = _ticketPersistence.findByC_C_C_T(
+			user.getCompanyId(),
+			_classNameLocalService.getClassNameId(User.class.getName()),
+			user.getUserId(), TicketConstants.TYPE_PASSWORD);
 
 		for (Ticket ticket : tickets) {
 			if (!ticket.isExpired()) {
@@ -7392,20 +7389,17 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	}
 
 	private boolean _isPasswordReset(long companyId) {
-		try {
-			PasswordPolicy passwordPolicy =
-				_passwordPolicyLocalService.getDefaultPasswordPolicy(companyId);
+		PasswordPolicy passwordPolicy = _passwordPolicyPersistence.fetchByC_N(
+			companyId, PropsValues.PASSWORDS_DEFAULT_POLICY_NAME);
 
-			if (passwordPolicy.isChangeable() &&
-				passwordPolicy.isChangeRequired()) {
-
-				return true;
-			}
+		if (passwordPolicy == null) {
+			return false;
 		}
-		catch (PortalException portalException) {
-			if (_log.isWarnEnabled()) {
-				_log.warn(portalException);
-			}
+
+		if (passwordPolicy.isChangeable() &&
+			passwordPolicy.isChangeRequired()) {
+
+			return true;
 		}
 
 		return false;
@@ -7444,7 +7438,7 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 					toUser.getLocale(), mailTemplateContext),
 				true);
 
-			Company company = _companyLocalService.getCompany(
+			Company company = _companyPersistence.findByPrimaryKey(
 				toUser.getCompanyId());
 
 			mailMessage.setMessageId(
@@ -7645,16 +7639,13 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	@BeanReference(type = GroupLocalService.class)
 	private GroupLocalService _groupLocalService;
 
-	@BeanReference(type = GroupPersistence.class)
-	private GroupPersistence _groupPersistence;
-
 	private final Map<Long, User> _guestUsers = new ConcurrentHashMap<>();
 
 	@BeanReference(type = ImageLocalService.class)
 	private ImageLocalService _imageLocalService;
 
-	@BeanReference(type = LayoutLocalService.class)
-	private LayoutLocalService _layoutLocalService;
+	@BeanReference(type = LayoutPersistence.class)
+	private LayoutPersistence _layoutPersistence;
 
 	@BeanReference(type = MembershipRequestLocalService.class)
 	private MembershipRequestLocalService _membershipRequestLocalService;
@@ -7662,11 +7653,11 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 	@BeanReference(type = OrganizationLocalService.class)
 	private OrganizationLocalService _organizationLocalService;
 
-	@BeanReference(type = OrganizationPersistence.class)
-	private OrganizationPersistence _organizationPersistence;
-
 	@BeanReference(type = PasswordPolicyLocalService.class)
 	private PasswordPolicyLocalService _passwordPolicyLocalService;
+
+	@BeanReference(type = PasswordPolicyPersistence.class)
+	private PasswordPolicyPersistence _passwordPolicyPersistence;
 
 	@BeanReference(type = PasswordPolicyRelLocalService.class)
 	private PasswordPolicyRelLocalService _passwordPolicyRelLocalService;
@@ -7698,9 +7689,6 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 
 	@BeanReference(type = RoleLocalService.class)
 	private RoleLocalService _roleLocalService;
-
-	@BeanReference(type = RolePersistence.class)
-	private RolePersistence _rolePersistence;
 
 	@BeanReference(type = SocialActivityLocalService.class)
 	private SocialActivityLocalService _socialActivityLocalService;
@@ -7734,14 +7722,11 @@ public class UserLocalServiceImpl extends UserLocalServiceBaseImpl {
 
 			};
 
-	@BeanReference(type = TeamPersistence.class)
-	private TeamPersistence _teamPersistence;
-
 	@BeanReference(type = TicketLocalService.class)
 	private TicketLocalService _ticketLocalService;
 
-	@BeanReference(type = UserGroupPersistence.class)
-	private UserGroupPersistence _userGroupPersistence;
+	@BeanReference(type = TicketPersistence.class)
+	private TicketPersistence _ticketPersistence;
 
 	@BeanReference(type = UserGroupRoleLocalService.class)
 	private UserGroupRoleLocalService _userGroupRoleLocalService;

@@ -50,7 +50,10 @@ import com.liferay.object.service.ObjectLayoutTabLocalService;
 import com.liferay.object.service.base.ObjectRelationshipLocalServiceBaseImpl;
 import com.liferay.object.service.persistence.ObjectActionPersistence;
 import com.liferay.object.service.persistence.ObjectDefinitionPersistence;
+import com.liferay.object.service.persistence.ObjectEntryPersistence;
 import com.liferay.object.service.persistence.ObjectFieldPersistence;
+import com.liferay.object.service.persistence.ObjectFieldSettingPersistence;
+import com.liferay.object.service.persistence.ObjectFolderItemPersistence;
 import com.liferay.object.system.JaxRsApplicationDescriptor;
 import com.liferay.object.system.SystemObjectDefinitionManager;
 import com.liferay.object.system.SystemObjectDefinitionManagerRegistry;
@@ -239,7 +242,7 @@ public class ObjectRelationshipLocalServiceImpl
 			return;
 		}
 
-		ObjectField objectField2 = _objectFieldLocalService.getObjectField(
+		ObjectField objectField2 = _objectFieldPersistence.findByPrimaryKey(
 			objectRelationship.getObjectFieldId2());
 
 		if (objectDefinition2.isUnmodifiableSystemObject()) {
@@ -251,7 +254,7 @@ public class ObjectRelationshipLocalServiceImpl
 				).build());
 		}
 		else {
-			ObjectEntry objectEntry = _objectEntryLocalService.getObjectEntry(
+			ObjectEntry objectEntry = _objectEntryPersistence.findByPrimaryKey(
 				primaryKey2);
 
 			_objectEntryLocalService.partialUpdateObjectEntry(
@@ -1045,7 +1048,7 @@ public class ObjectRelationshipLocalServiceImpl
 					  ObjectRelationshipConstants.TYPE_ONE_TO_MANY))) {
 
 			ObjectField existingObjectField =
-				_objectFieldLocalService.getObjectField(
+				_objectFieldPersistence.findByPrimaryKey(
 					objectRelationship.getObjectFieldId2());
 
 			_objectFieldLocalService.updateObjectField(
@@ -1082,20 +1085,14 @@ public class ObjectRelationshipLocalServiceImpl
 				objectRelationship.getObjectFieldId2(), false);
 		}
 
-		if (edge && !objectRelationship.isEdge() &&
-			FeatureFlagManagerUtil.isEnabled(
-				objectRelationship.getCompanyId(), "LPD-34594")) {
-
+		if (edge && !objectRelationship.isEdge()) {
 			ObjectDefinitionTreeUtil.bindObjectDefinitions(
 				_objectDefinitionLocalServiceSnapshot.get(),
 				_objectDefinitionPersistence,
 				_objectDefinitionSettingLocalService, _objectEntryLocalService,
 				objectRelationship, objectRelationshipLocalService);
 		}
-		else if (!edge && objectRelationship.isEdge() &&
-				 FeatureFlagManagerUtil.isEnabled(
-					 objectRelationship.getCompanyId(), "LPD-34594")) {
-
+		else if (!edge && objectRelationship.isEdge()) {
 			ObjectDefinitionTreeUtil.unbindObjectDefinitions(
 				_objectActionPersistence,
 				_objectDefinitionLocalServiceSnapshot.get(),
@@ -1271,7 +1268,7 @@ public class ObjectRelationshipLocalServiceImpl
 		throws PortalException {
 
 		ObjectFolderItem objectFolderItem =
-			_objectFolderItemLocalService.fetchObjectFolderItem(
+			_objectFolderItemPersistence.fetchByODI_OFI(
 				objectDefinitionId, objectFolderId);
 
 		if (objectFolderItem != null) {
@@ -1409,10 +1406,7 @@ public class ObjectRelationshipLocalServiceImpl
 		_registerRelatedInfoItemCollectionProvider(
 			objectDefinition1, objectDefinition2, objectRelationship);
 
-		if (edge &&
-			FeatureFlagManagerUtil.isEnabled(
-				objectRelationship.getCompanyId(), "LPD-34594")) {
-
+		if (edge) {
 			ObjectDefinitionTreeUtil.bindObjectDefinitions(
 				_objectDefinitionLocalServiceSnapshot.get(),
 				_objectDefinitionPersistence,
@@ -1433,7 +1427,7 @@ public class ObjectRelationshipLocalServiceImpl
 					objectDefinitionId)) {
 
 			ObjectFieldSetting objectFieldSetting =
-				_objectFieldSettingLocalService.fetchObjectFieldSetting(
+				_objectFieldSettingPersistence.fetchByOFI_N(
 					objectField.getObjectFieldId(), "objectRelationshipName");
 
 			if ((objectFieldSetting != null) &&
@@ -1504,7 +1498,7 @@ public class ObjectRelationshipLocalServiceImpl
 			return systemObjectDefinitionManager.getBaseModelGroupId();
 		}
 
-		ObjectEntry objectEntry = _objectEntryLocalService.getObjectEntry(
+		ObjectEntry objectEntry = _objectEntryPersistence.findByPrimaryKey(
 			primaryKey);
 
 		return objectEntry.getGroupId();
@@ -1691,12 +1685,6 @@ public class ObjectRelationshipLocalServiceImpl
 			ObjectDefinition objectDefinition2,
 			ObjectRelationship objectRelationship, String type)
 		throws PortalException {
-
-		if (!FeatureFlagManagerUtil.isEnabled(
-				objectDefinition1.getCompanyId(), "LPD-34594")) {
-
-			return;
-		}
 
 		long[] objectDefinition1RootObjectDefinitionIds =
 			objectDefinition1.getRootObjectDefinitionIds();
@@ -2053,7 +2041,7 @@ public class ObjectRelationshipLocalServiceImpl
 				primaryKey);
 		}
 		else {
-			_objectEntryLocalService.getObjectEntry(primaryKey);
+			_objectEntryPersistence.findByPrimaryKey(primaryKey);
 		}
 	}
 
@@ -2107,7 +2095,7 @@ public class ObjectRelationshipLocalServiceImpl
 						" does not allow a parameter object field ID");
 			}
 
-			ObjectField objectField = _objectFieldLocalService.fetchObjectField(
+			ObjectField objectField = _objectFieldPersistence.fetchByPrimaryKey(
 				parameterObjectFieldId);
 
 			if (objectField == null) {
@@ -2263,6 +2251,9 @@ public class ObjectRelationshipLocalServiceImpl
 	private ObjectEntryLocalService _objectEntryLocalService;
 
 	@Reference
+	private ObjectEntryPersistence _objectEntryPersistence;
+
+	@Reference
 	private ObjectFieldLocalService _objectFieldLocalService;
 
 	@Reference
@@ -2272,7 +2263,13 @@ public class ObjectRelationshipLocalServiceImpl
 	private ObjectFieldSettingLocalService _objectFieldSettingLocalService;
 
 	@Reference
+	private ObjectFieldSettingPersistence _objectFieldSettingPersistence;
+
+	@Reference
 	private ObjectFolderItemLocalService _objectFolderItemLocalService;
+
+	@Reference
+	private ObjectFolderItemPersistence _objectFolderItemPersistence;
 
 	@Reference
 	private ObjectLayoutTabLocalService _objectLayoutTabLocalService;

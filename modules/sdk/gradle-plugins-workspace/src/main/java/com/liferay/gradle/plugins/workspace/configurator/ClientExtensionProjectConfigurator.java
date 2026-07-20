@@ -1205,6 +1205,26 @@ public class ClientExtensionProjectConfigurator
 		}
 	}
 
+	private Map<String, Object> _getObjectFromTypeSettings(
+		ClientExtension clientExtension, String typeSettingsKey) {
+
+		Map<String, Object> typeSettings = clientExtension.typeSettings;
+
+		if (!typeSettings.containsKey(typeSettingsKey)) {
+			return null;
+		}
+
+		Object value = typeSettings.get(typeSettingsKey);
+
+		if (!(value instanceof Map)) {
+			throw new GradleException(
+				String.format(
+					"The property '%s' must be an object", typeSettingsKey));
+		}
+
+		return (Map<String, Object>)value;
+	}
+
 	private boolean _isActiveProfile(Project project, String profileName) {
 		return Objects.equals(
 			profileName,
@@ -1283,6 +1303,7 @@ public class ClientExtensionProjectConfigurator
 			_validateTypeSettingsValues(
 				clientExtension, "membershipType", "open", "private",
 				"restricted");
+			_validateSiteInitializerSiteNameI18n(clientExtension);
 		}
 		else if (Objects.equals(clientExtension.type, "themeCSS")) {
 			_validateTypeSettingsValues(
@@ -1293,22 +1314,13 @@ public class ClientExtensionProjectConfigurator
 	private void _validateGlobalJSScriptElementAttributes(
 		ClientExtension clientExtension) {
 
-		Map<String, Object> typeSettings = clientExtension.typeSettings;
+		Map<String, Object> scriptElementAttributesMap =
+			_getObjectFromTypeSettings(
+				clientExtension, "scriptElementAttributes");
 
-		if (!typeSettings.containsKey("scriptElementAttributes")) {
+		if (scriptElementAttributesMap == null) {
 			return;
 		}
-
-		Object scriptElementAttributes = typeSettings.get(
-			"scriptElementAttributes");
-
-		if (!(scriptElementAttributes instanceof Map)) {
-			throw new GradleException(
-				"The property 'scriptElementAttributes' must be an object");
-		}
-
-		Map<String, Object> scriptElementAttributesMap =
-			(Map<String, Object>)scriptElementAttributes;
 
 		for (Map.Entry<String, Object> entry :
 				scriptElementAttributesMap.entrySet()) {
@@ -1375,6 +1387,35 @@ public class ClientExtensionProjectConfigurator
 						"property %s",
 					clientExtension.id, clientExtension.type,
 					StringUtil.quote(requiredTypeSettingsKey)));
+		}
+	}
+
+	private void _validateSiteInitializerSiteNameI18n(
+		ClientExtension clientExtension) {
+
+		Map<String, Object> siteNameI18nMap = _getObjectFromTypeSettings(
+			clientExtension, "siteName_i18n");
+
+		if (siteNameI18nMap == null) {
+			return;
+		}
+
+		for (Map.Entry<String, Object> entry : siteNameI18nMap.entrySet()) {
+			Object value = entry.getValue();
+
+			if (value == null) {
+				throw new GradleException(
+					String.format(
+						"The value for the language ID '%s' must be specified",
+						entry.getKey()));
+			}
+
+			if (!(value instanceof String)) {
+				throw new GradleException(
+					String.format(
+						"The value for the language ID '%s' must be a string",
+						entry.getKey()));
+			}
 		}
 	}
 

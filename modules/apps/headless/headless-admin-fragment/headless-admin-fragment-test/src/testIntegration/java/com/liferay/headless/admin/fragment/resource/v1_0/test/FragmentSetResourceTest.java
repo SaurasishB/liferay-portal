@@ -22,6 +22,7 @@ import com.liferay.portal.kernel.feature.flag.constants.FeatureFlagConstants;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.servlet.HttpHeaders;
 import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
@@ -32,6 +33,7 @@ import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.DateFormatFactoryUtil;
+import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.Http;
 import com.liferay.portal.kernel.util.LocaleUtil;
@@ -126,6 +128,28 @@ public class FragmentSetResourceTest extends BaseFragmentSetResourceTestCase {
 				fetchFragmentCollectionByExternalReferenceCode(
 					fragmentSet.getExternalReferenceCode(),
 					testGroup.getGroupId()));
+	}
+
+	@Override
+	@Test
+	public void testGetDesignLibraryFragmentSet() throws Exception {
+		super.testGetDesignLibraryFragmentSet();
+
+		_testGetDesignLibraryFragmentSetActions();
+	}
+
+	@Override
+	@Test
+	public void testGetDesignLibraryFragmentSetsPage() throws Exception {
+		super.testGetDesignLibraryFragmentSetsPage();
+	}
+
+	@Override
+	@Test
+	public void testGetSiteFragmentSet() throws Exception {
+		super.testGetSiteFragmentSet();
+
+		_testGetSiteFragmentSetActions();
 	}
 
 	@Override
@@ -341,6 +365,46 @@ public class FragmentSetResourceTest extends BaseFragmentSetResourceTestCase {
 	}
 
 	@Override
+	protected FragmentSet testGetDesignLibraryFragmentSet_addFragmentSet()
+		throws Exception {
+
+		return _addDesignLibraryFragmentSet(
+			randomFragmentSet(), _depotEntry.getGroup());
+	}
+
+	@Override
+	protected String
+			testGetDesignLibraryFragmentSet_getDesignLibraryExternalReferenceCode()
+		throws Exception {
+
+		Group group = _depotEntry.getGroup();
+
+		return group.getExternalReferenceCode();
+	}
+
+	@Override
+	protected FragmentSet testGetDesignLibraryFragmentSetsPage_addFragmentSet(
+			String designLibraryExternalReferenceCode, FragmentSet fragmentSet)
+		throws Exception {
+
+		return _addDesignLibraryFragmentSet(
+			fragmentSet,
+			_groupLocalService.getGroupByExternalReferenceCode(
+				designLibraryExternalReferenceCode,
+				TestPropsValues.getCompanyId()));
+	}
+
+	@Override
+	protected String
+			testGetDesignLibraryFragmentSetsPage_getDesignLibraryExternalReferenceCode()
+		throws Exception {
+
+		Group group = _depotEntry.getGroup();
+
+		return group.getExternalReferenceCode();
+	}
+
+	@Override
 	protected Map<String, Map<String, String>>
 			testGetSiteFragmentSetsPage_getExpectedActions(
 				String siteExternalReferenceCode)
@@ -367,6 +431,25 @@ public class FragmentSetResourceTest extends BaseFragmentSetResourceTestCase {
 				testGroup.getGroupId(), TestPropsValues.getUserId()));
 	}
 
+	private FragmentSet _addDesignLibraryFragmentSet(
+			FragmentSet fragmentSet, Group group)
+		throws Exception {
+
+		FragmentCollection fragmentCollection =
+			_fragmentCollectionLocalService.addFragmentCollection(
+				fragmentSet.getExternalReferenceCode(),
+				TestPropsValues.getUserId(), group.getGroupId(),
+				fragmentSet.getKey(), fragmentSet.getName(),
+				fragmentSet.getDescription(),
+				GetterUtil.getBoolean(fragmentSet.getMarketplace()),
+				ServiceContextTestUtil.getServiceContext(
+					group.getGroupId(), TestPropsValues.getUserId()));
+
+		return fragmentSetResource.getDesignLibraryFragmentSet(
+			group.getExternalReferenceCode(),
+			fragmentCollection.getExternalReferenceCode());
+	}
+
 	private FragmentCollection _addFragmentCollection(Group group)
 		throws Exception {
 
@@ -375,6 +458,19 @@ public class FragmentSetResourceTest extends BaseFragmentSetResourceTestCase {
 			RandomTestUtil.randomString(), RandomTestUtil.randomString(),
 			ServiceContextTestUtil.getServiceContext(
 				group.getGroupId(), TestPropsValues.getUserId()));
+	}
+
+	private void _assertActionHref(
+		Map<String, Map<String, String>> actions, String content,
+		String... keys) {
+
+		for (String key : keys) {
+			Map<String, String> action = actions.get(key);
+
+			String href = action.get("href");
+
+			Assert.assertTrue(key, href.contains(content));
+		}
 	}
 
 	private void _assertFragmentCollection(FragmentSet fragmentSet, Group group)
@@ -535,6 +631,40 @@ public class FragmentSetResourceTest extends BaseFragmentSetResourceTestCase {
 			() -> fragmentSetResource.deleteDesignLibraryFragmentSet(
 				testGroup.getExternalReferenceCode(),
 				RandomTestUtil.randomString()));
+	}
+
+	private void _testGetDesignLibraryFragmentSetActions() throws Exception {
+		Group group = _depotEntry.getGroup();
+
+		FragmentSet fragmentSet = _addDesignLibraryFragmentSet(
+			randomFragmentSet(), group);
+
+		FragmentSet getFragmentSet =
+			fragmentSetResource.getDesignLibraryFragmentSet(
+				group.getExternalReferenceCode(),
+				fragmentSet.getExternalReferenceCode());
+
+		_assertActionHref(
+			getFragmentSet.getActions(),
+			StringBundler.concat(
+				"/design-libraries/", group.getExternalReferenceCode(),
+				"/fragment-sets/", fragmentSet.getExternalReferenceCode()),
+			"delete", "get");
+	}
+
+	private void _testGetSiteFragmentSetActions() throws Exception {
+		FragmentSet postFragmentSet = testGetSiteFragmentSet_addFragmentSet();
+
+		FragmentSet getFragmentSet = fragmentSetResource.getSiteFragmentSet(
+			testGetSiteFragmentSet_getSiteExternalReferenceCode(),
+			postFragmentSet.getExternalReferenceCode());
+
+		_assertActionHref(
+			getFragmentSet.getActions(),
+			StringBundler.concat(
+				"/sites/", testGroup.getExternalReferenceCode(),
+				"/fragment-sets/", postFragmentSet.getExternalReferenceCode()),
+			"delete", "get", "replace");
 	}
 
 	private void _testPostSiteFragmentSetBatch() throws Exception {
@@ -703,6 +833,9 @@ public class FragmentSetResourceTest extends BaseFragmentSetResourceTestCase {
 
 	@Inject
 	private FragmentCollectionLocalService _fragmentCollectionLocalService;
+
+	@Inject
+	private GroupLocalService _groupLocalService;
 
 	@Inject
 	private Language _language;

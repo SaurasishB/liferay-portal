@@ -401,11 +401,16 @@
 		<finder name="LayoutPageTemplateStructureRelElementVariationERC" return-type="Collection">
 			<finder-column name="layoutPageTemplateStructureRelElementVariationERC" />
 		</finder>
+		<finder name="C_AEERC" return-type="Collection">
+			<finder-column name="companyId" />
+			<finder-column name="audienceEntryERC" />
+		</finder>
 	</entity>
 	<exceptions>
 		<exception>DuplicateLayoutPageTemplateCollection</exception>
 		<exception>DuplicateLayoutPageTemplateCollectionType</exception>
 		<exception>DuplicateLayoutPageTemplateEntry</exception>
+		<exception>DuplicateLayoutPageTemplateStructureRelElementVariationAudienceEntryRel</exception>
 		<exception>LayoutPageTemplateCollectionGroupId</exception>
 		<exception>LayoutPageTemplateCollectionLayoutPageTemplateCollectionKey</exception>
 		<exception>LayoutPageTemplateCollectionName</exception>

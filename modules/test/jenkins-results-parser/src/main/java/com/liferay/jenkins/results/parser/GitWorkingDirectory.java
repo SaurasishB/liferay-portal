@@ -610,18 +610,11 @@ public class GitWorkingDirectory {
 			RemoteGitRepository remoteGitRepository =
 				remoteGitBranch.getRemoteGitRepository();
 
-			String remoteURL = remoteGitRepository.getRemoteURL();
-
-			if (!remoteURLGitBranchNameMap.containsKey(remoteURL)) {
-				remoteURLGitBranchNameMap.put(remoteURL, new HashSet<String>());
-			}
-
-			Set<String> remoteGitBranchNames = remoteURLGitBranchNameMap.get(
-				remoteURL);
+			Set<String> remoteGitBranchNames =
+				remoteURLGitBranchNameMap.computeIfAbsent(
+					remoteGitRepository.getRemoteURL(), key -> new HashSet<>());
 
 			remoteGitBranchNames.add(remoteGitBranch.getName());
-
-			remoteURLGitBranchNameMap.put(remoteURL, remoteGitBranchNames);
 		}
 
 		List<Callable<Boolean>> callables = new ArrayList<>(
@@ -1618,7 +1611,10 @@ public class GitWorkingDirectory {
 			getLocalGitBranchesShaMap();
 
 		for (String localGitBranchName : localGitBranchNames) {
-			if (!localGitBranchesShaMap.containsKey(localGitBranchName)) {
+			String localGitBranchSHA = localGitBranchesShaMap.get(
+				localGitBranchName);
+
+			if (localGitBranchSHA == null) {
 				System.out.println(
 					"Unable to find SHA for local Git branch " +
 						localGitBranchName);
@@ -1634,8 +1630,7 @@ public class GitWorkingDirectory {
 
 			localGitBranches.add(
 				GitBranchFactory.newLocalGitBranch(
-					localGitRepository, localGitBranchName,
-					localGitBranchesShaMap.get(localGitBranchName),
+					localGitRepository, localGitBranchName, localGitBranchSHA,
 					upstreamRemoteGitBranch));
 		}
 
@@ -2923,10 +2918,15 @@ public class GitWorkingDirectory {
 
 		String command = String.join(" ", commands);
 
-		if (_cacheBashCommands && _executionResults.containsKey(command)) {
-			System.out.println("Using cached execution for: " + command);
+		if (_cacheBashCommands) {
+			GitUtil.ExecutionResult executionResult = _executionResults.get(
+				command);
 
-			return _executionResults.get(command);
+			if (executionResult != null) {
+				System.out.println("Using cached execution for: " + command);
+
+				return executionResult;
+			}
 		}
 
 		GitUtil.ExecutionResult executionResult = GitUtil.executeBashCommands(

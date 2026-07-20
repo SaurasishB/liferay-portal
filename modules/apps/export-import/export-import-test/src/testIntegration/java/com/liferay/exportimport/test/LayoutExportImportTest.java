@@ -78,11 +78,11 @@ import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.UnicodePropertiesBuilder;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.test.log.LogCapture;
 import com.liferay.portal.test.log.LogEntry;
 import com.liferay.portal.test.log.LoggerTestUtil;
-import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.segments.service.SegmentsExperienceLocalService;
@@ -784,11 +784,58 @@ public class LayoutExportImportTest extends BaseExportImportTestCase {
 	}
 
 	@Test
+	@TestInfo("LPD-90359")
+	public void testExportImportLayoutThemeSettings() throws Exception {
+		Layout layout = LayoutTestUtil.addTypePortletLayout(
+			group.getGroupId(),
+			UnicodePropertiesBuilder.put(
+				"lfr-theme:regular:show-header-search", Boolean.FALSE.toString()
+			).put(
+				"lfr-theme:regular:show-maximize-minimize-application-links",
+				Boolean.TRUE.toString()
+			).buildString());
+
+		exportImportLayouts(
+			new long[] {layout.getLayoutId()}, getImportParameterMap());
+
+		Layout importedLayout = _layoutLocalService.getLayoutByUuidAndGroupId(
+			layout.getUuid(), importedGroup.getGroupId(), false);
+
+		Assert.assertEquals(
+			Boolean.FALSE.toString(),
+			importedLayout.getTypeSettingsProperty(
+				"lfr-theme:regular:show-header-search"));
+		Assert.assertEquals(
+			Boolean.TRUE.toString(),
+			importedLayout.getTypeSettingsProperty(
+				"lfr-theme:regular:show-maximize-minimize-application-links"));
+	}
+
+	@Test
 	@TestInfo("LPD-77689")
 	public void testExportImportLayoutUtilityPageEntryWithPreviewFileEntryWithBatch()
 		throws Exception {
 
 		_testExportImportLayoutUtilityPageEntryWithPreviewFileEntry();
+	}
+
+	@Test
+	@TestInfo("LPD-90359")
+	public void testExportImportPrivateLayouts() throws Exception {
+		Layout privateLayout = LayoutTestUtil.addTypePortletLayout(group, true);
+
+		exportLayouts(
+			new long[] {privateLayout.getLayoutId()}, getExportParameterMap(),
+			false, true);
+
+		importLayouts(getImportParameterMap(), false, true);
+
+		Assert.assertNotNull(
+			_layoutLocalService.fetchLayoutByUuidAndGroupId(
+				privateLayout.getUuid(), importedGroup.getGroupId(), true));
+		Assert.assertEquals(
+			_layoutLocalService.getLayoutsCount(group, true),
+			_layoutLocalService.getLayoutsCount(importedGroup, true));
 	}
 
 	@Test
@@ -936,7 +983,6 @@ public class LayoutExportImportTest extends BaseExportImportTestCase {
 		_assertFriendlyURL(layoutB, friendlyURLB);
 	}
 
-	@FeatureFlag("LPD-34594")
 	@Test
 	public void testPromotedPageWithSamePriorityTakesPrecedence()
 		throws Exception {

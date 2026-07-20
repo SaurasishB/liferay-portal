@@ -1,0 +1,20 @@
+{
+	"dependencies": {
+		"@clayui/alert": "^3.165.0",
+		"@clayui/button": "^3.165.0",
+		"@clayui/form": "^3.165.0",
+		"@clayui/layout": "^3.165.0",
+		"formik": "2.1.4",
+		"frontend-js-components-web": "*",
+		"frontend-js-web": "*",
+		"react": "18.2.0"
+	},
+	"main": "js/index.ts",
+	"name": "@liferay/mcp-server-web",
+	"scripts": {
+		"build": "node-scripts build",
+		"checkFormat": "node-scripts format --check",
+		"format": "node-scripts format"
+	},
+	"version": "1.0.0"
+}

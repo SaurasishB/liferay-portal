@@ -101,8 +101,12 @@ import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.service.VirtualHostLocalService;
 import com.liferay.portal.kernel.service.persistence.CompanyInfoPersistence;
 import com.liferay.portal.kernel.service.persistence.ContactPersistence;
+import com.liferay.portal.kernel.service.persistence.GroupPersistence;
+import com.liferay.portal.kernel.service.persistence.LayoutSetPrototypePersistence;
+import com.liferay.portal.kernel.service.persistence.PasswordPolicyPersistence;
 import com.liferay.portal.kernel.service.persistence.PortalPreferencesPersistence;
 import com.liferay.portal.kernel.service.persistence.PortletPersistence;
+import com.liferay.portal.kernel.service.persistence.RolePersistence;
 import com.liferay.portal.kernel.service.persistence.UserPersistence;
 import com.liferay.portal.kernel.service.persistence.VirtualHostPersistence;
 import com.liferay.portal.kernel.transaction.Propagation;
@@ -315,7 +319,7 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 
 			// Guest user must have the Guest role
 
-			Role guestRole = _roleLocalService.getRole(
+			Role guestRole = _rolePersistence.findByC_N(
 				updatedCompany.getCompanyId(), RoleConstants.GUEST);
 
 			_roleLocalService.setUserRoles(
@@ -1486,7 +1490,7 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 				Date date = new Date();
 
 				for (LayoutSetPrototype layoutSetPrototype :
-						_layoutSetPrototypeLocalService.getLayoutSetPrototypes(
+						_layoutSetPrototypePersistence.findByCompanyId(
 							companyId)) {
 
 					layoutSetPrototype.setModifiedDate(date);
@@ -1707,7 +1711,9 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 		}
 
 		deleteGroupActionableDynamicQuery.deleteGroup(
-			_groupLocalService.getCompanyGroup(companyId));
+			_groupPersistence.findByC_C_C(
+				companyId, _classNameLocalService.getClassNameId(Company.class),
+				companyId));
 
 		// Layout prototype
 
@@ -1759,7 +1765,8 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 		_passwordPolicyLocalService.deleteNondefaultPasswordPolicies(companyId);
 
 		PasswordPolicy defaultPasswordPolicy =
-			_passwordPolicyLocalService.getDefaultPasswordPolicy(companyId);
+			_passwordPolicyPersistence.fetchByC_N(
+				companyId, PropsValues.PASSWORDS_DEFAULT_POLICY_NAME);
 
 		if (defaultPasswordPolicy != null) {
 			_passwordPolicyLocalService.deletePasswordPolicy(
@@ -2651,6 +2658,9 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 	@BeanReference(type = GroupLocalService.class)
 	private GroupLocalService _groupLocalService;
 
+	@BeanReference(type = GroupPersistence.class)
+	private GroupPersistence _groupPersistence;
+
 	@BeanReference(type = ImageLocalService.class)
 	private ImageLocalService _imageLocalService;
 
@@ -2660,11 +2670,17 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 	@BeanReference(type = LayoutSetPrototypeLocalService.class)
 	private LayoutSetPrototypeLocalService _layoutSetPrototypeLocalService;
 
+	@BeanReference(type = LayoutSetPrototypePersistence.class)
+	private LayoutSetPrototypePersistence _layoutSetPrototypePersistence;
+
 	@BeanReference(type = OrganizationLocalService.class)
 	private OrganizationLocalService _organizationLocalService;
 
 	@BeanReference(type = PasswordPolicyLocalService.class)
 	private PasswordPolicyLocalService _passwordPolicyLocalService;
+
+	@BeanReference(type = PasswordPolicyPersistence.class)
+	private PasswordPolicyPersistence _passwordPolicyPersistence;
 
 	private final Set<Company> _pendingCompanies = new HashSet<>();
 
@@ -2687,6 +2703,9 @@ public class CompanyLocalServiceImpl extends CompanyLocalServiceBaseImpl {
 
 	@BeanReference(type = RoleLocalService.class)
 	private RoleLocalService _roleLocalService;
+
+	@BeanReference(type = RolePersistence.class)
+	private RolePersistence _rolePersistence;
 
 	private final ServiceTracker
 		<PortalInstanceLifecycleManager, PortalInstanceLifecycleManager>

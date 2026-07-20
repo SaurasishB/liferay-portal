@@ -1002,7 +1002,7 @@ public class ObjectEntryFolderLocalServiceImpl
 		throws PortalException {
 
 		ObjectEntryFolder parentObjectEntryFolder =
-			objectEntryFolderLocalService.fetchObjectEntryFolder(
+			objectEntryFolderPersistence.findByPrimaryKey(
 				parentObjectEntryFolderId);
 
 		String uniqueName = _getUniqueName(

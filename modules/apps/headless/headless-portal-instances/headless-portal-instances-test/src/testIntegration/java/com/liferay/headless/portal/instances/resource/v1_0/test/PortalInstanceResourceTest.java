@@ -9,20 +9,25 @@ import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.headless.portal.instances.client.dto.v1_0.Admin;
 import com.liferay.headless.portal.instances.client.dto.v1_0.PortalInstance;
 import com.liferay.headless.portal.instances.client.dto.v1_0.PortalInstanceExport;
+import com.liferay.headless.portal.instances.client.dto.v1_0.PortalInstanceImport;
 import com.liferay.headless.portal.instances.client.pagination.Page;
 import com.liferay.headless.portal.instances.client.problem.Problem;
 import com.liferay.headless.portal.instances.client.resource.v1_0.PortalInstanceResource;
 import com.liferay.petra.lang.SafeCloseable;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClassDefinition;
+import com.liferay.portal.db.partition.util.DBPartitionUtil;
 import com.liferay.portal.kernel.dao.db.DB;
 import com.liferay.portal.kernel.dao.db.DBManagerUtil;
 import com.liferay.portal.kernel.dao.db.DBType;
 import com.liferay.portal.kernel.dao.jdbc.DataAccess;
+import com.liferay.portal.kernel.instance.PortalInstancePool;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.security.auth.PrincipalThreadLocal;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.GroupLocalService;
@@ -55,6 +60,7 @@ import java.util.List;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -79,6 +85,36 @@ public class PortalInstanceResourceTest
 	@AfterClass
 	public static void tearDownClass() throws Exception {
 		_deletePortalInstance(_portalInstance);
+	}
+
+	@Before
+	@Override
+	public void setUp() throws Exception {
+		super.setUp();
+
+		if (!PropsValues.DATABASE_PARTITION_ENABLED) {
+			return;
+		}
+
+		try (SafeCloseable safeCloseable =
+				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+					PortalInstancePool.getDefaultCompanyId())) {
+
+			Company company = _companyLocalService.getCompany(
+				PortalInstancePool.getDefaultCompanyId());
+
+			User user = UserTestUtil.getAdminUser(company.getCompanyId());
+
+			portalInstanceResource = PortalInstanceResource.builder(
+			).authentication(
+				user.getEmailAddress(), PropsValues.DEFAULT_ADMIN_PASSWORD
+			).endpoint(
+				company.getVirtualHostname(),
+				PortalUtil.getPortalServerPort(false), "http"
+			).locale(
+				LocaleUtil.getDefault()
+			).build();
+		}
 	}
 
 	@Override
@@ -137,6 +173,21 @@ public class PortalInstanceResourceTest
 		_testPostPortalInstanceExport();
 		_testPostPortalInstanceExportWithNonexistentPortalInstance();
 		_testPostPortalInstanceExportWithoutOmniadminPermission();
+	}
+
+	@FeatureFlag("LPD-11342")
+	@Override
+	@Test
+	public void testPostPortalInstanceImport() throws Exception {
+		DB db = DBManagerUtil.getDB();
+
+		Assume.assumeTrue(db.isSupportsDBPartition());
+
+		Assume.assumeTrue(PropsValues.DATABASE_PARTITION_ENABLED);
+
+		_testPostPortalInstanceImportInvalidSchemaName();
+		_testPostPortalInstanceImportSuccess();
+		_testPostPortalInstanceImportWithoutOmniadminPermission();
 	}
 
 	@Override
@@ -232,6 +283,14 @@ public class PortalInstanceResourceTest
 		return portalInstanceResource.postPortalInstance(portalInstance);
 	}
 
+	@Override
+	protected PortalInstance testPostPortalInstanceImport_addPortalInstance(
+			PortalInstance portalInstance)
+		throws Exception {
+
+		return portalInstance;
+	}
+
 	private static void _deletePortalInstance(PortalInstance portalInstance)
 		throws Exception {
 
@@ -314,7 +373,10 @@ public class PortalInstanceResourceTest
 	private void _dropExportedSchema(long companyId) throws Exception {
 		DB db = DBManagerUtil.getDB();
 
-		String sql = "drop schema lexported_" + companyId;
+		String sql =
+			"drop schema if exists " +
+				DBPartitionUtil.DATABASE_EXPORTED_PARTITION_SCHEMA_NAME_PREFIX +
+					companyId;
 
 		if (db.getDBType() == DBType.POSTGRESQL) {
 			sql = sql + " cascade";
@@ -337,8 +399,11 @@ public class PortalInstanceResourceTest
 		try (Connection connection = DataAccess.getConnection();
 
 			PreparedStatement preparedStatement = connection.prepareStatement(
-				"select configurationId from lexported_" + companyId +
-					".Configuration_");
+				StringBundler.concat(
+					"select configurationId from ",
+					DBPartitionUtil.
+						DATABASE_EXPORTED_PARTITION_SCHEMA_NAME_PREFIX,
+					companyId, ".Configuration_"));
 
 			ResultSet resultSet = preparedStatement.executeQuery()) {
 
@@ -508,7 +573,8 @@ public class PortalInstanceResourceTest
 					_portalInstance.getPortalInstanceId());
 
 			Assert.assertEquals(
-				"lexported_" + companyId,
+				DBPartitionUtil.DATABASE_EXPORTED_PARTITION_SCHEMA_NAME_PREFIX +
+					companyId,
 				portalInstanceExport.getExportedPartitionName());
 			Assert.assertEquals(
 				PropsValues.DATABASE_PARTITION_SCHEMA_NAME_PREFIX + companyId,
@@ -587,6 +653,108 @@ public class PortalInstanceResourceTest
 		}
 	}
 
+	private void _testPostPortalInstanceImportInvalidSchemaName()
+		throws Exception {
+
+		PortalInstanceImport portalInstanceImport = new PortalInstanceImport();
+
+		portalInstanceImport.setSchemaName(RandomTestUtil.randomString());
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.headless.portal.instances.internal.resource." +
+					"v1_0.PortalInstanceResourceImpl",
+				LoggerTestUtil.ERROR)) {
+
+			portalInstanceResource.postPortalInstanceImport(
+				portalInstanceImport);
+
+			Assert.fail();
+		}
+		catch (Problem.ProblemException problemException) {
+			Problem problem = problemException.getProblem();
+
+			Assert.assertEquals("BAD_REQUEST", problem.getStatus());
+		}
+	}
+
+	private void _testPostPortalInstanceImportSuccess() throws Exception {
+		Company company = CompanyTestUtil.addCompany();
+
+		long companyId = company.getCompanyId();
+
+		try {
+			_companyLocalService.exportCompany(company.getCompanyId());
+		}
+		finally {
+			_companyLocalService.deleteCompany(company);
+		}
+
+		String randomId = StringUtil.toLowerCase(RandomTestUtil.randomString());
+
+		String virtualHost =
+			randomId + "." +
+				StringUtil.toLowerCase(RandomTestUtil.randomString(3));
+
+		PortalInstanceImport portalInstanceImport = new PortalInstanceImport();
+
+		portalInstanceImport.setSchemaName(
+			DBPartitionUtil.DATABASE_EXPORTED_PARTITION_SCHEMA_NAME_PREFIX +
+				companyId);
+		portalInstanceImport.setVirtualHost(virtualHost);
+		portalInstanceImport.setWebId(randomId);
+
+		PortalInstance portalInstance =
+			portalInstanceResource.postPortalInstanceImport(
+				portalInstanceImport);
+
+		try {
+			assertValid(portalInstance);
+
+			Assert.assertNotEquals(
+				_portalInstance.getCompanyId(), portalInstance.getCompanyId());
+			Assert.assertEquals(randomId, portalInstance.getPortalInstanceId());
+			Assert.assertEquals(virtualHost, portalInstance.getVirtualHost());
+		}
+		finally {
+			_deletePortalInstance(portalInstance);
+
+			_dropExportedSchema(companyId);
+		}
+	}
+
+	private void _testPostPortalInstanceImportWithoutOmniadminPermission()
+		throws Exception {
+
+		User user = UserTestUtil.addUser(testCompany, "test");
+
+		PortalInstanceResource userPortalInstanceResource =
+			PortalInstanceResource.builder(
+			).authentication(
+				user.getEmailAddress(), "test"
+			).endpoint(
+				testCompany.getVirtualHostname(),
+				PortalUtil.getPortalServerPort(false), "http"
+			).locale(
+				LocaleUtil.getDefault()
+			).build();
+
+		PortalInstanceImport portalInstanceImport = new PortalInstanceImport();
+
+		portalInstanceImport.setSchemaName(RandomTestUtil.randomString());
+
+		try {
+			userPortalInstanceResource.postPortalInstanceImport(
+				portalInstanceImport);
+
+			Assert.fail();
+		}
+		catch (Problem.ProblemException problemException) {
+			Problem problem = problemException.getProblem();
+
+			Assert.assertEquals("FORBIDDEN", problem.getStatus());
+		}
+	}
+
 	private void _testPostPortalInstanceWithAdmin() throws Exception {
 		PortalInstance randomPortalInstance = randomPortalInstance();
 
@@ -609,9 +777,14 @@ public class PortalInstanceResourceTest
 			testPostPortalInstance_addPortalInstance(randomPortalInstance);
 
 		try {
-			Assert.assertNotNull(
-				_userLocalService.getUserByEmailAddress(
-					postPortalInstance.getCompanyId(), emailAddress));
+			try (SafeCloseable safeCloseable =
+					CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+						postPortalInstance.getCompanyId())) {
+
+				Assert.assertNotNull(
+					_userLocalService.getUserByEmailAddress(
+						postPortalInstance.getCompanyId(), emailAddress));
+			}
 
 			assertEquals(randomPortalInstance, postPortalInstance);
 			assertValid(postPortalInstance);

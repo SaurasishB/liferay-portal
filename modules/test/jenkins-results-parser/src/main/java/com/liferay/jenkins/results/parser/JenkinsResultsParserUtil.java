@@ -1246,8 +1246,10 @@ public class JenkinsResultsParserUtil {
 		Map<String, String> buildParameters = getBuildParameters(
 			buildURL, parentBuild);
 
-		if (buildParameters.containsKey(key)) {
-			return buildParameters.get(key);
+		String buildParameter = buildParameters.get(key);
+
+		if (buildParameter != null) {
+			return buildParameter;
 		}
 
 		throw new RuntimeException(
@@ -1760,11 +1762,9 @@ public class JenkinsResultsParserUtil {
 			String timeStamp = String.valueOf(getCurrentTimeMillis());
 
 			synchronized (_timeStamps) {
-				if (_timeStamps.contains(timeStamp)) {
+				if (!_timeStamps.add(timeStamp)) {
 					continue;
 				}
-
-				_timeStamps.add(timeStamp);
 			}
 
 			return timeStamp;
@@ -2301,6 +2301,21 @@ public class JenkinsResultsParserUtil {
 			throw new RuntimeException(
 				"Unable to get build properties", ioException);
 		}
+	}
+
+	public static long getJenkinsBuildQueueId(String location) {
+		if (isNullOrEmpty(location)) {
+			return 0L;
+		}
+
+		Matcher jenkinsBuildQueueURLMatcher =
+			_jenkinsBuildQueueURLPattern.matcher(location);
+
+		if (!jenkinsBuildQueueURLMatcher.find()) {
+			return 0L;
+		}
+
+		return Long.parseLong(jenkinsBuildQueueURLMatcher.group("queueId"));
 	}
 
 	public static String getJenkinsBuildResult(String buildURL) {
@@ -3685,49 +3700,10 @@ public class JenkinsResultsParserUtil {
 			sb.append("token=");
 			sb.append(getBuildProperty("jenkins.authentication.token"));
 
-			URL urlObject = new URL(fixURL(sb.toString()));
-
-			HttpURLConnection httpURLConnection =
-				(HttpURLConnection)urlObject.openConnection();
-
-			if (timeout != 0) {
-				httpURLConnection.setConnectTimeout(timeout);
-				httpURLConnection.setReadTimeout(timeout);
-			}
-
-			HTTPAuthorization httpAuthorization = getJenkinsHTTPAuthorization();
-
-			httpURLConnection.setRequestProperty(
-				"Authorization", httpAuthorization.toString());
-
-			httpURLConnection.connect();
-
-			int responseCode = httpURLConnection.getResponseCode();
-
-			System.out.println(
-				combine(
-					"Response from ", urlObject.toString(), ": ",
-					String.valueOf(responseCode), " ",
-					httpURLConnection.getResponseMessage()));
-
-			if (responseCode >= 400) {
-				return 0;
-			}
-
-			String location = httpURLConnection.getHeaderField("Location");
-
-			if (isNullOrEmpty(location)) {
-				return 0L;
-			}
-
-			Matcher jenkinsBuildQueueURLMatcher =
-				_jenkinsBuildQueueURLPattern.matcher(location);
-
-			if (!jenkinsBuildQueueURLMatcher.find()) {
-				return 0L;
-			}
-
-			return Long.parseLong(jenkinsBuildQueueURLMatcher.group("queueId"));
+			return getJenkinsBuildQueueId(
+				UrlReader.getResponseHeader(
+					"Location", getJenkinsHTTPAuthorization(),
+					HttpRequestMethod.GET, null, timeout, sb.toString()));
 		}
 		catch (IOException ioException) {
 			throw new RuntimeException(
