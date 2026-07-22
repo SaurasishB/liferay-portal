@@ -15,7 +15,7 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.seo.studio.constants.PageSpeedConstants;
 import com.liferay.seo.studio.model.PageSpeedReport;
-import com.liferay.seo.studio.model.PageSpeedScanResult;
+import com.liferay.seo.studio.model.PageSpeedResult;
 
 import java.io.IOException;
 
@@ -53,7 +53,10 @@ public class LiferayService extends BaseService {
 		UriComponents uriComponents = UriComponentsBuilder.fromPath(
 			"/o/c/seostudioscans"
 		).queryParam(
-			"filter", "state eq '" + PageSpeedConstants.STATE_QUEUED + "'"
+			"filter",
+			StringBundler.concat(
+				"scanType eq '", PageSpeedConstants.SCAN_TYPE_PAGESPEED,
+				"' and state eq '", PageSpeedConstants.STATE_QUEUED, "'")
 		).queryParam(
 			"nestedFields", "seoStudioScanRun,seoStudioDomain,seoStudioInstance"
 		).queryParam(
@@ -84,7 +87,7 @@ public class LiferayService extends BaseService {
 		catch (JSONException jsonException) {
 			if (_log.isWarnEnabled()) {
 				_log.warn(
-					"Unable to parse the queued scans response", jsonException);
+					"Unable to parse queued scans response", jsonException);
 			}
 
 			return new JSONArray();
@@ -133,22 +136,30 @@ public class LiferayService extends BaseService {
 	}
 
 	public String postSEOStudioPageSpeedResult(
-		PageSpeedScanResult pageSpeedScanResult, long seoStudioScanId) {
+		PageSpeedResult pageSpeedResult, long seoStudioScanId) {
 
 		PageSpeedReport averagePageSpeedReport =
-			pageSpeedScanResult.getAveragePageSpeedReport();
+			pageSpeedResult.getAveragePageSpeedReport();
 
 		JSONObject jsonObject = new JSONObject(
 		).put(
 			"accessibilityScore", averagePageSpeedReport.getAccessibility()
 		).put(
 			"bestPracticesScore", averagePageSpeedReport.getBestPractices()
+		);
+
+		String errorMessage = pageSpeedResult.getErrorMessage();
+
+		if (Validator.isNotNull(errorMessage)) {
+			jsonObject.put("errorMessage", errorMessage);
+		}
+
+		jsonObject.put(
+			"pagesErrored", pageSpeedResult.getPagesErrored()
 		).put(
-			"pagesErrored", pageSpeedScanResult.getPagesErrored()
+			"pagesScanned", pageSpeedResult.getPagesScanned()
 		).put(
-			"pagesScanned", pageSpeedScanResult.getPagesScanned()
-		).put(
-			"pagesTotal", pageSpeedScanResult.getPagesTotal()
+			"pagesTotal", pageSpeedResult.getPagesTotal()
 		).put(
 			"performanceScore", averagePageSpeedReport.getPerformance()
 		).put(
@@ -157,7 +168,7 @@ public class LiferayService extends BaseService {
 		).put(
 			"seoScore", averagePageSpeedReport.getSEO()
 		).put(
-			"strategy", pageSpeedScanResult.getStrategy()
+			"strategy", pageSpeedResult.getStrategy()
 		);
 
 		UriComponents uriComponents = UriComponentsBuilder.fromPath(

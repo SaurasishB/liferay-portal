@@ -30,7 +30,6 @@ interface IProps {
 	canGroup: boolean;
 	iconColor: string;
 	index: number;
-	movable: boolean;
 	navigationProps?: NavigationItemProps;
 	onAddRule: (audiencesCriteria: AudiencesCriteria, index?: number) => void;
 	onChange: (rule: Rule) => void;
@@ -47,7 +46,6 @@ export default function RuleRow({
 	canGroup,
 	iconColor,
 	index,
-	movable,
 	navigationProps,
 	onAddRule,
 	onChange,
@@ -66,15 +64,18 @@ export default function RuleRow({
 	const movementTarget = useMovementTarget();
 	const setMovementSource = useSetMovementSource();
 
-	const isMovementSource = movable && movementSource?.ruleId === rule.id;
+	const isMovementSource = movementSource?.ruleId === rule.id;
 
 	const isMovementTarget =
-		movable && Boolean(movementSource) && movementTarget.index === index;
+		Boolean(movementSource) && movementTarget.nodeId === rule.id;
 
-	const isMovementTargetBottomPosition =
+	const isMovementTargetBottom =
 		isMovementTarget && movementTarget.position === DROP_POSITIONS.bottom;
 
-	const isMovementTargetTopPosition =
+	const isMovementTargetGroup =
+		isMovementTarget && movementTarget.position === 'middle';
+
+	const isMovementTargetTop =
 		isMovementTarget && movementTarget.position === DROP_POSITIONS.top;
 
 	const [{isDragging}, dragRef, dragPreviewRef] = useDrag<
@@ -90,6 +91,21 @@ export default function RuleRow({
 		dragPreviewRef(getEmptyImage(), {captureDraggingState: true});
 	}, [dragPreviewRef]);
 
+	// Clay's Picker forces tabindex="0" on its combobox trigger and ignores the
+	// tabindex prop, so mirror the roving value onto it to keep inactive rows
+	// out of the tab order.
+
+	useEffect(() => {
+		dropItemRef.current
+			?.querySelectorAll<HTMLElement>('[role="combobox"]')
+			.forEach((element) =>
+				element.setAttribute(
+					'tabindex',
+					String(navigationProps?.tabIndex ?? 0)
+				)
+			);
+	}, [navigationProps?.tabIndex]);
+
 	const [{isOver}, dropRef] = useDrop<RowDragItem, void, {isOver: boolean}>({
 		accept: [DRAG_TYPES.ATTRIBUTE, DRAG_TYPES.RULE],
 		canDrop: (item) => !('id' in item) || item.id !== rule.id,
@@ -103,14 +119,14 @@ export default function RuleRow({
 				dropZone === DROP_POSITIONS.bottom ? index + 1 : index;
 
 			if ('audiencesCriteria' in item) {
-				if (dropZone === 'group') {
+				if (dropZone === 'middle') {
 					onGroup(item.audiencesCriteria);
 				}
 				else {
 					onAddRule(item.audiencesCriteria, insertIndex);
 				}
 			}
-			else if (dropZone === 'group') {
+			else if (dropZone === 'middle') {
 				onMoveGroup(item.id);
 			}
 			else {
@@ -139,13 +155,14 @@ export default function RuleRow({
 			<ErrorRuleRow
 				dropBottom={
 					(isOver && dropPosition === DROP_POSITIONS.bottom) ||
-					isMovementTargetBottomPosition
+					isMovementTargetBottom
 				}
 				dropTop={
 					(isOver && dropPosition === DROP_POSITIONS.top) ||
-					isMovementTargetTopPosition
+					isMovementTargetTop
 				}
 				navigationProps={navigationProps}
+				nodeId={rule.id}
 				onDelete={onDelete}
 				rowRef={setRowRef}
 			/>
@@ -167,14 +184,16 @@ export default function RuleRow({
 						isDragging || isMovementSource,
 					'audience-builder-rule--drop-bottom':
 						(isOver && dropPosition === DROP_POSITIONS.bottom) ||
-						isMovementTargetBottomPosition,
+						isMovementTargetBottom,
 					'audience-builder-rule--drop-group':
-						isOver && dropPosition === 'group',
+						(isOver && dropPosition === 'middle') ||
+						isMovementTargetGroup,
 					'audience-builder-rule--drop-top':
 						(isOver && dropPosition === DROP_POSITIONS.top) ||
-						isMovementTargetTopPosition,
+						isMovementTargetTop,
 				}
 			)}
+			data-keyboard-movement-id={rule.id}
 			onFocus={navigationProps?.onFocus}
 			onKeyDown={navigationProps?.onKeyDown}
 			ref={setRowRef}
@@ -188,7 +207,7 @@ export default function RuleRow({
 					className="audience-builder-grip text-secondary"
 					displayType="secondary"
 					onClick={(event) => {
-						if (movable && event.detail === 0) {
+						if (event.detail === 0) {
 							setMovementSource({
 								icon: audiencesCriteria.icon,
 								name: label,
@@ -228,6 +247,7 @@ export default function RuleRow({
 					inputType={inputType}
 					onChange={(value) => onChange({...rule, value})}
 					options={options}
+					tabIndex={navigationProps?.tabIndex ?? 0}
 					type={type}
 					value={rule.value}
 				/>
@@ -241,6 +261,7 @@ export default function RuleRow({
 					onClick={onDuplicate}
 					size="sm"
 					symbol="copy"
+					tabIndex={navigationProps?.tabIndex ?? 0}
 					title={Liferay.Language.get('duplicate')}
 				/>
 
@@ -251,6 +272,7 @@ export default function RuleRow({
 					onClick={onDelete}
 					size="sm"
 					symbol="times-circle"
+					tabIndex={navigationProps?.tabIndex ?? 0}
 					title={Liferay.Language.get('delete')}
 				/>
 			</div>
@@ -262,6 +284,7 @@ interface RuleValueFieldProps {
 	inputType: AudiencesCriteria['inputType'];
 	onChange: (value: string) => void;
 	options: AudiencesCriteria['options'];
+	tabIndex: number;
 	type: AudiencesCriteria['type'];
 	value: string;
 }
@@ -270,6 +293,7 @@ function RuleValueField({
 	inputType,
 	onChange,
 	options,
+	tabIndex,
 	type,
 	value,
 }: RuleValueFieldProps) {
@@ -293,6 +317,7 @@ function RuleValueField({
 			className="form-control-sm text-3"
 			onChange={(event) => onChange(event.target.value)}
 			placeholder={inputType === 'date' ? 'YYYY-MM-DD' : undefined}
+			tabIndex={tabIndex}
 			type={type === 'number' ? 'number' : 'text'}
 			value={value}
 		/>
@@ -303,6 +328,7 @@ interface ErrorRuleRowProps {
 	dropBottom: boolean;
 	dropTop: boolean;
 	navigationProps?: NavigationItemProps;
+	nodeId: string;
 	onDelete: () => void;
 	rowRef: (node: HTMLDivElement | null) => void;
 }
@@ -311,6 +337,7 @@ function ErrorRuleRow({
 	dropBottom,
 	dropTop,
 	navigationProps,
+	nodeId,
 	onDelete,
 	rowRef,
 }: ErrorRuleRowProps) {
@@ -326,6 +353,7 @@ function ErrorRuleRow({
 					'audience-builder-rule--drop-top': dropTop,
 				}
 			)}
+			data-keyboard-movement-id={nodeId}
 			onFocus={navigationProps?.onFocus}
 			onKeyDown={navigationProps?.onKeyDown}
 			ref={rowRef}
@@ -349,6 +377,7 @@ function ErrorRuleRow({
 				onClick={onDelete}
 				size="sm"
 				symbol="times-circle"
+				tabIndex={navigationProps?.tabIndex ?? 0}
 				title={Liferay.Language.get('delete')}
 			/>
 		</div>

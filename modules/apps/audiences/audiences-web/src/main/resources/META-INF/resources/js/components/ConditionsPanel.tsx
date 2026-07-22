@@ -23,19 +23,16 @@ import {DROP_POSITIONS} from '../constants/dropPositions';
 import useKeyboardNavigation, {
 	NavigationItemProps,
 } from '../hooks/useKeyboardNavigation';
-import {useMovementSource} from '../keyboard_movement/KeyboardMovementContext';
-import KeyboardMovementManager, {
-	MovementItem,
-} from '../keyboard_movement/KeyboardMovementManager';
-import {Action} from '../reducer';
 import {
-	AudiencesCriteria,
-	AudiencesCriteriaType,
-	CriteriaNode,
-	Group,
-} from '../types';
+	useMovementSource,
+	useMovementTarget,
+} from '../keyboard_movement/KeyboardMovementContext';
+import KeyboardMovementManager from '../keyboard_movement/KeyboardMovementManager';
+import {Action} from '../reducer';
+import {AudiencesCriteria, AudiencesCriteriaType, Group} from '../types';
 import {DropZone, getDropPosition} from '../util/getDropPosition';
 import {canGroupNode} from '../util/tree/canGroupNode';
+import {flattenRules} from '../util/tree/flattenRules';
 import {isGroup} from '../util/tree/isGroup';
 import RuleRow from './RuleRow';
 
@@ -51,29 +48,28 @@ interface RenderContext {
 	dispatch: Dispatch<Action>;
 	getItemProps: (index: number) => NavigationItemProps;
 	iconColorsByKey: Record<string, string>;
+	ruleIndexById: Map<string, number>;
 }
 
-function toMovementItems(
-	items: CriteriaNode[],
-	audiencesCriteriasByKey: Record<string, AudiencesCriteria>
-): MovementItem[] {
-	return items.map((node) => {
+function collectNodeNames(
+	group: Group,
+	audiencesCriteriasByKey: Record<string, AudiencesCriteria>,
+	namesById: Record<string, string> = {}
+): Record<string, string> {
+	group.items.forEach((node) => {
 		if (isGroup(node)) {
-			return {
-				icon: 'folder',
-				id: node.id,
-				name: Liferay.Language.get('group'),
-			};
+			namesById[node.id] = Liferay.Language.get('group');
+
+			collectNodeNames(node, audiencesCriteriasByKey, namesById);
 		}
-
-		const audiencesCriteria = audiencesCriteriasByKey[node.attribute];
-
-		return {
-			icon: audiencesCriteria?.icon ?? '',
-			id: node.id,
-			name: audiencesCriteria?.label ?? node.attribute,
-		};
+		else {
+			namesById[node.id] =
+				audiencesCriteriasByKey[node.attribute]?.label ??
+				node.attribute;
+		}
 	});
+
+	return namesById;
 }
 
 export default function ConditionsPanel({
@@ -117,13 +113,19 @@ export default function ConditionsPanel({
 
 	const movementSource = useMovementSource();
 
+	const ruleIndexById = useMemo(
+		() =>
+			new Map(flattenRules(root).map((rule, index) => [rule.id, index])),
+		[root]
+	);
+
 	const {getItemProps} = useKeyboardNavigation({
-		itemCount: root.items.filter((node) => !isGroup(node)).length,
+		itemCount: ruleIndexById.size,
 	});
 
-	const keyboardMovementItems = toMovementItems(
-		root.items,
-		audiencesCriteriasByKey
+	const namesById = useMemo(
+		() => collectNodeNames(root, audiencesCriteriasByKey),
+		[audiencesCriteriasByKey, root]
 	);
 
 	const [{canDrop, isOver}, drop] = useDrop<
@@ -152,6 +154,7 @@ export default function ConditionsPanel({
 		dispatch,
 		getItemProps,
 		iconColorsByKey,
+		ruleIndexById,
 	};
 
 	return (
@@ -159,8 +162,8 @@ export default function ConditionsPanel({
 			{movementSource ? (
 				<KeyboardMovementManager
 					dispatch={dispatch}
-					items={keyboardMovementItems}
-					nodes={root.items}
+					namesById={namesById}
+					root={root}
 					source={movementSource}
 				/>
 			) : null}
@@ -216,9 +219,8 @@ function GroupItems({context, group, path}: GroupItemsProps) {
 		dispatch,
 		getItemProps,
 		iconColorsByKey,
+		ruleIndexById,
 	} = context;
-
-	const topLevel = !path.length;
 
 	const handleAddRule = (
 		audiencesCriteria: AudiencesCriteria,
@@ -246,10 +248,6 @@ function GroupItems({context, group, path}: GroupItemsProps) {
 		<>
 			{group.items.map((node, index) => {
 				const nodePath = [...path, index];
-
-				const ruleIndex = group.items
-					.slice(0, index)
-					.filter((item) => !isGroup(item)).length;
 
 				return (
 					<Fragment key={node.id}>
@@ -281,12 +279,9 @@ function GroupItems({context, group, path}: GroupItemsProps) {
 								canGroup={canGroupNode(nodePath)}
 								iconColor={iconColorsByKey[node.attribute]}
 								index={index}
-								movable={topLevel}
-								navigationProps={
-									topLevel
-										? getItemProps(ruleIndex)
-										: undefined
-								}
+								navigationProps={getItemProps(
+									ruleIndexById.get(node.id) ?? 0
+								)}
 								onAddRule={handleAddRule}
 								onChange={(rule) =>
 									dispatch({
@@ -330,7 +325,7 @@ function GroupItems({context, group, path}: GroupItemsProps) {
 									dispatch({
 										nodeId,
 										targetId: node.id,
-										type: 'MOVE_GROUP',
+										type: 'MOVE_RULE_INTO_NEW_GROUP',
 									})
 								}
 								onMoveRule={handleMoveRule}
@@ -363,9 +358,13 @@ function GroupRow({
 }: GroupRowProps) {
 	const {dispatch} = context;
 
+	const movementTarget = useMovementTarget();
+
 	const groupRef = useRef<HTMLDivElement | null>(null);
 
 	const [dropPosition, setDropPosition] = useState<DropZone | null>(null);
+
+	const isMovementTarget = movementTarget.nodeId === group.id;
 
 	const [{isOver}, dropRef] = useDrop<RowDragItem, void, {isOver: boolean}>({
 		accept: [DRAG_TYPES.ATTRIBUTE, DRAG_TYPES.RULE],
@@ -412,11 +411,16 @@ function GroupRow({
 				'audience-builder-group border overflow-hidden rounded',
 				{
 					'audience-builder-group--drop-bottom':
-						isOver && dropPosition === DROP_POSITIONS.bottom,
+						(isOver && dropPosition === DROP_POSITIONS.bottom) ||
+						(isMovementTarget &&
+							movementTarget.position === DROP_POSITIONS.bottom),
 					'audience-builder-group--drop-top':
-						isOver && dropPosition === DROP_POSITIONS.top,
+						(isOver && dropPosition === DROP_POSITIONS.top) ||
+						(isMovementTarget &&
+							movementTarget.position === DROP_POSITIONS.top),
 				}
 			)}
+			data-keyboard-movement-id={group.id}
 			ref={setGroupRef}
 			role="group"
 		>

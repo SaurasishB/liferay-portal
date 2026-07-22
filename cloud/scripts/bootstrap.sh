@@ -236,7 +236,9 @@ function _get_provider {
 		fi
 	fi
 
-	if [ "${provider}" != "aws" ] && [ "${provider}" != "gcp" ]
+	_is_supported_provider "${provider}"
+
+	if ! _is_supported_provider "${provider}"
 	then
 		echo "Unsupported provider ${provider} was specified in ${config_file}." >&2
 
@@ -259,6 +261,17 @@ function _get_version {
 	fi
 
 	echo "${version}"
+}
+
+function _is_supported_provider {
+	case "${1}" in
+		aws|azure|gcp)
+			return 0
+			;;
+		*)
+			return 1
+			;;
+	esac
 }
 
 function _sha256 {

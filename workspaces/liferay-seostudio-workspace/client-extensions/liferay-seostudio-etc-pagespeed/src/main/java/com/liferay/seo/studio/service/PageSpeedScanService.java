@@ -10,7 +10,7 @@ import com.liferay.portal.kernel.util.Validator;
 import com.liferay.seo.studio.constants.PageSpeedConstants;
 import com.liferay.seo.studio.model.Domain;
 import com.liferay.seo.studio.model.PageSpeedReport;
-import com.liferay.seo.studio.model.PageSpeedScanResult;
+import com.liferay.seo.studio.model.PageSpeedResult;
 
 import jakarta.annotation.PreDestroy;
 
@@ -55,7 +55,7 @@ public class PageSpeedScanService {
 			}
 			catch (Exception exception1) {
 				_log.error(
-					"Unable to run the PageSpeed scan " + seoStudioScanId,
+					"Unable to run PageSpeed scan " + seoStudioScanId,
 					exception1);
 
 				try {
@@ -65,8 +65,7 @@ public class PageSpeedScanService {
 				}
 				catch (Exception exception2) {
 					_log.error(
-						"Unable to mark the scan " + seoStudioScanId +
-							" as failed",
+						"Unable to mark scan " + seoStudioScanId + " as failed",
 						exception2);
 				}
 			}
@@ -85,25 +84,17 @@ public class PageSpeedScanService {
 
 			thread.interrupt();
 
-			if (_log.isDebugEnabled()) {
-				_log.debug(
-					"Unable to complete the PageSpeed scan " + url,
-					interruptedException);
-			}
-
-			return null;
+			throw new RuntimeException(
+				"Unable to complete PageSpeed scan " + url,
+				interruptedException);
 		}
 		catch (IOException ioException) {
-			if (_log.isDebugEnabled()) {
-				_log.debug(
-					"Unable to get PageSpeed scores " + url, ioException);
-			}
-
-			return null;
+			throw new RuntimeException(
+				"Unable to get PageSpeed scores " + url, ioException);
 		}
 	}
 
-	private PageSpeedScanResult _getPageSpeedScanResult(
+	private PageSpeedResult _getPageSpeedResult(
 		String googlePageSpeedAPIKey, String strategy, List<String> urls) {
 
 		List<DefaultNoticeableFuture<PageSpeedReport>>
@@ -120,6 +111,7 @@ public class PageSpeedScanService {
 			defaultNoticeableFutures.add(defaultNoticeableFuture);
 		}
 
+		String errorMessage = null;
 		int pagesErrored = 0;
 
 		List<PageSpeedReport> pageSpeedReports = new ArrayList<>();
@@ -128,17 +120,27 @@ public class PageSpeedScanService {
 				defaultNoticeableFutures) {
 
 			try {
-				PageSpeedReport pageSpeedReport = defaultNoticeableFuture.get();
-
-				if (pageSpeedReport == null) {
-					pagesErrored++;
-				}
-				else {
-					pageSpeedReports.add(pageSpeedReport);
-				}
+				pageSpeedReports.add(defaultNoticeableFuture.get());
 			}
 			catch (Exception exception) {
 				pagesErrored++;
+
+				if (exception instanceof InterruptedException) {
+					Thread thread = Thread.currentThread();
+
+					thread.interrupt();
+				}
+
+				if (errorMessage == null) {
+					Throwable throwable = exception.getCause();
+
+					if (throwable != null) {
+						errorMessage = throwable.getMessage();
+					}
+					else {
+						errorMessage = exception.getMessage();
+					}
+				}
 
 				if (_log.isDebugEnabled()) {
 					_log.debug("Unable to add PageSpeed scores", exception);
@@ -149,9 +151,9 @@ public class PageSpeedScanService {
 		int pagesScanned = pageSpeedReports.size();
 
 		if (pagesScanned == 0) {
-			return new PageSpeedScanResult(
-				new PageSpeedReport(0, 0, 0, 0), pagesErrored, pagesScanned,
-				urls.size(), strategy);
+			return new PageSpeedResult(
+				new PageSpeedReport(0, 0, 0, 0), errorMessage, pagesErrored,
+				pagesScanned, urls.size(), strategy);
 		}
 
 		int totalAccessibility = 0;
@@ -172,9 +174,9 @@ public class PageSpeedScanService {
 			Math.round((float)totalPerformance / pagesScanned),
 			Math.round((float)totalSEO / pagesScanned));
 
-		return new PageSpeedScanResult(
-			averagePageSpeedReport, pagesErrored, pagesScanned, urls.size(),
-			strategy);
+		return new PageSpeedResult(
+			averagePageSpeedReport, errorMessage, pagesErrored, pagesScanned,
+			urls.size(), strategy);
 	}
 
 	private void _runScan(
@@ -203,6 +205,25 @@ public class PageSpeedScanService {
 			return;
 		}
 
+		try {
+			if (!_pageSpeedReportService.isValidAPIKey(googlePageSpeedAPIKey)) {
+				_liferayService.patchSEOStudioScan(
+					"Unable to validate Google PageSpeed API key for SEO " +
+						"Studio instance ID " + domain.getSEOStudioInstanceId(),
+					seoStudioScanId, PageSpeedConstants.STATE_FAILED);
+
+				return;
+			}
+		}
+		catch (InterruptedException interruptedException) {
+			Thread thread = Thread.currentThread();
+
+			thread.interrupt();
+
+			throw new RuntimeException(
+				"Unable to validate PageSpeed API key", interruptedException);
+		}
+
 		JSONObject scopeConfigJSONObject = new JSONObject(
 			seoStudioScanJSONObject.optString("scopeConfig"));
 
@@ -213,12 +234,12 @@ public class PageSpeedScanService {
 			domain.getHostname(), maxPagesPerScan);
 
 		_liferayService.postSEOStudioPageSpeedResult(
-			_getPageSpeedScanResult(
+			_getPageSpeedResult(
 				googlePageSpeedAPIKey, PageSpeedConstants.STRATEGY_DESKTOP,
 				urls),
 			seoStudioScanId);
 		_liferayService.postSEOStudioPageSpeedResult(
-			_getPageSpeedScanResult(
+			_getPageSpeedResult(
 				googlePageSpeedAPIKey, PageSpeedConstants.STRATEGY_MOBILE,
 				urls),
 			seoStudioScanId);

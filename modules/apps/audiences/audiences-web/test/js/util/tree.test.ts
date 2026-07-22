@@ -17,9 +17,10 @@ import {createRule} from '../../../src/main/resources/META-INF/resources/js/util
 import {deleteEmptyGroups} from '../../../src/main/resources/META-INF/resources/js/util/tree/deleteEmptyGroups';
 import {deleteRule} from '../../../src/main/resources/META-INF/resources/js/util/tree/deleteRule';
 import {duplicateRule} from '../../../src/main/resources/META-INF/resources/js/util/tree/duplicateRule';
+import {flattenRules} from '../../../src/main/resources/META-INF/resources/js/util/tree/flattenRules';
 import {isGroup} from '../../../src/main/resources/META-INF/resources/js/util/tree/isGroup';
-import {moveGroup} from '../../../src/main/resources/META-INF/resources/js/util/tree/moveGroup';
 import {moveRule} from '../../../src/main/resources/META-INF/resources/js/util/tree/moveRule';
+import {moveRuleIntoNewGroup} from '../../../src/main/resources/META-INF/resources/js/util/tree/moveRuleIntoNewGroup';
 import {parseRootGroup} from '../../../src/main/resources/META-INF/resources/js/util/tree/parseRootGroup';
 import {reorderGroup} from '../../../src/main/resources/META-INF/resources/js/util/tree/reorderGroup';
 import {serializeGroup} from '../../../src/main/resources/META-INF/resources/js/util/tree/serializeGroup';
@@ -356,14 +357,18 @@ describe('tree', () => {
 		});
 	});
 
-	describe('moveGroup', () => {
+	describe('moveRuleIntoNewGroup', () => {
 		it('groups the target rule and the moved rule together', () => {
 			const ageRule = createRule(AGE);
 			const countryRule = createRule(COUNTRY);
 			const keepRule = createRule(AGE);
 			const root = createGroup('AND', [ageRule, countryRule, keepRule]);
 
-			const grouped = moveGroup(root, ageRule.id, countryRule.id);
+			const grouped = moveRuleIntoNewGroup(
+				root,
+				ageRule.id,
+				countryRule.id
+			);
 
 			expect(grouped.items).toHaveLength(2);
 
@@ -382,7 +387,11 @@ describe('tree', () => {
 			const countryRule = createRule(COUNTRY);
 			const root = createGroup('OR', [ageRule, countryRule]);
 
-			const result = moveGroup(root, ageRule.id, countryRule.id);
+			const result = moveRuleIntoNewGroup(
+				root,
+				ageRule.id,
+				countryRule.id
+			);
 
 			expect(result.conjunction).toBe('OR');
 			expect(result.items).toHaveLength(2);
@@ -396,7 +405,9 @@ describe('tree', () => {
 			const ageRule = createRule(AGE);
 			const root = createGroup('AND', [ageRule]);
 
-			expect(moveGroup(root, ageRule.id, ageRule.id)).toBe(root);
+			expect(moveRuleIntoNewGroup(root, ageRule.id, ageRule.id)).toBe(
+				root
+			);
 		});
 	});
 
@@ -415,6 +426,24 @@ describe('tree', () => {
 			expect(group.conjunction).toBe('AND');
 			expect(group.items).toHaveLength(0);
 			expect(group.id).toEqual(expect.stringMatching(/^group-/));
+		});
+	});
+
+	describe('flattenRules', () => {
+		it('lists rules in depth-first render order', () => {
+			const ageRule = createRule(AGE);
+			const countryRule = createRule(COUNTRY);
+			const nestedRule = createRule(AGE);
+			const root = createGroup('AND', [
+				ageRule,
+				createGroup('OR', [countryRule, nestedRule]),
+			]);
+
+			expect(flattenRules(root).map((rule) => rule.id)).toEqual([
+				ageRule.id,
+				countryRule.id,
+				nestedRule.id,
+			]);
 		});
 	});
 });

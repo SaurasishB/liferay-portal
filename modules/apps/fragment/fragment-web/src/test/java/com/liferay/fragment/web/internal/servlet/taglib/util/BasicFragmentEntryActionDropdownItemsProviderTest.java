@@ -6,13 +6,17 @@
 package com.liferay.fragment.web.internal.servlet.taglib.util;
 
 import com.liferay.fragment.model.FragmentEntry;
+import com.liferay.fragment.web.internal.util.DesignLibraryUtil;
+import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.test.TestInfo;
+import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
 
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 /**
@@ -44,6 +48,30 @@ public class BasicFragmentEntryActionDropdownItemsProviderTest
 			"edit", "change-thumbnail", "discard-draft", "rename",
 			"mark-as-cacheable", "view-site-usages", "export", "make-a-copy",
 			"move", "delete");
+	}
+
+	@Test
+	@TestInfo("LPD-63087")
+	public void testGetActionDropdownItemsForMarketplaceFragmentEntry()
+		throws Exception {
+
+		setUpFragmentPermission(true);
+
+		Mockito.when(
+			_fragmentEntry.isMarketplace()
+		).thenReturn(
+			true
+		);
+
+		BasicFragmentEntryActionDropdownItemsProvider
+			basicFragmentEntryActionDropdownItemsProvider =
+				new BasicFragmentEntryActionDropdownItemsProvider(
+					_fragmentEntry, renderRequest, renderResponse);
+
+		assertDropdownItemsInCorrectOrder(
+			basicFragmentEntryActionDropdownItemsProvider.
+				getActionDropdownItems(),
+			"rename", "view-site-usages", "move", "delete");
 	}
 
 	@Test
@@ -85,16 +113,17 @@ public class BasicFragmentEntryActionDropdownItemsProviderTest
 	}
 
 	@Test
-	@TestInfo("LPD-63087")
-	public void testGetActionDropdownItemstForMarketplaceFragmentEntry()
+	@TestInfo("LPD-98538")
+	public void testGetActionDropdownItemsForSiteScopedFragmentEntry()
 		throws Exception {
 
 		setUpFragmentPermission(true);
+		_setUpFragmentEntry(false, false, false);
 
 		Mockito.when(
-			_fragmentEntry.isMarketplace()
+			_fragmentEntry.getGroupId()
 		).thenReturn(
-			true
+			RandomTestUtil.randomLong()
 		);
 
 		BasicFragmentEntryActionDropdownItemsProvider
@@ -102,10 +131,35 @@ public class BasicFragmentEntryActionDropdownItemsProviderTest
 				new BasicFragmentEntryActionDropdownItemsProvider(
 					_fragmentEntry, renderRequest, renderResponse);
 
-		assertDropdownItemsInCorrectOrder(
-			basicFragmentEntryActionDropdownItemsProvider.
-				getActionDropdownItems(),
-			"rename", "view-site-usages", "move", "delete");
+		try (MockedStatic<DesignLibraryUtil> designLibraryUtilMockedStatic =
+				Mockito.mockStatic(DesignLibraryUtil.class)) {
+
+			designLibraryUtilMockedStatic.when(
+				() -> DesignLibraryUtil.isDesignLibraryScope(
+					Mockito.nullable(Group.class))
+			).thenReturn(
+				false
+			);
+
+			assertDropdownItemsInCorrectOrder(
+				basicFragmentEntryActionDropdownItemsProvider.
+					getActionDropdownItems(),
+				"edit", "change-thumbnail", "rename", "mark-as-cacheable",
+				"view-usages", "export", "make-a-copy", "move", "delete");
+
+			designLibraryUtilMockedStatic.when(
+				() -> DesignLibraryUtil.isDesignLibraryScope(
+					Mockito.nullable(Group.class))
+			).thenReturn(
+				true
+			);
+
+			assertDropdownItemsInCorrectOrder(
+				basicFragmentEntryActionDropdownItemsProvider.
+					getActionDropdownItems(),
+				"edit", "change-thumbnail", "rename", "mark-as-cacheable",
+				"export", "make-a-copy", "move", "delete");
+		}
 	}
 
 	@Test
