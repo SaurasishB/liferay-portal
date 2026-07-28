@@ -10,15 +10,16 @@
  */
 
 module.exports = {
-	hash: 'e55280ab46b3aa4551ea05ed064b372f2ede1ea2afd65b5c9e00d2145dabfddb',
+	hash: '062057d96994aa523fcea6509917c9119605f2dc4dade4ff54eba58281224816',
 	imports: {
 		'@liferay/accessibility-menu-web': [],
 		'@liferay/accessibility-settings-state-web': [],
 		'@liferay/account-validator-vies-web': [],
 		'@liferay/address-web': [],
 		'@liferay/ai-creator-openai-web': [],
-		'@liferay/ai-hub-cell-js-components-web': [],
-		'@liferay/ai-hub-web': [],
+		'@liferay/ai-hub-cell-js-components-web': [
+			'./renderAIAssistantTrigger',
+		],
 		'@liferay/analytics-reports-js-components-web': [],
 		'@liferay/analytics-settings-web': [],
 		'@liferay/application-list-taglib': [],
@@ -276,6 +277,7 @@ module.exports = {
 		'@liferay/site-navigation-menu-item-display-page': [],
 		'@liferay/site-navigation-menu-item-vocabulary': [],
 		'@liferay/site-navigation-taglib': [],
+		'@liferay/site-pim-site-initializer': [],
 		'@liferay/site-sitemap-web': [],
 		'@liferay/social-activities-taglib': [],
 		'@liferay/social-bookmark-facebook': [],

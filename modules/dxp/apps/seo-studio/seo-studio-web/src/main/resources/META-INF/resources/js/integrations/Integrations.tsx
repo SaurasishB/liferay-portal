@@ -4,12 +4,13 @@
  */
 
 import ClayButton from '@clayui/button';
-import ClayDropDown from '@clayui/drop-down';
+import ClayDropDown, {Align} from '@clayui/drop-down';
 import ClayIcon from '@clayui/icon';
 import {FrontendDataSet} from '@liferay/frontend-data-set-web';
 import {openToast} from 'frontend-js-components-web';
 import React, {useState} from 'react';
 
+import {validateAPIKey} from '../pagespeed/validation';
 import IntegrationNameCellRenderer from './cell_renderers/IntegrationNameCellRenderer';
 import IntegrationStatusCellRenderer from './cell_renderers/IntegrationStatusCellRenderer';
 
@@ -24,6 +25,7 @@ interface IntegrationType {
 
 interface Props {
 	fdsId: string;
+	instancesURL: string;
 	integrationTypes: IntegrationType[];
 	integrationsURL: string;
 	items: any[];
@@ -33,6 +35,7 @@ interface Props {
 
 export default function Integrations({
 	fdsId,
+	instancesURL,
 	integrationTypes,
 	integrationsURL,
 	items,
@@ -48,7 +51,11 @@ export default function Integrations({
 		itemData,
 	}: {
 		action: {data: {id: string}};
-		itemData: {configurationURL: string; id: number};
+		itemData: {
+			configurationURL: string;
+			id: number;
+			seoStudioInstanceId: string;
+		};
 	}) => {
 		if (actionId === 'edit') {
 			window.location.assign(itemData.configurationURL);
@@ -82,6 +89,70 @@ export default function Integrations({
 						type: 'danger',
 					});
 				});
+
+			return;
+		}
+
+		if (actionId === 'validate-connection') {
+			Liferay.Util.fetch(
+				`${instancesURL}/${itemData.seoStudioInstanceId}`,
+				{headers: {Accept: 'application/json'}}
+			)
+				.then((response) => {
+					if (!response.ok) {
+						throw new Error();
+					}
+
+					return response.json();
+				})
+				.then((instance) =>
+					validateAPIKey(instance.googlePageSpeedAPIKey)
+				)
+				.then((valid) => {
+					if (!valid) {
+						openToast({
+							message: Liferay.Language.get(
+								'unable-to-connect-to-google-pagespeed-verify-the-configuration-and-try-again'
+							),
+							type: 'danger',
+						});
+
+						return;
+					}
+
+					return Liferay.Util.fetch(
+						`${integrationsURL}/${itemData.id}`,
+						{
+							body: JSON.stringify({state: 'active'}),
+							headers: {
+								'Accept': 'application/json',
+								'Content-Type': 'application/json',
+							},
+							method: 'PATCH',
+						}
+					).then((response) => {
+						if (!response.ok) {
+							throw new Error();
+						}
+
+						openToast({
+							message: Liferay.Language.get(
+								'your-request-completed-successfully'
+							),
+							type: 'success',
+						});
+
+						window.location.reload();
+					});
+				})
+				.catch(() => {
+					openToast({
+						message: Liferay.Language.get(
+							'an-unexpected-error-occurred'
+						),
+						type: 'danger',
+					});
+				});
 		}
 	};
 
@@ -99,22 +170,20 @@ export default function Integrations({
 						<div className="autofit-col">
 							<ClayDropDown
 								active={active}
+								alignmentPosition={Align.BottomRight}
 								menuElementAttrs={{
 									className: 'integrations-add-menu',
 								}}
 								onActiveChange={setActive}
 								trigger={
-									<ClayButton
-										className="add-integration-button"
-										displayType="primary"
-									>
-										<span className="inline-item inline-item-before">
-											{Liferay.Language.get(
-												'add-integration'
-											)}
-										</span>
+									<ClayButton displayType="primary">
+										{Liferay.Language.get(
+											'add-integration'
+										)}
 
-										<ClayIcon symbol="caret-bottom" />
+										<span className="inline-item inline-item-after">
+											<ClayIcon symbol="caret-bottom" />
+										</span>
 									</ClayButton>
 								}
 							>
@@ -173,9 +242,7 @@ export default function Integrations({
 						/>
 
 						<div className="integrations-empty-title">
-							{Liferay.Language.get(
-								'no-integrations-have-been-added-yet'
-							)}
+							{Liferay.Language.get('no-integrations-yet')}
 						</div>
 
 						<div className="integrations-empty-description">

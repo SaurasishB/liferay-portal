@@ -7173,12 +7173,23 @@ public class ObjectEntryResourceTest {
 	public void testGetObjectEntryFilteredByTaxonomyCategories()
 		throws Exception {
 
+		Company company = _companyLocalService.getCompany(
+			TestPropsValues.getCompanyId());
+
+		AssetVocabulary assetVocabulary =
+			_assetVocabularyLocalService.addVocabulary(
+				TestPropsValues.getUserId(), company.getGroupId(),
+				RandomTestUtil.randomString(), new ServiceContext());
+
 		TaxonomyCategory taxonomyCategory1 =
-			_postTaxonomyVocabularyTaxonomyCategory();
+			_postTaxonomyVocabularyTaxonomyCategory(
+				company.getGroupId(), assetVocabulary.getVocabularyId());
 		TaxonomyCategory taxonomyCategory2 =
-			_postTaxonomyVocabularyTaxonomyCategory();
+			_postTaxonomyVocabularyTaxonomyCategory(
+				company.getGroupId(), assetVocabulary.getVocabularyId());
 		TaxonomyCategory taxonomyCategory3 =
-			_postTaxonomyVocabularyTaxonomyCategory();
+			_postTaxonomyVocabularyTaxonomyCategory(
+				company.getGroupId(), assetVocabulary.getVocabularyId());
 
 		_postObjectEntryWithTaxonomyCategories();
 		_postObjectEntryWithTaxonomyCategories(taxonomyCategory1);
@@ -10167,7 +10178,7 @@ public class ObjectEntryResourceTest {
 						Http.Method.POST);
 
 					Assert.assertEquals(
-						"BAD_REQUEST", jsonObject.getString("status"));
+						"FORBIDDEN", jsonObject.getString("status"));
 				}
 			);
 		}
@@ -18838,8 +18849,7 @@ public class ObjectEntryResourceTest {
 			fileEntry -> JSONUtil.put(
 				_OBJECT_FIELD_NAME_ATTACHMENT_CMS_BASIC_DOCUMENT_SOURCE,
 				_getFileEntryJSONObject(
-					_getDLFolder(depotEntry.getGroupId(), objectDefinition),
-					fileEntry, objectDefinition,
+					null, fileEntry, objectDefinition,
 					_OBJECT_FIELD_NAME_ATTACHMENT_CMS_BASIC_DOCUMENT_SOURCE)),
 			_toFileEntry(
 				Base64::encode, DLTestUtil.randomTextFileBytes(),
@@ -19809,8 +19819,7 @@ public class ObjectEntryResourceTest {
 			fileEntry -> JSONUtil.put(
 				_OBJECT_FIELD_NAME_ATTACHMENT_CMS_BASIC_DOCUMENT_SOURCE,
 				_getFileEntryJSONObject(
-					_getDLFolder(depotEntry.getGroupId(), objectDefinition),
-					fileEntry, objectDefinition,
+					null, fileEntry, objectDefinition,
 					_OBJECT_FIELD_NAME_ATTACHMENT_CMS_BASIC_DOCUMENT_SOURCE)),
 			_toFileEntry(
 				Base64::encode, DLTestUtil.randomTextFileBytes(),

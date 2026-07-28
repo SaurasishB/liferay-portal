@@ -41,7 +41,6 @@ import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.lazy.referencing.LazyReferencingThreadLocal;
 import com.liferay.portal.kernel.model.Group;
-import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
@@ -139,7 +138,6 @@ public class TaxonomyCategoryResourceTest
 		super.testDeleteAssetLibraryTaxonomyCategoryByExternalReferenceCode();
 	}
 
-	@FeatureFlag("LPD-86291")
 	@Override
 	@Test
 	public void testDeleteTaxonomyCategory() throws Exception {
@@ -467,7 +465,6 @@ public class TaxonomyCategoryResourceTest
 		super.testGraphQLPostTaxonomyVocabularyTaxonomyCategory();
 	}
 
-	@FeatureFlag("LPD-86291")
 	@Override
 	@Test
 	public void testPatchTaxonomyCategory() throws Exception {
@@ -518,7 +515,6 @@ public class TaxonomyCategoryResourceTest
 		_testPostSiteTaxonomyCategoryWithNonexistingTaxonomyVocabulary();
 	}
 
-	@FeatureFlag("LPD-86291")
 	@Override
 	@Test
 	public void testPostTaxonomyCategoryTaxonomyCategory() throws Exception {
@@ -950,12 +946,10 @@ public class TaxonomyCategoryResourceTest
 				RoleConstants.TYPE_REGULAR, null, null);
 		}
 
-		irrelevantGroup = GroupTestUtil.addGroup(
-			testDepotEntryGroup.getCompanyId(), TestPropsValues.getUserId(),
-			GroupConstants.DEFAULT_PARENT_GROUP_ID, GroupConstants.CMS);
-		testGroup = GroupTestUtil.addGroup(
-			testDepotEntryGroup.getCompanyId(), TestPropsValues.getUserId(),
-			GroupConstants.DEFAULT_PARENT_GROUP_ID, GroupConstants.CMS);
+		irrelevantGroup = GroupTestUtil.getOrAddCMSGroup(
+			testDepotEntryGroup.getCompanyId());
+
+		testGroup = irrelevantGroup;
 	}
 
 	private TaxonomyCategory _addSystemTaxonomyCategory() throws Exception {

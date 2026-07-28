@@ -25,12 +25,19 @@ import {dateConfig, toMomentDate, toServerISOFormat} from './ScheduleField';
 import CategorizationPanel from './panels/CategorizationPanel';
 import CommentsPanel from './panels/CommentsPanel';
 import GeneralPanel from './panels/GeneralPanel';
+import ProjectsPanel from './panels/ProjectsPanel';
 import SchedulePanel from './panels/SchedulePanel';
+import useAssistantCategorization from './useAssistantCategorization';
 
 type Props = {
 	addCommentURL: string;
 	assetLibraryId: string;
 	assetType: number;
+	cmpProjectLinkObjectDefinitionId?: number | null;
+	cmpProjectObjectDefinitionId?: number | null;
+	cmpProjectViewURL?: string;
+	cmpTaskObjectDefinitionId?: number | null;
+	cmpTaskViewURL?: string;
 	cmsGroupId: string;
 	comments: Comment[];
 	contentAPIURL: string;
@@ -38,6 +45,8 @@ type Props = {
 	editCommentURL: string;
 	editorConfig: LiferayEditorConfig;
 	entryClassName: string;
+	entryExternalReferenceCode?: string;
+	entryGroupExternalReferenceCode?: string;
 	expirationDate: string;
 	getCommentsURL: string;
 	hasUpdatePermission: boolean;
@@ -50,6 +59,7 @@ type Props = {
 };
 
 type SidePanelProps = Props & {
+	assetKeywords?: string[];
 	categorizationFields: CategorizationFields | null;
 	dateConfig: datetimeUtils.DateConfig;
 	onUpdateCategorization: (props: UpdateCategorizationProps) => void;
@@ -125,6 +135,12 @@ const items: Item[] = [
 		icon: 'comments',
 		id: 'comments',
 		title: Liferay.Language.get('comments'),
+	},
+	{
+		component: ProjectsPanel,
+		icon: 'archive',
+		id: 'projects',
+		title: Liferay.Language.get('projects'),
 	},
 ];
 
@@ -278,6 +294,7 @@ export default function ContentEditorSidePanel(props: Props) {
 		<>
 			<SidePanel
 				{...props}
+				assetKeywords={categorizationFields?.assetTagNames?.value}
 				categorizationFields={categorizationFields}
 				dateConfig={dateConfig}
 				onUpdateCategorization={onUpdateCategorization}
@@ -322,6 +339,17 @@ function SidePanel(props: SidePanelProps) {
 		setHasError(true);
 	}, []);
 
+	const {onUpdateCategorization} = props;
+
+	useAssistantCategorization({
+		assetLibraryId: props.assetLibraryId,
+		categorizationFields: props.categorizationFields,
+		cmsGroupId: props.cmsGroupId,
+		contentAPIURL: props.contentAPIURL,
+		onUpdateCategorization,
+		panel,
+	});
+
 	useEffect(() => {
 		const validateScheduleFields = ({event}: {event: MouseEvent}) => {
 			const hasError = Object.values(props.scheduleFields).some(
@@ -341,8 +369,6 @@ function SidePanel(props: SidePanelProps) {
 			Liferay.detach(EVENT_VALIDATE_FORM, validateScheduleFields);
 		};
 	}, [props.scheduleFields, showErrorInPanel]);
-
-	const {onUpdateCategorization} = props;
 
 	useEffect(() => {
 		if (

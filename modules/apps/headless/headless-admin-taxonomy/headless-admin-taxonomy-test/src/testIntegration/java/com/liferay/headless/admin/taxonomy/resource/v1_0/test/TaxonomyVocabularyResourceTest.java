@@ -108,7 +108,6 @@ public class TaxonomyVocabularyResourceTest
 		}
 	}
 
-	@FeatureFlag("LPD-86291")
 	@Override
 	@Test
 	public void testDeleteTaxonomyVocabulary() throws Exception {
@@ -299,7 +298,6 @@ public class TaxonomyVocabularyResourceTest
 		_testGetTaxonomyVocabularyWithoutPermissionsAction();
 	}
 
-	@FeatureFlag("LPD-86291")
 	@Override
 	@Test
 	public void testPatchTaxonomyVocabulary() throws Exception {
@@ -338,7 +336,6 @@ public class TaxonomyVocabularyResourceTest
 		_testPostSiteTaxonomyVocabularyInvalidAssetTypeSubtype();
 	}
 
-	@FeatureFlag("LPD-86291")
 	@Test
 	public void testPostSiteTaxonomyVocabularySystemWithoutAssetTypes()
 		throws Exception {
@@ -475,12 +472,10 @@ public class TaxonomyVocabularyResourceTest
 				RoleConstants.TYPE_REGULAR, null, null);
 		}
 
-		irrelevantGroup = GroupTestUtil.addGroup(
-			testDepotEntryGroup.getCompanyId(), TestPropsValues.getUserId(),
-			GroupConstants.DEFAULT_PARENT_GROUP_ID, GroupConstants.CMS);
-		testGroup = GroupTestUtil.addGroup(
-			testDepotEntryGroup.getCompanyId(), TestPropsValues.getUserId(),
-			GroupConstants.DEFAULT_PARENT_GROUP_ID, GroupConstants.CMS);
+		irrelevantGroup = GroupTestUtil.getOrAddCMSGroup(
+			testDepotEntryGroup.getCompanyId());
+
+		testGroup = irrelevantGroup;
 	}
 
 	private <T> void _assertSingletonArrayEquals(

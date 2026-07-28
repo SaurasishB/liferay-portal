@@ -39,6 +39,7 @@ import {handleFindAndReplace} from '../find_and_replace/utils/handleFindAndRepla
 import AssetTypeInfoPanel from '../info_panel/AssetTypeInfoPanelContent';
 import ExportTranslationModalContent from '../modal/ExportTranslationModalContent';
 import AssetNavigationModalContent from '../modal/asset_navigation_view/AssetNavigationModalContent';
+import AddAssetsToProjectModalContent from '../projects/modal/AddAssetsToProjectModalContent';
 import copyOrMoveBulkAction from './actions/copyOrMoveBulkAction';
 import ACTIONS from './actions/creationMenuActions';
 import deleteAssetEntriesBulkAction, {
@@ -145,6 +146,9 @@ export type AdditionalProps = {
 	breadcrumbProps?: IBreadcrumbProps;
 	brokenLinksCheckerEnabled: boolean;
 	candidateAssetLibraries: AssetLibrary[];
+	cmpProjectLinkObjectDefinitionId?: number;
+	cmpProjectObjectDefinitionId?: number;
+	cmpProjectViewURL?: string;
 	cmsGroupId?: number;
 	collaboratorURLs: Record<string, string>;
 	contentViewURL: string;
@@ -231,6 +235,11 @@ export default function AssetsFDSPropsTransformer({
 				}${additionalAPIURLParameters}`
 			: otherProps.apiURL;
 
+	const GENERATE_WITH_AI_ACTIONS = [
+		'generateContentWithAI',
+		'generateImageWithAI',
+	];
+
 	return {
 		...otherProps,
 		additionalAPIURLParameters,
@@ -248,6 +257,10 @@ export default function AssetsFDSPropsTransformer({
 			primaryItems: addOnClickToCreationMenuItems(
 				creationMenu.primaryItems,
 				ACTIONS
+			).map((item) =>
+				GENERATE_WITH_AI_ACTIONS.includes(item.data?.action ?? '')
+					? {...item, className: 'cms-generate-content-with-ai'}
+					: item
 			),
 		},
 		customRenderers: {
@@ -638,7 +651,30 @@ export default function AssetsFDSPropsTransformer({
 			action: any;
 			selectedData: any;
 		}) => {
-			if (action?.data?.id === 'edit-categories') {
+			if (action?.data?.id === 'add-assets-to-project') {
+				openCMSModal({
+					center: true,
+					containerProps: {
+						className: 'modal-height-lg',
+					},
+					contentComponent: ({
+						closeModal,
+					}: {
+						closeModal: () => void;
+					}) =>
+						AddAssetsToProjectModalContent({
+							apiURL: bulkActionAPIURL,
+							closeModal,
+							cmpProjectObjectDefinitionId:
+								additionalProps.cmpProjectObjectDefinitionId as number,
+							cmpProjectViewURL:
+								additionalProps.cmpProjectViewURL,
+							selectedData,
+						}),
+					size: 'md',
+				});
+			}
+			else if (action?.data?.id === 'edit-categories') {
 				openCMSModal({
 					center: true,
 					containerProps: {

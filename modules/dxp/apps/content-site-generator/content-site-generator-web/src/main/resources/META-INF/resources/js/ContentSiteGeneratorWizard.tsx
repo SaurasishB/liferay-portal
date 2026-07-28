@@ -4,16 +4,23 @@
  */
 
 import ClayLoadingIndicator from '@clayui/loading-indicator';
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {
+	AIAssistantTriggerButton,
+	ChatContext,
+} from '@liferay/ai-hub-cell-js-components-web';
+import {openToast} from 'frontend-js-components-web';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 
 import StepLayout from './components/StepLayout';
 import {
+	commitGeneration,
 	createGeneration,
 	getGeneration,
 	getGenerationItems,
 } from './services/generations';
 import IdeateStep from './steps/IdeateStep';
 import RefineStep from './steps/RefineStep';
+import ReviewStep from './steps/ReviewStep';
 
 import type {Generation} from './types/Generation';
 import type {GenerationItem} from './types/GenerationItem';
@@ -38,12 +45,34 @@ export default function ContentSiteGeneratorWizard({
 	generationsURL,
 }: IProps) {
 	const [activeStep, setActiveStep] = useState(STEP_IDEATE);
+	const [autoSendMessage, setAutoSendMessage] = useState<string>();
 	const [error, setError] = useState<string>();
 	const [generation, setGeneration] = useState<Generation>();
 	const [items, setItems] = useState<GenerationItem[]>([]);
 	const [loading, setLoading] = useState(!!generationId);
+	const [publishing, setPublishing] = useState(false);
 
 	const pollAttemptsRef = useRef(0);
+
+	const quickActions = useMemo(
+		() => [
+			Liferay.Language.get('assist-me-on-creating-pages'),
+			Liferay.Language.get('generate-content'),
+			Liferay.Language.get('translate-content'),
+		],
+		[]
+	);
+
+	const getChatContext = useCallback((): ChatContext => {
+		if (!generation) {
+			return {};
+		}
+
+		return {
+			generationExternalReferenceCode: generation.externalReferenceCode,
+			generationId: generation.id,
+		};
+	}, [generation]);
 
 	const handleCancel = useCallback(() => {
 		Liferay.Util.navigate(generationsURL);
@@ -74,7 +103,9 @@ export default function ContentSiteGeneratorWizard({
 				const statusKey = newGeneration.generationStatus.key;
 
 				setActiveStep(
-					statusKey === 'committed' || statusKey === 'ready'
+					statusKey === 'committed' ||
+						statusKey === 'generating' ||
+						statusKey === 'ready'
 						? STEP_REVIEW
 						: STEP_REFINE
 				);
@@ -155,6 +186,7 @@ export default function ContentSiteGeneratorWizard({
 
 			setGeneration(newGeneration);
 			setItems([]);
+			setAutoSendMessage(prompt);
 			setActiveStep(STEP_REFINE);
 		}
 		catch (newError) {
@@ -164,6 +196,36 @@ export default function ContentSiteGeneratorWizard({
 		}
 		finally {
 			setLoading(false);
+		}
+	};
+
+	const handlePublish = async () => {
+		if (!generation) {
+			return;
+		}
+
+		setError(undefined);
+		setPublishing(true);
+
+		try {
+			await commitGeneration(apiURL, generation.id);
+
+			openToast({
+				message: Liferay.Language.get(
+					'the-generated-content-was-published'
+				),
+				type: 'success',
+			});
+
+			Liferay.Util.navigate(generationsURL);
+		}
+		catch (newError) {
+			setError(
+				newError instanceof Error ? newError.message : String(newError)
+			);
+		}
+		finally {
+			setPublishing(false);
 		}
 	};
 
@@ -184,13 +246,37 @@ export default function ContentSiteGeneratorWizard({
 			)}
 
 			{activeStep === STEP_REFINE && generation && (
-				<StepLayout activeStep={STEP_REFINE}>
+				<StepLayout
+					activeStep={STEP_REFINE}
+					sidebar={
+						<AIAssistantTriggerButton
+							getContext={getChatContext}
+							initialMessage={autoSendMessage}
+							instructionDefinitionScope=""
+							quickActions={quickActions}
+						/>
+					}
+				>
 					<RefineStep
 						generation={generation}
 						items={items}
 						onBack={() => setActiveStep(STEP_IDEATE)}
 						onCancel={handleCancel}
 						onContinue={() => setActiveStep(STEP_REVIEW)}
+					/>
+				</StepLayout>
+			)}
+
+			{activeStep === STEP_REVIEW && generation && (
+				<StepLayout activeStep={STEP_REVIEW}>
+					<ReviewStep
+						error={error}
+						generation={generation}
+						items={items}
+						onBack={() => setActiveStep(STEP_REFINE)}
+						onCancel={handleCancel}
+						onPublish={handlePublish}
+						publishing={publishing}
 					/>
 				</StepLayout>
 			)}

@@ -9,12 +9,14 @@ import com.liferay.application.list.BasePanelCategory;
 import com.liferay.application.list.PanelCategory;
 import com.liferay.application.list.constants.PanelCategoryKeys;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.permission.PortalPermissionUtil;
+import com.liferay.site.dsr.site.initializer.internal.util.DSRUtil;
 
 import java.util.Locale;
 
@@ -47,9 +49,10 @@ public class DigitalSalesRoomManagementPanelCategory extends BasePanelCategory {
 	public boolean isShow(PermissionChecker permissionChecker, Group group)
 		throws PortalException {
 
-		if (!FeatureFlagManagerUtil.isEnabled(
-				permissionChecker.getCompanyId(), "LPD-66359")) {
+		group = _groupLocalService.fetchGroup(
+			permissionChecker.getCompanyId(), GroupConstants.DSR);
 
+		if ((group == null) || DSRUtil.isExpired()) {
 			return false;
 		}
 
@@ -58,6 +61,9 @@ public class DigitalSalesRoomManagementPanelCategory extends BasePanelCategory {
 	}
 
 	private static final String _KEY = "commerce.digital_sales_room_management";
+
+	@Reference
+	private GroupLocalService _groupLocalService;
 
 	@Reference
 	private Language _language;

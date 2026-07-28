@@ -7,9 +7,8 @@
 		background-color 0.15s ease-in-out,
 		border-color 0.15s ease-in-out;
 
-	&:hover {
-		background-color: $light-l1;
-		border-color: $secondary-l0;
+	&:after {
+		margin: 0;
 	}
 
 	&.active {
@@ -17,25 +16,26 @@
 		border-color: $primary;
 	}
 
-	&__sticker {
-		&--green {
-			background-color: $green-l5;
-			color: $green;
+	&:focus-visible:not(.active),
+	&:hover:not(.active) {
+		background-color: $light-l1;
+		border-color: $secondary-l0;
+
+		.cms-dashboard__interactive-card__hover-content {
+			opacity: 1;
 		}
 
-		&--info {
-			background-color: $info-l2;
-			color: $info;
+		.cms-dashboard__interactive-card__metric:has(
+				~ .cms-dashboard__interactive-card__hover-content
+			)
+			> div:nth-of-type(2) {
+			opacity: 0;
 		}
+	}
 
-		&--orange {
-			background-color: $orange-l5;
-			color: $orange;
-		}
-
-		&--purple {
-			background-color: $purple-l5;
-			color: $purple;
-		}
+	&__hover-content {
+		bottom: 0;
+		left: 0;
+		opacity: 0;
 	}
 }

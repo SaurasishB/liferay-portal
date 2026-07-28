@@ -13,6 +13,7 @@ import com.liferay.osb.faro.engine.client.model.AccountLifecycleMetric;
 import com.liferay.osb.faro.engine.client.model.AccountLifecycleStageMetric;
 import com.liferay.osb.faro.engine.client.model.AccountLifecycleStatus;
 import com.liferay.osb.faro.engine.client.model.AccountMetric;
+import com.liferay.osb.faro.engine.client.model.AccountName;
 import com.liferay.osb.faro.engine.client.model.Activity;
 import com.liferay.osb.faro.engine.client.model.ActivityAggregation;
 import com.liferay.osb.faro.engine.client.model.ActivityAsset;
@@ -27,6 +28,7 @@ import com.liferay.osb.faro.engine.client.model.AssetSummaryType;
 import com.liferay.osb.faro.engine.client.model.AssetSummaryVocabulary;
 import com.liferay.osb.faro.engine.client.model.Author;
 import com.liferay.osb.faro.engine.client.model.BlockedKeyword;
+import com.liferay.osb.faro.engine.client.model.CatalogField;
 import com.liferay.osb.faro.engine.client.model.Channel;
 import com.liferay.osb.faro.engine.client.model.ChannelDataSource;
 import com.liferay.osb.faro.engine.client.model.Credentials;
@@ -76,8 +78,8 @@ import java.util.Set;
 public interface ContactsEngineClient {
 
 	public AccountLifecycle addAccountLifecycle(
-		FaroProject faroProject, String description, String name,
-		String segmentId);
+		FaroProject faroProject, AccountLifecycle accountLifecycle,
+		String channelId);
 
 	public Results<BlockedKeyword> addBlockedKeywords(
 		FaroProject faroProject, List<String> keywords);
@@ -230,6 +232,11 @@ public interface ContactsEngineClient {
 	public List<AccountMetric> getAccountMetrics(
 		FaroProject faroProject, Long channelId);
 
+	public Results<AccountName> getAccountNames(
+		FaroProject faroProject, String assetId, String assetTitle,
+		String assetType, Long channelId, String keywords, String rangeEnd,
+		Integer rangeKey, String rangeStart, int page, int pageSize);
+
 	public Results<Account> getAccounts(
 		FaroProject faroProject, String channelId, String filterString,
 		String query, int cur, int delta, String sortString);
@@ -272,7 +279,7 @@ public interface ContactsEngineClient {
 		int delta, List<OrderByField> orderByFields);
 
 	public Results<ApiUsageMetric> getApiUsageMetrics(
-		FaroProject faroProject, Date usageDate);
+		FaroProject faroProject, String endDateString, String startDateString);
 
 	public Asset getAsset(FaroProject faroProject, String id)
 		throws FaroEngineClientException;
@@ -283,8 +290,9 @@ public interface ContactsEngineClient {
 
 	public Results<AssetSummary> getAssetSummaries(
 		FaroProject faroProject, long channelId, String filterString,
-		String keywords, String objectType, int rangeKey, String selectedMetric,
-		int cur, int delta, String sortString);
+		String keywords, String objectType, String rangeEnd, int rangeKey,
+		String rangeStart, String selectedMetric, int cur, int delta,
+		String sortString);
 
 	public Results<AssetSummaryCategory> getAssetSummaryCategories(
 		FaroProject faroProject, String accountId, long channelId,
@@ -317,6 +325,11 @@ public interface ContactsEngineClient {
 	public Results<BlockedKeyword> getBlockedKeywords(
 		FaroProject faroProject, String query, int cur, int delta,
 		List<OrderByField> orderByFields);
+
+	public Results<CatalogField> getCatalogFields(
+			FaroProject faroProject, String query, String tableName, int cur,
+			int delta, String sortString)
+		throws FaroEngineClientException;
 
 	public Channel getChannel(FaroProject faroProject, String id)
 		throws FaroEngineClientException;
@@ -643,8 +656,7 @@ public interface ContactsEngineClient {
 	public void setEngineURL(String engineURL);
 
 	public AccountLifecycle updateAccountLifecycle(
-		FaroProject faroProject, String description, String id, String name,
-		String segmentId);
+		FaroProject faroProject, AccountLifecycle accountLifecycle);
 
 	public void updateAccountLifecycleStageRule(
 		FaroProject faroProject, String filterMetadata, String filterString,

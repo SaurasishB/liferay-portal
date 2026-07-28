@@ -8,6 +8,7 @@ package com.liferay.fragment.service.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.depot.constants.DepotConstants;
 import com.liferay.depot.model.DepotEntry;
+import com.liferay.depot.service.DepotEntryGroupRelLocalService;
 import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.fragment.configuration.FragmentServiceConfiguration;
 import com.liferay.fragment.constants.FragmentConstants;
@@ -229,7 +230,7 @@ public class FragmentEntryLocalServiceTest {
 	}
 
 	@Test
-	@TestInfo("LPD-98538")
+	@TestInfo("LPD-98882")
 	public void testUpdateFragmentEntry() throws Exception {
 		_testUpdateFragmentEntryFragmentCollectionId();
 		_testUpdateFragmentEntryName();
@@ -240,6 +241,15 @@ public class FragmentEntryLocalServiceTest {
 		_testUpdateFragmentEntryWithHtmlWithAmpersand();
 		_testUpdateFragmentEntryWithPreviewFileEntryId();
 		_testUpdateFragmentEntryWithPropagateChanges();
+	}
+
+	private DepotEntry _addDesignLibraryDepotEntry() throws Exception {
+		return _depotEntryLocalService.addDepotEntry(
+			HashMapBuilder.put(
+				LocaleUtil.getDefault(), RandomTestUtil.randomString()
+			).build(),
+			Collections.emptyMap(), DepotConstants.TYPE_DESIGN_LIBRARY,
+			ServiceContextTestUtil.getServiceContext());
 	}
 
 	private FragmentEntry _addFragmentEntry(long groupId) throws Exception {
@@ -288,14 +298,16 @@ public class FragmentEntryLocalServiceTest {
 			fragmentEntry.getType(), copyFragmentEntry.getType());
 	}
 
-	private void _assertFragmentEntryLinkHTML(
-		long fragmentEntryLinkId, String html) {
+	private void _assertFragmentEntryLinksHTML(
+		String expectedHtml, long... fragmentEntryLinkIds) {
 
-		FragmentEntryLink fragmentEntryLink =
-			_fragmentEntryLinkLocalService.fetchFragmentEntryLink(
-				fragmentEntryLinkId);
+		for (long fragmentEntryLinkId : fragmentEntryLinkIds) {
+			FragmentEntryLink fragmentEntryLink =
+				_fragmentEntryLinkLocalService.fetchFragmentEntryLink(
+					fragmentEntryLinkId);
 
-		Assert.assertEquals(html, fragmentEntryLink.getHtml());
+			Assert.assertEquals(expectedHtml, fragmentEntryLink.getHtml());
+		}
 	}
 
 	private String _read(String fileName) throws Exception {
@@ -1297,18 +1309,36 @@ public class FragmentEntryLocalServiceTest {
 			_segmentsExperienceLocalService.fetchDefaultSegmentsExperienceId(
 				draftLayout.getPlid());
 
-		DepotEntry depotEntry = _depotEntryLocalService.addDepotEntry(
-			HashMapBuilder.put(
-				LocaleUtil.getDefault(), RandomTestUtil.randomString()
-			).build(),
-			Collections.emptyMap(), DepotConstants.TYPE_DESIGN_LIBRARY,
-			ServiceContextTestUtil.getServiceContext());
+		Group companyGroup = GroupLocalServiceUtil.getCompanyGroup(
+			TestPropsValues.getCompanyId());
 
-		FragmentEntry depotFragmentEntry = _addFragmentEntry(
-			depotEntry.getGroupId());
+		FragmentEntry companyGroupFragmentEntry = _addFragmentEntry(
+			companyGroup.getGroupId());
 
-		FragmentEntryLink depotFragmentEntryLink = _addFragmentEntryLink(
-			depotFragmentEntry, draftLayout, segmentsExperienceId);
+		FragmentEntryLink companyGroupFragmentEntryLink = _addFragmentEntryLink(
+			companyGroupFragmentEntry, draftLayout, segmentsExperienceId);
+
+		DepotEntry connectedDepotEntry = _addDesignLibraryDepotEntry();
+
+		_depotEntryGroupRelLocalService.addDepotEntryGroupRel(
+			connectedDepotEntry.getDepotEntryId(), _group.getGroupId());
+
+		FragmentEntry connectedDepotFragmentEntry = _addFragmentEntry(
+			connectedDepotEntry.getGroupId());
+
+		FragmentEntryLink connectedDepotFragmentEntryLink =
+			_addFragmentEntryLink(
+				connectedDepotFragmentEntry, draftLayout, segmentsExperienceId);
+
+		DepotEntry disconnectedDepotEntry = _addDesignLibraryDepotEntry();
+
+		FragmentEntry disconnectedDepotFragmentEntry = _addFragmentEntry(
+			disconnectedDepotEntry.getGroupId());
+
+		FragmentEntryLink disconnectedDepotFragmentEntryLink =
+			_addFragmentEntryLink(
+				disconnectedDepotFragmentEntry, draftLayout,
+				segmentsExperienceId);
 
 		FragmentEntry siteFragmentEntry = _addFragmentEntry(
 			_group.getGroupId());
@@ -1318,17 +1348,22 @@ public class FragmentEntryLocalServiceTest {
 
 		ContentLayoutTestUtil.publishLayout(draftLayout, layout);
 
-		String originalHTML = depotFragmentEntry.getHtml();
+		String originalHTML = disconnectedDepotFragmentEntry.getHtml();
 
 		String updatedHTML = RandomTestUtil.randomString();
 
 		_updateFragmentEntriesWithPropagateChanges(
-			updatedHTML, depotFragmentEntry, siteFragmentEntry);
+			updatedHTML, companyGroupFragmentEntry, connectedDepotFragmentEntry,
+			disconnectedDepotFragmentEntry, siteFragmentEntry);
 
-		_assertFragmentEntryLinkHTML(
-			depotFragmentEntryLink.getFragmentEntryLinkId(), originalHTML);
-		_assertFragmentEntryLinkHTML(
-			siteFragmentEntryLink.getFragmentEntryLinkId(), updatedHTML);
+		_assertFragmentEntryLinksHTML(
+			updatedHTML, companyGroupFragmentEntryLink.getFragmentEntryLinkId(),
+			connectedDepotFragmentEntryLink.getFragmentEntryLinkId(),
+			siteFragmentEntryLink.getFragmentEntryLinkId());
+
+		_assertFragmentEntryLinksHTML(
+			originalHTML,
+			disconnectedDepotFragmentEntryLink.getFragmentEntryLinkId());
 	}
 
 	private void _updateFragmentEntriesWithPropagateChanges(
@@ -1362,6 +1397,9 @@ public class FragmentEntryLocalServiceTest {
 			}
 		}
 	}
+
+	@Inject
+	private DepotEntryGroupRelLocalService _depotEntryGroupRelLocalService;
 
 	@Inject
 	private DepotEntryLocalService _depotEntryLocalService;

@@ -64,10 +64,22 @@ jest.mock('frontend-js-web', () => ({
 const SUCCESS_MESSAGE_KEY =
 	'com.liferay.site.cmp.site.initializer.successMessage';
 
-const renderComponent = (isNew = false) =>
+const renderComponent = ({
+	hasUpdatePermission = true,
+	isNew = false,
+}: {
+	hasUpdatePermission?: boolean;
+	isNew?: boolean;
+} = {}) =>
 	render(
 		<>
-			<EditorToolbar backURL="/back" isNew={isNew} title="My Project" />
+			<EditorToolbar
+				backURL="/back"
+				groupId={0}
+				hasUpdatePermission={hasUpdatePermission}
+				isNew={isNew}
+				title="My Project"
+			/>
 
 			<form className="lfr-main-form-container" id="formId">
 				<input
@@ -108,7 +120,7 @@ describe('EditorToolbar', () => {
 	});
 
 	it('shows updated message when saving an existing entry', () => {
-		renderComponent(false);
+		renderComponent({isNew: false});
 
 		const form = document.querySelector(
 			'.lfr-main-form-container'
@@ -126,7 +138,7 @@ describe('EditorToolbar', () => {
 	});
 
 	it('shows created message when saving a new entry', () => {
-		renderComponent(true);
+		renderComponent({isNew: true});
 
 		const form = document.querySelector(
 			'.lfr-main-form-container'
@@ -141,5 +153,51 @@ describe('EditorToolbar', () => {
 			'<strong>My Test Project</strong> was created successfully',
 			'NECESSARY'
 		);
+	});
+
+	it('disables the save button when the user lacks update permission', () => {
+		renderComponent({hasUpdatePermission: false});
+
+		expect(screen.getByText('save')).toBeDisabled();
+	});
+
+	it('publishes through the keyboard shortcut when the user has update permission', () => {
+		renderComponent({hasUpdatePermission: true});
+
+		const form = document.querySelector(
+			'.lfr-main-form-container'
+		) as HTMLFormElement;
+
+		form.submit = jest.fn();
+
+		window.dispatchEvent(
+			new KeyboardEvent('keydown', {
+				altKey: true,
+				ctrlKey: true,
+				key: 'Enter',
+			})
+		);
+
+		expect(form.submit).toHaveBeenCalled();
+	});
+
+	it('does not publish through the keyboard shortcut when the user lacks update permission', () => {
+		renderComponent({hasUpdatePermission: false});
+
+		const form = document.querySelector(
+			'.lfr-main-form-container'
+		) as HTMLFormElement;
+
+		form.submit = jest.fn();
+
+		window.dispatchEvent(
+			new KeyboardEvent('keydown', {
+				altKey: true,
+				ctrlKey: true,
+				key: 'Enter',
+			})
+		);
+
+		expect(form.submit).not.toHaveBeenCalled();
 	});
 });

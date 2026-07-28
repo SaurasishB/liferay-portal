@@ -58,7 +58,9 @@ public class IntegrationsDisplayContext {
 		return HashMapBuilder.<String, Object>put(
 			"fdsId", SEOStudioFDSNames.INTEGRATIONS
 		).put(
-			"integrationsURL", _getIntegrationsURL()
+			"instancesURL", "/o/seo-studio/instances"
+		).put(
+			"integrationsURL", "/o/seo-studio/integrations"
 		).put(
 			"integrationTypes", _getIntegrationTypesJSONArray()
 		).put(
@@ -89,12 +91,14 @@ public class IntegrationsDisplayContext {
 				null, null, null),
 			new FDSActionDropdownItem(
 				null, null, "remove",
-				_language.get(_httpServletRequest, "remove"), null, null,
-				null));
-	}
-
-	private String _getIntegrationsURL() {
-		return _themeDisplay.getPathContext() + "/o/seo-studio/integrations";
+				_language.get(_httpServletRequest, "remove"), null, null, null),
+			new FDSActionDropdownItem(
+				null, null, "validate-connection",
+				_language.get(_httpServletRequest, "validate-connection"), null,
+				null, null,
+				HashMapBuilder.<String, Object>put(
+					"stateKey", "unavailable"
+				).build()));
 	}
 
 	private JSONArray _getIntegrationTypesJSONArray() throws Exception {
@@ -106,17 +110,25 @@ public class IntegrationsDisplayContext {
 
 		return JSONUtil.toJSONArray(
 			_seoStudioIntegrationTypeListTypeEntries,
-			listTypeEntry -> JSONUtil.put(
-				"configurationURL",
-				_configurationURLsMap.getOrDefault(
-					listTypeEntry.getKey(), StringPool.BLANK)
-			).put(
-				"disabled", configuredKeys.contains(listTypeEntry.getKey())
-			).put(
-				"id", listTypeEntry.getKey()
-			).put(
-				"name", listTypeEntry.getName(_themeDisplay.getLocale())
-			));
+			listTypeEntry -> {
+				String key = listTypeEntry.getKey();
+
+				String configurationURL = _configurationURLsMap.get(key);
+
+				if (configurationURL == null) {
+					return null;
+				}
+
+				return JSONUtil.put(
+					"configurationURL", configurationURL
+				).put(
+					"disabled", configuredKeys.contains(key)
+				).put(
+					"id", key
+				).put(
+					"name", listTypeEntry.getName(_themeDisplay.getLocale())
+				);
+			});
 	}
 
 	private JSONArray _getItemsJSONArray() throws Exception {
@@ -147,12 +159,20 @@ public class IntegrationsDisplayContext {
 				).put(
 					"name", listTypeEntry.getName(_themeDisplay.getLocale())
 				).put(
+					"seoStudioInstanceId",
+					_getPropertyValue(
+						objectEntry,
+						"r_seoStudioInstanceToSEOStudioIntegrations_" +
+							"seoStudioInstanceId")
+				).put(
 					"state",
 					JSONUtil.put(
 						"key", state
 					).put(
 						"name", _language.get(_httpServletRequest, state)
 					)
+				).put(
+					"stateKey", state
 				);
 			});
 	}
@@ -166,13 +186,17 @@ public class IntegrationsDisplayContext {
 
 		Object value = properties.get(key);
 
+		if (value == null) {
+			return null;
+		}
+
 		if (value instanceof ListEntry) {
 			ListEntry listEntry = (ListEntry)value;
 
 			return listEntry.getKey();
 		}
 
-		return (String)value;
+		return value.toString();
 	}
 
 	private final Map<String, String> _configurationURLsMap;

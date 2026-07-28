@@ -67,15 +67,13 @@ public class GenerateReportsControllerBuildRunner
 
 		for (String reportName : reportNames) {
 			if (reportName.startsWith("Flaky Test")) {
-				Map<String, String> invocationParameters = new HashMap<>();
+				_invoke(jenkinsGitHubURL, reportName, "slave");
 
-				invocationParameters.put(
-					"JENKINS_GITHUB_URL", jenkinsGitHubURL);
+				continue;
+			}
 
-				invocationParameters.put("REPORT_NAMES", reportName);
-				invocationParameters.put("SLAVE_LABEL", "slave");
-
-				_invoke(invocationParameters);
+			if (reportName.equals("Spot Interruption")) {
+				_invoke(jenkinsGitHubURL, reportName, "slave-pco");
 
 				continue;
 			}
@@ -84,14 +82,8 @@ public class GenerateReportsControllerBuildRunner
 		}
 
 		if (!groupedReportNames.isEmpty()) {
-			Map<String, String> invocationParameters = new HashMap<>();
-
-			invocationParameters.put("JENKINS_GITHUB_URL", jenkinsGitHubURL);
-
-			invocationParameters.put(
-				"REPORT_NAMES", String.join(",", groupedReportNames));
-
-			_invoke(invocationParameters);
+			_invoke(
+				jenkinsGitHubURL, String.join(",", groupedReportNames), null);
 		}
 
 		_updateBuildDescription(reportNames);
@@ -249,10 +241,11 @@ public class GenerateReportsControllerBuildRunner
 
 		StringBuilder sb = new StringBuilder();
 
-		String jenkinsMasterName = buildProperties.getProperty(
-			"report.generate.reports.jenkins.master");
-
-		String jobURL = "http://" + jenkinsMasterName + "/job/generate-reports";
+		String jobURL = JenkinsResultsParserUtil.combine(
+			JenkinsResultsParserUtil.getMostAvailableMasterURL(
+				"http://" + buildData.getCohortName() + ".liferay.com", null, 1,
+				"generate-reports"),
+			"/job/generate-reports");
 
 		sb.append(jobURL);
 
@@ -290,6 +283,18 @@ public class GenerateReportsControllerBuildRunner
 
 			ioException.printStackTrace();
 		}
+	}
+
+	private void _invoke(
+		String jenkinsGitHubURL, String reportNames, String slaveLabel) {
+
+		Map<String, String> invocationParameters = new HashMap<>();
+
+		invocationParameters.put("JENKINS_GITHUB_URL", jenkinsGitHubURL);
+		invocationParameters.put("REPORT_NAMES", reportNames);
+		invocationParameters.put("SLAVE_LABEL", slaveLabel);
+
+		_invoke(invocationParameters);
 	}
 
 	private void _updateBuildDescription(List<String> reportNames) {

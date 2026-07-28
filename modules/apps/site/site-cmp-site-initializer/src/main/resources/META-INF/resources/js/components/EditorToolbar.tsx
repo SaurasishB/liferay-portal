@@ -6,7 +6,7 @@
 import ClayButton from '@clayui/button';
 import {ClayInput} from '@clayui/form';
 import ClayLink from '@clayui/link';
-import {AIAssistantChat} from '@liferay/ai-hub-cell-js-components-web';
+import {AIAssistantTriggerButton} from '@liferay/ai-hub-cell-js-components-web';
 import {isCtrlOrMeta} from '@liferay/layout-js-components-web';
 import {Toolbar} from '@liferay/site-cms-site-initializer';
 import {sessionStorage, sub} from 'frontend-js-web';
@@ -15,11 +15,15 @@ import React, {useEffect, useId, useState} from 'react';
 export default function EditorToolbar({
 	backURL,
 	formSubmitURL,
+	groupId,
+	hasUpdatePermission,
 	isNew,
 	title,
 }: {
 	backURL: string;
 	formSubmitURL?: string;
+	groupId: number;
+	hasUpdatePermission: boolean;
 	isNew: boolean;
 	title: string;
 }) {
@@ -60,7 +64,7 @@ export default function EditorToolbar({
 					event.preventDefault();
 				}
 
-				if (isShortcut) {
+				if (isShortcut && hasUpdatePermission) {
 					(form as HTMLFormElement).submit();
 				}
 			};
@@ -70,7 +74,7 @@ export default function EditorToolbar({
 			return () =>
 				window.removeEventListener('keydown', handlePublishShortcut);
 		}
-	}, []);
+	}, [hasUpdatePermission]);
 
 	return (
 		<Toolbar
@@ -81,10 +85,12 @@ export default function EditorToolbar({
 			{Liferay.FeatureFlags['LPD-62272'] && (
 				<>
 					<Toolbar.Item>
-						<AIAssistantChat
-							hideTriggerLabel
+						<AIAssistantTriggerButton
+							context={{groupId}}
+							hideLabel
 							instructionDefinitionScope="cms"
-							triggerRound
+							presentation="dropdown"
+							round
 						/>
 					</Toolbar.Item>
 
@@ -110,6 +116,7 @@ export default function EditorToolbar({
 					aria-labelledby={submitLabelId}
 					data-title={submitTitle}
 					data-title-set-as-html
+					disabled={!hasUpdatePermission}
 					form={formId}
 					onClick={() => {
 						const form = getForm();

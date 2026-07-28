@@ -20,18 +20,22 @@ import './ContentGapMatrix.scss';
 
 interface ContentGapMatrixCardProps {
 	assetFDSId: string;
+	cmpProjectObjectEntryId: string;
+	cmpProjectObjectEntryTitle: string;
 	editProjectURL?: string;
+	groupId: number;
 	hasFunnelStagesOrPersonas: boolean;
-	projectId: string;
 }
 
 const contentCoverageService = ContentCoverageServiceImpl;
 
 export default function ContentGapMatrixCard({
 	assetFDSId,
+	cmpProjectObjectEntryId,
+	cmpProjectObjectEntryTitle,
 	editProjectURL,
+	groupId,
 	hasFunnelStagesOrPersonas,
-	projectId,
 }: ContentGapMatrixCardProps) {
 	const [data, setData] = useState<MatrixData | null>(null);
 	const [error, setError] = useState(false);
@@ -42,7 +46,9 @@ export default function ContentGapMatrixCard({
 		setLoading(true);
 
 		try {
-			setData(await contentCoverageService.getMatrix(projectId));
+			setData(
+				await contentCoverageService.getMatrix(cmpProjectObjectEntryId)
+			);
 		}
 		catch {
 			setError(true);
@@ -50,7 +56,7 @@ export default function ContentGapMatrixCard({
 		finally {
 			setLoading(false);
 		}
-	}, [projectId]);
+	}, [cmpProjectObjectEntryId]);
 
 	useEffect(() => {
 		if (hasFunnelStagesOrPersonas) {
@@ -73,7 +79,11 @@ export default function ContentGapMatrixCard({
 	if (!hasFunnelStagesOrPersonas) {
 		return (
 			<div className="lfr-cmp__content-gap-matrix-card">
-				<ContentGapMatrixHeader />
+				<ContentGapMatrixHeader
+					cmpProjectObjectEntryId={cmpProjectObjectEntryId}
+					cmpProjectObjectEntryTitle={cmpProjectObjectEntryTitle}
+					groupId={groupId}
+				/>
 
 				<div className="lfr-cmp__content-gap-matrix-container">
 					<div className="empty-state">
@@ -86,21 +96,21 @@ export default function ContentGapMatrixCard({
 								'no-personas-or-funnel-stages-configured'
 							)}
 						>
-							<ClayButton
-								displayType="secondary"
-								onClick={() => {
-									if (editProjectURL) {
+							{editProjectURL && (
+								<ClayButton
+									displayType="secondary"
+									onClick={() => {
 										navigate(editProjectURL);
-									}
-								}}
-							>
-								{Liferay.Language.get('edit-project')}
+									}}
+								>
+									{Liferay.Language.get('edit-project')}
 
-								<ClayIcon
-									className="c-ml-2"
-									symbol="shortcut"
-								/>
-							</ClayButton>
+									<ClayIcon
+										className="c-ml-2"
+										symbol="shortcut"
+									/>
+								</ClayButton>
+							)}
 						</ClayEmptyState>
 					</div>
 				</div>
@@ -121,7 +131,11 @@ export default function ContentGapMatrixCard({
 	if (error || !data) {
 		return (
 			<div className="lfr-cmp__content-gap-matrix-card">
-				<ContentGapMatrixHeader />
+				<ContentGapMatrixHeader
+					cmpProjectObjectEntryId={cmpProjectObjectEntryId}
+					cmpProjectObjectEntryTitle={cmpProjectObjectEntryTitle}
+					groupId={groupId}
+				/>
 
 				<div className="lfr-cmp__content-gap-matrix-container">
 					<div className="empty-state">
@@ -136,7 +150,12 @@ export default function ContentGapMatrixCard({
 
 	return (
 		<div className="lfr-cmp__content-gap-matrix-card">
-			<ContentGapMatrixHeader data={data} />
+			<ContentGapMatrixHeader
+				cmpProjectObjectEntryId={cmpProjectObjectEntryId}
+				cmpProjectObjectEntryTitle={cmpProjectObjectEntryTitle}
+				data={data}
+				groupId={groupId}
+			/>
 
 			<div className="lfr-cmp__content-gap-matrix-container">
 				<div className="lfr-cmp__content-gap-matrix-intro">

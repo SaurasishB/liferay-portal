@@ -16,11 +16,31 @@ import {MetricValue} from '../../common/MetricValue';
 
 import './InteractiveCard.scss';
 
-export type MetricColor = 'green' | 'info' | 'orange' | 'purple';
+export type MetricColor =
+	| 'dark'
+	| 'green'
+	| 'orange'
+	| 'pink'
+	| 'purple'
+	| 'red';
+
+const STICKER_DISPLAY_TYPES: Record<
+	MetricColor,
+	React.ComponentProps<typeof ClaySticker>['displayType']
+> = {
+	dark: 'outline-0',
+	green: 'outline-3',
+	orange: 'outline-5',
+	pink: 'outline-8',
+	purple: 'outline-1',
+	red: 'outline-4',
+};
 
 type Props = {
 	active?: boolean;
 	color: MetricColor;
+	description?: string;
+	hoverContent?: React.ReactNode;
 	icon: string;
 	loading?: boolean;
 	onClick?: () => void;
@@ -35,6 +55,8 @@ type Props = {
 export default function InteractiveCard({
 	active = false,
 	color,
+	description,
+	hoverContent,
 	icon,
 	loading = false,
 	onClick,
@@ -59,34 +81,41 @@ export default function InteractiveCard({
 				</div>
 
 				<ClaySticker
-					className={classNames(
-						'cms-dashboard__interactive-card__sticker flex-shrink-0 rounded',
-						`cms-dashboard__interactive-card__sticker--${color}`
-					)}
-					displayType="unstyled"
-					size="lg"
+					borderless
+					className="flex-shrink-0"
+					displayType={STICKER_DISPLAY_TYPES[color]}
 				>
 					<ClayIcon symbol={icon} />
 				</ClaySticker>
 			</div>
 
-			<div className="d-flex flex-column justify-content-center mt-3">
-				{loading ? (
-					<ClayLoadingIndicator
-						displayType="secondary"
-						shape="squares"
-						size="sm"
-					/>
-				) : (
-					trend && (
-						<MetricValue
-							textWeight="bold"
-							trend={trend}
-							value={value}
-							valueClassName="text-lowercase"
-						/>
-					)
-				)}
+			{description ? (
+				<Text color="secondary" size={3}>
+					{description}
+				</Text>
+			) : null}
+
+			<div className="mt-2 position-relative">
+				<div className="cms-dashboard__interactive-card__metric d-flex flex-column justify-content-center">
+					{loading ? (
+						<ClayLoadingIndicator size="sm" />
+					) : (
+						trend && (
+							<MetricValue
+								textWeight="bold"
+								trend={trend}
+								value={value}
+								valueClassName="text-lowercase"
+							/>
+						)
+					)}
+				</div>
+
+				{hoverContent ? (
+					<div className="cms-dashboard__interactive-card__hover-content position-absolute">
+						{hoverContent}
+					</div>
+				) : null}
 			</div>
 		</ClayButton>
 	);

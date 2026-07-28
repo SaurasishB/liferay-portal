@@ -3,7 +3,12 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-export {default as AIAssistantChat} from './AIAssistantChat/AIAssistantChat';
+export {default as AIAssistant} from './AIAssistantChat/AIAssistant';
+export type {
+	AIAssistantOpenCommand,
+	AIAssistantPresentation,
+} from './AIAssistantChat/AIAssistant';
+export {default as AIAssistantTriggerButton} from './AIAssistantChat/AIAssistantTriggerButton';
 export type {ChatContext} from './AIAssistantChat/api';
 export {default as CategorizationSuggestions} from './Categorization/components/CategorizationSuggestions';
 export {CATEGORIZE_EVENT, COMMIT_EVENT} from './Categorization/events';
@@ -28,3 +33,4 @@ export type {
 	ReportFeedbackSurface,
 } from './ReportFeedback/api';
 export {default as WritingAssistant} from './WritingAssistant/WritingAssistant';
+export {default as renderAIAssistantTrigger} from './renderAIAssistantTrigger';
