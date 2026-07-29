@@ -2469,6 +2469,16 @@ public class JenkinsResultsParserUtil {
 		Properties buildProperties, int minimumRAM, int maximumSlavesPerHost,
 		String cohortName, String networkName) {
 
+		return getJenkinsMasters(
+			buildProperties, cohortName, false, maximumSlavesPerHost,
+			minimumRAM, networkName);
+	}
+
+	public static List<JenkinsMaster> getJenkinsMasters(
+		Properties buildProperties, String cohortName,
+		boolean includeBlacklistedJenkinsMasters, int maximumSlavesPerHost,
+		int minimumRAM, String networkName) {
+
 		List<JenkinsMaster> jenkinsMasters = new ArrayList<>();
 
 		Pattern pattern = Pattern.compile(
@@ -2485,7 +2495,8 @@ public class JenkinsResultsParserUtil {
 			JenkinsMaster jenkinsMaster = JenkinsMaster.getInstance(
 				matcher.group("jenkinsMasterName"));
 
-			if (jenkinsMaster.isBlackListed() ||
+			if ((!includeBlacklistedJenkinsMasters &&
+				 jenkinsMaster.isBlacklisted()) ||
 				(jenkinsMaster.getSlaveRAM() < minimumRAM) ||
 				(jenkinsMaster.getSlavesPerHost() > maximumSlavesPerHost)) {
 
@@ -2654,7 +2665,7 @@ public class JenkinsResultsParserUtil {
 	public static int getJobTimeoutMinutes(
 		JenkinsMaster jenkinsMaster, String jobName) {
 
-		if (jenkinsMaster.isBlackListed()) {
+		if (jenkinsMaster.isBlacklisted()) {
 			jenkinsMaster = JenkinsMaster.getInstance(
 				Environment.get("MASTER_HOSTNAME"));
 		}
@@ -4343,7 +4354,7 @@ public class JenkinsResultsParserUtil {
 				jenkinsCohort.getJenkinsMasters()) {
 
 			if (!availableJenkinsMaster.isAvailable() ||
-				availableJenkinsMaster.isBlackListed()) {
+				availableJenkinsMaster.isBlacklisted()) {
 
 				continue;
 			}
