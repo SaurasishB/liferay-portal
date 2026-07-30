@@ -24,6 +24,7 @@ import com.liferay.portal.kernel.service.AddressLocalService;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
 
@@ -88,6 +89,42 @@ public class VIESAccountEntryValidatorTest {
 	}
 
 	@Test
+	public void testDoValidate() throws Exception {
+		Assert.assertNull(_viesAccountEntryValidator.doValidate(null, null));
+
+		long billingAddressId = RandomTestUtil.randomLong();
+		long commerceOrderId = RandomTestUtil.randomLong();
+
+		AccountEntryValidatorResult accountEntryValidatorResult =
+			_viesAccountEntryValidator.doValidate(
+				null,
+				JSONUtil.put(
+					"billingAddressId", billingAddressId
+				).put(
+					"commerceOrderId", commerceOrderId
+				));
+
+		Assert.assertNull(accountEntryValidatorResult.getClassPK());
+		Assert.assertEquals(
+			"vies-missing-account-error",
+			accountEntryValidatorResult.getResultMessage());
+		Assert.assertEquals(
+			AccountEntryValidatorConstants.RESULT_FAILURE,
+			accountEntryValidatorResult.getResultStatus());
+		Assert.assertFalse(accountEntryValidatorResult.isValid());
+
+		JSONObject additionalPropsJSONObject =
+			accountEntryValidatorResult.getAdditionalProps();
+
+		Assert.assertEquals(
+			billingAddressId,
+			additionalPropsJSONObject.getLong("billingAddressId"));
+		Assert.assertEquals(
+			commerceOrderId,
+			additionalPropsJSONObject.getLong("commerceOrderId"));
+	}
+
+	@Test
 	public void testGetAccountEntryValidatorConfiguration() throws Exception {
 		long companyId = RandomTestUtil.randomLong();
 
@@ -143,6 +180,17 @@ public class VIESAccountEntryValidatorTest {
 	}
 
 	@Test
+	public void testGetResultMessages() {
+		Assert.assertEquals(
+			SetUtil.fromArray(
+				"account-validation-failed", "the-account-is-missing-a-tax-id",
+				"vies-invalid-billing-address-error",
+				"vies-invalid-input-error", "vies-missing-account-error",
+				"vies-unexpected-error", "vies-vat-blocked-error"),
+			_viesAccountEntryValidator.getResultMessages());
+	}
+
+	@Test
 	public void testValidate() throws Exception {
 		try (MockedStatic<ConfigurationProviderUtil>
 				configurationProviderUtilMockedStatic = Mockito.mockStatic(
@@ -176,7 +224,8 @@ public class VIESAccountEntryValidatorTest {
 			long billingAddressId = RandomTestUtil.randomLong();
 			String countryA2 = RandomTestUtil.randomString();
 
-			_mockAddress(billingAddressId, countryA2);
+			_mockAddress(
+				billingAddressId, AccountEntry.class.getName(), 0, countryA2);
 
 			_mockVIESAccountEntryValidatorConfiguration(
 				new String[] {RandomTestUtil.randomString()}, true);
@@ -215,6 +264,47 @@ public class VIESAccountEntryValidatorTest {
 			AccountEntryValidatorResult accountEntryValidatorResult = _validate(
 				billingAddressId, RandomTestUtil.randomLong(), null);
 
+			Assert.assertEquals(
+				"the-account-is-missing-a-tax-id",
+				accountEntryValidatorResult.getResultMessage());
+			Assert.assertEquals(
+				AccountEntryValidatorConstants.RESULT_FAILURE,
+				accountEntryValidatorResult.getResultStatus());
+			Assert.assertFalse(accountEntryValidatorResult.isValid());
+
+			long invalidBillingAddressId = RandomTestUtil.randomLong();
+
+			_mockAddress(
+				invalidBillingAddressId, AccountEntry.class.getName(),
+				RandomTestUtil.randomLong(), countryA2);
+
+			accountEntryValidatorResult = _validate(
+				invalidBillingAddressId, RandomTestUtil.randomLong(),
+				RandomTestUtil.randomString());
+
+			Assert.assertEquals(
+				"vies-invalid-billing-address-error",
+				accountEntryValidatorResult.getResultMessage());
+			Assert.assertEquals(
+				AccountEntryValidatorConstants.RESULT_FAILURE,
+				accountEntryValidatorResult.getResultStatus());
+			Assert.assertFalse(accountEntryValidatorResult.isValid());
+
+			long commerceOrderBillingAddressId = RandomTestUtil.randomLong();
+			long commerceOrderId = RandomTestUtil.randomLong();
+
+			_mockAddress(
+				commerceOrderBillingAddressId,
+				"com.liferay.commerce.model.CommerceOrder", commerceOrderId,
+				countryA2);
+
+			accountEntryValidatorResult = _validate(
+				commerceOrderBillingAddressId, RandomTestUtil.randomLong(),
+				RandomTestUtil.randomLong(), RandomTestUtil.randomString());
+
+			Assert.assertEquals(
+				"vies-invalid-billing-address-error",
+				accountEntryValidatorResult.getResultMessage());
 			Assert.assertEquals(
 				AccountEntryValidatorConstants.RESULT_FAILURE,
 				accountEntryValidatorResult.getResultStatus());
@@ -330,6 +420,38 @@ public class VIESAccountEntryValidatorTest {
 				AccountEntryValidatorConstants.RESULT_SUCCESS,
 				accountEntryValidatorResult.getResultStatus());
 			Assert.assertTrue(accountEntryValidatorResult.isValid());
+
+			accountEntryValidatorResult = _validate(
+				commerceOrderBillingAddressId, commerceOrderId,
+				RandomTestUtil.randomLong(), validVatNumber);
+
+			Assert.assertEquals(
+				AccountEntryValidatorConstants.RESULT_SUCCESS,
+				accountEntryValidatorResult.getResultStatus());
+			Assert.assertTrue(accountEntryValidatorResult.isValid());
+
+			JSONObject additionalPropsJSONObject =
+				accountEntryValidatorResult.getAdditionalProps();
+
+			Assert.assertEquals(
+				commerceOrderBillingAddressId,
+				additionalPropsJSONObject.getLong("billingAddressId"));
+			Assert.assertEquals(
+				commerceOrderId,
+				additionalPropsJSONObject.getLong("commerceOrderId"));
+
+			JSONObject requestJSONObject =
+				additionalPropsJSONObject.getJSONObject("request");
+
+			Assert.assertEquals(
+				countryA2, requestJSONObject.getString("countryCode"));
+			Assert.assertEquals(
+				validVatNumber, requestJSONObject.getString("vatNumber"));
+
+			JSONObject responseJSONObject =
+				additionalPropsJSONObject.getJSONObject("response");
+
+			Assert.assertTrue(responseJSONObject.getBoolean("valid"));
 		}
 	}
 
@@ -357,7 +479,9 @@ public class VIESAccountEntryValidatorTest {
 		return accountEntry;
 	}
 
-	private void _mockAddress(long addressId, String countryA2) {
+	private void _mockAddress(
+		long addressId, String className, long classPK, String countryA2) {
+
 		Country country = Mockito.mock(Country.class);
 
 		Mockito.when(
@@ -371,7 +495,13 @@ public class VIESAccountEntryValidatorTest {
 		Mockito.when(
 			address.getClassName()
 		).thenReturn(
-			AccountEntry.class.getName()
+			className
+		);
+
+		Mockito.when(
+			address.getClassPK()
+		).thenReturn(
+			classPK
 		);
 
 		Mockito.when(
@@ -459,7 +589,8 @@ public class VIESAccountEntryValidatorTest {
 	}
 
 	private AccountEntryValidatorResult _validate(
-			long billingAddressId, long companyId, String taxIdNumber)
+			long billingAddressId, long commerceOrderId, long companyId,
+			String taxIdNumber)
 		throws Exception {
 
 		AccountEntry accountEntry = _mockAccountEntry(
@@ -478,7 +609,19 @@ public class VIESAccountEntryValidatorTest {
 		);
 
 		return _viesAccountEntryValidator.validate(
-			accountEntry, JSONUtil.put("billingAddressId", billingAddressId));
+			accountEntry,
+			JSONUtil.put(
+				"billingAddressId", billingAddressId
+			).put(
+				"commerceOrderId", commerceOrderId
+			));
+	}
+
+	private AccountEntryValidatorResult _validate(
+			long billingAddressId, long companyId, String taxIdNumber)
+		throws Exception {
+
+		return _validate(billingAddressId, 0, companyId, taxIdNumber);
 	}
 
 	private static final int _PORT = 4252;

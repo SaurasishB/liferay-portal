@@ -5959,8 +5959,18 @@ public class JenkinsResultsParserUtil {
 					String.valueOf(_tokenURL)));
 		}
 
+		public synchronized void invalidateToken(String authorization) {
+			if ((authorization == null) ||
+				!authorization.equals(_tokenType + " " + _token)) {
+
+				return;
+			}
+
+			_tokenExpirationDate = null;
+		}
+
 		@Override
-		public String toString() {
+		public synchronized String toString() {
 			_refreshToken();
 
 			return _tokenType + " " + _token;
@@ -5978,7 +5988,7 @@ public class JenkinsResultsParserUtil {
 			return string.substring(0, 10) + "...";
 		}
 
-		private void _refreshToken() {
+		private synchronized void _refreshToken() {
 			Date currentDate = new Date();
 
 			if ((_tokenExpirationDate != null) &&

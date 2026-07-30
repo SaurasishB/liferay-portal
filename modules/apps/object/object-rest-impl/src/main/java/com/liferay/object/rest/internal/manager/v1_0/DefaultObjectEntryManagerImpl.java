@@ -2640,6 +2640,29 @@ public class DefaultObjectEntryManagerImpl
 			actions = HashMapBuilder.create(
 				actions
 			).<String, Map<String, String>>put(
+				"addToLaunch",
+				() -> {
+					if (!FeatureFlagManagerUtil.isEnabled(
+							serviceBuilderObjectEntry.getCompanyId(),
+							"LPD-17564") ||
+						!FeatureFlagManagerUtil.isEnabled(
+							serviceBuilderObjectEntry.getCompanyId(),
+							"LPD-72278") ||
+						!objectEntryVersion.isApproved()) {
+
+						return null;
+					}
+
+					return _addAction(
+						ActionKeys.UPDATE,
+						new String[] {
+							"getByExternalReferenceCodeByVersion",
+							"getScopeScopeKeyByExternalReferenceCodeByVersion"
+						},
+						objectDefinition, serviceBuilderObjectEntry,
+						templateParameterMap, dtoConverterContext.getUriInfo());
+				}
+			).put(
 				"copy",
 				() -> {
 					if (!FeatureFlagManagerUtil.isEnabled(
@@ -3534,6 +3557,25 @@ public class DefaultObjectEntryManagerImpl
 			actions = HashMapBuilder.create(
 				actions
 			).<String, Map<String, String>>put(
+				"addToLaunch",
+				() -> {
+					if (!FeatureFlagManagerUtil.isEnabled(
+							serviceBuilderObjectEntry.getCompanyId(),
+							"LPD-17564") ||
+						!FeatureFlagManagerUtil.isEnabled(
+							serviceBuilderObjectEntry.getCompanyId(),
+							"LPD-72278") ||
+						!serviceBuilderObjectEntry.isDraft()) {
+
+						return null;
+					}
+
+					return _addAction(
+						ActionKeys.UPDATE, "getObjectEntry",
+						serviceBuilderObjectEntry,
+						dtoConverterContext.getUriInfo());
+				}
+			).put(
 				"copy",
 				() -> {
 					if (!FeatureFlagManagerUtil.isEnabled(
@@ -3846,6 +3888,24 @@ public class DefaultObjectEntryManagerImpl
 					properties);
 			}
 
+			if (objectField.isLocalized()) {
+				ObjectFieldBusinessType objectFieldBusinessType =
+					_objectFieldBusinessTypeRegistry.getObjectFieldBusinessType(
+						objectField.getBusinessType());
+
+				Map<String, Object> localizedValues =
+					objectFieldBusinessType.getLocalizedValues(
+						objectField, serviceContext.getUserId(), properties);
+
+				if (localizedValues != null) {
+					values.put(
+						objectField.getI18nObjectFieldName(),
+						(Serializable)localizedValues);
+
+					continue;
+				}
+			}
+
 			Object value = ObjectEntryValuesUtil.getValue(
 				getGroupId(objectDefinition, scopeKey),
 				_objectDefinitionLocalService, objectEntryLocalService,
@@ -3865,20 +3925,7 @@ public class DefaultObjectEntryManagerImpl
 			}
 
 			if (objectField.isLocalized()) {
-				ObjectFieldBusinessType objectFieldBusinessType =
-					_objectFieldBusinessTypeRegistry.getObjectFieldBusinessType(
-						objectField.getBusinessType());
-
-				Map<String, Object> localizedValues =
-					objectFieldBusinessType.getLocalizedValues(
-						objectField, serviceContext.getUserId(), properties);
-
-				if (localizedValues != null) {
-					values.put(
-						objectField.getI18nObjectFieldName(),
-						(Serializable)localizedValues);
-				}
-				else if (value != null) {
+				if (value != null) {
 					String defaultLanguageId =
 						objectEntry.getDefaultLanguageId();
 

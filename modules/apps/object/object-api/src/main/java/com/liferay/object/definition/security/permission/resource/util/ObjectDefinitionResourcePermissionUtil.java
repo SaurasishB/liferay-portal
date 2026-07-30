@@ -13,6 +13,7 @@ import com.liferay.object.model.ObjectAction;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectField;
 import com.liferay.object.service.ObjectActionLocalService;
+import com.liferay.object.service.ObjectDefinitionLocalServiceUtil;
 import com.liferay.object.service.ObjectFieldLocalService;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringBundler;
@@ -34,8 +35,10 @@ import com.liferay.portal.kernel.service.ResourcePermissionLocalServiceUtil;
 import com.liferay.portal.kernel.service.RoleLocalServiceUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.permission.ModelPermissions;
+import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.xml.Document;
 import com.liferay.portal.kernel.xml.SAXReaderUtil;
 
@@ -44,6 +47,7 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -66,6 +70,8 @@ public class ObjectDefinitionResourcePermissionUtil {
 
 		try (SafeCloseable safeCloseable = CompanyThreadLocal.lock(
 				objectDefinition.getCompanyId())) {
+
+			_removeModelResources(objectDefinition, resourceActions);
 
 			resourceActions.populateModelResources(document);
 
@@ -316,6 +322,49 @@ public class ObjectDefinitionResourcePermissionUtil {
 					objectDefinition.getPortletId(),
 					objectDefinition.getResourceName()
 				}));
+	}
+
+	private static void _removeModelResources(
+		ObjectDefinition objectDefinition, ResourceActions resourceActions) {
+
+		String resourceName = resourceActions.getPortletRootModelResource(
+			objectDefinition.getPortletId());
+
+		if (Validator.isNull(resourceName) ||
+			Objects.equals(resourceName, objectDefinition.getResourceName())) {
+
+			return;
+		}
+
+		long objectDefinitionId = GetterUtil.getLong(
+			StringUtil.extractLast(resourceName, StringPool.POUND));
+
+		if (objectDefinitionId <= 0) {
+			return;
+		}
+
+		ObjectDefinition originalObjectDefinition =
+			ObjectDefinitionLocalServiceUtil.fetchObjectDefinition(
+				objectDefinitionId);
+
+		if (originalObjectDefinition != null) {
+			return;
+		}
+
+		Serializable key = objectDefinitionId;
+
+		if (PropsValues.DATABASE_PARTITION_ENABLED) {
+			key =
+				objectDefinitionId + StringPool.AT +
+					objectDefinition.getCompanyId();
+		}
+
+		Document document = _objectDefinitionResourceActionDocumentsMap.remove(
+			key);
+
+		if (document != null) {
+			resourceActions.removeModelResources(document);
+		}
 	}
 
 	private static final Map<Serializable, Document>

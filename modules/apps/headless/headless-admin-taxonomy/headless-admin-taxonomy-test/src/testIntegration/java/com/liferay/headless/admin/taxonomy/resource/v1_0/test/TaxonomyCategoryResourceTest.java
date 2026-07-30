@@ -23,6 +23,8 @@ import com.liferay.depot.model.DepotEntry;
 import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.exportimport.test.rule.LazyReferencing;
 import com.liferay.exportimport.test.rule.LazyReferencingTestRule;
+import com.liferay.friendly.url.model.FriendlyURLEntry;
+import com.liferay.friendly.url.service.FriendlyURLEntryLocalService;
 import com.liferay.headless.admin.taxonomy.client.dto.v1_0.AssetType;
 import com.liferay.headless.admin.taxonomy.client.dto.v1_0.ParentTaxonomyCategory;
 import com.liferay.headless.admin.taxonomy.client.dto.v1_0.ParentTaxonomyVocabulary;
@@ -35,6 +37,7 @@ import com.liferay.headless.admin.taxonomy.client.problem.Problem;
 import com.liferay.headless.admin.taxonomy.client.resource.v1_0.TaxonomyCategoryResource;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONObject;
@@ -256,6 +259,7 @@ public class TaxonomyCategoryResourceTest
 	public void testGetTaxonomyCategory() throws Exception {
 		super.testGetTaxonomyCategory();
 
+		_testGetTaxonomyCategoryFriendlyUrlPath();
 		_testGetTaxonomyCategoryTaxonomyCategoryUsageCount();
 		_testGetTaxonomyCategoryWithAssetCategoryProperty();
 	}
@@ -470,6 +474,10 @@ public class TaxonomyCategoryResourceTest
 	public void testPatchTaxonomyCategory() throws Exception {
 		super.testPatchTaxonomyCategory();
 
+		_testPatchTaxonomyCategoryFriendlyUrlPathWithBlankValue();
+		_testPatchTaxonomyCategoryFriendlyUrlPathWithBlankValueInAnotherLanguage();
+		_testPatchTaxonomyCategoryFriendlyUrlPathWithNewValue();
+		_testPatchTaxonomyCategoryFriendlyUrlPathWithPeriodsAndSlashes();
 		_testPatchTaxonomyCategorySystem();
 		_testPatchTaxonomyCategorySystemParent();
 		_testPatchTaxonomyCategoryWithExistingParentTaxonomyCategory(
@@ -952,6 +960,16 @@ public class TaxonomyCategoryResourceTest
 		testGroup = irrelevantGroup;
 	}
 
+	private String _addFriendlyUrlPath(String friendlyUrlPath)
+		throws Exception {
+
+		TaxonomyCategory taxonomyCategory =
+			_addTaxonomyCategoryWithFriendlyUrlPath(
+				friendlyUrlPath, RandomTestUtil.randomString());
+
+		return _getFriendlyUrlPath(taxonomyCategory.getId());
+	}
+
 	private TaxonomyCategory _addSystemTaxonomyCategory() throws Exception {
 		TaxonomyCategory randomTaxonomyCategory = randomTaxonomyCategory();
 
@@ -959,6 +977,20 @@ public class TaxonomyCategoryResourceTest
 
 		return taxonomyCategoryResource.postSiteTaxonomyCategory(
 			testGroup.getGroupId(), randomTaxonomyCategory);
+	}
+
+	private TaxonomyCategory _addTaxonomyCategoryWithFriendlyUrlPath(
+			String friendlyUrlPath, String name)
+		throws Exception {
+
+		TaxonomyCategory randomTaxonomyCategory = randomTaxonomyCategory();
+
+		randomTaxonomyCategory.setFriendlyUrlPath(friendlyUrlPath);
+		randomTaxonomyCategory.setName(name);
+		randomTaxonomyCategory.setSystem(false);
+
+		return taxonomyCategoryResource.postTaxonomyVocabularyTaxonomyCategory(
+			_assetVocabulary.getVocabularyId(), randomTaxonomyCategory);
 	}
 
 	private TaxonomyCategory _addTaxonomyCategoryWithParentAssetVocabulary(
@@ -1007,6 +1039,23 @@ public class TaxonomyCategoryResourceTest
 		Assert.assertEquals(
 			String.valueOf(secondAssetCategory.getCategoryId()),
 			taxonomyCategory.getId());
+	}
+
+	private String _getFriendlyUrlPath(String taxonomyCategoryId)
+		throws Exception {
+
+		TaxonomyCategory taxonomyCategory =
+			taxonomyCategoryResource.getTaxonomyCategory(taxonomyCategoryId);
+
+		return taxonomyCategory.getFriendlyUrlPath();
+	}
+
+	private FriendlyURLEntry _getMainFriendlyURLEntry(String taxonomyCategoryId)
+		throws Exception {
+
+		return _friendlyURLEntryLocalService.getMainFriendlyURLEntry(
+			PortalUtil.getClassNameId(AssetCategory.class),
+			GetterUtil.getLong(taxonomyCategoryId));
 	}
 
 	private TaxonomyCategory _randomAssetLibraryTaxonomyCategory()
@@ -1132,6 +1181,13 @@ public class TaxonomyCategoryResourceTest
 
 		_assetVocabularyLocalService.deleteVocabulary(assetVocabulary1);
 		_assetVocabularyLocalService.deleteVocabulary(assetVocabulary2);
+	}
+
+	private void _testGetTaxonomyCategoryFriendlyUrlPath() throws Exception {
+		Assert.assertEquals(
+			"indoor-sports", _addFriendlyUrlPath("Indoor Sports"));
+		Assert.assertEquals(
+			"indoor-sports-1", _addFriendlyUrlPath("Indoor Sports"));
 	}
 
 	private void _testGetTaxonomyCategoryTaxonomyCategoryUsageCount()
@@ -1427,6 +1483,123 @@ public class TaxonomyCategoryResourceTest
 
 		taxonomyCategoryResource.deleteTaxonomyCategory(
 			taxonomyCategory1.getId());
+	}
+
+	private void _testPatchTaxonomyCategoryFriendlyUrlPathWithBlankValue()
+		throws Exception {
+
+		TaxonomyCategory postTaxonomyCategory =
+			_addTaxonomyCategoryWithFriendlyUrlPath(
+				"winter-sports", "Summer Sports");
+
+		Assert.assertEquals(
+			"winter-sports", _getFriendlyUrlPath(postTaxonomyCategory.getId()));
+
+		taxonomyCategoryResource.patchTaxonomyCategory(
+			postTaxonomyCategory.getId(),
+			new TaxonomyCategory() {
+				{
+					friendlyUrlPath = StringPool.BLANK;
+				}
+			});
+
+		Assert.assertEquals(
+			"summer-sports", _getFriendlyUrlPath(postTaxonomyCategory.getId()));
+	}
+
+	private void _testPatchTaxonomyCategoryFriendlyUrlPathWithBlankValueInAnotherLanguage()
+		throws Exception {
+
+		TaxonomyCategory randomTaxonomyCategory = randomTaxonomyCategory();
+
+		randomTaxonomyCategory.setFriendlyUrlPath("mountain-sports");
+		randomTaxonomyCategory.setFriendlyUrlPath_i18n(
+			HashMapBuilder.put(
+				"es-ES", "deportes-de-montana"
+			).build());
+		randomTaxonomyCategory.setSystem(false);
+
+		TaxonomyCategory postTaxonomyCategory =
+			taxonomyCategoryResource.postTaxonomyVocabularyTaxonomyCategory(
+				_assetVocabulary.getVocabularyId(), randomTaxonomyCategory);
+
+		FriendlyURLEntry friendlyURLEntry = _getMainFriendlyURLEntry(
+			postTaxonomyCategory.getId());
+
+		Assert.assertEquals(
+			"deportes-de-montana", friendlyURLEntry.getUrlTitle("es_ES"));
+
+		taxonomyCategoryResource.patchTaxonomyCategory(
+			postTaxonomyCategory.getId(),
+			new TaxonomyCategory() {
+				{
+					friendlyUrlPath_i18n = HashMapBuilder.put(
+						"es-ES", StringPool.BLANK
+					).build();
+				}
+			});
+
+		friendlyURLEntry = _getMainFriendlyURLEntry(
+			postTaxonomyCategory.getId());
+
+		Assert.assertNull(
+			_friendlyURLEntryLocalService.fetchFriendlyURLEntryLocalization(
+				friendlyURLEntry.getFriendlyURLEntryId(), "es_ES"));
+
+		Assert.assertEquals(
+			"mountain-sports",
+			_getFriendlyUrlPath(postTaxonomyCategory.getId()));
+	}
+
+	private void _testPatchTaxonomyCategoryFriendlyUrlPathWithNewValue()
+		throws Exception {
+
+		TaxonomyCategory postTaxonomyCategory =
+			_addTaxonomyCategoryWithFriendlyUrlPath(
+				"beach-sports", RandomTestUtil.randomString());
+
+		taxonomyCategoryResource.patchTaxonomyCategory(
+			postTaxonomyCategory.getId(),
+			new TaxonomyCategory() {
+				{
+					friendlyUrlPath = "desert-sports";
+				}
+			});
+
+		Assert.assertEquals(
+			"desert-sports", _getFriendlyUrlPath(postTaxonomyCategory.getId()));
+
+		FriendlyURLEntry friendlyURLEntry =
+			_friendlyURLEntryLocalService.fetchFriendlyURLEntry(
+				testGroup.getGroupId(),
+				PortalUtil.getClassNameId(AssetCategory.class), "beach-sports");
+
+		Assert.assertNotNull(friendlyURLEntry);
+		Assert.assertEquals(
+			GetterUtil.getLong(postTaxonomyCategory.getId()),
+			friendlyURLEntry.getClassPK());
+	}
+
+	private void _testPatchTaxonomyCategoryFriendlyUrlPathWithPeriodsAndSlashes()
+		throws Exception {
+
+		TaxonomyCategory postTaxonomyCategory =
+			_addTaxonomyCategoryWithFriendlyUrlPath(
+				"autumn/sports", RandomTestUtil.randomString());
+
+		Assert.assertEquals(
+			"autumn-sports", _getFriendlyUrlPath(postTaxonomyCategory.getId()));
+
+		taxonomyCategoryResource.patchTaxonomyCategory(
+			postTaxonomyCategory.getId(),
+			new TaxonomyCategory() {
+				{
+					friendlyUrlPath = "v1.0 sports";
+				}
+			});
+
+		Assert.assertEquals(
+			"v1-0-sports", _getFriendlyUrlPath(postTaxonomyCategory.getId()));
 	}
 
 	private void _testPatchTaxonomyCategorySystem() throws Exception {
@@ -2134,6 +2307,9 @@ public class TaxonomyCategoryResourceTest
 
 	@Inject
 	private DepotEntryLocalService _depotEntryLocalService;
+
+	@Inject
+	private FriendlyURLEntryLocalService _friendlyURLEntryLocalService;
 
 	private AssetVocabulary _globalAssetVocabulary;
 	private AssetVocabulary _internalAssetVocabulary;

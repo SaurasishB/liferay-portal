@@ -30,6 +30,7 @@ import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.search.Indexer;
 import com.liferay.portal.kernel.search.IndexerRegistryUtil;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.security.permission.ResourceActionsUtil;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ResourceActionLocalService;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
@@ -44,6 +45,8 @@ import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.workflow.kaleo.model.KaleoTaskInstanceToken;
+import com.liferay.portal.workflow.kaleo.service.KaleoTaskInstanceTokenLocalService;
 import com.liferay.site.cmp.site.initializer.internal.util.RoleUtil;
 
 import java.io.Serializable;
@@ -144,9 +147,16 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 	private String[] _getProjectContributorActionIds(
 		ObjectDefinition objectDefinition) {
 
-		if (StringUtil.equals(
-				objectDefinition.getExternalReferenceCode(), "L_CMP_TASK")) {
+		String externalReferenceCode =
+			objectDefinition.getExternalReferenceCode();
 
+		if (StringUtil.equals(externalReferenceCode, "L_CMP_PROJECT_LINK") ||
+			StringUtil.equals(externalReferenceCode, "L_CMP_TASK_LINK")) {
+
+			return new String[] {ActionKeys.DELETE, ActionKeys.VIEW};
+		}
+
+		if (StringUtil.equals(externalReferenceCode, "L_CMP_TASK")) {
 			return new String[] {
 				ActionKeys.ADD_DISCUSSION, ActionKeys.UPDATE, ActionKeys.VIEW
 			};
@@ -155,26 +165,42 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 		return new String[] {ActionKeys.ADD_DISCUSSION, ActionKeys.VIEW};
 	}
 
-	private void _reindexLinkedObjectEntry(
-			ObjectEntry cmpProjectLinkObjectEntry)
+	private void _reindexKaleoTaskInstanceTokens(ObjectEntry objectEntry)
 		throws Exception {
 
-		ObjectDefinition cmpProjectLinkObjectDefinition =
-			cmpProjectLinkObjectEntry.getObjectDefinition();
+		Indexer<KaleoTaskInstanceToken> indexer =
+			IndexerRegistryUtil.nullSafeGetIndexer(
+				KaleoTaskInstanceToken.class);
+
+		for (KaleoTaskInstanceToken kaleoTaskInstanceToken :
+				_kaleoTaskInstanceTokenLocalService.getKaleoTaskInstanceTokens(
+					objectEntry.getModelClassName(),
+					objectEntry.getObjectEntryId())) {
+
+			indexer.reindex(kaleoTaskInstanceToken);
+		}
+	}
+
+	private void _reindexLinkedObjectEntry(ObjectEntry objectEntry)
+		throws Exception {
+
+		ObjectDefinition objectDefinition = objectEntry.getObjectDefinition();
 
 		if (!StringUtil.equals(
-				cmpProjectLinkObjectDefinition.getExternalReferenceCode(),
-				"L_CMP_PROJECT_LINK")) {
+				objectDefinition.getExternalReferenceCode(),
+				"L_CMP_PROJECT_LINK") &&
+			!StringUtil.equals(
+				objectDefinition.getExternalReferenceCode(),
+				"L_CMP_TASK_LINK")) {
 
 			return;
 		}
 
-		Map<String, Serializable> values =
-			cmpProjectLinkObjectEntry.getValues();
+		Map<String, Serializable> values = objectEntry.getValues();
 
 		Group group = _groupLocalService.fetchGroupByExternalReferenceCode(
 			MapUtil.getString(values, "groupExternalReferenceCode"),
-			cmpProjectLinkObjectEntry.getCompanyId());
+			objectEntry.getCompanyId());
 
 		if (group == null) {
 			return;
@@ -182,7 +208,7 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 
 		ObjectDefinition linkedObjectDefinition =
 			_objectDefinitionLocalService.fetchObjectDefinitionByClassName(
-				cmpProjectLinkObjectEntry.getCompanyId(),
+				objectEntry.getCompanyId(),
 				MapUtil.getString(values, "className"));
 
 		if (linkedObjectDefinition == null) {
@@ -203,6 +229,8 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 			linkedObjectDefinition.getClassName());
 
 		indexer.reindex(linkedObjectEntry);
+
+		_reindexKaleoTaskInstanceTokens(linkedObjectEntry);
 	}
 
 	private void _setResourcePermissions(ObjectEntry objectEntry)
@@ -213,17 +241,17 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 				objectEntry.getObjectDefinitionId());
 
 		if (!StringUtil.equals(
-				objectDefinition.getExternalReferenceCode(), "L_CMP_PROJECT") &&
-			!StringUtil.equals(
-				objectDefinition.getExternalReferenceCode(), "L_CMP_TASK")) {
+				objectDefinition.getObjectFolderExternalReferenceCode(),
+				"L_CMP_PROJECT_MANAGEMENT_DEFINITIONS")) {
 
 			return;
 		}
 
 		JSONObject defaultPermissionsJSONObject =
-			_getCMPDefaultPermissionJSONObject(
-				_objectDefinitionLocalService.fetchObjectDefinition(
-					objectEntry.getObjectDefinitionId()));
+			_getCMPDefaultPermissionJSONObject(objectDefinition);
+
+		List<String> resourceActions = ResourceActionsUtil.getResourceActions(
+			objectEntry.getModelClassName());
 
 		for (Role role :
 				TransformUtil.transformToList(
@@ -244,7 +272,8 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 				objectEntry.getCompanyId(), objectEntry.getModelClassName(),
 				ResourceConstants.SCOPE_INDIVIDUAL,
 				String.valueOf(objectEntry.getObjectEntryId()),
-				role.getRoleId(), actionIds);
+				role.getRoleId(),
+				ArrayUtil.filter(actionIds, resourceActions::contains));
 		}
 	}
 
@@ -424,6 +453,10 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 
 	@Reference
 	private GroupLocalService _groupLocalService;
+
+	@Reference
+	private KaleoTaskInstanceTokenLocalService
+		_kaleoTaskInstanceTokenLocalService;
 
 	@Reference
 	private ObjectDefinitionLocalService _objectDefinitionLocalService;

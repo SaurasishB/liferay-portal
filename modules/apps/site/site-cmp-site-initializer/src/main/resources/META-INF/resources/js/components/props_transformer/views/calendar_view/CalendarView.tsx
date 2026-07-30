@@ -499,9 +499,13 @@ export default function CalendarView({
 				}}
 				eventStartEditable={currentView !== 'dayGridDay'}
 				events={events}
+				firstDay={dateUtils.getFirstDayOfWeek(
+					locale as FirstDayOfWeekLocale
+				)}
 				fixedWeekCount={false}
 				headerToolbar={false}
 				initialView="dayGridMonth"
+				locale={locale}
 				moreLinkClassNames={[
 					'btn',
 					'btn-outline-secondary',
@@ -558,7 +562,6 @@ export default function CalendarView({
 				<CalendarMoreLinkPopover
 					alignElement={moreLinkPopover.alignElement}
 					itemsActions={itemsActions}
-					loadData={loadData}
 					onClose={() => setMoreLinkPopover(null)}
 					tasks={moreLinkPopover.tasks}
 				/>

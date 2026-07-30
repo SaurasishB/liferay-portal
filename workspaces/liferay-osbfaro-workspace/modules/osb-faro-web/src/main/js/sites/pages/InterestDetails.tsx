@@ -15,6 +15,7 @@ interface IInterestDetailsProps extends React.HTMLAttributes<HTMLDivElement> {
 const InterestDetailsPage: React.FC<IInterestDetailsProps> = ({router}) => {
 	const {channelId, groupId} = useParams();
 	const rangeSelectors = useQueryRangeSelectors();
+	const {accountId, accountName} = router.query;
 
 	return (
 		<div className="sites-dashboard-interest-details-root">
@@ -26,7 +27,11 @@ const InterestDetailsPage: React.FC<IInterestDetailsProps> = ({router}) => {
 							button
 							displayType="secondary"
 							href={setUriQueryValues(
-								pickBy({...rangeSelectors}),
+								pickBy({
+									accountId,
+									accountName,
+									...rangeSelectors,
+								}),
 
 								toRoute(Routes.SITES_INTERESTS, {
 									channelId,

@@ -1,3 +1,4 @@
+import BasePage from 'shared/components/base-page';
 import PagePathCard from '../PagePathCard';
 import React from 'react';
 import {CHART_COLORS, MAIN_NODE_COLOR, SECONDARY_NODE_COLOR} from '../utils';
@@ -111,6 +112,7 @@ const EMPTY_STATE_DATA = {
 };
 
 const WrapperComponent = ({
+	accountId,
 	data,
 	rangeSelectors = {
 		rangeEnd: '',
@@ -119,6 +121,7 @@ const WrapperComponent = ({
 	},
 	reqOptions = {},
 }: {
+	accountId?: string;
 	data: any;
 	rangeSelectors?: RangeSelectors;
 	reqOptions?: Record<string, unknown>;
@@ -129,12 +132,21 @@ const WrapperComponent = ({
 		]}
 	>
 		<Route path="/workspace/:groupId/:channelId/sites/pages/overview/:touchpoint/:title">
-			<MockedProvider
-				cache={new InMemoryCache({freezeResults: false} as any)}
-				mocks={[mockPagePathReq(data, reqOptions)]}
+			<BasePage.Context.Provider
+				value={{accountId, filters: {}, router: {}}}
 			>
-				<PagePathCard rangeSelectors={rangeSelectors} />
-			</MockedProvider>
+				<MockedProvider
+					cache={new InMemoryCache({freezeResults: false} as any)}
+					mocks={[
+						mockPagePathReq(data, {
+							accountId,
+							...reqOptions,
+						} as any),
+					]}
+				>
+					<PagePathCard rangeSelectors={rangeSelectors} />
+				</MockedProvider>
+			</BasePage.Context.Provider>
 		</Route>
 	</MemoryRouter>
 );
@@ -144,6 +156,16 @@ describe('PagePathCard', () => {
 
 	it('should render', async () => {
 		const {container} = render(<WrapperComponent data={DATA} />);
+
+		await waitForLoadingToBeRemoved(container);
+
+		expect(container).toMatchSnapshot();
+	});
+
+	it('should filter by the selected account', async () => {
+		const {container} = render(
+			<WrapperComponent accountId="100" data={DATA} />
+		);
 
 		await waitForLoadingToBeRemoved(container);
 

@@ -1,15 +1,16 @@
 import * as breadcrumbs from 'shared/util/breadcrumbs';
+import AccountDropdown from 'shared/components/AccountDropdown';
 import BasePage from 'shared/components/base-page';
 import BundleRouter from 'route-middleware/BundleRouter';
 import ClayLink from '@clayui/link';
 import DownloadCSVReport from 'shared/components/download-report/DownloadCSVReport';
 import DownloadPDFReport from 'shared/components/download-report/DownloadPDFReport';
 import ExperienceDropdown from '../components/ExperienceDropdown';
-import FilterBySegment from '../components/FilterBySegment';
 import getCN from 'classnames';
 import Loading from 'shared/components/Loading';
 import React, {lazy, Suspense, useEffect, useState} from 'react';
 import RouteNotFound from 'shared/components/RouteNotFound';
+import SegmentDropdown from '../components/SegmentDropdown';
 import TextTruncate from 'shared/components/TextTruncate';
 import {CSVType} from 'shared/components/download-report/utils';
 import {DropdownRangeKey} from 'shared/components/dropdown-range-key/DropdownRangeKey';
@@ -19,6 +20,7 @@ import {pickBy} from 'lodash';
 import {PropTypes} from 'prop-types';
 import {removeUriQueryParam, setUriQueryValues} from 'shared/util/router';
 import {Switch, useHistory} from 'react-router-dom';
+import {useAccountFilter} from 'shared/hooks/useAccountFilter';
 import {useChannelContext} from 'shared/context/channel';
 import {useDataSources} from 'shared/context/dataSources';
 import {useLDPEnabled} from 'shared/hooks/useLDPEnabled';
@@ -51,6 +53,7 @@ function TouchpointRoutes({className, router}) {
 		title,
 		touchpoint
 	} = router.params;
+	const {accountId, accountName, setAccount} = useAccountFilter();
 	const LDPEnabled = useLDPEnabled({groupId});
 	const NAV_ITEMS = [
 		{
@@ -83,6 +86,16 @@ function TouchpointRoutes({className, router}) {
 	const [selectedSegment, setSelectedSegment] = useState({});
 	const [experienceId, setExperienceId] = useState(experienceIdfromURL);
 	const history = useHistory();
+
+	const accountDropdown = LDPEnabled && (
+		<AccountDropdown
+			assetType='page'
+			className='mr-2'
+			initialAccountId={accountId}
+			initialAccountName={accountName}
+			onFilterChange={setAccount}
+		/>
+	);
 
 	useEffect(() => {
 		setPathRangeSelectors(rangeSelectors);
@@ -127,12 +140,18 @@ function TouchpointRoutes({className, router}) {
 						title,
 						touchpoint
 					}}
-					routeQueries={pickBy({...rangeSelectors})}
+					routeQueries={pickBy({
+						...rangeSelectors,
+						accountId,
+						accountName
+					})}
 				/>
 			</BasePage.Header>
 
 			{matchedRoute === Routes.SITES_TOUCHPOINTS_OVERVIEW && (
 				<BasePage.SubHeader>
+					{accountDropdown}
+
 					{LDPEnabled && (
 						<ExperienceDropdown
 							groupId={groupId}
@@ -194,6 +213,7 @@ function TouchpointRoutes({className, router}) {
 
 			<BasePage.Context.Provider
 				value={{
+					accountId,
 					experienceId,
 					filters: {},
 					rangeSelectors: pathRangeSelectors,
@@ -202,16 +222,20 @@ function TouchpointRoutes({className, router}) {
 			>
 				{matchedRoute === Routes.SITES_TOUCHPOINTS_PATH && (
 					<BasePage.SubHeader>
-						<FilterBySegment
+						{accountDropdown}
+
+						<SegmentDropdown
 							onFilterChange={setSelectedSegment}
 							rangeSelectors={pathRangeSelectors}
 						/>
 
-						<DropdownRangeKey
-							legacy={false}
-							onRangeSelectorChange={setPathRangeSelectors}
-							rangeSelectors={pathRangeSelectors}
-						/>
+						<div className='d-flex justify-content-end w-100'>
+							<DropdownRangeKey
+								legacy={false}
+								onRangeSelectorChange={setPathRangeSelectors}
+								rangeSelectors={pathRangeSelectors}
+							/>
+						</div>
 					</BasePage.SubHeader>
 				)}
 

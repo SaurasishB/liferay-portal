@@ -5,7 +5,7 @@ import BasePage from 'shared/components/base-page';
 import ClayIcon from '@clayui/icon';
 import ClayLink from '@clayui/link';
 import {ClayButtonWithIcon} from '@clayui/button';
-import GlobalFilters from '../components/GlobalFilters';
+import FilterPicker from '../components/FilterPicker';
 import LifecycleChart from 'lifecycle/components/LifecycleChart';
 import Loading from 'shared/components/Loading';
 import NoResultsDisplay from 'shared/components/NoResultsDisplay';
@@ -121,7 +121,7 @@ const ProcessingLifecycleEmptyState = () => (
 		icon={{
 			border: false,
 			size: Sizes.XXXLarge,
-			symbol: 'ac_ready_to_use',
+			symbol: 'ac_no_sites',
 		}}
 		spacer
 		title={Liferay.Language.get('your-dashboard-is-almost-ready')}
@@ -239,6 +239,8 @@ const BaseLifecycle = () => {
 
 	const loading = dataSourcesLoading || lifecyclesLoading;
 
+	const title = lifecycle?.name || Liferay.Language.get('lifecycles');
+
 	const hasContent =
 		!loading &&
 		!noDataSources &&
@@ -320,7 +322,7 @@ const BaseLifecycle = () => {
 
 	return (
 		<LifecycleContextProvider lifecycleId={lifecycleId ?? ''}>
-			<BasePage documentTitle={Liferay.Language.get('lifecycles')}>
+			<BasePage documentTitle={title}>
 				<BasePage.Header
 					breadcrumbs={[
 						breadcrumbs.getHome({
@@ -334,7 +336,7 @@ const BaseLifecycle = () => {
 					<BasePage.Row>
 						<BasePage.Header.TitleSection
 							className="mb-3"
-							title={Liferay.Language.get('lifecycles')}
+							title={title}
 						/>
 
 						{hasLifecycles && authorized && (
@@ -365,7 +367,24 @@ const BaseLifecycle = () => {
 				{hasContent && (
 					<BasePage.SubHeader>
 						<div className="d-flex justify-content-between w-100">
-							<GlobalFilters />
+							<div className="d-flex">
+								<FilterPicker
+									className="mr-3"
+									entityLabel={Liferay.Language.get(
+										'industries'
+									)}
+									fieldMappingFieldName="industry"
+									filterKey="industryFilter"
+								/>
+
+								<FilterPicker
+									entityLabel={Liferay.Language.get(
+										'countries'
+									)}
+									fieldMappingFieldName="country"
+									filterKey="countryFilter"
+								/>
+							</div>
 						</div>
 					</BasePage.SubHeader>
 				)}

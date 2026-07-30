@@ -1,4 +1,5 @@
 import * as breadcrumbs from 'shared/util/breadcrumbs';
+import AccountDropdown from 'shared/components/AccountDropdown';
 import BasePage from 'shared/components/base-page';
 import BundleRouter from 'route-middleware/BundleRouter';
 import DownloadCSVReport from 'shared/components/download-report/DownloadCSVReport';
@@ -14,6 +15,7 @@ import {pickBy} from 'lodash';
 import {Router} from 'shared/types';
 import {sub} from 'shared/util/lang';
 import {Switch} from 'react-router-dom';
+import {useAccountFilter} from 'shared/hooks/useAccountFilter';
 import {useChannelContext} from 'shared/context/channel';
 import {useDataSources} from 'shared/context/dataSources';
 import {useLDPEnabled} from 'shared/hooks/useLDPEnabled';
@@ -75,6 +77,8 @@ const Form: React.FC<{
 
 	const [filters] = useState({});
 
+	const {accountId, accountName, setAccount} = useAccountFilter();
+
 	const dataSourceStates = useDataSources();
 
 	const decodedTitle = getSafeDecodedURIComponent(title);
@@ -119,12 +123,25 @@ const Form: React.FC<{
 						touchpoint,
 						type,
 					}}
-					routeQueries={pickBy(rangeSelectorsFromQuery)}
+					routeQueries={pickBy({
+						...rangeSelectorsFromQuery,
+						accountId,
+						accountName,
+					})}
 				/>
 			</BasePage.Header>
 
 			{getMatchedRoute(NAV_ITEMS) === Routes.ASSETS_FORMS_OVERVIEW && (
 				<BasePage.SubHeader>
+					{LDPEnabled && (
+						<AccountDropdown
+							assetType="form"
+							initialAccountId={accountId}
+							initialAccountName={accountName}
+							onFilterChange={setAccount}
+						/>
+					)}
+
 					<div className="d-flex justify-content-end w-100">
 						<DownloadPDFReport
 							disabled={!!dataSourceStates.empty}
@@ -154,7 +171,13 @@ const Form: React.FC<{
 				</BasePage.SubHeader>
 			)}
 
-			<BasePage.Context.Provider value={{filters, router}}>
+			<BasePage.Context.Provider
+				value={{
+					accountId,
+					filters,
+					router,
+				}}
+			>
 				<BasePage.Body>
 					<Suspense fallback={<Loading />}>
 						<Switch>

@@ -189,6 +189,7 @@ import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.DateFormatFactoryUtil;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.GroupThreadLocal;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.Http;
@@ -17665,18 +17666,14 @@ public class ObjectEntryResourceTest {
 			JSONUtil.put(
 				"externalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			),
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
 				"parentCommentExternalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			));
 
 		String endpoint = _getEndpoint(objectDefinition, groupId);
@@ -17919,32 +17916,28 @@ public class ObjectEntryResourceTest {
 			JSONUtil.put(
 				"externalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			),
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
 				"parentCommentExternalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			),
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			));
 
 		_postObjectEntryWithComments(
 			commentsJSONArray, groupId, false, objectDefinition);
 
 		JSONAssert.assertEquals(
-			commentsJSONArray.toString(),
+			_toExpectedCommentsJSONArray(
+				commentsJSONArray
+			).toString(),
 			_getCommentsJSONArray(
 				groupId, objectDefinition
 			).toString(),
@@ -19627,22 +19620,20 @@ public class ObjectEntryResourceTest {
 			JSONUtil.put(
 				"externalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			),
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
 				"parentCommentExternalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			));
 
 		JSONAssert.assertEquals(
-			commentsJSONArray.toString(),
+			_toExpectedCommentsJSONArray(
+				commentsJSONArray
+			).toString(),
 			_patchPutObjectEntryWithComments(
 				commentsJSONArray, groupId, httpMethod, objectDefinition,
 				objectEntryJSONObject
@@ -19653,29 +19644,25 @@ public class ObjectEntryResourceTest {
 			JSONUtil.put(
 				"externalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			),
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
 				"parentCommentExternalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			),
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			));
 
 		JSONAssert.assertEquals(
-			commentsJSONArray.toString(),
+			_toExpectedCommentsJSONArray(
+				commentsJSONArray
+			).toString(),
 			_patchPutObjectEntryWithComments(
 				commentsJSONArray, groupId, httpMethod, objectDefinition,
 				objectEntryJSONObject
@@ -20812,9 +20799,7 @@ public class ObjectEntryResourceTest {
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			));
 
 		Assert.assertEquals(
@@ -20826,7 +20811,9 @@ public class ObjectEntryResourceTest {
 		_enableComments(objectDefinition);
 
 		JSONAssert.assertEquals(
-			commentsJSONArray.toString(),
+			_toExpectedCommentsJSONArray(
+				commentsJSONArray
+			).toString(),
 			_postObjectEntryWithComments(
 				commentsJSONArray, groupId, true, objectDefinition
 			).toString(),
@@ -20838,22 +20825,20 @@ public class ObjectEntryResourceTest {
 			JSONUtil.put(
 				"externalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			),
 			JSONUtil.put(
 				"externalReferenceCode", RandomTestUtil.randomString()
 			).put(
 				"parentCommentExternalReferenceCode", externalReferenceCode
 			).put(
-				"text",
-				StringBundler.concat(
-					"<p>", RandomTestUtil.randomString(), "</p>")
+				"text", RandomTestUtil.randomString()
 			));
 
 		JSONAssert.assertEquals(
-			commentsJSONArray.toString(),
+			_toExpectedCommentsJSONArray(
+				commentsJSONArray
+			).toString(),
 			_postObjectEntryWithComments(
 				commentsJSONArray, groupId, true, objectDefinition
 			).toString(),
@@ -21068,7 +21053,17 @@ public class ObjectEntryResourceTest {
 				"id"
 			));
 
-		_assetVocabularyLocalService.deleteVocabulary(systemAssetVocabulary);
+		boolean deleteInProcess = GroupThreadLocal.isDeleteInProcess();
+
+		try {
+			GroupThreadLocal.setDeleteInProcess(true);
+
+			_assetVocabularyLocalService.deleteVocabulary(
+				systemAssetVocabulary);
+		}
+		finally {
+			GroupThreadLocal.setDeleteInProcess(deleteInProcess);
+		}
 
 		// Cannot add a category from an unassociated vocabulary
 
@@ -22254,6 +22249,27 @@ public class ObjectEntryResourceTest {
 
 		return JSONFactoryUtil.createJSONObject(
 			embeddedTaxonomyCategory.toString());
+	}
+
+	private JSONArray _toExpectedCommentsJSONArray(JSONArray commentsJSONArray)
+		throws Exception {
+
+		JSONArray expectedCommentsJSONArray = JSONFactoryUtil.createJSONArray();
+
+		for (int i = 0; i < commentsJSONArray.length(); i++) {
+			JSONObject commentJSONObject = commentsJSONArray.getJSONObject(i);
+
+			expectedCommentsJSONArray.put(
+				JSONFactoryUtil.createJSONObject(
+					commentJSONObject.toString()
+				).put(
+					"text",
+					StringBundler.concat(
+						"<p>", commentJSONObject.getString("text"), "</p>")
+				));
+		}
+
+		return expectedCommentsJSONArray;
 	}
 
 	private com.liferay.object.rest.dto.v1_0.FileEntry _toFileEntry(

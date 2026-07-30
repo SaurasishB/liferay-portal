@@ -2284,20 +2284,21 @@ public class ObjectDefinitionResourceTest
 		return objectDefinition;
 	}
 
-	private void _assertAssignToMeObjectAction(
+	private void _assertAssigneeObjectActions(
 		ObjectDefinition objectDefinition) {
 
 		ObjectAction[] objectActions = objectDefinition.getObjectActions();
 
 		Assert.assertEquals(
-			Arrays.toString(objectActions), 1, objectActions.length);
+			Arrays.toString(objectActions), 3, objectActions.length);
 
-		ObjectAction objectAction = objectActions[0];
-
-		Assert.assertEquals(
-			ObjectActionNameConstants.NAME_ASSIGN_TO_ME,
-			objectAction.getName());
-		Assert.assertTrue(objectAction.getSystem());
+		for (ObjectAction objectAction : objectActions) {
+			Assert.assertTrue(
+				ArrayUtil.contains(
+					ObjectActionNameConstants.OBJECT_ACTION_NAMES,
+					objectAction.getName()));
+			Assert.assertTrue(objectAction.getSystem());
+		}
 	}
 
 	private void _assertGetObjectDefinitionsPageWithFilter(
@@ -2836,6 +2837,9 @@ public class ObjectDefinitionResourceTest
 		Assert.assertEquals(
 			"/o/c/" + objectDefinitionPluralName,
 			objectDefinition.getRestContextPath());
+
+		objectDefinitionResource.deleteObjectDefinition(
+			objectDefinition.getId());
 	}
 
 	private void _testGetObjectDefinitionsPage(
@@ -2925,6 +2929,13 @@ public class ObjectDefinitionResourceTest
 		Assert.assertTrue(
 			ArrayUtil.isEmpty(
 				objectDefinitionAA.getObjectDefinitionSettings()));
+
+		objectDefinitionResource.deleteObjectDefinition(
+			objectDefinitionA.getId());
+		objectDefinitionResource.deleteObjectDefinition(
+			objectDefinitionAA.getId());
+		objectDefinitionResource.deleteObjectDefinition(
+			objectDefinitionB.getId());
 	}
 
 	@TestInfo("LPD-63538")
@@ -3187,29 +3198,35 @@ public class ObjectDefinitionResourceTest
 	private void _testPostObjectDefinitionWithAllowStandaloneObjectEntry()
 		throws Exception {
 
-		Assert.assertEquals(
-			400,
-			HTTPTestUtil.invokeToHttpCode(
-				JSONUtil.put(
-					"label", RandomTestUtil.randomLocaleStringMap()
-				).put(
-					"name", ObjectDefinitionTestUtil.getRandomName()
-				).put(
-					"objectDefinitionSettings",
-					JSONUtil.putAll(
-						JSONUtil.put(
-							"name",
-							ObjectDefinitionSettingConstants.
-								NAME_ALLOW_STANDALONE_OBJECT_ENTRY
-						).put(
-							"value", "true"
-						))
-				).put(
-					"pluralLabel", RandomTestUtil.randomLocaleStringMap()
-				).put(
-					"scope", ObjectDefinitionConstants.SCOPE_COMPANY
-				).toString(),
-				"object-admin/v1.0/object-definitions", Http.Method.POST));
+		JSONObject objectDefinitionJSONObject = HTTPTestUtil.invokeToJSONObject(
+			JSONUtil.put(
+				"label", RandomTestUtil.randomLocaleStringMap()
+			).put(
+				"name", ObjectDefinitionTestUtil.getRandomName()
+			).put(
+				"objectDefinitionSettings",
+				JSONUtil.putAll(
+					JSONUtil.put(
+						"name",
+						ObjectDefinitionSettingConstants.
+							NAME_ALLOW_STANDALONE_OBJECT_ENTRY
+					).put(
+						"value", "true"
+					))
+			).put(
+				"pluralLabel", RandomTestUtil.randomLocaleStringMap()
+			).put(
+				"scope", ObjectDefinitionConstants.SCOPE_COMPANY
+			).toString(),
+			"object-admin/v1.0/object-definitions", Http.Method.POST);
+
+		Assert.assertFalse(
+			objectDefinitionJSONObject.toString(),
+			objectDefinitionJSONObject.getBoolean(
+				"allowStandaloneObjectEntry"));
+
+		objectDefinitionResource.deleteObjectDefinition(
+			objectDefinitionJSONObject.getLong("id"));
 	}
 
 	private void _testPostObjectDefinitionWithAssigneeObjectField()
@@ -3234,7 +3251,7 @@ public class ObjectDefinitionResourceTest
 			testPostObjectDefinition_addObjectDefinition(
 				randomObjectDefinition);
 
-		_assertAssignToMeObjectAction(postObjectDefinition);
+		_assertAssigneeObjectActions(postObjectDefinition);
 
 		_objectDefinitionLocalService.deleteObjectDefinition(
 			postObjectDefinition.getId());
@@ -3242,7 +3259,7 @@ public class ObjectDefinitionResourceTest
 		postObjectDefinition = testPostObjectDefinition_addObjectDefinition(
 			postObjectDefinition);
 
-		_assertAssignToMeObjectAction(postObjectDefinition);
+		_assertAssigneeObjectActions(postObjectDefinition);
 	}
 
 	private void _testPostObjectDefinitionWithPermissions() throws Exception {

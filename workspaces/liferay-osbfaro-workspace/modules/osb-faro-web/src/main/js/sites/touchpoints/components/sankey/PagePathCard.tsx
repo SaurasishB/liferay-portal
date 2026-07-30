@@ -1,9 +1,10 @@
+import BasePage from 'shared/components/base-page';
 import Card from 'shared/components/Card';
 import ClayLink from '@clayui/link';
 import ErrorDisplay from 'shared/components/ErrorDisplay';
 import NoResultsDisplay from 'shared/components/NoResultsDisplay';
 import PagePathQuery from 'shared/queries/PagePathQuery';
-import React, {useRef} from 'react';
+import React, {useContext, useRef} from 'react';
 import Sankey from './Sankey';
 import StatesRenderer from 'shared/components/states-renderer/StatesRenderer';
 import URLConstants from 'shared/util/url-constants';
@@ -107,6 +108,7 @@ const PagePathCard: React.FC<IPagePathCardProps> = ({
 	selectedSegment,
 }) => {
 	const cardRef = useRef(null);
+	const {accountId} = useContext(BasePage.Context);
 	const {channelId, title, touchpoint} = useParams<{
 		channelId: string;
 		title: string;
@@ -117,6 +119,7 @@ const PagePathCard: React.FC<IPagePathCardProps> = ({
 			canonicalUrl: getSafeTouchpoint(touchpoint ?? ''),
 			channelId,
 			title: getSafeDecodedURIComponent(title ?? ''),
+			...(accountId && {accountId}),
 			...(selectedSegment?.id && {
 				segmentId: selectedSegment.id,
 			}),

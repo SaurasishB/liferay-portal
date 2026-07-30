@@ -50,6 +50,8 @@ export interface ICompositionBag {
 }
 
 export interface IBasePageContext {
+	accountId?: string | null;
+	accountName?: string | null;
 	experienceId?: string | null;
 	filters: any;
 	router: any;
@@ -120,6 +122,8 @@ export type Router = {
 		type?: string;
 	};
 	query: {
+		accountId?: string;
+		accountName?: string;
 		field?: string;
 		page?: string;
 		query?: string;
