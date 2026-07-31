@@ -256,23 +256,7 @@ public class SitemapManagerImpl implements SitemapManager {
 		throws PortalException {
 
 		for (SchedulerResponse schedulerResponse :
-				_schedulerEngineHelper.getScheduledJobs(
-					StorageType.PERSISTED)) {
-
-			if (!Objects.equals(
-					schedulerResponse.getGroupName(),
-					SitemapDestinationNames.SITEMAP_REGENERATION)) {
-
-				continue;
-			}
-
-			Message message = schedulerResponse.getMessage();
-
-			if ((message == null) ||
-				(message.getLong("companyId") != companyId)) {
-
-				continue;
-			}
+				_getRegenerateSitemapSchedulerResponses(companyId)) {
 
 			try {
 				_schedulerEngineHelper.delete(
@@ -319,6 +303,29 @@ public class SitemapManagerImpl implements SitemapManager {
 	}
 
 	@Override
+	public Date getNextRegenerateSitemapDate(long companyId)
+		throws PortalException {
+
+		Date nextRegenerateSitemapDate = null;
+
+		for (SchedulerResponse schedulerResponse :
+				_getRegenerateSitemapSchedulerResponses(companyId)) {
+
+			Date nextFireDate = _schedulerEngineHelper.getNextFireDate(
+				schedulerResponse);
+
+			if ((nextFireDate != null) &&
+				((nextRegenerateSitemapDate == null) ||
+				 nextFireDate.before(nextRegenerateSitemapDate))) {
+
+				nextRegenerateSitemapDate = nextFireDate;
+			}
+		}
+
+		return nextRegenerateSitemapDate;
+	}
+
+	@Override
 	public String getSitemap(
 			long groupId, boolean privateLayout, ThemeDisplay themeDisplay)
 		throws PortalException {
@@ -350,11 +357,12 @@ public class SitemapManagerImpl implements SitemapManager {
 				_serviceTrackerMap.getService(assetTypeClassNameId);
 
 			if ((sitemapURLProvider == null) ||
-				!_sitemapConfigurationManager.xmlSitemapIndexCompanyEnabled(
-					companyId) ||
 				!StringUtil.equals(
-					_sitemapConfigurationManager.xmlSitemapIndexMode(companyId),
+					_sitemapConfigurationManager.getXMLSitemapIndexMode(
+						companyId),
 					SitemapConstants.INDEX_MODE_ASSET_TYPE) ||
+				!_sitemapConfigurationManager.isXMLSitemapIndexCompanyEnabled(
+					companyId) ||
 				!sitemapURLProvider.isInclude(companyId, groupId)) {
 
 				return null;
@@ -366,7 +374,7 @@ public class SitemapManagerImpl implements SitemapManager {
 		}
 
 		if (Validator.isNull(layoutUuid) &&
-			_sitemapConfigurationManager.xmlSitemapIndexCompanyEnabled(
+			_sitemapConfigurationManager.isXMLSitemapIndexCompanyEnabled(
 				themeDisplay.getCompanyId())) {
 
 			return _getIndexSitemap(groupId, privateLayout, themeDisplay);
@@ -392,13 +400,13 @@ public class SitemapManagerImpl implements SitemapManager {
 
 		long companyId = themeDisplay.getCompanyId();
 
-		if (_sitemapConfigurationManager.cachedGenerationCompanyEnabled(
+		if (StringUtil.equals(
+				_sitemapConfigurationManager.getXMLSitemapIndexMode(companyId),
+				SitemapConstants.INDEX_MODE_ASSET_TYPE) &&
+			_sitemapConfigurationManager.isCachedGenerationCompanyEnabled(
 				companyId) &&
-			_sitemapConfigurationManager.xmlSitemapIndexCompanyEnabled(
-				companyId) &&
-			StringUtil.equals(
-				_sitemapConfigurationManager.xmlSitemapIndexMode(companyId),
-				SitemapConstants.INDEX_MODE_ASSET_TYPE)) {
+			_sitemapConfigurationManager.isXMLSitemapIndexCompanyEnabled(
+				companyId)) {
 
 			try {
 				if (assetTypeKey == null) {
@@ -449,7 +457,7 @@ public class SitemapManagerImpl implements SitemapManager {
 			String assetTypeKey, long companyId, long groupId)
 		throws PortalException {
 
-		if (!_sitemapConfigurationManager.indexModeAssetTypeCompanyEnabled(
+		if (!_sitemapConfigurationManager.isIndexModeAssetTypeCompanyEnabled(
 				companyId)) {
 
 			return;
@@ -483,6 +491,13 @@ public class SitemapManagerImpl implements SitemapManager {
 				assetTypeClassNameId, groupId, false, themeDisplay);
 
 			_getIndexSitemap(groupId, false, themeDisplay);
+
+			if (_sitemapConfigurationManager.isCachedGenerationCompanyEnabled(
+					companyId)) {
+
+				_sitemapStorageHelper.storeLastRegenerateSitemapDateFile(
+					companyId);
+			}
 		}
 		finally {
 			_unlockRegenerateSitemap(assetTypeKey, companyId, groupId);
@@ -494,10 +509,10 @@ public class SitemapManagerImpl implements SitemapManager {
 		String assetTypeKey, long companyId, long groupId, Date startDate) {
 
 		try {
-			if (!_sitemapConfigurationManager.cachedGenerationCompanyEnabled(
+			if (!_sitemapConfigurationManager.isCachedGenerationCompanyEnabled(
 					companyId) ||
-				!_sitemapConfigurationManager.indexModeAssetTypeCompanyEnabled(
-					companyId)) {
+				!_sitemapConfigurationManager.
+					isIndexModeAssetTypeCompanyEnabled(companyId)) {
 
 				return;
 			}
@@ -900,7 +915,7 @@ public class SitemapManagerImpl implements SitemapManager {
 
 		long companyId = themeDisplay.getCompanyId();
 
-		if (!_sitemapConfigurationManager.cachedGenerationCompanyEnabled(
+		if (!_sitemapConfigurationManager.isCachedGenerationCompanyEnabled(
 				companyId)) {
 
 			String[] xml = {null};
@@ -1009,10 +1024,10 @@ public class SitemapManagerImpl implements SitemapManager {
 		long companyId = themeDisplay.getCompanyId();
 
 		String xmlSitemapIndexMode =
-			_sitemapConfigurationManager.xmlSitemapIndexMode(companyId);
+			_sitemapConfigurationManager.getXMLSitemapIndexMode(companyId);
 
 		boolean cachedGenerationCompanyEnabled =
-			_sitemapConfigurationManager.cachedGenerationCompanyEnabled(
+			_sitemapConfigurationManager.isCachedGenerationCompanyEnabled(
 				companyId);
 
 		if (StringUtil.equals(
@@ -1168,6 +1183,27 @@ public class SitemapManagerImpl implements SitemapManager {
 		}
 
 		return Collections.emptyList();
+	}
+
+	private List<SchedulerResponse> _getRegenerateSitemapSchedulerResponses(
+			long companyId)
+		throws SchedulerException {
+
+		return TransformUtil.transform(
+			_schedulerEngineHelper.getScheduledJobs(
+				SitemapDestinationNames.SITEMAP_REGENERATION,
+				StorageType.PERSISTED),
+			schedulerResponse -> {
+				Message message = schedulerResponse.getMessage();
+
+				if ((message != null) &&
+					(message.getLong("companyId") == companyId)) {
+
+					return schedulerResponse;
+				}
+
+				return null;
+			});
 	}
 
 	private String _getSchedulerJobName(
