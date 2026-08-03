@@ -89,6 +89,7 @@ k8s_yaml(
         name="liferay-dxp-operator",
         namespace="liferay-system",
         set=[
+            "debug=true",
             "image.repository=liferay/liferay-dxp-operator",
             "provisioning.baseURL=https://webserver-lrprovisioning-uat.lfr.cloud",
             "securityContext.readOnlyRootFilesystem=false",
@@ -107,6 +108,7 @@ k8s_yaml(
         "    activationCodeSecretRef:",
         "      name: dev-activation",
         "      key: activationCode",
+        "    dxpVersion: 2026.q3.0",
         "    environmentName: \"Local dev\"",
         "    workloadRef:",
         "      name: dev-liferay",

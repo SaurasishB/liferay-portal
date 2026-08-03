@@ -20,8 +20,10 @@ import './ContentGapMatrix.scss';
 
 interface ContentGapMatrixCardProps {
 	assetFDSId: string;
+	cmpProjectObjectEntryDescription?: string;
 	cmpProjectObjectEntryId: string;
 	cmpProjectObjectEntryTitle: string;
+	cmpProjectScopeKey?: string;
 	editProjectURL?: string;
 	hasFunnelStagesOrPersonas: boolean;
 }
@@ -30,8 +32,10 @@ const contentCoverageService = ContentCoverageServiceImpl;
 
 export default function ContentGapMatrixCard({
 	assetFDSId,
+	cmpProjectObjectEntryDescription,
 	cmpProjectObjectEntryId,
 	cmpProjectObjectEntryTitle,
+	cmpProjectScopeKey,
 	editProjectURL,
 	hasFunnelStagesOrPersonas,
 }: ContentGapMatrixCardProps) {
@@ -78,8 +82,12 @@ export default function ContentGapMatrixCard({
 		return (
 			<div className="lfr-cmp__content-gap-matrix-card">
 				<ContentGapMatrixHeader
+					cmpProjectObjectEntryDescription={
+						cmpProjectObjectEntryDescription
+					}
 					cmpProjectObjectEntryId={cmpProjectObjectEntryId}
 					cmpProjectObjectEntryTitle={cmpProjectObjectEntryTitle}
+					cmpProjectScopeKey={cmpProjectScopeKey}
 				/>
 
 				<div className="lfr-cmp__content-gap-matrix-container">
@@ -89,6 +97,7 @@ export default function ContentGapMatrixCard({
 								'define-personas-and-funnel-stages-to-unlock-content-coverage-insights-and-align-your-content-strategy'
 							)}
 							imgSrc={`${Liferay.ThemeDisplay.getPathThemeImages()}/states/cmp_empty_state_personas.svg`}
+							small
 							title={Liferay.Language.get(
 								'no-personas-or-funnel-stages-configured'
 							)}
@@ -129,13 +138,18 @@ export default function ContentGapMatrixCard({
 		return (
 			<div className="lfr-cmp__content-gap-matrix-card">
 				<ContentGapMatrixHeader
+					cmpProjectObjectEntryDescription={
+						cmpProjectObjectEntryDescription
+					}
 					cmpProjectObjectEntryId={cmpProjectObjectEntryId}
 					cmpProjectObjectEntryTitle={cmpProjectObjectEntryTitle}
+					cmpProjectScopeKey={cmpProjectScopeKey}
 				/>
 
 				<div className="lfr-cmp__content-gap-matrix-container">
 					<div className="empty-state">
 						<ClayEmptyState
+							small
 							title={Liferay.Language.get('an-error-occurred')}
 						/>
 					</div>
@@ -147,8 +161,12 @@ export default function ContentGapMatrixCard({
 	return (
 		<div className="lfr-cmp__content-gap-matrix-card">
 			<ContentGapMatrixHeader
+				cmpProjectObjectEntryDescription={
+					cmpProjectObjectEntryDescription
+				}
 				cmpProjectObjectEntryId={cmpProjectObjectEntryId}
 				cmpProjectObjectEntryTitle={cmpProjectObjectEntryTitle}
+				cmpProjectScopeKey={cmpProjectScopeKey}
 				data={data}
 			/>
 
@@ -169,7 +187,12 @@ export default function ContentGapMatrixCard({
 					</p>
 				</div>
 
-				<ContentGapMatrixGrid assetFDSId={assetFDSId} data={data} />
+				<ContentGapMatrixGrid
+					assetFDSId={assetFDSId}
+					cmpProjectObjectEntryId={cmpProjectObjectEntryId}
+					cmpProjectScopeKey={cmpProjectScopeKey}
+					data={data}
+				/>
 			</div>
 		</div>
 	);

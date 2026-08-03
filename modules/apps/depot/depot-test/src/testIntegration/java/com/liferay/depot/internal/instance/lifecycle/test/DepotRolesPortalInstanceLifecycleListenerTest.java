@@ -58,11 +58,7 @@ public class DepotRolesPortalInstanceLifecycleListenerTest {
 		_company = CompanyTestUtil.addCompany();
 	}
 
-	@FeatureFlags(
-		featureFlags = {
-			@FeatureFlag(value = "LPD-17564"), @FeatureFlag("LPD-57283")
-		}
-	)
+	@FeatureFlags(featureFlags = @FeatureFlag("LPD-57283"))
 	@Test
 	public void testAddCompany() throws Exception {
 		long companyId = _company.getCompanyId();
@@ -148,6 +144,10 @@ public class DepotRolesPortalInstanceLifecycleListenerTest {
 					DepotRolesConstants.DESIGN_LIBRARY_CONTENT_REVIEWER,
 					DepotRolesConstants.DESIGN_LIBRARY_OWNER)) {
 
+			_assertResourcePermissions(
+				companyId, "com.liferay.fragment",
+				ResourceConstants.SCOPE_COMPANY, String.valueOf(companyId),
+				name, List.of("MANAGE_FRAGMENT_ENTRIES"));
 			_assertResourcePermissions(
 				companyId, "com.liferay.style.book",
 				ResourceConstants.SCOPE_COMPANY, String.valueOf(companyId),

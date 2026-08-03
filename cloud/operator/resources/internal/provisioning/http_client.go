@@ -11,10 +11,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"maps"
 	"net/http"
 	"strings"
 	"time"
+
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func (httpClient *HTTPClient) Activate(
@@ -61,11 +64,89 @@ func (httpClient *HTTPClient) Activate(
 	return nil
 }
 
+func (httpClient *HTTPClient) Manifest(
+	context context.Context,
+	manifestRequest ManifestRequest,
+	privateKey *rsa.PrivateKey,
+) (*Entitlements, error) {
+	token, error := signJWT(
+		map[string]any{
+			"dxpVersion":    manifestRequest.DxpVersion,
+			"environmentID": manifestRequest.EnvironmentID,
+		},
+		manifestRequest.EnvironmentID,
+		privateKey,
+	)
+
+	if error != nil {
+		return nil, error
+	}
+
+	response, error := httpClient.post(
+		context, token, fmt.Sprintf(
+			"%s/o/provisioning-rest/v1.0/cloud/environments/%s/manifest",
+			httpClient.BaseURL, manifestRequest.EnvironmentID,
+		),
+	)
+
+	if error != nil {
+		return nil, error
+	}
+
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf(
+			"entitlements: unexpected status %d", response.StatusCode,
+		)
+	}
+
+	var entitlementsResponse struct {
+		AddOns          []AddOn `json:"add-ons"`
+		LicenseXML      string  `json:"licenseXML"`
+		MaxClusterNodes int32   `json:"maxClusterNodes"`
+	}
+
+	if error := json.NewDecoder(response.Body).Decode(&entitlementsResponse); error != nil {
+		return nil, fmt.Errorf("entitlements: decode response: %w", error)
+	}
+
+	licenseXML, error := base64.StdEncoding.DecodeString(entitlementsResponse.LicenseXML)
+
+	if error != nil {
+		return nil, fmt.Errorf("entitlements: decode licenseXML: %w", error)
+	}
+
+	entitlements := &Entitlements{
+		AddOns:          entitlementsResponse.AddOns,
+		LicenseXML:      licenseXML,
+		MaxClusterNodes: entitlementsResponse.MaxClusterNodes,
+	}
+
+	return entitlements, nil
+}
+
 func NewHTTPClient(baseURL string) *HTTPClient {
 	return &HTTPClient{
 		BaseURL: strings.TrimRight(baseURL, "/"),
 		Client:  &http.Client{Timeout: 30 * time.Second},
 	}
+}
+
+func decodeJWTPayload(token string) string {
+	segments := strings.Split(token, ".")
+
+	if len(segments) != 3 {
+		return token
+	}
+
+	payload, error := base64.RawURLEncoding.DecodeString(segments[1])
+
+	if error != nil {
+		return token
+	}
+
+	return string(payload)
 }
 
 func encodeRandomID() (string, error) {
@@ -87,6 +168,12 @@ func (httpClient *HTTPClient) post(
 	token string,
 	url string,
 ) (*http.Response, error) {
+	logger := logf.FromContext(context)
+
+	logger.V(1).Info(
+		"Provisioning POST", "payload", decodeJWTPayload(token), "url", url,
+	)
+
 	request, error := http.NewRequestWithContext(
 		context, http.MethodPost, url, bytes.NewReader([]byte(token)),
 	)
@@ -97,7 +184,30 @@ func (httpClient *HTTPClient) post(
 
 	request.Header.Set("Content-Type", "text/plain")
 
-	return httpClient.Client.Do(request)
+	response, error := httpClient.Client.Do(request)
+
+	if error != nil {
+		return nil, error
+	}
+
+	if logger.V(1).Enabled() {
+		body, error := io.ReadAll(response.Body)
+
+		response.Body.Close()
+
+		if error != nil {
+			return nil, error
+		}
+
+		logger.V(1).Info(
+			"Provisioning response", "body", string(body),
+			"status", response.StatusCode, "url", url,
+		)
+
+		response.Body = io.NopCloser(bytes.NewReader(body))
+	}
+
+	return response, nil
 }
 
 func signJWT(

@@ -11,14 +11,6 @@ $visitorsPreviousPeriod: var(--cadmin-gray-800);
 		}
 	}
 
-	.card-root {
-		height: auto;
-
-		@include media-breakpoint-up(xl) {
-			height: 536px;
-		}
-	}
-
 	.site-metrics {
 		.card-header {
 			padding-bottom: 8px;
@@ -40,29 +32,6 @@ $visitorsPreviousPeriod: var(--cadmin-gray-800);
 
 			.bb-circles .bb-circle._expanded_ {
 				fill: $chartSeaGreen !important;
-			}
-		}
-	}
-
-	.table-tabs-root {
-		.card-content-center {
-			padding: 0;
-		}
-
-		.card-header {
-			padding-bottom: 8px;
-		}
-
-		.card-tabs-root {
-			margin-bottom: 0;
-			margin-top: 0;
-
-			.card-tab {
-				.title {
-					font-size: $fontSizeSmall;
-					font-weight: $fontWeightSemiBold;
-					line-height: 28px;
-				}
 			}
 		}
 	}

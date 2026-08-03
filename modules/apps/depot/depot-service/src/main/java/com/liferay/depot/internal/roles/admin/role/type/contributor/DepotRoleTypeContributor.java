@@ -31,6 +31,19 @@ import org.osgi.service.component.annotations.Reference;
 public class DepotRoleTypeContributor implements RoleTypeContributor {
 
 	@Override
+	public String getDefaultSubtype() {
+		long companyId = CompanyThreadLocal.getCompanyId();
+
+		if (FeatureFlagManagerUtil.isEnabled(companyId, "LPD-17564") &&
+			FeatureFlagManagerUtil.isEnabled(companyId, "LPD-96750")) {
+
+			return DepotRolesConstants.SUBTYPE_SPACE;
+		}
+
+		return RoleTypeContributor.super.getDefaultSubtype();
+	}
+
+	@Override
 	public String[] getExcludedRoleNames() {
 		return _EXCLUDED_ROLE_NAMES;
 	}
@@ -42,13 +55,7 @@ public class DepotRoleTypeContributor implements RoleTypeContributor {
 
 	@Override
 	public String getName() {
-		if (FeatureFlagManagerUtil.isEnabled(
-				CompanyThreadLocal.getCompanyId(), "LPD-17564")) {
-
-			return "space";
-		}
-
-		return "asset-library";
+		return "space";
 	}
 
 	@Override
@@ -67,35 +74,19 @@ public class DepotRoleTypeContributor implements RoleTypeContributor {
 			subtypes.add(DepotRolesConstants.SUBTYPE_PROJECT);
 		}
 
-		if (FeatureFlagManagerUtil.isEnabled(
-				CompanyThreadLocal.getCompanyId(), "LPD-17564")) {
-
-			subtypes.add(DepotRolesConstants.SUBTYPE_SPACE);
-		}
+		subtypes.add(DepotRolesConstants.SUBTYPE_SPACE);
 
 		return subtypes.toArray(new String[0]);
 	}
 
 	@Override
 	public String getTabTitle(Locale locale) {
-		if (FeatureFlagManagerUtil.isEnabled(
-				CompanyThreadLocal.getCompanyId(), "LPD-17564")) {
-
-			return _language.get(locale, "space-roles");
-		}
-
-		return _language.get(locale, "asset-library-roles");
+		return _language.get(locale, "space-roles");
 	}
 
 	@Override
 	public String getTitle(Locale locale) {
-		if (FeatureFlagManagerUtil.isEnabled(
-				CompanyThreadLocal.getCompanyId(), "LPD-17564")) {
-
-			return _language.get(locale, "space-role");
-		}
-
-		return _language.get(locale, "asset-library-role");
+		return _language.get(locale, "space-role");
 	}
 
 	@Override

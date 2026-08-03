@@ -7,9 +7,15 @@ package com.liferay.depot.internal.role.type.contributor;
 
 import com.liferay.depot.constants.DepotRolesConstants;
 import com.liferay.depot.internal.roles.admin.role.type.contributor.DepotRoleTypeContributor;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
+import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.model.Role;
+import com.liferay.portal.kernel.test.ReflectionTestUtil;
+import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
+
+import java.util.Locale;
 
 import org.junit.Assert;
 import org.junit.ClassRule;
@@ -31,17 +37,7 @@ public class DepotRoleTypeContributorTest {
 		LiferayUnitTestRule.INSTANCE;
 
 	@Test
-	public void testGetExcludedRoleNames() {
-		Assert.assertArrayEquals(
-			new String[] {
-				DepotRolesConstants.ASSET_LIBRARY_OWNER,
-				DepotRolesConstants.DESIGN_LIBRARY_OWNER
-			},
-			_depotRoleTypeContributor.getExcludedRoleNames());
-	}
-
-	@Test
-	public void testGetSubtypes() {
+	public void testGetDefaultSubtype() {
 		try (MockedStatic<FeatureFlagManagerUtil> mockedStatic =
 				Mockito.mockStatic(FeatureFlagManagerUtil.class)) {
 
@@ -54,24 +50,14 @@ public class DepotRoleTypeContributorTest {
 
 			mockedStatic.when(
 				() -> FeatureFlagManagerUtil.isEnabled(
-					Mockito.anyLong(), Mockito.eq("LPD-58677"))
+					Mockito.anyLong(), Mockito.eq("LPD-96750"))
 			).thenReturn(
 				false
 			);
 
-			Assert.assertArrayEquals(
-				new String[0], _depotRoleTypeContributor.getSubtypes());
-
-			mockedStatic.when(
-				() -> FeatureFlagManagerUtil.isEnabled(
-					Mockito.anyLong(), Mockito.eq("LPD-58677"))
-			).thenReturn(
-				true
-			);
-
-			Assert.assertArrayEquals(
-				new String[] {DepotRolesConstants.SUBTYPE_PROJECT},
-				_depotRoleTypeContributor.getSubtypes());
+			Assert.assertEquals(
+				StringPool.BLANK,
+				_depotRoleTypeContributor.getDefaultSubtype());
 
 			mockedStatic.when(
 				() -> FeatureFlagManagerUtil.isEnabled(
@@ -79,6 +65,64 @@ public class DepotRoleTypeContributorTest {
 			).thenReturn(
 				true
 			);
+
+			Assert.assertEquals(
+				StringPool.BLANK,
+				_depotRoleTypeContributor.getDefaultSubtype());
+
+			mockedStatic.when(
+				() -> FeatureFlagManagerUtil.isEnabled(
+					Mockito.anyLong(), Mockito.eq("LPD-17564"))
+			).thenReturn(
+				false
+			);
+
+			mockedStatic.when(
+				() -> FeatureFlagManagerUtil.isEnabled(
+					Mockito.anyLong(), Mockito.eq("LPD-96750"))
+			).thenReturn(
+				true
+			);
+
+			Assert.assertEquals(
+				StringPool.BLANK,
+				_depotRoleTypeContributor.getDefaultSubtype());
+
+			mockedStatic.when(
+				() -> FeatureFlagManagerUtil.isEnabled(
+					Mockito.anyLong(), Mockito.eq("LPD-17564"))
+			).thenReturn(
+				true
+			);
+
+			Assert.assertEquals(
+				DepotRolesConstants.SUBTYPE_SPACE,
+				_depotRoleTypeContributor.getDefaultSubtype());
+		}
+	}
+
+	@Test
+	public void testGetExcludedRoleNames() {
+		Assert.assertArrayEquals(
+			new String[] {
+				DepotRolesConstants.ASSET_LIBRARY_OWNER,
+				DepotRolesConstants.DESIGN_LIBRARY_OWNER
+			},
+			_depotRoleTypeContributor.getExcludedRoleNames());
+	}
+
+	@Test
+	public void testGetName() {
+		DepotRoleTypeContributor depotRoleTypeContributor =
+			new DepotRoleTypeContributor();
+
+		Assert.assertEquals("space", depotRoleTypeContributor.getName());
+	}
+
+	@Test
+	public void testGetSubtypes() {
+		try (MockedStatic<FeatureFlagManagerUtil> mockedStatic =
+				Mockito.mockStatic(FeatureFlagManagerUtil.class)) {
 
 			mockedStatic.when(
 				() -> FeatureFlagManagerUtil.isEnabled(
@@ -120,6 +164,28 @@ public class DepotRoleTypeContributorTest {
 				},
 				_depotRoleTypeContributor.getSubtypes());
 		}
+	}
+
+	@Test
+	public void testGetTabTitle() {
+		DepotRoleTypeContributor depotRoleTypeContributor =
+			new DepotRoleTypeContributor();
+
+		_setLanguage(depotRoleTypeContributor);
+
+		Assert.assertEquals(
+			"space-roles", depotRoleTypeContributor.getTabTitle(LocaleUtil.US));
+	}
+
+	@Test
+	public void testGetTitle() {
+		DepotRoleTypeContributor depotRoleTypeContributor =
+			new DepotRoleTypeContributor();
+
+		_setLanguage(depotRoleTypeContributor);
+
+		Assert.assertEquals(
+			"space-role", depotRoleTypeContributor.getTitle(LocaleUtil.US));
 	}
 
 	@Test
@@ -167,6 +233,21 @@ public class DepotRoleTypeContributorTest {
 		);
 
 		return role;
+	}
+
+	private void _setLanguage(
+		DepotRoleTypeContributor depotRoleTypeContributor) {
+
+		Language language = Mockito.mock(Language.class);
+
+		Mockito.when(
+			language.get(Mockito.any(Locale.class), Mockito.anyString())
+		).thenAnswer(
+			invocation -> invocation.getArgument(1)
+		);
+
+		ReflectionTestUtil.setFieldValue(
+			depotRoleTypeContributor, "_language", language);
 	}
 
 	private void _testIsAllowAssignMembersWithAdministrator() {

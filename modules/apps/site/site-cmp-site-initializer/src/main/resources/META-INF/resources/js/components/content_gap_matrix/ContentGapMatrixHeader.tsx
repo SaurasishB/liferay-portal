@@ -5,54 +5,32 @@
 
 import ClayIcon from '@clayui/icon';
 import ClayLabel from '@clayui/label';
-import {
-	AIAssistantTriggerButton,
-	ObjectField,
-	getObjectFields,
-	getSpaces,
-} from '@liferay/ai-hub-cell-js-components-web';
+import {AIAssistantTriggerButton} from '@liferay/ai-hub-cell-js-components-web';
 import {sub} from 'frontend-js-web';
-import React, {useEffect, useState} from 'react';
+import React from 'react';
 
-import {MatrixData, SpaceOption} from './types';
+import {MatrixData} from './types';
+import {useAIInsightsChatContext} from './useAIInsightsChatContext';
 import {computeCoveragePercentage, countCriticalGaps} from './utils';
 
-const CMS_BASIC_WEB_CONTENT_EXTERNAL_REFERENCE_CODE = 'L_CMS_BASIC_WEB_CONTENT';
-
-const CMS_BASIC_WEB_CONTENT_NAME = 'CMSBasicWebContent';
-
 export default function ContentGapMatrixHeader({
+	cmpProjectObjectEntryDescription,
 	cmpProjectObjectEntryId,
 	cmpProjectObjectEntryTitle,
+	cmpProjectScopeKey,
 	data,
 }: {
+	cmpProjectObjectEntryDescription?: string;
 	cmpProjectObjectEntryId?: string;
 	cmpProjectObjectEntryTitle?: string;
+	cmpProjectScopeKey?: string;
 	data?: MatrixData;
 }) {
-	const [objectFields, setObjectFields] = useState<ObjectField[]>();
-	const [spaces, setSpaces] = useState<SpaceOption[]>();
-
-	useEffect(() => {
-		if (!Liferay.FeatureFlags['LPD-62272']) {
-			return;
-		}
-
-		const makeFetch = async () => {
-			const {items: objectFields} = await getObjectFields(
-				CMS_BASIC_WEB_CONTENT_EXTERNAL_REFERENCE_CODE
-			);
-			const spaces = (await getSpaces()).map((space) => ({
-				label: space.name,
-				value: String(space.siteId),
-			}));
-
-			setObjectFields(objectFields);
-			setSpaces(spaces);
-		};
-
-		makeFetch().catch(() => {});
-	}, []);
+	const getAIInsightsChatContext = useAIInsightsChatContext({
+		cmpProjectObjectEntryDescription,
+		cmpProjectObjectEntryId,
+		cmpProjectScopeKey,
+	});
 
 	const coveragePercentage = data ? computeCoveragePercentage(data) : 0;
 	const coverageDisplayType =
@@ -100,13 +78,7 @@ export default function ContentGapMatrixHeader({
 
 			{Liferay.FeatureFlags['LPD-62272'] && (
 				<AIAssistantTriggerButton
-					getContext={() => ({
-						focusScope: 'full-matrix',
-						objectDefinitionName: CMS_BASIC_WEB_CONTENT_NAME,
-						objectFields,
-						projectId: cmpProjectObjectEntryId,
-						spaceIdsJSONArray: spaces,
-					})}
+					getContext={getAIInsightsChatContext}
 					initialMessage={sub(
 						Liferay.Language.get(
 							'get-ai-insights-for-the-x-content-coverage-matrix'

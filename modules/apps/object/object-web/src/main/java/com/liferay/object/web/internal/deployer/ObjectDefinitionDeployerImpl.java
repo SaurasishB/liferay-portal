@@ -59,7 +59,6 @@ import com.liferay.list.type.service.ListTypeEntryLocalService;
 import com.liferay.object.configuration.ObjectConfiguration;
 import com.liferay.object.constants.ObjectActionKeys;
 import com.liferay.object.constants.ObjectDefinitionConstants;
-import com.liferay.object.constants.ObjectFolderConstants;
 import com.liferay.object.definition.security.permission.resource.ObjectDefinitionPortletResourcePermissionRegistryUtil;
 import com.liferay.object.definition.util.ObjectDefinitionUtil;
 import com.liferay.object.deployer.ObjectDefinitionDeployer;
@@ -716,20 +715,18 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 					).build()));
 		}
 
-		if (objectDefinition.isCMS() &&
-			Objects.equals(
-				objectDefinition.getObjectFolderExternalReferenceCode(),
-				ObjectFolderConstants.EXTERNAL_REFERENCE_CODE_FILE_TYPES)) {
-
-			serviceRegistrations.add(
-				_bundleContext.registerService(
-					SharingEntryDropdownItemContributor.class,
-					new ObjectEntrySharingEntryDropdownItemContributor(
-						_assetEntryLocalService, _language),
-					HashMapDictionaryBuilder.<String, Object>put(
-						"model.class.name", objectDefinition.getClassName()
-					).build()));
-		}
+		serviceRegistrations.add(
+			_bundleContext.registerService(
+				SharingEntryDropdownItemContributor.class,
+				new ObjectEntrySharingEntryDropdownItemContributor(
+					_assetEntryLocalService, _language),
+				HashMapDictionaryBuilder.<String, Object>put(
+					"company.id", objectDefinition.getCompanyId()
+				).put(
+					"model.class.name", objectDefinition.getClassName()
+				).put(
+					"object.folder.id", objectDefinition.getObjectFolderId()
+				).build()));
 
 		return serviceRegistrations;
 	}

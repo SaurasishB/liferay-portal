@@ -17,7 +17,7 @@ import {INDIVIDUALS} from 'shared/util/router';
 import {individualsListColumns} from 'shared/util/table-columns';
 import {Modal} from 'shared/types';
 import {Routes, SEGMENTS, toRoute} from 'shared/util/router';
-import {SegmentTypes} from 'shared/util/constants';
+import {SegmentCategories, SegmentTypes} from 'shared/util/constants';
 import {sub} from 'shared/util/lang';
 import {validateSegmentInputs} from './utils/utils';
 
@@ -29,6 +29,7 @@ interface IToolbarProps {
 	groupId: string;
 	id: string;
 	includeAnonymousUsers: boolean;
+	segmentCategory: SegmentCategories;
 	open: Modal.open;
 	valid: boolean;
 	segmentType: SegmentTypes;
@@ -109,7 +110,20 @@ export class Toolbar extends React.Component<IToolbarProps, IToolbarState> {
 	}, 400);
 
 	fetchMembers(params: Record<string, any>) {
-		const {channelId, criteriaString, groupId} = this.props;
+		const {channelId, criteriaString, groupId, segmentCategory} =
+			this.props;
+
+		if (segmentCategory === SegmentCategories.Account) {
+			return API.accounts
+				.searchByFilter({
+					channelId,
+					filter: criteriaString,
+					groupId,
+				})
+				.then(({totalCount}: {totalCount: number}) => ({
+					total: totalCount,
+				}));
+		}
 
 		return API.individuals.search({
 			channelId,
@@ -151,7 +165,14 @@ export class Toolbar extends React.Component<IToolbarProps, IToolbarState> {
 
 	render() {
 		const {
-			props: {channelId, groupId, id, segmentType, valid},
+			props: {
+				channelId,
+				groupId,
+				id,
+				segmentCategory,
+				segmentType,
+				valid,
+			},
 			state: {countLoading, criteriaValid, membersCount},
 		} = this;
 
@@ -161,7 +182,12 @@ export class Toolbar extends React.Component<IToolbarProps, IToolbarState> {
 			membersCount.toLocaleString()
 		);
 
+		const isAccountSegment = segmentCategory === SegmentCategories.Account;
 		const isBatch = segmentType === SegmentTypes.Batch;
+
+		const viewLabel = isAccountSegment
+			? Liferay.Language.get('view-accounts')
+			: Liferay.Language.get('view-members');
 
 		const viewMembersButtonContent = isBatch ? (
 			<span {...this.getPreviewCriteriaTooltipProps()}>
@@ -170,7 +196,7 @@ export class Toolbar extends React.Component<IToolbarProps, IToolbarState> {
 		) : (
 			<div {...this.getPreviewCriteriaTooltipProps()}>
 				<ClayIcon className="icon-root mr-2" symbol="view" />
-				{Liferay.Language.get('view-members')}
+				{viewLabel}
 			</div>
 		);
 
@@ -217,9 +243,13 @@ export class Toolbar extends React.Component<IToolbarProps, IToolbarState> {
 									<div className="btn-group-item">
 										<div className="total-members">
 											{sub(
-												Liferay.Language.get(
-													'total-members-x'
-												),
+												isAccountSegment
+													? Liferay.Language.get(
+															'total-accounts-x'
+														)
+													: Liferay.Language.get(
+															'total-members-x'
+														),
 												[
 													<div
 														className="total-members-count"
@@ -236,9 +266,7 @@ export class Toolbar extends React.Component<IToolbarProps, IToolbarState> {
 
 								<div className="btn-group-item">
 									<ClayButton
-										aria-label={Liferay.Language.get(
-											'view-members'
-										)}
+										aria-label={viewLabel}
 										borderless
 										className="button-root preview-criteria"
 										data-testid="preview-criteria-button"
@@ -250,9 +278,7 @@ export class Toolbar extends React.Component<IToolbarProps, IToolbarState> {
 										displayType="secondary"
 										onClick={this.handlePreviewClick}
 										size="sm"
-										title={Liferay.Language.get(
-											'view-members'
-										)}
+										title={viewLabel}
 									>
 										{viewMembersButtonContent}
 									</ClayButton>

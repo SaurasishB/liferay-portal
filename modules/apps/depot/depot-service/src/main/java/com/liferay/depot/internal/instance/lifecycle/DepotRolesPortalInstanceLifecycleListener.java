@@ -8,7 +8,7 @@ package com.liferay.depot.internal.instance.lifecycle;
 import com.liferay.depot.constants.DepotRolesConstants;
 import com.liferay.depot.internal.roles.DepotDesignLibraryRolesHelper;
 import com.liferay.depot.model.DepotEntry;
-import com.liferay.depot.role.contributor.DepotRolePermissionsContributor;
+import com.liferay.depot.security.permission.contributor.DepotRolePermissionsContributor;
 import com.liferay.depot.util.DepotRoleUtil;
 import com.liferay.portal.instance.lifecycle.BasePortalInstanceLifecycleListener;
 import com.liferay.portal.instance.lifecycle.PortalInstanceLifecycleListener;
@@ -137,8 +137,8 @@ public class DepotRolesPortalInstanceLifecycleListener
 				return _roleLocalService.addRole(
 					RoleConstants.toSystemRoleExternalReferenceCode(name),
 					user.getUserId(), null, 0, name,
-					DepotRoleUtil.getTitleMap(companyId, _language, name),
-					DepotRoleUtil.getDescriptionMap(companyId, _language, name),
+					DepotRoleUtil.getTitleMap(_language, name),
+					DepotRoleUtil.getDescriptionMap(_language, name),
 					RoleConstants.TYPE_DEPOT, null, null);
 			}
 			finally {

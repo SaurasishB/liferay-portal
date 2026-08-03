@@ -44,15 +44,13 @@ import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.lazy.referencing.LazyReferencingThreadLocal;
 import com.liferay.portal.kernel.model.Group;
-import com.liferay.portal.kernel.model.Role;
-import com.liferay.portal.kernel.model.role.RoleConstants;
+import com.liferay.portal.kernel.model.GroupConstants;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
-import com.liferay.portal.kernel.service.RoleLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalServiceUtil;
 import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
-import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.HTTPTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
@@ -69,7 +67,6 @@ import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.odata.entity.EntityField;
 import com.liferay.portal.test.log.LogCapture;
 import com.liferay.portal.test.log.LoggerTestUtil;
-import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -78,6 +75,7 @@ import com.liferay.portal.vulcan.scope.Scope;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -149,7 +147,6 @@ public class TaxonomyCategoryResourceTest
 		_testDeleteTaxonomyCategorySystem();
 	}
 
-	@FeatureFlag("LPD-17564")
 	@Override
 	@Test
 	@TestInfo({"LPD-83791", "LPD-95641"})
@@ -161,7 +158,7 @@ public class TaxonomyCategoryResourceTest
 		Group originalIrrelevantGroup = irrelevantGroup;
 		Group originalTestGroup = testGroup;
 
-		_addCMSGroup();
+		_setUpCMSGroup();
 
 		_testGetAssetLibraryTaxonomyCategoriesPage(DepotConstants.TYPE_PROJECT);
 		_testGetAssetLibraryTaxonomyCategoriesPage(DepotConstants.TYPE_SPACE);
@@ -480,6 +477,7 @@ public class TaxonomyCategoryResourceTest
 		_testPatchTaxonomyCategoryFriendlyUrlPathWithPeriodsAndSlashes();
 		_testPatchTaxonomyCategorySystem();
 		_testPatchTaxonomyCategorySystemParent();
+		_testPatchTaxonomyCategoryUpdatesTaxonomyCategoryProperty();
 		_testPatchTaxonomyCategoryWithExistingParentTaxonomyCategory(
 			testPatchTaxonomyCategory_addTaxonomyCategory(),
 			_addAssetVocabulary());
@@ -511,7 +509,6 @@ public class TaxonomyCategoryResourceTest
 		_testPostAssetLibraryTaxonomyCategoryWithExternalReferenceCode();
 	}
 
-	@FeatureFlag("LPD-17564")
 	@LazyReferencing
 	@Override
 	@Test
@@ -587,6 +584,7 @@ public class TaxonomyCategoryResourceTest
 		super.testPutSiteTaxonomyCategoryByExternalReferenceCode();
 
 		_testPutSiteTaxonomyCategoryByExternalReferenceCodeUpdatesParentToDefault();
+		_testPutSiteTaxonomyCategoryByExternalReferenceCodeUpdatesTaxonomyCategoryProperty();
 		_testPutSiteTaxonomyCategoryByExternalReferenceCodeWithParentTaxonomyCategory();
 	}
 
@@ -936,30 +934,6 @@ public class TaxonomyCategoryResourceTest
 			new ServiceContext());
 	}
 
-	private void _addCMSGroup() throws Exception {
-
-		// These tests require the instance to be created with the feature
-		// flag LPD-17564 enabled. On CI, feature flags are enabled on
-		// demand for each test, but not during instance initialization.
-		// Until the feature flag LPD-17564 is removed, we need an explicit CMS
-		// group creation.
-
-		Role role = _roleLocalService.fetchRole(
-			testDepotEntryGroup.getCompanyId(), RoleConstants.SITE_MEMBER);
-
-		if (role == null) {
-			_roleLocalService.addRole(
-				null, TestPropsValues.getUserId(), null, 0,
-				RoleConstants.SITE_MEMBER, null, null,
-				RoleConstants.TYPE_REGULAR, null, null);
-		}
-
-		irrelevantGroup = GroupTestUtil.getOrAddCMSGroup(
-			testDepotEntryGroup.getCompanyId());
-
-		testGroup = irrelevantGroup;
-	}
-
 	private String _addFriendlyUrlPath(String friendlyUrlPath)
 		throws Exception {
 
@@ -1089,6 +1063,13 @@ public class TaxonomyCategoryResourceTest
 				siteId = testGroup.getGroupId();
 			}
 		};
+	}
+
+	private void _setUpCMSGroup() throws Exception {
+		irrelevantGroup = _groupLocalService.getGroup(
+			testDepotEntryGroup.getCompanyId(), GroupConstants.CMS);
+
+		testGroup = irrelevantGroup;
 	}
 
 	private void _testDeleteTaxonomyCategorySystem() throws Exception {
@@ -1658,6 +1639,53 @@ public class TaxonomyCategoryResourceTest
 		}
 	}
 
+	private void _testPatchTaxonomyCategoryUpdatesTaxonomyCategoryProperty()
+		throws Exception {
+
+		TaxonomyCategory taxonomyCategory =
+			testPatchTaxonomyCategory_addTaxonomyCategory();
+
+		long categoryId = GetterUtil.getLong(taxonomyCategory.getId());
+
+		String key1 = RandomTestUtil.randomString();
+
+		_assetCategoryPropertyLocalService.addCategoryProperty(
+			TestPropsValues.getUserId(), categoryId, key1,
+			RandomTestUtil.randomString());
+
+		String key2 = RandomTestUtil.randomString();
+		String value2 = RandomTestUtil.randomString();
+
+		_assetCategoryPropertyLocalService.addCategoryProperty(
+			TestPropsValues.getUserId(), categoryId, key2, value2);
+
+		String value1 = RandomTestUtil.randomString();
+
+		TaxonomyCategory patchTaxonomyCategory =
+			taxonomyCategoryResource.patchTaxonomyCategory(
+				taxonomyCategory.getId(),
+				new TaxonomyCategory() {
+					{
+						taxonomyCategoryProperties =
+							new TaxonomyCategoryProperty[] {
+								new TaxonomyCategoryProperty() {
+									{
+										key = key1;
+										value = value1;
+									}
+								}
+							};
+					}
+				});
+
+		Map<String, String> map = _toMap(
+			patchTaxonomyCategory.getTaxonomyCategoryProperties());
+
+		Assert.assertEquals(value1, map.get(key1));
+		Assert.assertEquals(value2, map.get(key2));
+		Assert.assertEquals(map.toString(), 2, map.size());
+	}
+
 	private void _testPatchTaxonomyCategoryWithExistingParentTaxonomyCategory(
 			TaxonomyCategory taxonomyCategory, AssetVocabulary assetVocabulary)
 		throws Exception {
@@ -1863,7 +1891,7 @@ public class TaxonomyCategoryResourceTest
 		Group originalIrrelevantGroup = irrelevantGroup;
 		Group originalTestGroup = testGroup;
 
-		_addCMSGroup();
+		_setUpCMSGroup();
 
 		ParentTaxonomyVocabulary parentTaxonomyVocabulary =
 			new ParentTaxonomyVocabulary() {
@@ -2200,6 +2228,45 @@ public class TaxonomyCategoryResourceTest
 		}
 	}
 
+	private void _testPutSiteTaxonomyCategoryByExternalReferenceCodeUpdatesTaxonomyCategoryProperty()
+		throws Exception {
+
+		TaxonomyCategory taxonomyCategory =
+			testPutSiteTaxonomyCategoryByExternalReferenceCode_addTaxonomyCategory();
+
+		String propertyKey = RandomTestUtil.randomString();
+
+		_assetCategoryPropertyLocalService.addCategoryProperty(
+			TestPropsValues.getUserId(),
+			GetterUtil.getLong(taxonomyCategory.getId()), propertyKey,
+			RandomTestUtil.randomString());
+
+		String propertyValue = RandomTestUtil.randomString();
+
+		taxonomyCategory.setTaxonomyCategoryProperties(
+			new TaxonomyCategoryProperty[] {
+				new TaxonomyCategoryProperty() {
+					{
+						key = propertyKey;
+						value = propertyValue;
+					}
+				}
+			});
+
+		TaxonomyCategory putTaxonomyCategory =
+			taxonomyCategoryResource.
+				putSiteTaxonomyCategoryByExternalReferenceCode(
+					taxonomyCategory.getSiteId(),
+					taxonomyCategory.getExternalReferenceCode(),
+					taxonomyCategory);
+
+		Map<String, String> map = _toMap(
+			putTaxonomyCategory.getTaxonomyCategoryProperties());
+
+		Assert.assertEquals(propertyValue, map.get(propertyKey));
+		Assert.assertEquals(map.toString(), 1, map.size());
+	}
+
 	private void _testPutSiteTaxonomyCategoryByExternalReferenceCodeWithParentTaxonomyCategory()
 		throws Exception {
 
@@ -2261,6 +2328,22 @@ public class TaxonomyCategoryResourceTest
 		}
 	}
 
+	private Map<String, String> _toMap(
+		TaxonomyCategoryProperty[] taxonomyCategoryProperties) {
+
+		Map<String, String> map = new HashMap<>();
+
+		for (TaxonomyCategoryProperty taxonomyCategoryProperty :
+				taxonomyCategoryProperties) {
+
+			map.put(
+				taxonomyCategoryProperty.getKey(),
+				taxonomyCategoryProperty.getValue());
+		}
+
+		return map;
+	}
+
 	private void _waitForFinish(JSONObject jsonObject) throws Exception {
 		String endpoint =
 			"headless-batch-engine/v1.0/import-task" +
@@ -2312,6 +2395,10 @@ public class TaxonomyCategoryResourceTest
 	private FriendlyURLEntryLocalService _friendlyURLEntryLocalService;
 
 	private AssetVocabulary _globalAssetVocabulary;
+
+	@Inject
+	private GroupLocalService _groupLocalService;
+
 	private AssetVocabulary _internalAssetVocabulary;
 
 	@Inject
@@ -2319,9 +2406,6 @@ public class TaxonomyCategoryResourceTest
 
 	@Inject
 	private ResourcePermissionLocalService _resourcePermissionLocalService;
-
-	@Inject
-	private RoleLocalService _roleLocalService;
 
 	private Scope.Type _scopeType = Scope.Type.SITE;
 

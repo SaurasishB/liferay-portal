@@ -114,26 +114,30 @@ describe('AssetTags', () => {
 		jest.resetAllMocks();
 	});
 
-	it('render primaryAction if hasCreatePermission is true and value is typed', async () => {
-		(ApiHelper.get as jest.Mock).mockResolvedValue({
-			data: {
-				actions: {
-					create: true,
-				},
-			},
-			error: null,
-		});
+	it('builds the tags apiURL against the cmsGroup site with a groupIds filter when the scope is negative', () => {
+		renderComponent({cmsGroupId: 456, scopeId: -1});
 
-		renderComponent();
+		const apiURL = screen
+			.getByTestId('item-selector')
+			.getAttribute('data-api-url');
 
-		await waitFor(() => expect(ApiHelper.get).toHaveBeenCalled());
+		expect(apiURL).toContain(
+			'/o/headless-admin-taxonomy/v1.0/sites/456/keywords'
+		);
+		expect(apiURL).toContain("groupIds in ('-1')");
+	});
 
-		const input = screen.getByTestId('item-selector-input');
+	it('builds the tags apiURL against the scope site when the scope is positive', () => {
+		renderComponent({scopeId: 123});
 
-		fireEvent.change(input, {target: {value: 'new-tag'}});
+		const apiURL = screen
+			.getByTestId('item-selector')
+			.getAttribute('data-api-url');
 
-		expect(screen.getByTestId('primary-action')).toBeInTheDocument();
-		expect(screen.getByText('create-new-tag-x')).toBeInTheDocument();
+		expect(apiURL).toContain(
+			'/o/headless-admin-taxonomy/v1.0/sites/123/keywords'
+		);
+		expect(apiURL).not.toContain('groupIds in');
 	});
 
 	it('do not render primaryAction if hasCreatePermission is false even if value is typed', async () => {
@@ -176,64 +180,48 @@ describe('AssetTags', () => {
 		expect(screen.queryByTestId('primary-action')).not.toBeInTheDocument();
 	});
 
-	it('renders existing keywords as labels', () => {
-		renderComponent({keywords: ['keyword-a', 'keyword-b']});
+	it('does not render the generate tags button when there is no content source', () => {
+		(global as any).Liferay.FeatureFlags = {'LPD-62272': true};
 
-		expect(screen.getByText('keyword-a')).toBeInTheDocument();
-		expect(screen.getByText('keyword-b')).toBeInTheDocument();
-	});
-
-	it('renders the panel as collapsable by default', () => {
 		renderComponent();
 
-		const toggle = screen.getByRole('button', {name: 'tags'});
-
-		expect(toggle).toHaveAttribute('aria-expanded', 'true');
-	});
-
-	it('renders the panel as non-collapsable when collapsable is false', () => {
-		renderComponent({collapsable: false});
-
 		expect(
-			screen.queryByRole('button', {name: 'tags'})
+			screen.queryByRole('button', {name: 'generate-tags-with-ai'})
 		).not.toBeInTheDocument();
-
-		expect(screen.getByText('tags')).toBeInTheDocument();
 	});
 
-	it('builds the tags apiURL against the scope site when the scope is positive', () => {
-		renderComponent({scopeId: 123});
+	it('falls back to the persisted content when getContent returns nothing', async () => {
+		const fire = jest.fn();
+		const getContent = jest.fn().mockResolvedValue('');
 
-		const apiURL = screen
-			.getByTestId('item-selector')
-			.getAttribute('data-api-url');
+		(global as any).Liferay.FeatureFlags = {'LPD-62272': true};
+		(global as any).Liferay.fire = fire;
 
-		expect(apiURL).toContain(
-			'/o/headless-admin-taxonomy/v1.0/sites/123/keywords'
+		renderComponent({contentRawText: 'persisted content', getContent});
+
+		fireEvent.click(
+			screen.getByRole('button', {name: 'generate-tags-with-ai'})
 		);
-		expect(apiURL).not.toContain('groupIds in');
-	});
 
-	it('builds the tags apiURL against the cmsGroup site with a groupIds filter when the scope is negative', () => {
-		renderComponent({cmsGroupId: 456, scopeId: -1});
-
-		const apiURL = screen
-			.getByTestId('item-selector')
-			.getAttribute('data-api-url');
-
-		expect(apiURL).toContain(
-			'/o/headless-admin-taxonomy/v1.0/sites/456/keywords'
+		await waitFor(() =>
+			expect(fire).toHaveBeenCalledWith(
+				'cms:aiAssistant:categorize',
+				expect.objectContaining({content: 'persisted content'})
+			)
 		);
-		expect(apiURL).toContain("groupIds in ('-1')");
 	});
 
-	it('fires the categorize event when the sparkle is clicked', async () => {
+	it('fires the categorize event when the generate tags button is clicked', async () => {
 		const fire = jest.fn();
 
 		(global as any).Liferay.FeatureFlags = {'LPD-62272': true};
 		(global as any).Liferay.fire = fire;
 
-		renderComponent({cmsGroupId: 456, scopeId: 123});
+		renderComponent({
+			cmsGroupId: 456,
+			contentRawText: 'persisted content',
+			scopeId: 123,
+		});
 
 		fireEvent.click(
 			screen.getByRole('button', {name: 'generate-tags-with-ai'})
@@ -272,24 +260,62 @@ describe('AssetTags', () => {
 		);
 	});
 
-	it('falls back to the persisted content when getContent returns nothing', async () => {
-		const fire = jest.fn();
-		const getContent = jest.fn().mockResolvedValue('');
+	it('render primaryAction if hasCreatePermission is true and value is typed', async () => {
+		(ApiHelper.get as jest.Mock).mockResolvedValue({
+			data: {
+				actions: {
+					create: true,
+				},
+			},
+			error: null,
+		});
 
+		renderComponent();
+
+		await waitFor(() => expect(ApiHelper.get).toHaveBeenCalled());
+
+		const input = screen.getByTestId('item-selector-input');
+
+		fireEvent.change(input, {target: {value: 'new-tag'}});
+
+		expect(screen.getByTestId('primary-action')).toBeInTheDocument();
+		expect(screen.getByText('create-new-tag-x')).toBeInTheDocument();
+	});
+
+	it('renders existing keywords as labels', () => {
+		renderComponent({keywords: ['keyword-a', 'keyword-b']});
+
+		expect(screen.getByText('keyword-a')).toBeInTheDocument();
+		expect(screen.getByText('keyword-b')).toBeInTheDocument();
+	});
+
+	it('renders the generate tags button when only getContent supplies the content', () => {
 		(global as any).Liferay.FeatureFlags = {'LPD-62272': true};
-		(global as any).Liferay.fire = fire;
 
-		renderComponent({contentRawText: 'persisted content', getContent});
+		renderComponent({
+			getContent: jest.fn().mockResolvedValue('edited content'),
+		});
 
-		fireEvent.click(
+		expect(
 			screen.getByRole('button', {name: 'generate-tags-with-ai'})
-		);
+		).toBeInTheDocument();
+	});
 
-		await waitFor(() =>
-			expect(fire).toHaveBeenCalledWith(
-				'cms:aiAssistant:categorize',
-				expect.objectContaining({content: 'persisted content'})
-			)
-		);
+	it('renders the panel as collapsable by default', () => {
+		renderComponent();
+
+		const toggle = screen.getByRole('button', {name: 'tags'});
+
+		expect(toggle).toHaveAttribute('aria-expanded', 'true');
+	});
+
+	it('renders the panel as non-collapsable when collapsable is false', () => {
+		renderComponent({collapsable: false});
+
+		expect(
+			screen.queryByRole('button', {name: 'tags'})
+		).not.toBeInTheDocument();
+
+		expect(screen.getByText('tags')).toBeInTheDocument();
 	});
 });

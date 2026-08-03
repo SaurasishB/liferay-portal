@@ -41,7 +41,6 @@ import com.liferay.portal.kernel.test.util.RoleTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PersistenceTestRule;
@@ -75,24 +74,8 @@ public class ObjectEntryInfoPermissionProviderTest {
 	}
 
 	@Test
-	public void testHasViewPermission() throws Exception {
-		_testHasViewPermissionForCustomObjectDefinition(
-			false, false, PermissionCheckerFactoryUtil.create(_user));
-		_testHasViewPermissionForCustomObjectDefinition(
-			false, true, PermissionThreadLocal.getPermissionChecker());
-		_testHasViewPermissionForCustomObjectDefinition(
-			true, true, PermissionThreadLocal.getPermissionChecker());
-		_testHasViewPermissionForModifiableSystemObjectDefinition(false, false);
-		_testHasViewPermissionForModifiableSystemObjectDefinition(true, false);
-		_testHasViewPermissionForSiteRole();
-		_testHasViewPermissionForUnmodifiableSystemObjectDefinition(false);
-		_testHasViewPermissionForUnmodifiableSystemObjectDefinition(true);
-	}
-
-	@FeatureFlag("LPD-17564")
-	@Test
 	@TestInfo("LPD-83634")
-	public void testHasViewPermissionWithFF() throws Exception {
+	public void testHasViewPermission() throws Exception {
 		_testHasViewPermissionForCustomObjectDefinition(
 			false, false, PermissionCheckerFactoryUtil.create(_user));
 		_testHasViewPermissionForCustomObjectDefinition(
