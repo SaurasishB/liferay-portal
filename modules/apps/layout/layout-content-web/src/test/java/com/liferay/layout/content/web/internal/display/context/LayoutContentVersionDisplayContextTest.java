@@ -51,10 +51,12 @@ public class LayoutContentVersionDisplayContextTest {
 
 	@Before
 	public void setUp() throws PortalException {
+		_setUpDraftLayout();
 		_setUpGroup();
 		_setUpLanguage();
 		_setUpLayoutLocalService();
 		_setUpPublishedLayout();
+		_setUpThemeDisplay();
 	}
 
 	@Test
@@ -92,6 +94,12 @@ public class LayoutContentVersionDisplayContextTest {
 		Assert.assertEquals(
 			LocaleUtil.toLanguageId(_siteDefaultLocale),
 			config.get("defaultLanguageId"));
+		Assert.assertEquals(
+			_themeDisplay.getPathImage() + "/user_portrait?img_id=0",
+			config.get("defaultUserImageSrc"));
+		Assert.assertEquals(
+			_draftLayout.getName(_locale), config.get("draftName"));
+		Assert.assertEquals(!_draftLayout.isApproved(), config.get("hasDraft"));
 		Assert.assertEquals(
 			StringBundler.concat(
 				"/o/headless-admin-site/v1.0/sites/",
@@ -165,7 +173,7 @@ public class LayoutContentVersionDisplayContextTest {
 			new MockHttpServletRequest();
 
 		mockHttpServletRequest.setAttribute(
-			WebKeys.THEME_DISPLAY, _getThemeDisplay());
+			WebKeys.THEME_DISPLAY, _themeDisplay);
 
 		return mockHttpServletRequest;
 	}
@@ -215,34 +223,18 @@ public class LayoutContentVersionDisplayContextTest {
 		return segmentsExperience;
 	}
 
-	private ThemeDisplay _getThemeDisplay() {
-		ThemeDisplay themeDisplay = Mockito.mock(ThemeDisplay.class);
-
+	private void _setUpDraftLayout() {
 		Mockito.when(
-			themeDisplay.getLayout()
+			_draftLayout.getName(_locale)
 		).thenReturn(
-			_draftLayout
+			RandomTestUtil.randomString()
 		);
 
 		Mockito.when(
-			themeDisplay.getLocale()
+			_draftLayout.isApproved()
 		).thenReturn(
-			_locale
+			RandomTestUtil.randomBoolean()
 		);
-
-		Mockito.when(
-			themeDisplay.getScopeGroup()
-		).thenReturn(
-			_group
-		);
-
-		Mockito.when(
-			themeDisplay.getSiteDefaultLocale()
-		).thenReturn(
-			_siteDefaultLocale
-		);
-
-		return themeDisplay;
 	}
 
 	private void _setUpGroup() {
@@ -284,6 +276,38 @@ public class LayoutContentVersionDisplayContextTest {
 		);
 	}
 
+	private void _setUpThemeDisplay() {
+		Mockito.when(
+			_themeDisplay.getLayout()
+		).thenReturn(
+			_draftLayout
+		);
+
+		Mockito.when(
+			_themeDisplay.getLocale()
+		).thenReturn(
+			_locale
+		);
+
+		Mockito.when(
+			_themeDisplay.getPathImage()
+		).thenReturn(
+			RandomTestUtil.randomString()
+		);
+
+		Mockito.when(
+			_themeDisplay.getScopeGroup()
+		).thenReturn(
+			_group
+		);
+
+		Mockito.when(
+			_themeDisplay.getSiteDefaultLocale()
+		).thenReturn(
+			_siteDefaultLocale
+		);
+	}
+
 	private final Layout _draftLayout = Mockito.mock(Layout.class);
 	private final Group _group = Mockito.mock(Group.class);
 	private final Language _language = Mockito.mock(Language.class);
@@ -295,5 +319,6 @@ public class LayoutContentVersionDisplayContextTest {
 		_segmentsExperienceLocalService = Mockito.mock(
 			SegmentsExperienceLocalService.class);
 	private final Locale _siteDefaultLocale = LocaleUtil.GERMANY;
+	private final ThemeDisplay _themeDisplay = Mockito.mock(ThemeDisplay.class);
 
 }
