@@ -91,23 +91,6 @@ public class LayoutContentVersionDisplayContextTest {
 
 		Map<String, Object> config = (Map<String, Object>)context.get("config");
 
-		Assert.assertEquals(
-			LocaleUtil.toLanguageId(_siteDefaultLocale),
-			config.get("defaultLanguageId"));
-		Assert.assertEquals(
-			_themeDisplay.getPathImage() + "/user_portrait?img_id=0",
-			config.get("defaultUserImageSrc"));
-		Assert.assertEquals(
-			_draftLayout.getName(_locale), config.get("draftName"));
-		Assert.assertEquals(!_draftLayout.isApproved(), config.get("hasDraft"));
-		Assert.assertEquals(
-			StringBundler.concat(
-				"/o/headless-admin-site/v1.0/sites/",
-				_group.getExternalReferenceCode(), "/site-pages/",
-				_publishedLayout.getExternalReferenceCode(),
-				"/page-specification-versions"),
-			config.get("pageSpecificationVersionsURL"));
-
 		_assertAvailableLanguages(
 			(Map<String, Object>)config.get("availableLanguages"), _locale,
 			_siteDefaultLocale);
@@ -129,6 +112,28 @@ public class LayoutContentVersionDisplayContextTest {
 		Assert.assertEquals(
 			availableSegmentsExperiences.toString(), 3,
 			availableSegmentsExperiences.size());
+
+		Assert.assertEquals(
+			LocaleUtil.toLanguageId(_siteDefaultLocale),
+			config.get("defaultLanguageId"));
+		Assert.assertEquals(
+			_themeDisplay.getPathImage() + "/user_portrait?img_id=0",
+			config.get("defaultUserImageSrc"));
+
+		Map<String, Object> layout = (Map<String, Object>)config.get("layout");
+
+		Assert.assertEquals(_draftLayout.getName(_locale), layout.get("name"));
+		Assert.assertEquals(
+			_draftLayout.isApproved() ? "approved" : "draft",
+			layout.get("status"));
+
+		Assert.assertEquals(
+			StringBundler.concat(
+				"/o/headless-admin-site/v1.0/sites/",
+				_group.getExternalReferenceCode(), "/site-pages/",
+				_publishedLayout.getExternalReferenceCode(),
+				"/page-specification-versions"),
+			config.get("pageSpecificationVersionsURL"));
 	}
 
 	private void _assertAvailableLanguages(

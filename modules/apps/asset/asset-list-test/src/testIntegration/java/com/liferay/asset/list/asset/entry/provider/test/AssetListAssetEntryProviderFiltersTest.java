@@ -16,10 +16,13 @@ import com.liferay.info.pagination.InfoPage;
 import com.liferay.object.constants.ObjectDefinitionConstants;
 import com.liferay.object.constants.ObjectEntryFolderConstants;
 import com.liferay.object.constants.ObjectFieldConstants;
+import com.liferay.object.constants.ObjectFieldSettingConstants;
 import com.liferay.object.field.util.ObjectFieldUtil;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
+import com.liferay.object.model.ObjectFieldSetting;
 import com.liferay.object.service.ObjectEntryLocalService;
+import com.liferay.object.service.ObjectFieldSettingLocalService;
 import com.liferay.object.test.util.ObjectDefinitionTestUtil;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringPool;
@@ -50,6 +53,7 @@ import com.liferay.segments.constants.SegmentsEntryConstants;
 import java.io.Serializable;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -81,6 +85,21 @@ public class AssetListAssetEntryProviderFiltersTest {
 		_objectDefinition = ObjectDefinitionTestUtil.publishObjectDefinition(
 			Arrays.asList(
 				ObjectFieldUtil.createObjectField(
+					ObjectFieldConstants.BUSINESS_TYPE_DATE,
+					ObjectFieldConstants.DB_TYPE_DATE, true, false, null,
+					RandomTestUtil.randomString(), _OBJECT_FIELD_NAME_DATE,
+					false),
+				ObjectFieldUtil.createObjectField(
+					ObjectFieldConstants.BUSINESS_TYPE_DATE_TIME,
+					ObjectFieldConstants.DB_TYPE_DATE_TIME, true, false, null,
+					RandomTestUtil.randomString(), _OBJECT_FIELD_NAME_DATE_TIME,
+					Collections.singletonList(
+						_createObjectFieldSetting(
+							ObjectFieldSettingConstants.NAME_TIME_STORAGE,
+							ObjectFieldSettingConstants.
+								VALUE_USE_INPUT_AS_ENTERED)),
+					false),
+				ObjectFieldUtil.createObjectField(
 					ObjectFieldConstants.BUSINESS_TYPE_INTEGER,
 					ObjectFieldConstants.DB_TYPE_INTEGER, true, false, null,
 					RandomTestUtil.randomString(), _OBJECT_FIELD_NAME_INTEGER,
@@ -96,6 +115,41 @@ public class AssetListAssetEntryProviderFiltersTest {
 					RandomTestUtil.randomString(), _OBJECT_FIELD_NAME_TEXT,
 					false)),
 			ObjectDefinitionConstants.SCOPE_SITE);
+	}
+
+	@FeatureFlags(featureFlags = @FeatureFlag(value = "LPD-74731"))
+	@Test
+	public void testGetAssetEntriesInfoPageWithDateRangeFilters()
+		throws Exception {
+
+		ObjectEntry objectEntry1 = _addObjectEntry(
+			HashMapBuilder.<String, Serializable>put(
+				_OBJECT_FIELD_NAME_DATE, "2026-01-15"
+			).build());
+
+		_assertFilteredClassPKs(
+			_buildFiltersJSONArray(
+				_buildFilterJSONObject(
+					"between", _OBJECT_FIELD_NAME_DATE,
+					JSONUtil.putAll("2026-01-01", "2026-03-01"))),
+			objectEntry1);
+
+		ObjectEntry objectEntry2 = _addObjectEntry(
+			HashMapBuilder.<String, Serializable>put(
+				_OBJECT_FIELD_NAME_DATE_TIME, "2026-01-15 10:30"
+			).build());
+
+		_addObjectEntry(
+			HashMapBuilder.<String, Serializable>put(
+				_OBJECT_FIELD_NAME_DATE_TIME, "2026-06-15 10:30"
+			).build());
+
+		_assertFilteredClassPKs(
+			_buildFiltersJSONArray(
+				_buildFilterJSONObject(
+					"between", _OBJECT_FIELD_NAME_DATE_TIME,
+					JSONUtil.putAll("2026-01-15 00:00", "2026-01-15 23:59"))),
+			objectEntry2);
 	}
 
 	@FeatureFlags(featureFlags = @FeatureFlag(value = "LPD-74731"))
@@ -213,6 +267,64 @@ public class AssetListAssetEntryProviderFiltersTest {
 					"eq", _OBJECT_FIELD_NAME_INTEGER,
 					String.valueOf(priority))),
 			objectEntry1);
+	}
+
+	@FeatureFlags(featureFlags = @FeatureFlag(value = "LPD-74731"))
+	@Test
+	public void testGetAssetEntriesInfoPageWithNumericRangeFilters()
+		throws Exception {
+
+		ObjectEntry objectEntry1 = _addObjectEntry(
+			HashMapBuilder.<String, Serializable>put(
+				_OBJECT_FIELD_NAME_INTEGER, RandomTestUtil.randomInt(1, 100)
+			).build());
+		int priority1 = RandomTestUtil.randomInt(101, 200);
+
+		_assertFilteredClassPKs(
+			_buildFiltersJSONArray(
+				_buildFilterJSONObject(
+					"lt", _OBJECT_FIELD_NAME_INTEGER,
+					String.valueOf(priority1))),
+			objectEntry1);
+
+		ObjectEntry objectEntry2 = _addObjectEntry(
+			HashMapBuilder.<String, Serializable>put(
+				_OBJECT_FIELD_NAME_INTEGER, priority1
+			).build());
+
+		_assertFilteredClassPKs(
+			_buildFiltersJSONArray(
+				_buildFilterJSONObject(
+					"le", _OBJECT_FIELD_NAME_INTEGER,
+					String.valueOf(priority1))),
+			objectEntry1, objectEntry2);
+
+		int priority2 = RandomTestUtil.randomInt(201, 300);
+
+		ObjectEntry objectEntry3 = _addObjectEntry(
+			HashMapBuilder.<String, Serializable>put(
+				_OBJECT_FIELD_NAME_INTEGER, priority2
+			).build());
+
+		_assertFilteredClassPKs(
+			_buildFiltersJSONArray(
+				_buildFilterJSONObject(
+					"between", _OBJECT_FIELD_NAME_INTEGER,
+					JSONUtil.putAll(
+						String.valueOf(priority1), String.valueOf(priority2)))),
+			objectEntry2, objectEntry3);
+		_assertFilteredClassPKs(
+			_buildFiltersJSONArray(
+				_buildFilterJSONObject(
+					"ge", _OBJECT_FIELD_NAME_INTEGER,
+					String.valueOf(priority1))),
+			objectEntry2, objectEntry3);
+		_assertFilteredClassPKs(
+			_buildFiltersJSONArray(
+				_buildFilterJSONObject(
+					"gt", _OBJECT_FIELD_NAME_INTEGER,
+					String.valueOf(priority1))),
+			objectEntry3);
 	}
 
 	@FeatureFlags(featureFlags = @FeatureFlag(value = "LPD-74731"))
@@ -451,6 +563,24 @@ public class AssetListAssetEntryProviderFiltersTest {
 		return JSONUtil.putAll((Object[])filterJSONObjects);
 	}
 
+	private ObjectFieldSetting _createObjectFieldSetting(
+		String name, String value) {
+
+		ObjectFieldSetting objectFieldSetting =
+			_objectFieldSettingLocalService.createObjectFieldSetting(0L);
+
+		objectFieldSetting.setName(name);
+		objectFieldSetting.setValue(value);
+
+		return objectFieldSetting;
+	}
+
+	private static final String _OBJECT_FIELD_NAME_DATE =
+		"xDate" + RandomTestUtil.randomString();
+
+	private static final String _OBJECT_FIELD_NAME_DATE_TIME =
+		"xDateTime" + RandomTestUtil.randomString();
+
 	private static final String _OBJECT_FIELD_NAME_INTEGER =
 		"xInteger" + RandomTestUtil.randomString();
 
@@ -474,6 +604,9 @@ public class AssetListAssetEntryProviderFiltersTest {
 
 	@Inject
 	private ObjectEntryLocalService _objectEntryLocalService;
+
+	@Inject
+	private ObjectFieldSettingLocalService _objectFieldSettingLocalService;
 
 	@Inject
 	private Portal _portal;

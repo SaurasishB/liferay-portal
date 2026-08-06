@@ -10,6 +10,7 @@ import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectField;
 import com.liferay.object.service.ObjectDefinitionLocalServiceUtil;
 import com.liferay.object.service.ObjectFieldLocalServiceUtil;
+import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
@@ -21,6 +22,7 @@ import com.liferay.portal.kernel.search.NestedQuery;
 import com.liferay.portal.kernel.search.Query;
 import com.liferay.portal.kernel.search.QueryTerm;
 import com.liferay.portal.kernel.search.TermQuery;
+import com.liferay.portal.kernel.search.TermRangeQuery;
 import com.liferay.portal.kernel.search.WildcardQuery;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
@@ -32,7 +34,10 @@ import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
 import com.liferay.portal.util.FastDateFormatFactoryImpl;
 
+import java.text.Format;
+
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 import org.junit.AfterClass;
@@ -80,6 +85,71 @@ public class AssetListFiltersUtilTest {
 	}
 
 	@Test
+	public void testFilterQueriesWithDateAndDateTimeOperators() {
+		String dateFieldName = RandomTestUtil.randomString();
+
+		_setUpObjectField(
+			ObjectFieldConstants.BUSINESS_TYPE_DATE,
+			ObjectFieldConstants.DB_TYPE_DATE, dateFieldName);
+
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_date", true, true, "20260115000000",
+			"20260120235959",
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject(
+					"between", dateFieldName,
+					JSONUtil.putAll("2026-01-15", "2026-01-20")),
+				dateFieldName));
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_date", true, true, "20260115000000",
+			"20260115235959",
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject("eq", dateFieldName, "2026-01-15"),
+				dateFieldName));
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_date", true, false, "20260115000000", null,
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject("ge", dateFieldName, "2026-01-15"),
+				dateFieldName));
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_date", false, false, "20260115235959", null,
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject("gt", dateFieldName, "2026-01-15"),
+				dateFieldName));
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_date", false, true, null, "20260115235959",
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject("le", dateFieldName, "2026-01-15"),
+				dateFieldName));
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_date", false, false, null, "20260115000000",
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject("lt", dateFieldName, "2026-01-15"),
+				dateFieldName));
+
+		String dateTimeFieldName = RandomTestUtil.randomString();
+
+		_setUpObjectField(
+			ObjectFieldConstants.BUSINESS_TYPE_DATE_TIME,
+			ObjectFieldConstants.DB_TYPE_DATE_TIME, dateTimeFieldName);
+
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_date", true, true, "20260115103000",
+			"20260115103059",
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject(
+					"eq", dateTimeFieldName, "2026-01-15 10:30"),
+				dateTimeFieldName));
+	}
+
+	@Test
 	public void testFilterQueriesWithEqualityOperators() {
 		String booleanFieldName = RandomTestUtil.randomString();
 
@@ -89,7 +159,7 @@ public class AssetListFiltersUtilTest {
 
 		_assertTermQuery(
 			"nestedFieldArray.value_boolean", "true",
-			_assertNestedRowAndGetQuery(
+			_assertNestedQuery(
 				BooleanClauseOccur.MUST,
 				_buildFilterJSONObject("eq", booleanFieldName, "true"),
 				booleanFieldName));
@@ -104,7 +174,7 @@ public class AssetListFiltersUtilTest {
 
 		_assertTermQuery(
 			"nestedFieldArray.value_double", doubleFieldValue,
-			_assertNestedRowAndGetQuery(
+			_assertNestedQuery(
 				BooleanClauseOccur.MUST,
 				_buildFilterJSONObject("eq", doubleFieldName, doubleFieldValue),
 				doubleFieldName));
@@ -119,14 +189,14 @@ public class AssetListFiltersUtilTest {
 
 		_assertTermQuery(
 			"nestedFieldArray.value_integer", integerFieldValue,
-			_assertNestedRowAndGetQuery(
+			_assertNestedQuery(
 				BooleanClauseOccur.MUST,
 				_buildFilterJSONObject(
 					"eq", integerFieldName, integerFieldValue),
 				integerFieldName));
 		_assertTermQuery(
 			"nestedFieldArray.value_integer", integerFieldValue,
-			_assertNestedRowAndGetQuery(
+			_assertNestedQuery(
 				BooleanClauseOccur.MUST_NOT,
 				_buildFilterJSONObject(
 					"not-eq", integerFieldName, integerFieldValue),
@@ -146,7 +216,7 @@ public class AssetListFiltersUtilTest {
 
 		_assertTermQuery(
 			"nestedFieldArray.value_keyword", "alpha",
-			_assertNestedRowAndGetQuery(
+			_assertNestedQuery(
 				BooleanClauseOccur.MUST,
 				_buildFilterJSONObject("eq", keywordTextFieldName, "Alpha"),
 				keywordTextFieldName));
@@ -167,7 +237,7 @@ public class AssetListFiltersUtilTest {
 
 		_assertTermQuery(
 			"nestedFieldArray.value_en_US", localizedTextFieldValue,
-			_assertNestedRowAndGetQuery(
+			_assertNestedQuery(
 				BooleanClauseOccur.MUST,
 				_buildFilterJSONObject(
 					"eq", localizedTextFieldName, localizedTextFieldValue),
@@ -183,7 +253,7 @@ public class AssetListFiltersUtilTest {
 
 		_assertTermQuery(
 			"nestedFieldArray.value_long", longFieldValue,
-			_assertNestedRowAndGetQuery(
+			_assertNestedQuery(
 				BooleanClauseOccur.MUST,
 				_buildFilterJSONObject(
 					"eq", longIntegerFieldName, longFieldValue),
@@ -199,13 +269,13 @@ public class AssetListFiltersUtilTest {
 
 		_assertTermQuery(
 			"nestedFieldArray.value_text", textFieldValue,
-			_assertNestedRowAndGetQuery(
+			_assertNestedQuery(
 				BooleanClauseOccur.MUST,
 				_buildFilterJSONObject("eq", textFieldName, textFieldValue),
 				textFieldName));
 		_assertTermQuery(
 			"nestedFieldArray.value_text", textFieldValue,
-			_assertNestedRowAndGetQuery(
+			_assertNestedQuery(
 				BooleanClauseOccur.MUST_NOT,
 				_buildFilterJSONObject("not-eq", textFieldName, textFieldValue),
 				textFieldName));
@@ -243,18 +313,183 @@ public class AssetListFiltersUtilTest {
 
 		_assertWildcardQuery(
 			"nestedFieldArray.value_keyword", "*alpha*",
-			_assertNestedRowAndGetQuery(
+			_assertNestedQuery(
 				BooleanClauseOccur.MUST,
 				_buildFilterJSONObject(
 					"contains", keywordTextFieldName, "Alpha"),
 				keywordTextFieldName));
 		_assertWildcardQuery(
 			"nestedFieldArray.value_keyword", "*alpha*",
-			_assertNestedRowAndGetQuery(
+			_assertNestedQuery(
 				BooleanClauseOccur.MUST_NOT,
 				_buildFilterJSONObject(
 					"not-contains", keywordTextFieldName, "Alpha"),
 				keywordTextFieldName));
+	}
+
+	@Test
+	public void testFilterQueriesWithNumericRangeOperators() {
+		String doubleFieldName = RandomTestUtil.randomString();
+
+		_setUpObjectField(
+			ObjectFieldConstants.BUSINESS_TYPE_DECIMAL,
+			ObjectFieldConstants.DB_TYPE_DOUBLE, doubleFieldName);
+
+		String doubleLowerFieldValue = "1.5";
+		String doubleUpperFieldValue = "2.5";
+
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_double", true, true, doubleLowerFieldValue,
+			doubleUpperFieldValue,
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject(
+					"between", doubleFieldName,
+					JSONUtil.putAll(
+						doubleLowerFieldValue, doubleUpperFieldValue)),
+				doubleFieldName));
+
+		String doubleFieldValue = String.valueOf(RandomTestUtil.randomDouble());
+
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_double", false, false, doubleFieldValue,
+			null,
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject("gt", doubleFieldName, doubleFieldValue),
+				doubleFieldName));
+
+		String integerFieldName = RandomTestUtil.randomString();
+
+		_setUpObjectField(
+			ObjectFieldConstants.BUSINESS_TYPE_INTEGER,
+			ObjectFieldConstants.DB_TYPE_INTEGER, integerFieldName);
+
+		String integerLowerFieldValue = "1";
+		String integerUpperFieldValue = "2";
+
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_integer", true, true,
+			integerLowerFieldValue, integerUpperFieldValue,
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject(
+					"between", integerFieldName,
+					JSONUtil.putAll(
+						integerLowerFieldValue, integerUpperFieldValue)),
+				integerFieldName));
+
+		String integerFieldValue = String.valueOf(RandomTestUtil.randomInt());
+
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_integer", true, false, integerFieldValue,
+			null,
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject(
+					"ge", integerFieldName, integerFieldValue),
+				integerFieldName));
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_integer", false, false, integerFieldValue,
+			null,
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject(
+					"gt", integerFieldName, integerFieldValue),
+				integerFieldName));
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_integer", false, true, null,
+			integerFieldValue,
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject(
+					"le", integerFieldName, integerFieldValue),
+				integerFieldName));
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_integer", false, false, null,
+			integerFieldValue,
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject(
+					"lt", integerFieldName, integerFieldValue),
+				integerFieldName));
+
+		String longIntegerFieldName = RandomTestUtil.randomString();
+
+		_setUpObjectField(
+			ObjectFieldConstants.BUSINESS_TYPE_LONG_INTEGER,
+			ObjectFieldConstants.DB_TYPE_LONG, longIntegerFieldName);
+
+		String longLowerFieldValue = "1";
+		String longUpperFieldValue = "2";
+
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_long", true, true, longLowerFieldValue,
+			longUpperFieldValue,
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject(
+					"between", longIntegerFieldName,
+					JSONUtil.putAll(longLowerFieldValue, longUpperFieldValue)),
+				longIntegerFieldName));
+	}
+
+	@Test
+	public void testFilterQueriesWithRelativeDateOperators() {
+		String dateFieldName = RandomTestUtil.randomString();
+
+		_setUpObjectField(
+			ObjectFieldConstants.BUSINESS_TYPE_DATE,
+			ObjectFieldConstants.DB_TYPE_DATE, dateFieldName);
+
+		String lastYearLowerTerm = _resolveRelativeDateLowerTerm(
+			dateFieldName, "last-year");
+		String nextMonthLowerTerm = _resolveRelativeDateLowerTerm(
+			dateFieldName, "next-month");
+		String nowLowerTerm = _resolveRelativeDateLowerTerm(
+			dateFieldName, "now");
+		String past24HoursLowerTerm = _resolveRelativeDateLowerTerm(
+			dateFieldName, "past-24-hours");
+		String pastDayLowerTerm = _resolveRelativeDateLowerTerm(
+			dateFieldName, "past-day");
+		String pastMonthLowerTerm = _resolveRelativeDateLowerTerm(
+			dateFieldName, "past-month");
+		String pastWeekLowerTerm = _resolveRelativeDateLowerTerm(
+			dateFieldName, "past-week");
+		String pastYearLowerTerm = _resolveRelativeDateLowerTerm(
+			dateFieldName, "past-year");
+
+		for (String lowerTerm :
+				new String[] {
+					lastYearLowerTerm, nextMonthLowerTerm, nowLowerTerm,
+					past24HoursLowerTerm, pastDayLowerTerm, pastMonthLowerTerm,
+					pastWeekLowerTerm, pastYearLowerTerm
+				}) {
+
+			Assert.assertEquals(lowerTerm, 14, lowerTerm.length());
+			Assert.assertTrue(lowerTerm, lowerTerm.endsWith("000000"));
+		}
+
+		Format format = FastDateFormatFactoryUtil.getSimpleDateFormat(
+			"yyyyMMdd");
+
+		Assert.assertEquals(format.format(new Date()) + "000000", nowLowerTerm);
+
+		Assert.assertEquals(lastYearLowerTerm, pastYearLowerTerm);
+		Assert.assertEquals(past24HoursLowerTerm, pastDayLowerTerm);
+		Assert.assertTrue(nowLowerTerm.compareTo(nextMonthLowerTerm) < 0);
+		Assert.assertTrue(pastDayLowerTerm.compareTo(nowLowerTerm) < 0);
+		Assert.assertTrue(pastMonthLowerTerm.compareTo(pastWeekLowerTerm) < 0);
+		Assert.assertTrue(pastWeekLowerTerm.compareTo(pastDayLowerTerm) < 0);
+		Assert.assertTrue(pastYearLowerTerm.compareTo(pastMonthLowerTerm) < 0);
+
+		_assertTermRangeQuery(
+			"nestedFieldArray.value_date", false, true, null,
+			format.format(new Date()) + "235959",
+			_assertNestedQuery(
+				BooleanClauseOccur.MUST,
+				_buildFilterJSONObject("le", dateFieldName, "now"),
+				dateFieldName));
 	}
 
 	@Test
@@ -267,7 +502,7 @@ public class AssetListFiltersUtilTest {
 
 		String textFieldValue = RandomTestUtil.randomString();
 
-		Query containsQuery = _assertNestedRowAndGetQuery(
+		Query containsQuery = _assertNestedQuery(
 			BooleanClauseOccur.MUST,
 			_buildFilterJSONObject("contains", textFieldName, textFieldValue),
 			textFieldName);
@@ -275,7 +510,7 @@ public class AssetListFiltersUtilTest {
 		Assert.assertTrue(
 			containsQuery.toString(), containsQuery instanceof MatchQuery);
 
-		Query containsWithQuantifierQuery = _assertNestedRowAndGetQuery(
+		Query containsWithQuantifierQuery = _assertNestedQuery(
 			BooleanClauseOccur.MUST,
 			_buildFilterJSONObject(
 				"contains", textFieldName, textFieldValue
@@ -288,7 +523,7 @@ public class AssetListFiltersUtilTest {
 			containsWithQuantifierQuery.toString(),
 			containsWithQuantifierQuery instanceof MatchQuery);
 
-		Query notContainsQuery = _assertNestedRowAndGetQuery(
+		Query notContainsQuery = _assertNestedQuery(
 			BooleanClauseOccur.MUST_NOT,
 			_buildFilterJSONObject(
 				"not-contains", textFieldName, textFieldValue),
@@ -299,7 +534,22 @@ public class AssetListFiltersUtilTest {
 			notContainsQuery instanceof MatchQuery);
 	}
 
-	private Query _assertNestedRowAndGetQuery(
+	private QueryTerm _assertNestedFieldQueryTerm(
+		BooleanClause<Query> booleanClause, String expectedField) {
+
+		Assert.assertEquals(
+			BooleanClauseOccur.MUST, booleanClause.getBooleanClauseOccur());
+
+		TermQuery termQuery = (TermQuery)booleanClause.getClause();
+
+		QueryTerm queryTerm = termQuery.getQueryTerm();
+
+		Assert.assertEquals(expectedField, queryTerm.getField());
+
+		return queryTerm;
+	}
+
+	private Query _assertNestedQuery(
 		BooleanClauseOccur expectedBooleanClauseOccur,
 		JSONObject filterJSONObject, String propertyName) {
 
@@ -310,72 +560,51 @@ public class AssetListFiltersUtilTest {
 		Assert.assertEquals(
 			Arrays.toString(booleanClauses), 1, booleanClauses.length);
 
-		BooleanClause<?> outerBooleanClause = booleanClauses[0];
+		BooleanClause<?> filtersBooleanClause = booleanClauses[0];
 
 		Assert.assertEquals(
 			BooleanClauseOccur.MUST,
-			outerBooleanClause.getBooleanClauseOccur());
+			filtersBooleanClause.getBooleanClauseOccur());
 
-		BooleanQuery outerBooleanQuery =
-			(BooleanQuery)outerBooleanClause.getClause();
+		BooleanQuery filtersBooleanQuery =
+			(BooleanQuery)filtersBooleanClause.getClause();
 
-		List<BooleanClause<Query>> rowBooleanClauses =
-			outerBooleanQuery.clauses();
+		List<BooleanClause<Query>> filterBooleanClauses =
+			filtersBooleanQuery.clauses();
 
-		BooleanClause<Query> rowBooleanClause = rowBooleanClauses.get(0);
+		BooleanClause<Query> filterBooleanClause = filterBooleanClauses.get(0);
 
-		NestedQuery nestedQuery = (NestedQuery)rowBooleanClause.getClause();
+		NestedQuery nestedQuery = (NestedQuery)filterBooleanClause.getClause();
 
 		Assert.assertEquals("nestedFieldArray", nestedQuery.getPath());
 
-		BooleanQuery innerBooleanQuery = (BooleanQuery)nestedQuery.getQuery();
+		BooleanQuery nestedFieldBooleanQuery =
+			(BooleanQuery)nestedQuery.getQuery();
 
-		List<BooleanClause<Query>> innerBooleanClauses =
-			innerBooleanQuery.clauses();
-
-		Assert.assertEquals(
-			innerBooleanClauses.toString(), 3, innerBooleanClauses.size());
-
-		BooleanClause<Query> fieldNameBooleanClause = innerBooleanClauses.get(
-			0);
-
-		TermQuery fieldNameTermQuery =
-			(TermQuery)fieldNameBooleanClause.getClause();
-
-		QueryTerm fieldNameQueryTerm = fieldNameTermQuery.getQueryTerm();
+		List<BooleanClause<Query>> nestedFieldBooleanClauses =
+			nestedFieldBooleanQuery.clauses();
 
 		Assert.assertEquals(
-			"nestedFieldArray.fieldName", fieldNameQueryTerm.getField());
-		Assert.assertEquals(propertyName, fieldNameQueryTerm.getValue());
+			nestedFieldBooleanClauses.toString(), 3,
+			nestedFieldBooleanClauses.size());
 
-		Assert.assertEquals(
-			BooleanClauseOccur.MUST,
-			fieldNameBooleanClause.getBooleanClauseOccur());
+		QueryTerm nestedFieldQueryTerm = _assertNestedFieldQueryTerm(
+			nestedFieldBooleanClauses.get(0), "nestedFieldArray.fieldName");
 
-		BooleanClause<Query> valueFieldNameBooleanClause =
-			innerBooleanClauses.get(1);
+		Assert.assertEquals(propertyName, nestedFieldQueryTerm.getValue());
 
-		TermQuery valueFieldNameTermQuery =
-			(TermQuery)valueFieldNameBooleanClause.getClause();
+		_assertNestedFieldQueryTerm(
+			nestedFieldBooleanClauses.get(1),
+			"nestedFieldArray.valueFieldName");
 
-		QueryTerm valueFieldNameQueryTerm =
-			valueFieldNameTermQuery.getQueryTerm();
-
-		Assert.assertEquals(
-			"nestedFieldArray.valueFieldName",
-			valueFieldNameQueryTerm.getField());
-
-		Assert.assertEquals(
-			BooleanClauseOccur.MUST,
-			valueFieldNameBooleanClause.getBooleanClauseOccur());
-
-		BooleanClause<Query> valueBooleanClause = innerBooleanClauses.get(2);
+		BooleanClause<Query> nestedFieldBooleanClause =
+			nestedFieldBooleanClauses.get(2);
 
 		Assert.assertEquals(
 			expectedBooleanClauseOccur,
-			valueBooleanClause.getBooleanClauseOccur());
+			nestedFieldBooleanClause.getBooleanClauseOccur());
 
-		return valueBooleanClause.getClause();
+		return nestedFieldBooleanClause.getClause();
 	}
 
 	private void _assertTermQuery(
@@ -389,6 +618,24 @@ public class AssetListFiltersUtilTest {
 
 		Assert.assertEquals(expectedField, queryTerm.getField());
 		Assert.assertEquals(expectedValue, queryTerm.getValue());
+	}
+
+	private void _assertTermRangeQuery(
+		String expectedField, boolean expectedIncludesLower,
+		boolean expectedIncludesUpper, String expectedLowerTerm,
+		String expectedUpperTerm, Query query) {
+
+		Assert.assertTrue(query.toString(), query instanceof TermRangeQuery);
+
+		TermRangeQuery termRangeQuery = (TermRangeQuery)query;
+
+		Assert.assertEquals(expectedField, termRangeQuery.getField());
+		Assert.assertEquals(expectedLowerTerm, termRangeQuery.getLowerTerm());
+		Assert.assertEquals(expectedUpperTerm, termRangeQuery.getUpperTerm());
+		Assert.assertEquals(
+			expectedIncludesLower, termRangeQuery.includesLower());
+		Assert.assertEquals(
+			expectedIncludesUpper, termRangeQuery.includesUpper());
 	}
 
 	private void _assertWildcardQuery(
@@ -405,6 +652,22 @@ public class AssetListFiltersUtilTest {
 	}
 
 	private JSONObject _buildFilterJSONObject(
+		String operatorName, String propertyName, JSONArray valueJSONArray) {
+
+		return JSONUtil.put(
+			"classNameId", _CLASS_NAME_ID
+		).put(
+			"classTypeId", _CLASS_TYPE_ID
+		).put(
+			"operatorName", operatorName
+		).put(
+			"propertyName", propertyName
+		).put(
+			"value", valueJSONArray
+		);
+	}
+
+	private JSONObject _buildFilterJSONObject(
 		String operatorName, String propertyName, String value) {
 
 		return JSONUtil.put(
@@ -418,6 +681,20 @@ public class AssetListFiltersUtilTest {
 		).put(
 			"value", value
 		);
+	}
+
+	private String _resolveRelativeDateLowerTerm(
+		String propertyName, String value) {
+
+		Query query = _assertNestedQuery(
+			BooleanClauseOccur.MUST,
+			_buildFilterJSONObject("ge", propertyName, value), propertyName);
+
+		Assert.assertTrue(query.toString(), query instanceof TermRangeQuery);
+
+		TermRangeQuery termRangeQuery = (TermRangeQuery)query;
+
+		return termRangeQuery.getLowerTerm();
 	}
 
 	private void _setUpLocalizationUtil() {
@@ -448,6 +725,15 @@ public class AssetListFiltersUtilTest {
 			_CLASS_TYPE_ID
 		);
 
+		_objectDefinitionLocalServiceUtilMockedStatic.when(
+			() ->
+				ObjectDefinitionLocalServiceUtil.
+					fetchObjectDefinitionByClassName(
+						_COMPANY_ID, "com.liferay.test.Class" + _CLASS_NAME_ID)
+		).thenReturn(
+			objectDefinition
+		);
+
 		ObjectField objectField = Mockito.mock(ObjectField.class);
 
 		Mockito.when(
@@ -466,15 +752,6 @@ public class AssetListFiltersUtilTest {
 			objectField.getName()
 		).thenReturn(
 			fieldName
-		);
-
-		_objectDefinitionLocalServiceUtilMockedStatic.when(
-			() ->
-				ObjectDefinitionLocalServiceUtil.
-					fetchObjectDefinitionByClassName(
-						_COMPANY_ID, "com.liferay.test.Class" + _CLASS_NAME_ID)
-		).thenReturn(
-			objectDefinition
 		);
 
 		_objectFieldLocalServiceUtilMockedStatic.when(

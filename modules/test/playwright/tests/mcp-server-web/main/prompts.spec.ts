@@ -9,7 +9,6 @@ import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
 import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {mcpServerWebPagesTest} from '../../../fixtures/mcpServerWebPagesTest';
-import {DataApiHelpers} from '../../../helpers/ApiHelpers';
 import {FDSTablePage} from '../../../pages/mcp-server-web/FDSTablePage';
 import getRandomString from '../../../utils/getRandomString';
 import {createFDSTableTests} from './utils/createFDSTableTests';
@@ -30,28 +29,6 @@ function promptName() {
 	return `pwprompt-${getRandomString()}`;
 }
 
-async function createPrompt(
-	apiHelpers: DataApiHelpers,
-	name: string
-): Promise<ObjectEntry> {
-	const prompt = await apiHelpers.objectEntry.postObjectEntry(
-		{
-			description: `Created by Playwright ${name}`,
-			name,
-			prompt: 'Prompt body created by Playwright',
-		},
-		PROMPTS_API
-	);
-
-	apiHelpers.data.push({
-		applicationName: PROMPTS_API,
-		id: prompt.id,
-		type: 'objectEntry',
-	});
-
-	return prompt;
-}
-
 const test = baseTest.extend<{
 	createFDSItem: () => Promise<string>;
 	fdsTablePage: FDSTablePage;
@@ -60,7 +37,20 @@ const test = baseTest.extend<{
 		await use(async () => {
 			const name = promptName();
 
-			await createPrompt(apiHelpers, name);
+			const prompt = await apiHelpers.objectEntry.postObjectEntry(
+				{
+					description: `Created by Playwright ${name}`,
+					name,
+					prompt: 'Prompt body created by Playwright',
+				},
+				PROMPTS_API
+			);
+
+			apiHelpers.data.push({
+				applicationName: PROMPTS_API,
+				id: prompt.id,
+				type: 'objectEntry',
+			});
 
 			return name;
 		});
@@ -81,9 +71,8 @@ test.describe('Prompts - List View', () => {
 	test(
 		'Opens a prompt in edit when clicking its name',
 		{tag: '@LPD-98309'},
-		async ({apiHelpers, promptsPage}) => {
-			const name = promptName();
-			await createPrompt(apiHelpers, name);
+		async ({createFDSItem, promptsPage}) => {
+			const name = await createFDSItem();
 
 			await promptsPage.goto();
 			await promptsPage.search(name);
@@ -98,9 +87,8 @@ test.describe('Prompts - List View', () => {
 	test(
 		'Edits a prompt from the three-dot menu',
 		{tag: '@LPD-98309'},
-		async ({apiHelpers, promptsPage}) => {
-			const name = promptName();
-			await createPrompt(apiHelpers, name);
+		async ({createFDSItem, promptsPage}) => {
+			const name = await createFDSItem();
 
 			await promptsPage.goto();
 			await promptsPage.search(name);
@@ -115,9 +103,8 @@ test.describe('Prompts - List View', () => {
 	test(
 		'Duplicates a prompt into a Copy of prompt from the three-dot menu',
 		{tag: '@LPD-98309'},
-		async ({apiHelpers, promptsPage}) => {
-			const name = promptName();
-			await createPrompt(apiHelpers, name);
+		async ({apiHelpers, createFDSItem, promptsPage}) => {
+			const name = await createFDSItem();
 
 			await promptsPage.goto();
 			await promptsPage.search(name);
@@ -144,9 +131,8 @@ test.describe('Prompts - List View', () => {
 	test(
 		'Asks for confirmation with the prompt name before deleting',
 		{tag: '@LPD-98309'},
-		async ({apiHelpers, promptsPage}) => {
-			const name = promptName();
-			await createPrompt(apiHelpers, name);
+		async ({createFDSItem, promptsPage}) => {
+			const name = await createFDSItem();
 
 			await promptsPage.goto();
 			await promptsPage.search(name);
@@ -156,7 +142,7 @@ test.describe('Prompts - List View', () => {
 			await expect(promptsPage.dialog).toBeVisible();
 			await expect(promptsPage.dialog).toContainText('Delete MCP Prompt');
 			await expect(promptsPage.dialog).toContainText(
-				`This will permanently delete "${name}" prompt from your MCP Server configuration.`
+				`This will permanently delete "${name}" prompt from your MCP server configuration.`
 			);
 			await expect(promptsPage.dialog).toContainText(
 				'Do you want to proceed?'
@@ -167,9 +153,8 @@ test.describe('Prompts - List View', () => {
 	test(
 		'Keeps the prompt when the delete confirmation is cancelled',
 		{tag: '@LPD-98309'},
-		async ({apiHelpers, promptsPage}) => {
-			const name = promptName();
-			await createPrompt(apiHelpers, name);
+		async ({createFDSItem, promptsPage}) => {
+			const name = await createFDSItem();
 
 			await promptsPage.goto();
 			await promptsPage.search(name);
@@ -188,9 +173,8 @@ test.describe('Prompts - List View', () => {
 	test(
 		'Deletes a prompt after confirming in the modal',
 		{tag: '@LPD-98309'},
-		async ({apiHelpers, promptsPage}) => {
-			const name = promptName();
-			await createPrompt(apiHelpers, name);
+		async ({createFDSItem, promptsPage}) => {
+			const name = await createFDSItem();
 
 			await promptsPage.goto();
 			await promptsPage.search(name);
@@ -209,6 +193,10 @@ test.describe('Prompts - List View', () => {
 });
 
 test.describe('Prompts - Detail (Create / Edit)', () => {
+	test.beforeEach(async ({createFDSItem}) => {
+		await createFDSItem();
+	});
+
 	test(
 		'Creates a prompt from the New Prompt button',
 		{tag: '@LPD-98309'},
@@ -287,9 +275,8 @@ test.describe('Prompts - Detail (Create / Edit)', () => {
 	test(
 		'Edits a prompt and persists the change',
 		{tag: '@LPD-98309'},
-		async ({apiHelpers, promptsPage}) => {
-			const name = promptName();
-			await createPrompt(apiHelpers, name);
+		async ({apiHelpers, createFDSItem, promptsPage}) => {
+			const name = await createFDSItem();
 
 			await promptsPage.goto();
 			await promptsPage.search(name);
@@ -318,7 +305,7 @@ test.describe('Prompts - Detail (Create / Edit)', () => {
 
 			await promptsPage.cancelButton.click();
 
-			await promptsPage.table.waitFor({state: 'visible'});
+			await promptsPage.waitForTable();
 			await expect(promptsPage.newPromptButton).toBeVisible();
 		}
 	);

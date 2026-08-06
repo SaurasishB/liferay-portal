@@ -62,18 +62,15 @@ public class LayoutContentVersionDisplayContext {
 				"defaultUserImageSrc",
 				_themeDisplay.getPathImage() + "/user_portrait?img_id=0"
 			).put(
-				"draftName",
+				"layout",
 				() -> {
 					Layout layout = _themeDisplay.getLayout();
 
-					return layout.getName(_themeDisplay.getLocale());
-				}
-			).put(
-				"hasDraft",
-				() -> {
-					Layout layout = _themeDisplay.getLayout();
-
-					return !layout.isApproved();
+					return HashMapBuilder.<String, Object>put(
+						"name", layout.getName(_themeDisplay.getLocale())
+					).put(
+						"status", layout.isApproved() ? "approved" : "draft"
+					).build();
 				}
 			).put(
 				"pageSpecificationVersionsURL",

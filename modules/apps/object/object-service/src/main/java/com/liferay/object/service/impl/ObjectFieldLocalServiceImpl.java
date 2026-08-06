@@ -221,7 +221,7 @@ public class ObjectFieldLocalServiceImpl
 				objectField.getAttachmentDownloadActionKey();
 
 			_ploEntryLocalService.addOrUpdatePLOEntry(
-				objectField.getCompanyId(), objectField.getUserId(),
+				null, objectField.getCompanyId(), objectField.getUserId(),
 				"action." + attachmentDownloadActionKey,
 				LocaleUtil.toLanguageId(locale),
 				_language.format(
@@ -1029,7 +1029,8 @@ public class ObjectFieldLocalServiceImpl
 			return objectField;
 		}
 
-		if (objectField.compareBusinessType(
+		if (!objectDefinition.isUnmodifiableSystemObject() &&
+			objectField.compareBusinessType(
 				ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT)) {
 
 			try {

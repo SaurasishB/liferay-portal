@@ -14,7 +14,6 @@ import React, {useContext, useEffect, useRef, useState} from 'react';
 import RowActions from 'shared/components/RowActions';
 import SearchableEntityTable from 'shared/components/SearchableEntityTable';
 import SequentialEventOrderPopover from 'shared/components/SequentialEventOrderPopover';
-import ToThousandsCell from 'shared/components/table/cell-components/ToThousandsCell';
 import URLConstants from 'shared/util/url-constants';
 import UserCell from 'shared/components/table/cell-components/UserCell';
 import {
@@ -65,6 +64,7 @@ import {
 } from 'shared/util/constants';
 import {setUriQueryValues} from 'shared/util/router';
 import {sub} from 'shared/util/lang';
+import {toThousands} from 'shared/util/numbers';
 import {useChannelContext} from 'shared/context/channel';
 import {useCurrentUser} from 'shared/hooks/useCurrentUser';
 import {useQueryPagination} from 'shared/hooks/useQueryPagination';
@@ -117,7 +117,7 @@ const SEGMENT_TYPES_LABEL_MAP = {
 const FILTER_BY_OPTIONS = [
 	{
 		key: SEGMENT_CATEGORY,
-		label: Liferay.Language.get('segment-category'),
+		label: Liferay.Language.get('type'),
 		values: [
 			{
 				label: SEGMENT_CATEGORIES_LABEL_MAP[SegmentCategories.Account],
@@ -133,7 +133,7 @@ const FILTER_BY_OPTIONS = [
 	},
 	{
 		key: SEGMENT_TYPE,
-		label: Liferay.Language.get('segment-type'),
+		label: Liferay.Language.get('sync-frequency'),
 		values: [
 			{
 				label: SEGMENT_TYPES_LABEL_MAP[SegmentTypes.Batch],
@@ -154,10 +154,14 @@ const ORDER_BY_OPTIONS = [
 	},
 	{
 		label: Liferay.Language.get('type'),
+		value: SEGMENT_CATEGORY,
+	},
+	{
+		label: Liferay.Language.get('sync-frequency'),
 		value: SEGMENT_TYPE,
 	},
 	{
-		label: Liferay.Language.get('segment-membership'),
+		label: Liferay.Language.get('membership'),
 		value: INDIVIDUAL_COUNT,
 	},
 	{
@@ -503,11 +507,7 @@ export const List: React.FC<IListProps> = ({
 											)
 										)}
 									>
-										<ClayIcon
-											className="mr-2"
-											symbol="organizations"
-										/>
-										{Liferay.Language.get('batch')}
+										{Liferay.Language.get('batch-segment')}
 									</ClayDropDown.Item>
 								</ClayDropDown.Group>
 
@@ -524,11 +524,7 @@ export const List: React.FC<IListProps> = ({
 											)
 										)}
 									>
-										<ClayIcon
-											className="mr-2"
-											symbol="diagram"
-										/>
-										{Liferay.Language.get('batch')}
+										{Liferay.Language.get('batch-segment')}
 									</ClayDropDown.Item>
 
 									{ENABLE_REAL_TIME_SEGMENTS && (
@@ -542,11 +538,9 @@ export const List: React.FC<IListProps> = ({
 												)
 											)}
 										>
-											<ClayIcon
-												className="mr-2"
-												symbol="bolt"
-											/>
-											{Liferay.Language.get('real-time')}
+											{Liferay.Language.get(
+												'real-time-segment'
+											)}
 										</ClayDropDown.Item>
 									)}
 								</ClayDropDown.Group>
@@ -632,6 +626,23 @@ export const List: React.FC<IListProps> = ({
 									title: true,
 								},
 								{
+									accessor: 'segmentCategory',
+									cellRenderer: (item: {
+										data: {
+											segmentCategory: SegmentCategories;
+										};
+									}) => (
+										<td>
+											{
+												SEGMENT_CATEGORIES_LABEL_MAP[
+													item.data.segmentCategory
+												]
+											}
+										</td>
+									),
+									label: Liferay.Language.get('type'),
+								},
+								{
 									accessor: 'segmentType',
 									cellRenderer: (item: {
 										data: {
@@ -665,14 +676,51 @@ export const List: React.FC<IListProps> = ({
 											</td>
 										);
 									},
-									label: Liferay.Language.get('type'),
+									label: Liferay.Language.get(
+										'sync-frequency'
+									),
 								},
 								{
 									accessor: 'individualCount',
-									cellRenderer: ToThousandsCell,
-									label: Liferay.Language.get(
-										'segment-membership'
-									),
+									cellRenderer: (item: {
+										data: {
+											accountsCount: number;
+											individualCount: number;
+											segmentCategory: SegmentCategories;
+										};
+									}) => {
+										const {
+											accountsCount,
+											individualCount,
+											segmentCategory,
+										} = item.data;
+
+										const accountSegment =
+											segmentCategory ===
+											SegmentCategories.Account;
+
+										const count = accountSegment
+											? accountsCount
+											: individualCount;
+
+										const membershipLabel = accountSegment
+											? Liferay.Language.get('x-accounts')
+											: Liferay.Language.get(
+													'x-individuals'
+												);
+
+										return (
+											<td className="table-cell-expand">
+												<div className="text-truncate text-right">
+													{sub(
+														membershipLabel.toLowerCase(),
+														[toThousands(count)]
+													)}
+												</div>
+											</td>
+										);
+									},
+									label: Liferay.Language.get('membership'),
 								},
 								{
 									accessor: 'lastMembershipUpdateDate',
