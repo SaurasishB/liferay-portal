@@ -32,6 +32,9 @@ resources:
     requests:
         cpu: 100m
         memory: 128Mi
+retry:
+    initialDelay: 30s
+    maxDelay: 30m
 securityContext:
     allowPrivilegeEscalation: false
     capabilities:
@@ -44,3 +47,6 @@ serviceAccount:
     create: true
     name: ""
 tolerations: []
+webhook:
+    certificateValidityDays: 3650
+    port: 9443

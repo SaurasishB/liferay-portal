@@ -10,6 +10,7 @@ import (
 	licensing "github.com/liferay/liferay-portal/cloud/operator/internal/controller/licensing"
 	liferay "github.com/liferay/liferay-portal/cloud/operator/internal/controller/liferay"
 	provisioning "github.com/liferay/liferay-portal/cloud/operator/internal/provisioning"
+	licensingwebhook "github.com/liferay/liferay-portal/cloud/operator/internal/webhook/licensing"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -17,6 +18,7 @@ import (
 	healthz "sigs.k8s.io/controller-runtime/pkg/healthz"
 	zap "sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	admission "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 func init() {
@@ -68,6 +70,8 @@ func main() {
 			Client:            manager.GetClient(),
 			HeartbeatInterval: config.HeartbeatInterval,
 			Provisioning:      provisioning.NewHTTPClient(config.ProvisioningBaseURL),
+			RetryInitialDelay: config.RetryInitialDelay,
+			RetryMaxDelay:     config.RetryMaxDelay,
 		},
 		&liferay.LiferayStatefulSetReconciler{
 			Client: manager.GetClient(),
@@ -77,6 +81,20 @@ func main() {
 
 		os.Exit(1)
 	}
+
+	manager.GetWebhookServer().Register(
+		licensingwebhook.WebhookPath,
+		&admission.Webhook{
+			Handler: &licensingwebhook.StatefulSetScaleValidator{
+				Client:  manager.GetClient(),
+				Decoder: admission.NewDecoder(manager.GetScheme()),
+			},
+		},
+	)
+
+	controller.SetupLog.Info(
+		"Registered validating webhook", "path", licensingwebhook.WebhookPath,
+	)
 
 	controller.SetupLog.Info(
 		"Starting manager",
@@ -99,6 +117,8 @@ type config struct {
 	MetricsAddress      string        `env:"METRICS_ADDRESS" envDefault:":8080"`
 	ProbeAddress        string        `env:"PROBE_ADDRESS" envDefault:":8081"`
 	ProvisioningBaseURL string        `env:"PROVISIONING_BASE_URL" envDefault:"https://webserver-lrprovisioning.lfr.cloud"`
+	RetryInitialDelay   time.Duration `env:"RETRY_INITIAL_DELAY" envDefault:"30s"`
+	RetryMaxDelay       time.Duration `env:"RETRY_MAX_DELAY" envDefault:"30m"`
 }
 
 var scheme = runtime.NewScheme()

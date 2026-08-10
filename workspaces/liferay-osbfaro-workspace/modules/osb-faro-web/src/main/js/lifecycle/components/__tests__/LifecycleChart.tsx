@@ -160,8 +160,8 @@ describe('LifecycleChart', () => {
 			stages: stagesWithLargeCounts,
 		});
 
-		expect(getByText('5.35K')).toBeInTheDocument();
-		expect(getByText('1.66M')).toBeInTheDocument();
+		expect(getByText('5.3K')).toBeInTheDocument();
+		expect(getByText('1.6M')).toBeInTheDocument();
 		expect(getByText('999')).toBeInTheDocument();
 
 		expect(queryByText('5350')).toBeNull();
@@ -256,7 +256,7 @@ describe('LifecycleChart', () => {
 
 		expect(getByText('9.83')).toBeInTheDocument();
 		expect(getByText('4.68')).toBeInTheDocument();
-		expect(getByText('12.00')).toBeInTheDocument();
+		expect(getByText('12')).toBeInTheDocument();
 		expect(getByText('4.50')).toBeInTheDocument();
 
 		expect(queryByText('9.8333333')).toBeNull();
@@ -276,12 +276,10 @@ describe('LifecycleChart', () => {
 		expect(labels[3]).toContain('0%');
 	});
 
-	it('should default the context lifecycleStageFilter to AT_RISK on mount', () => {
+	it('should leave the context lifecycleStageFilter unset on mount', () => {
 		const {getByTestId} = renderChart({stages: sampleStages});
 
-		expect(getByTestId('lifecycle-filter').textContent).toBe(
-			LifecycleStages.AT_RISK
-		);
+		expect(getByTestId('lifecycle-filter').textContent).toBe('none');
 	});
 
 	it('should update the context lifecycleStageFilter when a stage filter button is clicked', () => {

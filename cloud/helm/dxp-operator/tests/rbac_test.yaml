@@ -113,9 +113,35 @@ tests:
             -   contains:
                     content:
                         apiGroups:
+                            -   ""
+                        resources:
+                            -   namespaces
+                        verbs:
+                            -   get
+                            -   list
+                            -   patch
+                            -   update
+                            -   watch
+                    path: rules
+            -   contains:
+                    content:
+                        apiGroups:
                             -   licensing.liferay.com
                         resources:
                             -   liferayenvironments
+                        verbs:
+                            -   get
+                            -   list
+                            -   patch
+                            -   update
+                            -   watch
+                    path: rules
+            -   contains:
+                    content:
+                        apiGroups:
+                            -   apps
+                        resources:
+                            -   statefulsets
                         verbs:
                             -   get
                             -   list

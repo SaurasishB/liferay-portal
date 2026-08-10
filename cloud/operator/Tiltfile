@@ -14,39 +14,6 @@ if not context.startswith("k3d-"):
 
 allow_k8s_contexts(context)
 
-environment_names = [
-    "non-production",
-    "production",
-    "uat",
-]
-
-def environment_yaml(name):
-	namespace = "liferay-" + name
-
-	return "\n".join(
-	    [
-	        "apiVersion: v1",
-	        "kind: Namespace",
-	        "metadata:",
-	        "  name: " + namespace,
-	        "---",
-	        "apiVersion: licensing.liferay.com/v1alpha1",
-	        "kind: LiferayEnvironment",
-	        "metadata:",
-	        "    name: " + name,
-	        "    namespace: " + namespace,
-	        "spec:",
-	        "    activationCodeSecretRef:",
-	        "        name: " + name + "-activation",
-	        "        key: activationCode",
-	        "    dxpVersion: 2026.q3.0",
-	        "    environmentName: \"" + name + "\"",
-	        "    workloadRef:",
-	        "        name: liferay-default",
-	    ]
-	)
-
-
 docker_build_with_restart(
     "liferay/liferay-dxp-operator",
     context="resources/build",
@@ -58,23 +25,68 @@ docker_build_with_restart(
     target="dev",
 )
 
+environment_names = [
+    "non-production",
+    "production",
+    "uat",
+]
+
+def environment_yaml(name):
+	namespace = "liferay-" + name
+	workload = name + "-liferay"
+
+	return "\n".join(
+	    [
+	        "apiVersion: v1",
+	        "kind: Namespace",
+	        "metadata:",
+	        "    labels:",
+	        "        licensing.liferay.com/environment: \"true\"",
+	        "    name: " + namespace,
+	        "---",
+	        "apiVersion: licensing.liferay.com/v1alpha1",
+	        "kind: LiferayEnvironment",
+	        "metadata:",
+	        "    name: " + name,
+	        "    namespace: " + namespace,
+	        "spec:",
+	        "    activationCodeSecretRef:",
+	        "        key: activationCode",
+	        "        name: " + name + "-activation",
+	        "    desiredReplicas: 3",
+	        "    dxpVersion: 2026.q3.0",
+	        "    environmentName: \"" + name + "\"",
+	        "    marketplaceVolume:",
+	        "        size: 10Gi",
+	        "        storageClassName: local-path",
+	        "    workloadRef:",
+	        "        name: " + workload,
+	        "---",
+	        "apiVersion: apps/v1",
+	        "kind: StatefulSet",
+	        "metadata:",
+	        "    name: " + workload,
+	        "    namespace: " + namespace,
+	        "spec:",
+	        "    replicas: 3",
+	        "    selector:",
+	        "        matchLabels:",
+	        "            app: " + workload,
+	        "    serviceName: " + workload,
+	        "    template:",
+	        "        metadata:",
+	        "            labels:",
+	        "                app: " + workload,
+	        "        spec:",
+	        "            containers:",
+	        "                -   image: registry.k8s.io/pause:3.9",
+	        "                    name: liferay",
+	    ]
+	)
+
 for name in environment_names:
 	namespace = "liferay-" + name
-
-	k8s_yaml(blob(environment_yaml(name)))
-
-	k8s_resource(
-	    labels=["environments"],
-	    new_name=namespace,
-	    objects=[
-	        name + ":liferayenvironment",
-	        namespace + ":namespace",
-	    ],
-	    resource_deps=[
-	        "liferay-dxp-operator",
-	        "operator-infra",
-	    ],
-	)
+	workload = name + "-liferay"
 
 	cmd_button(
 	    namespace + ":activate",
@@ -97,16 +109,26 @@ for name in environment_names:
 	    text="Activate with a new code",
 	)
 
-local_resource(
-    "operator-build",
-    cmd="./go_build.sh fast",
-    deps=["resources"],
-    ignore=[
-        "resources/api/licensing/v1alpha1/zz_generated.deepcopy.go",
-        "resources/build",
-    ],
-    labels=["operator"],
-)
+	k8s_resource(
+	    labels=["environments"],
+	    new_name=namespace,
+	    objects=[
+	        name + ":liferayenvironment",
+	        namespace + ":namespace",
+	    ],
+	    resource_deps=[
+	        "liferay-dxp-operator",
+	        "operator-infra",
+	    ],
+	)
+
+	k8s_resource(
+	    labels=["environments"],
+	    resource_deps=[namespace],
+	    workload=workload,
+	)
+
+	k8s_yaml(blob(environment_yaml(name)))
 
 k8s_resource(
     labels=["operator"],
@@ -119,6 +141,8 @@ k8s_resource(
     labels=["operator"],
     new_name="operator-infra",
     objects=[
+        "liferay-dxp-operator-webhook:secret",
+        "liferay-dxp-operator-webhook:validatingwebhookconfiguration",
         "liferay-dxp-operator:clusterrole",
         "liferay-dxp-operator:clusterrolebinding",
         "liferay-dxp-operator:serviceaccount",
@@ -153,4 +177,15 @@ k8s_yaml(
             "securityContext.readOnlyRootFilesystem=false",
         ],
     )
+)
+
+local_resource(
+    "operator-build",
+    cmd="./go_build.sh fast",
+    deps=["resources"],
+    ignore=[
+        "resources/api/licensing/v1alpha1/zz_generated.deepcopy.go",
+        "resources/build",
+    ],
+    labels=["operator"],
 )
