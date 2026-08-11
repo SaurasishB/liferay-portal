@@ -90,6 +90,8 @@ spec:
                                 properties:
                                     claimName:
                                         type: string
+                                    enabled:
+                                        type: boolean
                                     size:
                                         anyOf:
                                         -   type: integer
@@ -122,8 +124,7 @@ spec:
                             conditions:
                                 items:
                                     description:
-                                        Condition contains details for one aspect of the current state of this API
-                                        Resource.
+                                        Condition contains details for one aspect of the current state of this API Resource.
                                     properties:
                                         lastTransitionTime:
                                             description: |-

@@ -12,10 +12,10 @@ import {pageEditorPagesTest} from '../../../fixtures/pageEditorPagesTest';
 import {liferayConfig} from '../../../liferay.config';
 import getRandomString from '../../../utils/getRandomString';
 import {performLoginViaApi, performLogout} from '../../../utils/performLogin';
-import {clientExtensionsPageTest} from './fixtures/clientExtensionsPageTest';
+import {clientExtensionsPageTest} from '../fixtures/clientExtensionsPageTest';
+import {Column} from '../pages/ClientExtensionsPage';
+import {WaitAction} from '../pages/EditClientExtensionsPage';
 import {editCustomElementPageTest} from './fixtures/editCustomElementPageTest';
-import {Column} from './pages/ClientExtensionsPage';
-import {WaitAction} from './pages/EditClientExtensionsPage';
 import {EditCustomElementPage} from './pages/EditCustomElementPage';
 
 const test = mergeTests(
@@ -124,9 +124,7 @@ testSample.describe('Samples', () => {
 				});
 
 				await test.step(`${sample.name} can be added to a page and is rendered`, async () => {
-					await page.goto(
-						`/web/guest${layout.friendlyURL}?p_l_mode=edit`
-					);
+					await pageEditorPage.goto(layout);
 
 					await pageEditorPage.addWidget(
 						'Client Extensions',
@@ -592,7 +590,7 @@ testSample(
 		});
 
 		await test.step('Add the widget to two grid columns', async () => {
-			await page.goto(`/web/guest${layout.friendlyURL}?p_l_mode=edit`);
+			await pageEditorPage.goto(layout);
 
 			await pageEditorPage.addWidget(
 				'Client Extensions',
@@ -661,7 +659,7 @@ testSample(
 		});
 
 		await test.step('Add widget to page and verify HTML property', async () => {
-			await page.goto(`/web/guest${layout.friendlyURL}?p_l_mode=edit`);
+			await pageEditorPage.goto(layout);
 
 			await pageEditorPage.addWidget(
 				'Client Extensions',
@@ -722,7 +720,7 @@ testSample(
 		});
 
 		await test.step('Add widget to page and verify script type', async () => {
-			await page.goto(`/web/guest${layout.friendlyURL}?p_l_mode=edit`);
+			await pageEditorPage.goto(layout);
 
 			await pageEditorPage.addWidget(
 				'Client Extensions',
@@ -777,7 +775,7 @@ testSample(
 		});
 
 		await test.step('Add to page and verify type="module" script', async () => {
-			await page.goto(`/web/guest${layout.friendlyURL}?p_l_mode=edit`);
+			await pageEditorPage.goto(layout);
 
 			await pageEditorPage.addWidget(
 				'Client Extensions',
@@ -877,7 +875,7 @@ testSample(
 		});
 
 		await test.step('Add the widget and remove VIEW permission for the Guest role', async () => {
-			await page.goto(`/web/guest${layout.friendlyURL}?p_l_mode=edit`);
+			await pageEditorPage.goto(layout);
 
 			await pageEditorPage.addWidget(
 				'Client Extensions',
