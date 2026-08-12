@@ -30,6 +30,11 @@ resource "azurerm_kubernetes_cluster" "main" {
 		only_critical_addons_enabled=true
 		os_disk_type="Ephemeral"
 		temporary_name_for_rotation="systemtmp"
+		upgrade_settings {
+			drain_timeout_in_minutes=0
+			max_surge="10%"
+			node_soak_duration_in_minutes=0
+		}
 		vm_size=var.machine_type
 		vnet_subnet_id=azurerm_subnet.main.id
 	}

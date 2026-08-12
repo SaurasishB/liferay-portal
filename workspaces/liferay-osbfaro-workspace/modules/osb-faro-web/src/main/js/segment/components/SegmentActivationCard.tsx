@@ -16,7 +16,6 @@ import {ReportContainer} from 'shared/components/download-report/DownloadPDFRepo
 import {
 	SegmentActivationFrequencyTypes,
 	SegmentActivationScheduleTypes,
-	SegmentTypes,
 } from 'shared/util/constants';
 import {sub} from 'shared/util/lang';
 import {useParams} from 'react-router-dom';
@@ -60,28 +59,12 @@ interface IActivationConfigurationModalProps {
 	onSave: (values: IActivationFormValues) => Promise<void>;
 	onOpenChange: (open: boolean) => void;
 	open: boolean;
-	showActivationTypePicker?: boolean;
 	observer?: any;
 }
 
 interface ISegmentActivationCardProps {
 	segmentActivation: any;
-	segmentType: SegmentTypes;
 }
-
-const SCHEDULE_TYPE_LABELS: Record<
-	SegmentActivationScheduleTypes,
-	{label: string; value: string}
-> = {
-	[SegmentActivationScheduleTypes.Batch]: {
-		label: Liferay.Language.get('batch'),
-		value: SegmentActivationScheduleTypes.Batch,
-	},
-	[SegmentActivationScheduleTypes.RealTime]: {
-		label: Liferay.Language.get('real-time'),
-		value: SegmentActivationScheduleTypes.RealTime,
-	},
-};
 
 const FREQUENCY_TYPE_LABELS: Record<
 	SegmentActivationFrequencyTypes,
@@ -99,15 +82,7 @@ const FREQUENCY_TYPE_LABELS: Record<
 
 const ActivationConfigurationModal: React.FC<
 	IActivationConfigurationModalProps & PropsFromRedux
-> = ({
-	addAlert,
-	initialValues,
-	observer,
-	onOpenChange,
-	onSave,
-	open,
-	showActivationTypePicker,
-}) => {
+> = ({addAlert, initialValues, observer, onOpenChange, onSave, open}) => {
 	const [formState, setFormState] = useState<IActivationFormValues>({
 		...initialValues,
 		scheduleEndDate:
@@ -189,42 +164,6 @@ const ActivationConfigurationModal: React.FC<
 						)}
 					</Text>
 				</div>
-
-				{showActivationTypePicker && (
-					<Form.Group className="mb-4">
-						<label
-							htmlFor="schedule-type-picker"
-							id="schedule-type-picker-label"
-						>
-							{Liferay.Language.get('activation-type')}
-						</label>
-						<Picker
-							aria-labelledby="schedule-type-picker-label"
-							className="border-light font-weight-semi-bold"
-							id="schedule-type-picker"
-							items={[
-								SCHEDULE_TYPE_LABELS.BATCH,
-								SCHEDULE_TYPE_LABELS.REAL_TIME,
-							]}
-							onSelectionChange={(value) =>
-								setFormState({
-									...formState,
-									scheduleType:
-										value as SegmentActivationScheduleTypes,
-								})
-							}
-							placeholder={
-								SCHEDULE_TYPE_LABELS[formState.scheduleType]
-									?.label
-							}
-							shrink
-						>
-							{(item) => (
-								<Option key={item.value}>{item.label}</Option>
-							)}
-						</Picker>
-					</Form.Group>
-				)}
 
 				<Form.Group>
 					<label
@@ -313,7 +252,7 @@ const ConnectedActivationConfigurationModal = connector(
 
 const SegmentActivationCard: React.FC<
 	ISegmentActivationCardProps & PropsFromRedux
-> = ({addAlert, segmentActivation, segmentType}) => {
+> = ({addAlert, segmentActivation}) => {
 	const {observer, onOpenChange, open} = useModal();
 
 	const {groupId, id: segmentId} = useParams();
@@ -355,16 +294,13 @@ const SegmentActivationCard: React.FC<
 			});
 		});
 
-	const getScheduleLabel = (type: SegmentActivationScheduleTypes) =>
-		type && SCHEDULE_TYPE_LABELS[type]?.label;
-
 	const labelMessage =
 		frequencyType === SegmentActivationFrequencyTypes.Indefinitely
 			? sub(Liferay.Language.get('x-sync-will-run-indefinitely'), [
-					getScheduleLabel(scheduleType),
+					Liferay.Language.get('batch'),
 				])
 			: sub(Liferay.Language.get('x-sync-will-run-from-x-to-x'), [
-					getScheduleLabel(scheduleType),
+					Liferay.Language.get('batch'),
 					formatUTCDateFromUnix(
 						scheduleStartDate,
 						getCustomDateFormat()
@@ -392,9 +328,6 @@ const SegmentActivationCard: React.FC<
 					onOpenChange={onOpenChange}
 					onSave={handleSave}
 					open={open}
-					showActivationTypePicker={
-						segmentType === SegmentTypes.RealTime
-					}
 				/>
 			)}
 
