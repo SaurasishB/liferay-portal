@@ -186,7 +186,7 @@ test(
 			digitalSalesRoomSettingsPage.externalReferenceCodeInput
 		).toHaveValue(updatedExternalReferenceCode);
 		await expect(digitalSalesRoomSettingsPage.friendlyURLInput).toHaveValue(
-			updatedFriendlyURL
+			`/${updatedFriendlyURL}`
 		);
 		await expect(digitalSalesRoomSettingsPage.nameInput).toHaveValue(
 			updatedName
@@ -2200,6 +2200,124 @@ test(
 				digitalSalesRoomsPage.archivedRoomWarning
 			).toContainText(
 				'This digital sales room is archived. New comments cannot be added, and it can no longer be shared.'
+			);
+		});
+	}
+);
+
+test(
+	'A room settings friendly URL is saved with a leading slash and dashes',
+	{tag: '@LPD-97483'},
+	async ({
+		apiHelpers,
+		digitalSalesRoomSettingsPage,
+		digitalSalesRoomsPage,
+		page,
+	}) => {
+		const account = await apiHelpers.headlessAdminUser.postAccount({
+			type: 'business',
+		});
+
+		const roomName = `A${getRandomInt()}`;
+
+		await apiHelpers.headlessDigitalSalesRoom.addRoom({
+			accountEntryId: account.id,
+			name: roomName,
+		});
+
+		const url = getRandomString().replace(/-/g, ' ');
+
+		await digitalSalesRoomsPage.goToRoomsPage();
+
+		await digitalSalesRoomsPage.clickRowActionsMenuItem(
+			roomName,
+			digitalSalesRoomsPage.settingsMenuItem
+		);
+
+		await expect(
+			digitalSalesRoomSettingsPage.friendlyURLInput
+		).toBeVisible();
+
+		await digitalSalesRoomSettingsPage.friendlyURLInput.fill(url);
+
+		await digitalSalesRoomSettingsPage.saveButton.click();
+
+		await waitForAlert(page);
+
+		await digitalSalesRoomsPage.clickRowActionsMenuItem(
+			roomName,
+			digitalSalesRoomsPage.settingsMenuItem
+		);
+
+		await expect(digitalSalesRoomSettingsPage.friendlyURLInput).toHaveValue(
+			`/${url.replace(/ /g, '-')}`
+		);
+	}
+);
+
+test(
+	'A room name containing markup is escaped in the room banner',
+	{tag: '@LPD-102192'},
+	async ({
+		apiHelpers,
+		digitalSalesRoomsPage,
+		editDigitalSalesRoomPage,
+		page,
+	}) => {
+		const account = await apiHelpers.headlessAdminUser.postAccount({
+			type: 'business',
+		});
+
+		const suffix = `A${getRandomInt()}`;
+
+		const roomName = `<img src=x onerror="alert('x')">${suffix}`;
+
+		const dialogHandler = async (dialog) => {
+			if (dialog.type() === 'alert') {
+				throw new Error('XSS');
+			}
+		};
+
+		page.on('dialog', dialogHandler);
+
+		await test.step('Create a room whose name contains markup', async () => {
+			await digitalSalesRoomsPage.goToRoomsPage();
+
+			await expect(
+				digitalSalesRoomsPage.digitalSalesRoomsTable.searchInput
+			).toBeVisible();
+
+			await digitalSalesRoomsPage.digitalSalesRoomsTable.newButton.click();
+
+			await editDigitalSalesRoomPage.addDigitalSalesRoom({
+				accountName: account.name,
+				friendlyURL: `/${suffix.toLowerCase()}`,
+				roomName,
+			});
+		});
+
+		await test.step('The banner renders the name as inert text in edit mode', async () => {
+			await expect(
+				digitalSalesRoomsPage.roomBannerHeadingImage
+			).toHaveCount(0);
+			await expect(digitalSalesRoomsPage.roomBannerHeading).toHaveText(
+				roomName
+			);
+		});
+
+		await test.step('The banner renders the name as inert text in view mode', async () => {
+			await digitalSalesRoomsPage.goToRoomsPage();
+
+			await digitalSalesRoomsPage.clickRowActionsMenuItem(
+				roomName,
+				digitalSalesRoomsPage.viewMenuItem
+			);
+
+			await expect(
+				digitalSalesRoomsPage.roomBannerHeadingImage
+			).toHaveCount(0);
+			await expect(digitalSalesRoomsPage.roomBannerHeading).toHaveText(
+				roomName
 			);
 		});
 	}

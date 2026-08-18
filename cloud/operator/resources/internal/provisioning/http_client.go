@@ -20,6 +20,11 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const (
+	offlineActivationPayloadExpiration = 90 * 24 * time.Hour
+	provisioningRequestExpiration      = 60 * time.Second
+)
+
 func (httpClient *HTTPClient) Activate(
 	activationRequest ActivationRequest,
 	context context.Context,
@@ -34,6 +39,7 @@ func (httpClient *HTTPClient) Activate(
 		},
 		activationRequest.EnvironmentID,
 		privateKey,
+		provisioningRequestExpiration,
 	)
 
 	if error != nil {
@@ -42,7 +48,7 @@ func (httpClient *HTTPClient) Activate(
 
 	response, error := httpClient.post(
 		context, token, fmt.Sprintf(
-			"%s/o/provisioning-rest/v1.0/cloud/environments/%s/activation",
+			"%s/cloud/v1/environments/%s/activation",
 			httpClient.BaseURL, activationRequest.EnvironmentID,
 		),
 	)
@@ -76,6 +82,7 @@ func (httpClient *HTTPClient) DownloadAddOn(
 		},
 		downloadRequest.EnvironmentID,
 		privateKey,
+		provisioningRequestExpiration,
 	)
 
 	if error != nil {
@@ -113,6 +120,7 @@ func (httpClient *HTTPClient) Manifest(
 		},
 		manifestRequest.EnvironmentID,
 		privateKey,
+		provisioningRequestExpiration,
 	)
 
 	if error != nil {
@@ -121,7 +129,7 @@ func (httpClient *HTTPClient) Manifest(
 
 	response, error := httpClient.post(
 		context, token, fmt.Sprintf(
-			"%s/o/provisioning-rest/v1.0/cloud/environments/%s/manifest",
+			"%s/cloud/v1/environments/%s/manifest",
 			httpClient.BaseURL, manifestRequest.EnvironmentID,
 		),
 	)
@@ -164,6 +172,50 @@ func NewHTTPClient(baseURL string) *HTTPClient {
 		BaseURL: strings.TrimRight(baseURL, "/"),
 		Client:  &http.Client{Timeout: 30 * time.Second},
 	}
+}
+
+func OfflineActivationPayload(
+	activationRequest ActivationRequest,
+	privateKey *rsa.PrivateKey,
+) (string, error) {
+	return signJWT(
+		map[string]any{
+			"environmentID":   activationRequest.EnvironmentID,
+			"environmentName": activationRequest.EnvironmentName,
+			"publicKey":       activationRequest.PublicKey,
+		},
+		activationRequest.EnvironmentID,
+		privateKey,
+		offlineActivationPayloadExpiration,
+	)
+}
+
+func PayloadExpired(payload string) bool {
+	segments := strings.Split(payload, ".")
+
+	if len(segments) != 3 {
+		return true
+	}
+
+	claimsJSON, error := base64.RawURLEncoding.DecodeString(segments[1])
+
+	if error != nil {
+		return true
+	}
+
+	var claims struct {
+		Exp int64 `json:"exp"`
+	}
+
+	if error := json.Unmarshal(claimsJSON, &claims); error != nil {
+		return true
+	}
+
+	if claims.Exp == 0 {
+		return false
+	}
+
+	return time.Now().Unix() >= claims.Exp
 }
 
 func decodeJWTPayload(token string) string {
@@ -279,6 +331,7 @@ func signJWT(
 	claims map[string]any,
 	issuer string,
 	privateKey *rsa.PrivateKey,
+	expiration time.Duration,
 ) (string, error) {
 	now := time.Now()
 
@@ -290,7 +343,7 @@ func signJWT(
 		return "", error
 	}
 
-	payload["exp"] = now.Add(60 * time.Second).Unix()
+	payload["exp"] = now.Add(expiration).Unix()
 	payload["iat"] = now.Unix()
 	payload["iss"] = issuer
 	payload["jti"] = randomID

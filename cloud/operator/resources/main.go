@@ -6,9 +6,9 @@ import (
 
 	env "github.com/caarlos0/env/v11"
 	licensingv1alpha1 "github.com/liferay/liferay-portal/cloud/operator/api/licensing/v1alpha1"
+	addon "github.com/liferay/liferay-portal/cloud/operator/internal/addon"
 	controller "github.com/liferay/liferay-portal/cloud/operator/internal/controller"
 	licensing "github.com/liferay/liferay-portal/cloud/operator/internal/controller/licensing"
-	liferay "github.com/liferay/liferay-portal/cloud/operator/internal/controller/liferay"
 	provisioning "github.com/liferay/liferay-portal/cloud/operator/internal/provisioning"
 	licensingwebhook "github.com/liferay/liferay-portal/cloud/operator/internal/webhook/licensing"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -64,19 +64,20 @@ func main() {
 		os.Exit(1)
 	}
 
+	provisioningClient := provisioning.NewHTTPClient(config.ProvisioningBaseURL)
+
 	if error := controller.SetupWithManager(
 		manager,
 		&licensing.LiferayEnvironmentReconciler{
 			Client:            manager.GetClient(),
 			GracePeriod:       config.GracePeriod,
 			HeartbeatInterval: config.HeartbeatInterval,
-			Provisioning:      provisioning.NewHTTPClient(config.ProvisioningBaseURL),
+			MarketplaceDir:    config.MarketplaceDir,
+			Provisioning:      provisioningClient,
 			Recorder:          manager.GetEventRecorderFor("liferayenvironment-controller"),
 			RetryInitialDelay: config.RetryInitialDelay,
 			RetryMaxDelay:     config.RetryMaxDelay,
-		},
-		&liferay.LiferayStatefulSetReconciler{
-			Client: manager.GetClient(),
+			Syncer:            addon.NewSyncer(provisioningClient, addon.GoRunner{}),
 		},
 	); error != nil {
 		controller.SetupLog.Error(error, "Unable to set up controllers")
@@ -117,9 +118,10 @@ type config struct {
 	Debug               bool          `env:"DEBUG" envDefault:"false"`
 	GracePeriod         time.Duration `env:"GRACE_PERIOD" envDefault:"168h"`
 	HeartbeatInterval   time.Duration `env:"HEARTBEAT_INTERVAL" envDefault:"10m"`
+	MarketplaceDir      string        `env:"MARKETPLACE_DIR" envDefault:"/marketplace"`
 	MetricsAddress      string        `env:"METRICS_ADDRESS" envDefault:":8080"`
 	ProbeAddress        string        `env:"PROBE_ADDRESS" envDefault:":8081"`
-	ProvisioningBaseURL string        `env:"PROVISIONING_BASE_URL" envDefault:"https://webserver-lrprovisioning.lfr.cloud"`
+	ProvisioningBaseURL string        `env:"PROVISIONING_BASE_URL" envDefault:"https://api.one.liferay.com"`
 	RetryInitialDelay   time.Duration `env:"RETRY_INITIAL_DELAY" envDefault:"30s"`
 	RetryMaxDelay       time.Duration `env:"RETRY_MAX_DELAY" envDefault:"30m"`
 }

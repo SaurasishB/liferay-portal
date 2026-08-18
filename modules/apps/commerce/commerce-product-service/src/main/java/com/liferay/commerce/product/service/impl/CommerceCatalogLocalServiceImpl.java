@@ -327,7 +327,6 @@ public class CommerceCatalogLocalServiceImpl
 		return commerceCatalogPersistence.findByAccountEntryId(accountEntryId);
 	}
 
-	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public CommerceCatalog getOrAddEmptyCommerceCatalog(
 			String externalReferenceCode, long companyId, long userId)
@@ -400,16 +399,12 @@ public class CommerceCatalogLocalServiceImpl
 		commerceCatalog.setName(name);
 		commerceCatalog.setCommerceCurrencyCode(commerceCurrencyCode);
 		commerceCatalog.setCatalogDefaultLanguageId(catalogDefaultLanguageId);
-
-		if (commerceCatalog.getStatus() == WorkflowConstants.STATUS_EMPTY) {
-			commerceCatalog.setStatus(
-				_emptyModelManager.solveEmptyModel(
-					commerceCatalog.getExternalReferenceCode(),
-					commerceCatalog.getModelClassName(),
-					commerceCatalog.getCompanyId(), 0,
-					commerceCatalog.getStatus(),
-					() -> WorkflowConstants.STATUS_APPROVED));
-		}
+		commerceCatalog.setStatus(
+			_emptyModelManager.solveEmptyModel(
+				commerceCatalog.getExternalReferenceCode(),
+				commerceCatalog.getModelClassName(),
+				commerceCatalog.getCompanyId(), 0, commerceCatalog.getStatus(),
+				() -> WorkflowConstants.STATUS_APPROVED));
 
 		return commerceCatalogPersistence.update(commerceCatalog);
 	}
@@ -538,6 +533,10 @@ public class CommerceCatalogLocalServiceImpl
 
 		AccountEntry accountEntry = _accountEntryLocalService.getAccountEntry(
 			accountEntryId);
+
+		if (accountEntry.getStatus() == WorkflowConstants.STATUS_EMPTY) {
+			return;
+		}
 
 		if (!StringUtil.equals(
 				accountEntry.getType(),

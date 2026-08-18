@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestDownloadAddOn(t *testing.T) {
@@ -107,6 +108,103 @@ func TestDownloadAddOn(t *testing.T) {
 				t.Errorf(
 					"Body = %q, want %q", downloaded, testCase.responseBody,
 				)
+			}
+		})
+	}
+}
+
+func TestOfflineActivationPayload(t *testing.T) {
+	privateKey, error := rsa.GenerateKey(rand.Reader, 2048)
+
+	if error != nil {
+		t.Fatalf("Unable to generate key: %v", error)
+	}
+
+	payload, error := OfflineActivationPayload(
+		ActivationRequest{
+			ActivationCode:  "must-be-omitted",
+			EnvironmentID:   "env-123",
+			EnvironmentName: "prod",
+			PublicKey:       "public-key-base64",
+		},
+		privateKey,
+	)
+
+	if error != nil {
+		t.Fatalf("Unexpected error: %v", error)
+	}
+
+	claims := decodeClaims(t, payload)
+
+	if claims["environmentID"] != "env-123" {
+		t.Errorf("environmentID = %v, want env-123", claims["environmentID"])
+	}
+
+	if claims["environmentName"] != "prod" {
+		t.Errorf("environmentName = %v, want prod", claims["environmentName"])
+	}
+
+	if claims["publicKey"] != "public-key-base64" {
+		t.Errorf("publicKey = %v, want public-key-base64", claims["publicKey"])
+	}
+
+	if _, present := claims["activationCode"]; present {
+		t.Error("activationCode should be omitted from the offline payload")
+	}
+
+	if delta := int64(claims["exp"].(float64)) - int64(claims["iat"].(float64)); delta != 90*24*60*60 {
+		t.Errorf("exp - iat = %d seconds, want 90 days (7776000)", delta)
+	}
+}
+
+func TestPayloadExpired(t *testing.T) {
+	privateKey, error := rsa.GenerateKey(rand.Reader, 2048)
+
+	if error != nil {
+		t.Fatalf("Unable to generate key: %v", error)
+	}
+
+	fresh, error := signJWT(map[string]any{}, "issuer", privateKey, time.Hour)
+
+	if error != nil {
+		t.Fatalf("Unable to sign a fresh token: %v", error)
+	}
+
+	expired, error := signJWT(map[string]any{}, "issuer", privateKey, -time.Hour)
+
+	if error != nil {
+		t.Fatalf("Unable to sign an expired token: %v", error)
+	}
+
+	withoutExp := "header." +
+		base64.RawURLEncoding.EncodeToString([]byte(`{"iss":"issuer"}`)) + ".signature"
+
+	testCases := map[string]struct {
+		token string
+		want  bool
+	}{
+		"expired token is expired": {
+			token: expired,
+			want:  true,
+		},
+		"fresh token is not expired": {
+			token: fresh,
+			want:  false,
+		},
+		"malformed token is expired": {
+			token: "not-a-jwt",
+			want:  true,
+		},
+		"token without exp is not expired": {
+			token: withoutExp,
+			want:  false,
+		},
+	}
+
+	for name, testCase := range testCases {
+		t.Run(name, func(t *testing.T) {
+			if got := PayloadExpired(testCase.token); got != testCase.want {
+				t.Errorf("PayloadExpired = %v, want %v", got, testCase.want)
 			}
 		})
 	}

@@ -1,8 +1,13 @@
 package licensing
 
 import (
+	"bytes"
 	"context"
 	"crypto/rsa"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -10,6 +15,7 @@ import (
 	"time"
 
 	licensingv1alpha1 "github.com/liferay/liferay-portal/cloud/operator/api/licensing/v1alpha1"
+	addon "github.com/liferay/liferay-portal/cloud/operator/internal/addon"
 	provisioning "github.com/liferay/liferay-portal/cloud/operator/internal/provisioning"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -28,6 +34,8 @@ func (stubProvisioning *stubProvisioning) Activate(
 	context context.Context,
 	privateKey *rsa.PrivateKey,
 ) error {
+	stubProvisioning.activateCalled = true
+
 	return stubProvisioning.activateError
 }
 
@@ -36,7 +44,13 @@ func (stubProvisioning *stubProvisioning) DownloadAddOn(
 	downloadRequest provisioning.DownloadRequest,
 	privateKey *rsa.PrivateKey,
 ) (io.ReadCloser, error) {
-	return nil, nil
+	stubProvisioning.downloadCalled = true
+
+	if stubProvisioning.downloadError != nil {
+		return nil, stubProvisioning.downloadError
+	}
+
+	return io.NopCloser(bytes.NewReader(stubProvisioning.downloadBody)), nil
 }
 
 func (stubProvisioning *stubProvisioning) Manifest(
@@ -44,7 +58,13 @@ func (stubProvisioning *stubProvisioning) Manifest(
 	manifestRequest provisioning.ManifestRequest,
 	privateKey *rsa.PrivateKey,
 ) (*provisioning.Entitlements, error) {
+	stubProvisioning.manifestCalled = true
+
 	return stubProvisioning.entitlements, stubProvisioning.manifestError
+}
+
+func (inlineRunner inlineRunner) Run(task func()) {
+	task()
 }
 
 func TestBackoffDuration(t *testing.T) {
@@ -382,6 +402,64 @@ func TestReconcileDowngradesAfterGracePeriod(t *testing.T) {
 	}
 }
 
+func TestReconcileDownloadsAddOns(t *testing.T) {
+	body := []byte("PK\x03\x04 sample lpkg")
+
+	sum := sha256.Sum256(body)
+
+	entitlements := &provisioning.Entitlements{
+		AddOns: []provisioning.AddOn{
+			{
+				DownloadURL:    "https://example.com/marketplace/virtual-entry/77",
+				ProductName:    "Sample Add-on",
+				SHA256Checksum: hex.EncodeToString(sum[:]),
+				VirtualEntryID: 77,
+			},
+		},
+		LicenseXML:      []byte(virtualClusterLicenseXML("Friday, March 2, 2029 12:00:00 AM GMT", 3)),
+		MaxClusterNodes: 3,
+	}
+
+	liferayEnvironmentReconciler, result := reconcileEnvironment(
+		&stubProvisioning{downloadBody: body, entitlements: entitlements}, t,
+		developmentObjects()...,
+	)
+
+	liferayEnvironment := getEnvironment(liferayEnvironmentReconciler, t)
+
+	if length := len(liferayEnvironment.Status.Apps); length != 1 {
+		t.Fatalf("Status.Apps length = %d, want 1", length)
+	}
+
+	if state := liferayEnvironment.Status.Apps[0].State; state != "Downloading" {
+		t.Errorf("State = %q, want Downloading on the first pass", state)
+	}
+
+	if result.RequeueAfter != downloadPollInterval {
+		t.Errorf("RequeueAfter = %s, want the download poll interval", result.RequeueAfter)
+	}
+
+	result = reconcileAgain(liferayEnvironmentReconciler, t)
+
+	appStatus := getEnvironment(liferayEnvironmentReconciler, t).Status.Apps[0]
+
+	if appStatus.Name != "Sample Add-on" {
+		t.Errorf("Name = %q, want Sample Add-on", appStatus.Name)
+	}
+
+	if appStatus.State != "Downloaded" {
+		t.Errorf("State = %q, want Downloaded on the second pass", appStatus.State)
+	}
+
+	if appStatus.VirtualEntryID != 77 {
+		t.Errorf("VirtualEntryID = %d, want 77", appStatus.VirtualEntryID)
+	}
+
+	if result.RequeueAfter != 10*time.Minute {
+		t.Errorf("RequeueAfter = %s, want the heartbeat 10m", result.RequeueAfter)
+	}
+}
+
 func TestReconcileIsNotBlockedByAddOns(t *testing.T) {
 	entitlements := &provisioning.Entitlements{
 		AddOns: []provisioning.AddOn{
@@ -405,12 +483,154 @@ func TestReconcileIsNotBlockedByAddOns(t *testing.T) {
 		t.Errorf("Phase = %q, want Ready despite the broken add-on", liferayEnvironment.Status.Phase)
 	}
 
-	if result.RequeueAfter != 10*time.Minute {
-		t.Errorf("RequeueAfter = %s, want the heartbeat 10m", result.RequeueAfter)
+	if result.RequeueAfter != downloadPollInterval {
+		t.Errorf("RequeueAfter = %s, want the download poll interval", result.RequeueAfter)
 	}
 
 	if length := len(getSecret("dev-entitlements", liferayEnvironmentReconciler, t).Data["add-ons.json"]); length == 0 {
 		t.Error("add-ons.json was not written to the entitlements secret")
+	}
+}
+
+func TestReconcileOfflineAwaitsActivationBundle(t *testing.T) {
+	environment := pendingEnvironment()
+	environment.Spec.Offline = true
+
+	provisioningClient := &stubProvisioning{}
+
+	liferayEnvironmentReconciler, result := reconcileEnvironment(
+		provisioningClient, t,
+		&corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "liferay-dev",
+				UID:  "dev-namespace-uid",
+			},
+		},
+		environment,
+	)
+
+	if provisioningClient.activateCalled || provisioningClient.downloadCalled ||
+		provisioningClient.manifestCalled {
+		t.Errorf(
+			"Offline reconcile made provisioning calls: activate=%v download=%v manifest=%v",
+			provisioningClient.activateCalled,
+			provisioningClient.downloadCalled,
+			provisioningClient.manifestCalled,
+		)
+	}
+
+	if result.RequeueAfter != 15*time.Second {
+		t.Errorf("RequeueAfter = %s, want 15s", result.RequeueAfter)
+	}
+
+	liferayEnvironment := getEnvironment(liferayEnvironmentReconciler, t)
+
+	if liferayEnvironment.Status.Phase != "Pending" {
+		t.Errorf("Phase = %q, want Pending", liferayEnvironment.Status.Phase)
+	}
+
+	if liferayEnvironment.Status.ActivatedAt != nil {
+		t.Errorf(
+			"ActivatedAt = %v, want nil in offline mode before a bundle",
+			liferayEnvironment.Status.ActivatedAt,
+		)
+	}
+
+	condition := meta.FindStatusCondition(
+		liferayEnvironment.Status.Conditions, conditionActivated,
+	)
+
+	if condition == nil {
+		t.Fatal("Activated condition is nil, wanted value")
+	}
+
+	if condition.Reason != "AwaitingOfflineActivationBundle" {
+		t.Errorf("Activated condition reason = %v, want AwaitingOfflineActivationBundle", condition.Reason)
+	}
+
+	if condition.Status != metav1.ConditionFalse {
+		t.Errorf("Activated condition status = %v, want False", condition.Status)
+	}
+}
+
+func TestReconcileOfflineRequestIsWriteOnce(t *testing.T) {
+	environment := pendingEnvironment()
+	environment.Spec.Offline = true
+
+	liferayEnvironmentReconciler, _ := reconcileEnvironment(
+		&stubProvisioning{}, t,
+		&corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "liferay-dev",
+				UID:  "dev-namespace-uid",
+			},
+		},
+		environment,
+	)
+
+	first := string(getSecret(
+		"dev-identity", liferayEnvironmentReconciler, t,
+	).Data["offline-request"])
+
+	if _, error := liferayEnvironmentReconciler.Reconcile(
+		context.Background(), controllerruntime.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      "dev",
+				Namespace: "liferay-dev",
+			},
+		},
+	); error != nil {
+		t.Fatalf("Unexpected error on second reconcile: %v", error)
+	}
+
+	second := string(getSecret(
+		"dev-identity", liferayEnvironmentReconciler, t,
+	).Data["offline-request"])
+
+	if first != second {
+		t.Error("offline-request payload changed on re-reconcile; want write-once")
+	}
+}
+
+func TestReconcileOfflineStoresRequestInIdentitySecret(t *testing.T) {
+	environment := pendingEnvironment()
+	environment.Spec.Offline = true
+
+	liferayEnvironmentReconciler, _ := reconcileEnvironment(
+		&stubProvisioning{}, t,
+		&corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "liferay-dev",
+				UID:  "dev-namespace-uid",
+			},
+		},
+		environment,
+	)
+
+	payload := getSecret(
+		"dev-identity", liferayEnvironmentReconciler, t,
+	).Data["offline-request"]
+
+	if len(payload) == 0 {
+		t.Fatal("identity secret has no offline-request payload")
+	}
+
+	segments := strings.Split(string(payload), ".")
+
+	if len(segments) != 3 {
+		t.Fatalf("offline-request is not a JWT: got %d segments, want 3", len(segments))
+	}
+
+	claims, error := base64.RawURLEncoding.DecodeString(segments[1])
+
+	if error != nil {
+		t.Fatalf("Unable to decode the JWT payload segment: %v", error)
+	}
+
+	var claimsMap map[string]any
+
+	if error := json.Unmarshal(claims, &claimsMap); error != nil {
+		t.Errorf("JWT payload segment is not valid JSON: %v", error)
 	}
 }
 
@@ -788,6 +1008,27 @@ func pointerInt32(value int32) *int32 {
 	return &value
 }
 
+func reconcileAgain(
+	liferayEnvironmentReconciler *LiferayEnvironmentReconciler, t *testing.T,
+) controllerruntime.Result {
+	t.Helper()
+
+	result, error := liferayEnvironmentReconciler.Reconcile(
+		context.Background(), controllerruntime.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      "dev",
+				Namespace: "liferay-dev",
+			},
+		},
+	)
+
+	if error != nil {
+		t.Fatalf("Unexpected reconcile error: %v", error)
+	}
+
+	return result
+}
+
 func reconcileEnvironment(
 	provisioningClient provisioning.Client,
 	t *testing.T,
@@ -799,10 +1040,12 @@ func reconcileEnvironment(
 		Client:            newFakeClient(t, objects...),
 		GracePeriod:       7 * 24 * time.Hour,
 		HeartbeatInterval: 10 * time.Minute,
+		MarketplaceDir:    t.TempDir(),
 		Provisioning:      provisioningClient,
 		Recorder:          record.NewFakeRecorder(10),
 		RetryInitialDelay: 30 * time.Second,
 		RetryMaxDelay:     30 * time.Minute,
+		Syncer:            addon.NewSyncer(provisioningClient, inlineRunner{}),
 	}
 
 	result, error := liferayEnvironmentReconciler.Reconcile(
@@ -832,8 +1075,15 @@ func virtualClusterLicenseXML(expirationDate string, maxClusterNodes int32) stri
 	)
 }
 
+type inlineRunner struct{}
+
 type stubProvisioning struct {
-	activateError error
-	entitlements  *provisioning.Entitlements
-	manifestError error
+	activateCalled bool
+	activateError  error
+	downloadBody   []byte
+	downloadCalled bool
+	downloadError  error
+	entitlements   *provisioning.Entitlements
+	manifestCalled bool
+	manifestError  error
 }

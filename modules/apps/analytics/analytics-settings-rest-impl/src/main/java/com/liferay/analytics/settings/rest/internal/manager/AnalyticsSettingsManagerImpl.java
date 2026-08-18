@@ -13,6 +13,7 @@ import com.liferay.analytics.settings.rest.constants.FieldOrderConstants;
 import com.liferay.analytics.settings.rest.constants.FieldPeopleConstants;
 import com.liferay.analytics.settings.rest.constants.FieldProductConstants;
 import com.liferay.analytics.settings.rest.manager.AnalyticsSettingsManager;
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClassDefinition;
 import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
@@ -96,39 +97,38 @@ public class AnalyticsSettingsManagerImpl implements AnalyticsSettingsManager {
 	}
 
 	@Override
+	public long[] getCommerceChannelIds(long companyId, long[] groupIds) {
+		if (groupIds.length == 0) {
+			return new long[0];
+		}
+
+		return TransformUtil.transformToLongArray(
+			_groupLocalService.getGroups(
+				companyId, _CLASS_NAME_COMMERCE_CHANNEL, 0),
+			group -> {
+				UnicodeProperties typeSettingsUnicodeProperties =
+					group.getTypeSettingsProperties();
+
+				long groupId = GetterUtil.getLong(
+					typeSettingsUnicodeProperties.getProperty("siteGroupId"));
+
+				if (ArrayUtil.contains(groupIds, groupId)) {
+					return group.getClassPK();
+				}
+
+				return null;
+			});
+	}
+
+	@Override
 	public Long[] getCommerceChannelIds(
 			String analyticsChannelId, long companyId)
 		throws Exception {
 
-		AnalyticsConfiguration analyticsConfiguration =
-			getAnalyticsConfiguration(companyId);
-
-		List<Long> commerceChannelIds = new ArrayList<>();
-
-		for (String commerceChannelId :
-				analyticsConfiguration.syncedCommerceChannelIds()) {
-
-			Group group = _groupLocalService.fetchGroup(
-				companyId, _commerceChannelClassNameIdSupplier.get(),
-				GetterUtil.getLong(commerceChannelId));
-
-			if (group == null) {
-				continue;
-			}
-
-			UnicodeProperties typeSettingsUnicodeProperties =
-				group.getTypeSettingsProperties();
-
-			if (Objects.equals(
-					analyticsChannelId,
-					typeSettingsUnicodeProperties.getProperty(
-						"analyticsChannelId"))) {
-
-				commerceChannelIds.add(GetterUtil.getLong(commerceChannelId));
-			}
-		}
-
-		return commerceChannelIds.toArray(new Long[0]);
+		return ArrayUtil.toArray(
+			getCommerceChannelIds(
+				companyId,
+				ArrayUtil.toArray(getSiteIds(analyticsChannelId, companyId))));
 	}
 
 	@Override
