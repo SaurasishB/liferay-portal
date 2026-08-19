@@ -13,9 +13,18 @@ type AppStatus struct {
 	Checksum string `json:"checksum,omitempty"`
 
 	// +optional
+	ConsecutiveFailures int32 `json:"consecutiveFailures,omitempty"`
+
+	// +optional
+	Message string `json:"message,omitempty"`
+
+	// +optional
 	Name string `json:"name,omitempty"`
 
-	// +kubebuilder:validation:Enum=Downloaded;Downloading;Failed
+	// +optional
+	NextRetry *metav1.Time `json:"nextRetry,omitempty"`
+
+	// +kubebuilder:validation:Enum=Downloaded;Downloading;Failed;Orphaned
 	// +optional
 	State string `json:"state,omitempty"`
 
@@ -40,6 +49,7 @@ type LicenseStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:printcolumn:JSONPath=`.spec.workloadRef.name`,name="Workload",type=string
 // +kubebuilder:printcolumn:JSONPath=`.status.conditions[?(@.type=="Activated")].status`,name="Activated",type=string
+// +kubebuilder:printcolumn:JSONPath=`.status.conditions[?(@.type=="AddOnsReady")].status`,name="Add-Ons",type=string
 // +kubebuilder:printcolumn:JSONPath=`.status.license.maxClusterNodes`,name="Max",type=integer
 // +kubebuilder:printcolumn:JSONPath=`.status.license.validUntil`,name="Valid-Until",type=string
 // +kubebuilder:printcolumn:JSONPath=`.spec.desiredReplicas`,name="Desired",type=integer
@@ -81,6 +91,9 @@ type LiferayEnvironmentSpec struct {
 
 	// +optional
 	Offline bool `json:"offline,omitempty"`
+
+	// +optional
+	OfflineActivationBundle string `json:"offlineActivationBundle,omitempty"`
 
 	// +kubebuilder:validation:Required
 	WorkloadRef WorkloadRef `json:"workloadRef"`

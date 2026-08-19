@@ -40,6 +40,7 @@ import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.service.PortletLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
+import com.liferay.portal.kernel.servlet.ContentDispositionUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.Portal;
@@ -50,6 +51,7 @@ import com.liferay.portal.vulcan.pagination.Pagination;
 
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 
 import java.io.Serializable;
@@ -137,8 +139,9 @@ public class ExportProcessResourceImpl extends BaseExportProcessResourceImpl {
 		return Response.ok(
 			fileEntry.getContentStream()
 		).header(
-			"Content-Disposition",
-			"attachment; filename=\"" + fileEntry.getTitle() + "\""
+			HttpHeaders.CONTENT_DISPOSITION,
+			ContentDispositionUtil.getContentDispositionHeaderValue(
+				fileEntry.getTitle())
 		).build();
 	}
 

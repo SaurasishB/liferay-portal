@@ -155,6 +155,7 @@ JavaReleaseInfoCheck | .java | Validates information in `ReleaseInfo.java`. |
 JavaSQLStatementCheck | .java | Perform several checks in SQL statements. |
 [JavaSeeAnnotationCheck](check/java_see_annotation_check.md#javaseeannotationcheck) | .java | Checks for nested annotations inside `@see`. |
 JavaServiceImplCheck | .java | Ensures that `afterPropertiesSet` and `destroy` methods in `*ServiceImpl` always call the method with the same name in the superclass. |
+JavaServiceImplGetFetchCheck | .java | Flags a get-prefixed service method that returns a nullable fetch result, violating the non-null promise its name implies. |
 [JavaServiceUtilCheck](check/java_service_util_check.md#javaserviceutilcheck) | .java | Checks that there are no calls to `*ServiceImpl` from a `*ServiceUtil` class. |
 JavaSnapshotClassNameCheck | .java | Checks the name of the class that is passed to `Snapshot` constructor. |
 JavaStagedModelDataHandlerCheck | .java | Finds missing method `setMvccVersion` in class extending `BaseStagedModelDataHandler` in module that has `mvcc-enabled=true` in `service.xml`. |

@@ -16,8 +16,39 @@ mock_provider "azurerm" {
 		}
 	}
 }
+mock_provider "kubernetes" {}
 override_module {
 	target=module.argocd
+}
+run "should_align_the_karpenter_node_pool_with_the_system_machine_type" {
+	assert {
+		condition=one([for requirement in kubernetes_manifest.karpenter_node_pool.manifest.spec.template.spec.requirements : requirement.values if requirement.key == "karpenter.azure.com/sku-name"]) == ["Standard_D16s_v3"]
+		error_message="The Karpenter node pool must use the specified machine type"
+	}
+	assert {
+		condition=kubernetes_manifest.karpenter_node_pool.manifest.spec.weight > 0
+		error_message="The Karpenter node pool must have high priority"
+	}
+	assert {
+		condition=try(kubernetes_manifest.karpenter_node_pool.manifest.spec.disruption.consolidateAfter, "") != ""
+		error_message="The Karpenter node pool must set a consolidateAfter"
+	}
+	assert {
+		condition=kubernetes_manifest.karpenter_node_pool.manifest.spec.template.spec.nodeClassRef.name == kubernetes_manifest.karpenter_node_class.manifest.metadata.name
+		error_message="The Karpenter node pool must reference the node class this module declares"
+	}
+	command=plan
+	override_data {
+		target=data.azurerm_kubernetes_cluster.aks
+		values={
+			agent_pool_profile=[
+				{
+					name="system"
+					vm_size="Standard_D16s_v3"
+				},
+			]
+		}
+	}
 }
 run "should_assemble_the_deployment_context" {
 	assert {

@@ -26,10 +26,6 @@ public interface AnalyticsSettingsManager {
 
 	public long[] getCommerceChannelIds(long companyId, long[] groupIds);
 
-	public Long[] getCommerceChannelIds(
-			String analyticsChannelId, long companyId)
-		throws Exception;
-
 	public Long[] getSiteIds(String analyticsChannelId, long companyId)
 		throws Exception;
 
@@ -42,11 +38,6 @@ public interface AnalyticsSettingsManager {
 		throws Exception;
 
 	public boolean syncedContactSettingsEnabled(long companyId)
-		throws Exception;
-
-	public String[] updateCommerceChannelIds(
-			String analyticsChannelId, long companyId,
-			Long[] dataSourceCommerceChannelIds)
 		throws Exception;
 
 	public void updateCompanyConfiguration(
