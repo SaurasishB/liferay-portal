@@ -16,15 +16,19 @@ import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.service.ObjectDefinitionService;
 import com.liferay.object.service.ObjectEntryLocalService;
+import com.liferay.object.service.ObjectEntryService;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
+import com.liferay.portal.kernel.license.util.LicenseManagerUtil;
 import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.portlet.LiferayWindowState;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.Sort;
+import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.odata.entity.EntityModel;
@@ -64,6 +68,8 @@ public class BrokenLinkAssetResourceImpl
 			Long assetLibraryId, String search, Pagination pagination,
 			Sort[] sorts)
 		throws Exception {
+
+		LicenseManagerUtil.checkFreeTier();
 
 		if (!FeatureFlagManagerUtil.isEnabled(
 				contextCompany.getCompanyId(), "LPD-82226")) {
@@ -187,11 +193,23 @@ public class BrokenLinkAssetResourceImpl
 			}
 		}
 
+		long objectDefinitionId = GetterUtil.getLong(
+			document.getString("objectDefinitionId"));
+
 		long objectEntryId = GetterUtil.getLong(
 			document.getString(Field.ENTRY_CLASS_PK));
 
 		return new BrokenLinkAsset() {
 			{
+				setActions(
+					() -> HashMapBuilder.put(
+						"update",
+						() -> addAction(
+							ActionKeys.UPDATE, objectEntryId,
+							"getBrokenLinkAssetsPage",
+							_objectEntryService.getModelResourcePermission(
+								objectDefinitionId))
+					).build());
 				setBrokenLinksCount(
 					() -> (long)brokenLinkObjectEntryIds.size());
 				setBrokenLinkTitle(
@@ -205,9 +223,7 @@ public class BrokenLinkAssetResourceImpl
 						objectEntryId));
 				setId(() -> objectEntryId);
 				setObjectDefinitionExternalReferenceCode(
-					() -> externalReferenceCodes.get(
-						GetterUtil.getLong(
-							document.getString("objectDefinitionId"))));
+					() -> externalReferenceCodes.get(objectDefinitionId));
 				setTitle(() -> _getTitle(document));
 			}
 		};
@@ -231,6 +247,9 @@ public class BrokenLinkAssetResourceImpl
 
 	@Reference
 	private ObjectEntryLocalService _objectEntryLocalService;
+
+	@Reference
+	private ObjectEntryService _objectEntryService;
 
 	@Reference
 	private Portal _portal;
