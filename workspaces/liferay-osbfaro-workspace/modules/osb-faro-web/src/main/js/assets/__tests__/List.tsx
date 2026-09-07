@@ -7,6 +7,7 @@ import {mockChannelContext} from 'test/mock-channel-context';
 import {MemoryRouter} from 'react-router-dom';
 import {Provider} from 'react-redux';
 import {RangeKeyTimeRanges} from 'shared/util/constants';
+import {warmFrontendDataSet} from 'test/warm-frontend-data-set';
 
 jest.unmock('react-dom');
 
@@ -352,6 +353,8 @@ const renderList = ({
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const {useNavigate} = require('react-router-dom');
 
+beforeAll(warmFrontendDataSet);
+
 describe('List', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -617,8 +620,8 @@ describe('List', () => {
 			expect(getObjectTypeFilter()).toBeDefined();
 		});
 
-		it('should label the object type filter "Object Type"', () => {
-			expect(getObjectTypeFilter().label).toBe('Object Type');
+		it('should label the object type filter "Asset Structure Type"', () => {
+			expect(getObjectTypeFilter().label).toBe('Asset Structure Type');
 		});
 
 		it('should offer Content and File as the only options', () => {

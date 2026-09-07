@@ -145,6 +145,7 @@ import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.mass.delete.MassDeleteCacheThreadLocal;
 import com.liferay.portal.kernel.model.GroupConstants;
+import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.SystemEventConstants;
 import com.liferay.portal.kernel.model.User;
@@ -706,35 +707,33 @@ public class ObjectDefinitionLocalServiceImpl
 		if (objectDefinition.isUnmodifiableSystemObject()) {
 			_dropTable(objectDefinition.getExtensionDBTableName());
 		}
-		else if (objectDefinition.isApproved()) {
-			_assetListEntryLocalService.updateAssetListEntryTypeSettings(
-				objectDefinition.getCompanyId(),
-				_classNameLocalService.getClassNameId(
-					objectDefinition.getClassName()));
+		else {
+			boolean approved = objectDefinition.isApproved();
 
-			_portletLocalService.removePortletModelResources(
-				objectDefinition.getCompanyId(),
-				objectDefinition.getPortletId());
+			if (approved) {
+				_assetListEntryLocalService.updateAssetListEntryTypeSettings(
+					objectDefinition.getCompanyId(),
+					_classNameLocalService.getClassNameId(
+						objectDefinition.getClassName()));
 
-			try (SafeCloseable safeCloseable = CompanyThreadLocal.lock(
-					objectDefinition.getCompanyId())) {
+				_portletLocalService.removePortletModelResources(
+					objectDefinition.getCompanyId(),
+					objectDefinition.getPortletId());
 
-				ObjectDefinitionResourcePermissionUtil.removeResourceActions(
-					_objectActionLocalService, objectDefinition,
-					_objectFieldLocalService, _resourceActions);
+				try (SafeCloseable safeCloseable = CompanyThreadLocal.lock(
+						objectDefinition.getCompanyId())) {
+
+					ObjectDefinitionResourcePermissionUtil.
+						removeResourceActions(
+							_objectActionLocalService, objectDefinition,
+							_objectFieldLocalService, _resourceActions);
+				}
+				catch (Exception exception) {
+					throw new PortalException(exception);
+				}
 			}
-			catch (Exception exception) {
-				throw new PortalException(exception);
-			}
 
-			_dropTable(objectDefinition.getDBTableName());
-			_dropTable(objectDefinition.getExtensionDBTableName());
-			_dropTable(objectDefinition.getLocalizationDBTableName());
-
-			undeployObjectDefinition(objectDefinition);
-
-			_registerTransactionCallbackForCluster(
-				_undeployObjectDefinitionMethodKey, objectDefinition);
+			_undeployObjectDefinition(objectDefinition, approved);
 		}
 
 		objectDefinitionPersistence.remove(objectDefinition);
@@ -2450,16 +2449,11 @@ public class ObjectDefinitionLocalServiceImpl
 	private String _getUniqueClassName(
 		String className, boolean modifiable, boolean system) {
 
-		if (_isUnmodifiableSystemObject(modifiable, system)) {
+		if (_isUnmodifiableSystemObject(modifiable, system) ||
+			(Validator.isNotNull(className) &&
+			 _isClassNameAvailable(className))) {
+
 			return className;
-		}
-
-		if (Validator.isNotNull(className)) {
-			int count = _getObjectDefinitionsCountByClassName(className);
-
-			if (count == 0) {
-				return className;
-			}
 		}
 
 		while (true) {
@@ -2471,7 +2465,7 @@ public class ObjectDefinitionLocalServiceImpl
 				StringUtil.toUpperCase(StringUtil.randomId(1)),
 				RandomUtil.nextInt(10));
 
-			if (_getObjectDefinitionsCountByClassName(randomClassName) == 0) {
+			if (_isClassNameAvailable(randomClassName)) {
 				return randomClassName;
 			}
 		}
@@ -2531,6 +2525,21 @@ public class ObjectDefinitionLocalServiceImpl
 			_fragmentEntryLinkCache.removeFragmentEntryLinkCache(
 				GetterUtil.getLong(layoutClassedModelUsage.getContainerKey()));
 		}
+	}
+
+	private boolean _isClassNameAvailable(String className) {
+		if (_getObjectDefinitionsCountByClassName(className) != 0) {
+			return false;
+		}
+
+		Portlet portlet = _portletLocalService.getPortletById(
+			ObjectDefinitionUtil.getPortletId(className));
+
+		if (portlet == null) {
+			return true;
+		}
+
+		return false;
 	}
 
 	private boolean _isUnmodifiableSystemObject(
@@ -2709,6 +2718,32 @@ public class ObjectDefinitionLocalServiceImpl
 		objectDefinitionDeployer.undeploy(objectDefinition);
 
 		_unregister(objectDefinition, serviceRegistrationsMap);
+	}
+
+	private void _undeployObjectDefinition(
+		ObjectDefinition objectDefinition, boolean approved) {
+
+		String dbTableName = objectDefinition.getDBTableName();
+
+		if (Validator.isNotNull(dbTableName)) {
+			_dropTable(dbTableName);
+			_dropTable(objectDefinition.getExtensionDBTableName());
+			_dropTable(objectDefinition.getLocalizationDBTableName());
+		}
+
+		if (!approved) {
+			Portlet portlet = _portletLocalService.getPortletById(
+				objectDefinition.getPortletId());
+
+			if (portlet == null) {
+				return;
+			}
+		}
+
+		undeployObjectDefinition(objectDefinition);
+
+		_registerTransactionCallbackForCluster(
+			_undeployObjectDefinitionMethodKey, objectDefinition);
 	}
 
 	private void _unregister(

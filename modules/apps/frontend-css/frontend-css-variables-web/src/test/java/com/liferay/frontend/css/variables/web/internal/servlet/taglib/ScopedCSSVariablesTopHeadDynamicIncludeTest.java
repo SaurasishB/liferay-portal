@@ -13,6 +13,7 @@ import com.liferay.portal.kernel.servlet.BufferCacheServletResponse;
 import com.liferay.portal.kernel.servlet.taglib.DynamicInclude;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.TreeMapBuilder;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,7 +25,6 @@ import java.io.InputStream;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
 
 import org.junit.Assert;
@@ -59,7 +59,22 @@ public class ScopedCSSVariablesTopHeadDynamicIncludeTest {
 
 					@Override
 					public Map<String, String> getCSSVariables() {
-						return Collections.singletonMap("color", "red");
+						return TreeMapBuilder.put(
+							"aspect-ratio-16-to-9", "56.25%"
+						).put(
+							"box-shadow", "0 0.5rem 1rem rgba(0, 0, 0, 0.15)"
+						).put(
+							"btn-link-color", "var(--primary)"
+						).put(
+							"color", "red"
+						).put(
+							"font-family-sans-serif",
+							"system-ui, -apple-system, 'Segoe UI', sans-serif"
+						).put(
+							"spacer-2", "0.5rem"
+						).put(
+							"white", "#fff"
+						).build();
 					}
 
 					@Override

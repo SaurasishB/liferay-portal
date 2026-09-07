@@ -156,6 +156,7 @@ import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.security.permission.ResourceActions;
 import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.service.CompanyLocalService;
+import com.liferay.portal.kernel.service.PortletLocalService;
 import com.liferay.portal.kernel.service.ResourceActionLocalService;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
@@ -818,6 +819,59 @@ public class ObjectDefinitionLocalServiceTest {
 			_objectDefinitionLocalService,
 			new String[] {"C_A", "C_AA", "C_AAA", "C_AAB", "C_AB"},
 			_objectEntryLocalService, _objectRelationshipLocalService);
+	}
+
+	@Test
+	public void testAddCustomObjectDefinitionWithRegisteredPortletId()
+		throws Exception {
+
+		ObjectDefinition objectDefinition1 =
+			ObjectDefinitionTestUtil.publishObjectDefinition();
+
+		String className = objectDefinition1.getClassName();
+
+		String portletId = objectDefinition1.getPortletId();
+
+		com.liferay.portal.kernel.model.Portlet portlet =
+			_portletLocalService.getPortletById(portletId);
+
+		Assert.assertNotNull(portletId, portlet);
+
+		_objectDefinitionLocalService.deleteObjectDefinition(
+			objectDefinition1.getObjectDefinitionId());
+
+		Assert.assertNull(
+			portletId, _portletLocalService.getPortletById(portletId));
+
+		_portletLocalService.deployRemotePortlet(
+			new long[0], portlet, new String[0], false, false);
+
+		Assert.assertNotNull(
+			portletId, _portletLocalService.getPortletById(portletId));
+
+		ObjectDefinition objectDefinition2 = _addCustomObjectDefinition(
+			className, ObjectDefinitionTestUtil.getRandomName());
+
+		Assert.assertNotEquals(className, objectDefinition2.getClassName());
+
+		objectDefinition2 =
+			_objectDefinitionLocalService.publishCustomObjectDefinition(
+				TestPropsValues.getUserId(),
+				objectDefinition2.getObjectDefinitionId());
+
+		String publishedPortletId = objectDefinition2.getPortletId();
+
+		Assert.assertNotNull(
+			publishedPortletId,
+			_portletLocalService.getPortletById(publishedPortletId));
+
+		_objectDefinitionLocalService.deleteObjectDefinition(
+			objectDefinition2.getObjectDefinitionId());
+
+		_portletLocalService.destroyPortlet(portlet);
+
+		Assert.assertNull(
+			portletId, _portletLocalService.getPortletById(portletId));
 	}
 
 	@Test
@@ -2968,6 +3022,50 @@ public class ObjectDefinitionLocalServiceTest {
 		Assert.assertNull(
 			_objectRelationshipLocalService.fetchObjectRelationship(
 				objectRelationship.getObjectRelationshipId()));
+	}
+
+	@Test
+	public void testDeleteObjectDefinitionWithRolledBackPublish()
+		throws Exception {
+
+		ObjectDefinition objectDefinition = _addCustomObjectDefinition(
+			ObjectDefinitionTestUtil.getRandomName());
+
+		objectDefinition =
+			_objectDefinitionLocalService.publishCustomObjectDefinition(
+				TestPropsValues.getUserId(),
+				objectDefinition.getObjectDefinitionId());
+
+		String portletId = objectDefinition.getPortletId();
+
+		Assert.assertNotNull(
+			portletId, _portletLocalService.getPortletById(portletId));
+
+		objectDefinition.setStatus(WorkflowConstants.STATUS_DRAFT);
+
+		objectDefinition = _objectDefinitionLocalService.updateObjectDefinition(
+			objectDefinition);
+
+		Assert.assertFalse(objectDefinition.isApproved());
+
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
+
+		Assert.assertNull(
+			_objectDefinitionLocalService.fetchObjectDefinition(
+				objectDefinition.getObjectDefinitionId()));
+
+		Assert.assertNull(
+			portletId, _portletLocalService.getPortletById(portletId));
+
+		String dbTableName = objectDefinition.getDBTableName();
+
+		Assert.assertFalse(dbTableName, _hasTable(dbTableName));
+
+		String extensionDBTableName =
+			objectDefinition.getExtensionDBTableName();
+
+		Assert.assertFalse(
+			extensionDBTableName, _hasTable(extensionDBTableName));
 	}
 
 	@Test
@@ -5982,6 +6080,9 @@ public class ObjectDefinitionLocalServiceTest {
 
 	@Inject
 	private PLOEntryLocalService _ploEntryLocalService;
+
+	@Inject
+	private PortletLocalService _portletLocalService;
 
 	@Inject
 	private ResourceActionLocalService _resourceActionLocalService;

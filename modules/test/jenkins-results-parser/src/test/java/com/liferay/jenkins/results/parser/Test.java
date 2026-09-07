@@ -20,6 +20,7 @@ import java.nio.file.Paths;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -32,6 +33,7 @@ import org.junit.Rule;
 import org.junit.rules.ErrorCollector;
 
 import org.mockito.Mockito;
+import org.mockito.verification.VerificationMode;
 
 /**
  * @author Peter Yoo
@@ -41,6 +43,8 @@ public class Test {
 	@Before
 	public void setUp() throws Exception {
 		JenkinsResultsParserUtil.clearCache();
+
+		mockEnvironment(Collections.<String, String>emptyMap());
 	}
 
 	@After
@@ -114,6 +118,14 @@ public class Test {
 		}
 
 		return _simpleClassNames;
+	}
+
+	protected VerificationMode getVerificationMode(boolean invoked) {
+		if (invoked) {
+			return Mockito.times(1);
+		}
+
+		return Mockito.never();
 	}
 
 	protected boolean hasCommand(
