@@ -180,6 +180,7 @@ import com.liferay.portal.kernel.test.AssertUtils;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.constants.TestDataConstants;
+import com.liferay.portal.kernel.test.context.ContextUserReplace;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
@@ -6946,6 +6947,57 @@ public class DefaultObjectEntryManagerImplTest
 	}
 
 	@Test
+	public void testGetObjectEntry() throws Exception {
+
+		// Company scope
+
+		ObjectEntry objectEntry = _addObjectEntry(
+			_objectDefinition1, WorkflowConstants.STATUS_APPROVED);
+
+		_assertObjectEntry(
+			objectEntry,
+			_defaultObjectEntryManager.getObjectEntry(
+				dtoConverterContext, _objectDefinition1,
+				_objectEntryLocalService.getObjectEntry(objectEntry.getId())));
+
+		// Site scope
+
+		ObjectEntry siteObjectEntry = _defaultObjectEntryManager.addObjectEntry(
+			_simpleDTOConverterContext, _objectDefinition4,
+			new ObjectEntry() {
+				{
+					properties = HashMapBuilder.<String, Object>put(
+						"textObjectFieldName", RandomTestUtil.randomString()
+					).build();
+				}
+			},
+			_group.getGroupKey());
+
+		com.liferay.object.model.ObjectEntry serviceBuilderObjectEntry =
+			_objectEntryLocalService.getObjectEntry(siteObjectEntry.getId());
+
+		_assertObjectEntry(
+			siteObjectEntry,
+			_defaultObjectEntryManager.getObjectEntry(
+				dtoConverterContext, _objectDefinition4,
+				serviceBuilderObjectEntry));
+
+		// Without view permission
+
+		_user = _addUser();
+
+		AssertUtils.assertFailure(
+			PrincipalException.MustHavePermission.class,
+			StringBundler.concat(
+				"User ", _user.getUserId(), " must have VIEW permission for ",
+				_objectDefinition4.getClassName(), StringPool.SPACE,
+				siteObjectEntry.getId()),
+			() -> _defaultObjectEntryManager.getObjectEntry(
+				dtoConverterContext, _objectDefinition4,
+				serviceBuilderObjectEntry));
+	}
+
+	@Test
 	public void testGetObjectEntryByVersion() throws Exception {
 
 		// Company scope
@@ -7102,6 +7154,52 @@ public class DefaultObjectEntryManagerImplTest
 				objectField.isIndexed(),
 				objectEntryContentJSONObject.has(objectField.getName()));
 		}
+	}
+
+	@Test
+	public void testGetObjectEntryWithDifferentUser() throws Exception {
+		_enableObjectEntryVersioning();
+
+		ObjectEntry objectEntry = _addObjectEntry(
+			_objectDefinition1,
+			ObjectEntryFolderConstants.PARENT_OBJECT_ENTRY_FOLDER_ID_DEFAULT,
+			null, 1);
+
+		User user = UserTestUtil.addOmniadminUser();
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				user)) {
+
+			objectEntry = _defaultObjectEntryManager.updateObjectEntry(
+				TestPropsValues.getCompanyId(),
+				_createDTOConverterContext(user),
+				objectEntry.getExternalReferenceCode(), _objectDefinition1,
+				new ObjectEntry() {
+					{
+						properties = HashMapBuilder.<String, Object>put(
+							"textObjectFieldName", RandomTestUtil.randomString()
+						).build();
+						systemProperties = new SystemProperties() {
+							{
+								version = new Version() {
+									{
+										number = 2;
+									}
+								};
+							}
+						};
+					}
+				},
+				objectEntry.getScopeKey());
+		}
+
+		objectEntry = _defaultObjectEntryManager.getObjectEntry(
+			dtoConverterContext, _objectDefinition1, objectEntry.getId());
+
+		Creator creator = objectEntry.getCreator();
+
+		Assert.assertEquals(Long.valueOf(user.getUserId()), creator.getId());
+		Assert.assertEquals(user.getFullName(), creator.getName());
 	}
 
 	@Test
@@ -7541,6 +7639,50 @@ public class DefaultObjectEntryManagerImplTest
 					_simpleDTOConverterContext,
 					objectEntry2.getExternalReferenceCode(), objectRelationship,
 					objectEntry1.getExternalReferenceCode(), null));
+	}
+
+	@Test
+	public void testGetServiceBuilderObjectEntries() throws Exception {
+		ObjectEntry objectEntry1 = _addObjectEntry(
+			_objectDefinition1, WorkflowConstants.STATUS_APPROVED);
+		ObjectEntry objectEntry2 = _addObjectEntry(
+			_objectDefinition1, WorkflowConstants.STATUS_APPROVED);
+
+		Page<com.liferay.object.model.ObjectEntry> page =
+			_defaultObjectEntryManager.getServiceBuilderObjectEntries(
+				TestPropsValues.getCompanyId(), _objectDefinition1, null,
+				dtoConverterContext, null, Pagination.of(1, 20), null, null);
+
+		Assert.assertEquals(2, page.getTotalCount());
+
+		List<com.liferay.object.model.ObjectEntry> serviceBuilderObjectEntries =
+			new ArrayList<>(page.getItems());
+
+		Assert.assertEquals(
+			serviceBuilderObjectEntries.toString(), 2,
+			serviceBuilderObjectEntries.size());
+
+		com.liferay.object.model.ObjectEntry serviceBuilderObjectEntry1 =
+			serviceBuilderObjectEntries.get(0);
+
+		Assert.assertEquals(
+			objectEntry1.getId(),
+			Long.valueOf(serviceBuilderObjectEntry1.getObjectEntryId()));
+		Assert.assertEquals(
+			_objectEntryLocalService.getValues(
+				serviceBuilderObjectEntry1.getObjectEntryId()),
+			serviceBuilderObjectEntry1.getValues());
+
+		com.liferay.object.model.ObjectEntry serviceBuilderObjectEntry2 =
+			serviceBuilderObjectEntries.get(1);
+
+		Assert.assertEquals(
+			objectEntry2.getId(),
+			Long.valueOf(serviceBuilderObjectEntry2.getObjectEntryId()));
+		Assert.assertEquals(
+			_objectEntryLocalService.getValues(
+				serviceBuilderObjectEntry2.getObjectEntryId()),
+			serviceBuilderObjectEntry2.getValues());
 	}
 
 	@Test

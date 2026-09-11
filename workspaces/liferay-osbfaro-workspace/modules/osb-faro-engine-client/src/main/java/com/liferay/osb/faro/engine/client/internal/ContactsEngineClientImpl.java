@@ -32,6 +32,7 @@ import com.liferay.osb.faro.engine.client.model.ApiUsageMetric;
 import com.liferay.osb.faro.engine.client.model.AsahProject;
 import com.liferay.osb.faro.engine.client.model.Asset;
 import com.liferay.osb.faro.engine.client.model.AssetSummary;
+import com.liferay.osb.faro.engine.client.model.AssetSummaryCMPProject;
 import com.liferay.osb.faro.engine.client.model.AssetSummaryCategory;
 import com.liferay.osb.faro.engine.client.model.AssetSummaryMimeType;
 import com.liferay.osb.faro.engine.client.model.AssetSummaryTag;
@@ -40,6 +41,7 @@ import com.liferay.osb.faro.engine.client.model.AssetSummaryVocabulary;
 import com.liferay.osb.faro.engine.client.model.Author;
 import com.liferay.osb.faro.engine.client.model.BlockedKeyword;
 import com.liferay.osb.faro.engine.client.model.Campaign;
+import com.liferay.osb.faro.engine.client.model.CampaignMetric;
 import com.liferay.osb.faro.engine.client.model.CatalogField;
 import com.liferay.osb.faro.engine.client.model.Channel;
 import com.liferay.osb.faro.engine.client.model.ChannelDataSource;
@@ -1468,6 +1470,54 @@ public class ContactsEngineClientImpl
 	}
 
 	@Override
+	public Results<AssetSummaryCMPProject> getAssetSummaryCMPProjects(
+		FaroProject faroProject, String accountId, long channelId,
+		String individualId, String keywords, String rangeEnd, int rangeKey,
+		String rangeStart, String sort, int cur, int delta) {
+
+		Map<String, Object> uriVariables = getUriVariables(
+			faroProject, cur, delta, null);
+
+		if (Validator.isNotNull(accountId)) {
+			uriVariables.put("accountIds", Arrays.asList(accountId));
+		}
+
+		uriVariables.put("channelId", channelId);
+
+		if (Validator.isNotNull(individualId)) {
+			uriVariables.put("individualIds", Arrays.asList(individualId));
+		}
+
+		if (Validator.isNotNull(keywords)) {
+			uriVariables.put("keywords", keywords);
+		}
+
+		if ((rangeEnd != null) && (rangeStart != null)) {
+			uriVariables.put("rangeEnd", rangeEnd);
+			uriVariables.put("rangeStart", rangeStart);
+		}
+		else {
+			uriVariables.put("rangeKey", rangeKey);
+		}
+
+		if (Validator.isNotNull(sort)) {
+			uriVariables.put(
+				"sort",
+				Arrays.asList(
+					StringUtil.replace(sort, CharPool.COLON, CharPool.COMMA)));
+		}
+
+		PagedModel<?, AssetSummaryCMPProject> pagedModel = get(
+			faroProject, Rels.ASSET_SUMMARY_CMP_PROJECTS,
+			new ParameterizedTypeReference
+				<EntityModelPagedModel<AssetSummaryCMPProject>>() {
+			},
+			uriVariables);
+
+		return pagedModel.getResults();
+	}
+
+	@Override
 	public Results<AssetSummaryMimeType> getAssetSummaryMimeTypes(
 		FaroProject faroProject, long channelId, String rangeEnd, int rangeKey,
 		String rangeStart, int cur, int delta) {
@@ -1691,9 +1741,10 @@ public class ContactsEngineClientImpl
 	}
 
 	@Override
-	public Results<Campaign> getCampaigns(
-		FaroProject faroProject, long channelId, String filterString,
-		String keywords, String sortString, int cur, int delta) {
+	public Results<Account> getCampaignAccounts(
+			FaroProject faroProject, long channelId, String filterString,
+			String id, String query, String sortString, int cur, int delta)
+		throws FaroEngineClientException {
 
 		Map<String, Object> uriVariables = getUriVariables(
 			faroProject, cur, delta, null);
@@ -1704,8 +1755,61 @@ public class ContactsEngineClientImpl
 			uriVariables.put("filter", filterString);
 		}
 
-		if (Validator.isNotNull(keywords)) {
-			uriVariables.put("keywords", keywords);
+		uriVariables.put("id", id);
+
+		if (Validator.isNotNull(query)) {
+			uriVariables.put("query", query);
+		}
+
+		if (Validator.isNotNull(sortString)) {
+			uriVariables.put(
+				"sort",
+				Arrays.asList(
+					StringUtil.replace(
+						sortString, CharPool.COLON, CharPool.COMMA)));
+		}
+
+		PagedModel<?, Account> pagedModel = get(
+			faroProject, Rels.CAMPAIGN_ACCOUNTS,
+			new ParameterizedTypeReference<EntityModelPagedModel<Account>>() {
+			},
+			uriVariables);
+
+		return pagedModel.getResults();
+	}
+
+	@Override
+	public List<CampaignMetric> getCampaignMetrics(
+			FaroProject faroProject, long channelId)
+		throws FaroEngineClientException {
+
+		Map<String, Object> uriVariables = getUriVariables(faroProject);
+
+		uriVariables.put("channelId", channelId);
+
+		return get(
+			faroProject, Rels.CAMPAIGNS_METRICS,
+			new ParameterizedTypeReference<List<CampaignMetric>>() {
+			},
+			uriVariables);
+	}
+
+	@Override
+	public Results<Campaign> getCampaigns(
+		FaroProject faroProject, long channelId, String filterString,
+		String query, String sortString, int cur, int delta) {
+
+		Map<String, Object> uriVariables = getUriVariables(
+			faroProject, cur, delta, null);
+
+		uriVariables.put("channelId", channelId);
+
+		if (Validator.isNotNull(filterString)) {
+			uriVariables.put("filter", filterString);
+		}
+
+		if (Validator.isNotNull(query)) {
+			uriVariables.put("query", query);
 		}
 
 		if (Validator.isNotNull(sortString)) {

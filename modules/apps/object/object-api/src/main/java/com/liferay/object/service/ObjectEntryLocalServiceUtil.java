@@ -512,6 +512,13 @@ public class ObjectEntryLocalServiceUtil {
 		return getService().getObjectEntriesCount(groupId, objectDefinitionId);
 	}
 
+	public static int getObjectEntriesCount(
+		long groupId, long objectDefinitionId, int status) {
+
+		return getService().getObjectEntriesCount(
+			groupId, objectDefinitionId, status);
+	}
+
 	public static long getObjectEntriesCount(
 			long groupId, String languageId,
 			com.liferay.object.model.ObjectDefinition objectDefinition,
@@ -724,6 +731,14 @@ public class ObjectEntryLocalServiceUtil {
 			userId, objectDefinitionId, primaryKey, values);
 	}
 
+	public static void loadValues(
+			com.liferay.object.model.ObjectDefinition objectDefinition,
+			List<ObjectEntry> objectEntries)
+		throws PortalException {
+
+		getService().loadValues(objectDefinition, objectEntries);
+	}
+
 	public static void moveObjectEntriesToTrash(
 			long userId,
 			com.liferay.object.model.ObjectEntryFolder objectEntryFolder,
@@ -903,4 +918,4 @@ public class ObjectEntryLocalServiceUtil {
 			ObjectEntryLocalServiceUtil.class, ObjectEntryLocalService.class);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:846990680
+// LIFERAY-SERVICE-BUILDER-HASH:-742764202

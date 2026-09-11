@@ -585,6 +585,14 @@ public class ObjectEntryLocalServiceWrapper
 	}
 
 	@Override
+	public int getObjectEntriesCount(
+		long groupId, long objectDefinitionId, int status) {
+
+		return _objectEntryLocalService.getObjectEntriesCount(
+			groupId, objectDefinitionId, status);
+	}
+
+	@Override
 	public long getObjectEntriesCount(
 			long groupId, String languageId,
 			com.liferay.object.model.ObjectDefinition objectDefinition,
@@ -829,6 +837,15 @@ public class ObjectEntryLocalServiceWrapper
 	}
 
 	@Override
+	public void loadValues(
+			com.liferay.object.model.ObjectDefinition objectDefinition,
+			java.util.List<com.liferay.object.model.ObjectEntry> objectEntries)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		_objectEntryLocalService.loadValues(objectDefinition, objectEntries);
+	}
+
+	@Override
 	public void moveObjectEntriesToTrash(
 			long userId,
 			com.liferay.object.model.ObjectEntryFolder objectEntryFolder,
@@ -1042,4 +1059,4 @@ public class ObjectEntryLocalServiceWrapper
 	private ObjectEntryLocalService _objectEntryLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1063774189
+// LIFERAY-SERVICE-BUILDER-HASH:-262356575

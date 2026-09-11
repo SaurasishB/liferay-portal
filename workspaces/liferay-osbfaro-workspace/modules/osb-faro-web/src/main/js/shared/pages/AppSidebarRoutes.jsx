@@ -8,7 +8,6 @@ import {compose} from 'redux';
 import {connect} from 'react-redux';
 import {DEVELOPER_MODE} from 'shared/util/constants';
 import {DownloadReportProvider} from 'shared/components/download-report/DownloadReportContext';
-import {ENABLE_CAMPAIGNS} from 'shared/util/feature-flags';
 import {
 	matchPath,
 	Route,
@@ -130,6 +129,12 @@ const IndividualsDashboardCDP = lazy(() =>
 const CampaignsDashboard = lazy(() =>
 	import(
 		/* webpackChunkName: "CampaignsDashboard" */ '../../campaigns/pages'
+	)
+);
+
+const CampaignDetail = lazy(() =>
+	import(
+		/* webpackChunkName: "CampaignDetail" */ '../../campaigns/pages/CampaignDetail'
 	)
 );
 
@@ -268,7 +273,7 @@ const AppSidebarRoutes = ({LDPEnabled, currentUser, groupId}) => {
 								/>
 							)}
 
-							{LDPEnabled && ENABLE_CAMPAIGNS && (
+							{LDPEnabled && (
 								<Route
 									element={
 										<BundleRouter
@@ -277,6 +282,18 @@ const AppSidebarRoutes = ({LDPEnabled, currentUser, groupId}) => {
 										/>
 									}
 									path=":channelId?/campaigns"
+								/>
+							)}
+
+							{LDPEnabled && (
+								<Route
+									element={
+										<BundleRouter
+											data={CampaignDetail}
+											destructured={false}
+										/>
+									}
+									path=":channelId?/campaigns/:id"
 								/>
 							)}
 

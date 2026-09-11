@@ -4,10 +4,14 @@ import {SessionEntityTypes} from 'shared/util/constants';
 export interface UserSessionEvent {
 	applicationId: string;
 	assetTitle: string;
+	campaignId: string | null;
+	campaignName: string | null;
 	canonicalUrl: string;
 	createDate: string;
 	eventDate: string;
 	eventId: string;
+	experienceId?: string | null;
+	experienceName?: string | null;
 	name: string;
 	pageDescription: string;
 	pageGroupId?: string | null;
@@ -15,8 +19,7 @@ export interface UserSessionEvent {
 	properties: Array<{name: string; value: string}>;
 	referrer: string;
 	url: string;
-	utmCampaignId?: string | null;
-	utmCampaignName?: string | null;
+	utmProperties: Array<{name: string; value: string}>;
 }
 
 export interface UserSession {
@@ -93,10 +96,14 @@ export default gql`
 					events {
 						applicationId
 						assetTitle
+						campaignId
+						campaignName
 						canonicalUrl
 						createDate
 						eventDate
 						eventId
+						experienceId
+						experienceName
 						name
 						pageDescription
 						pageGroupId
@@ -108,6 +115,10 @@ export default gql`
 						}
 						referrer
 						url
+						utmProperties {
+							name
+							value
+						}
 					}
 					languageId
 					screenHeight

@@ -13,7 +13,7 @@ import com.liferay.account.exception.DuplicateAccountGroupRelException;
 import com.liferay.account.model.AccountEntry;
 import com.liferay.account.model.AccountGroup;
 import com.liferay.account.service.AccountEntryLocalService;
-import com.liferay.account.service.AccountEntryOrganizationRelLocalService;
+import com.liferay.account.service.AccountEntryOrganizationRelService;
 import com.liferay.account.service.AccountEntryService;
 import com.liferay.account.service.AccountEntryUserRelLocalService;
 import com.liferay.account.service.AccountGroupRelService;
@@ -71,7 +71,7 @@ import com.liferay.portal.kernel.service.ContactService;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ListTypeLocalService;
 import com.liferay.portal.kernel.service.OrganizationService;
-import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
+import com.liferay.portal.kernel.service.ResourcePermissionService;
 import com.liferay.portal.kernel.service.RoleService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.util.ArrayUtil;
@@ -152,7 +152,7 @@ public class AccountResourceImpl
 		throws Exception {
 
 		for (Long accountId : accountIds) {
-			_accountEntryOrganizationRelLocalService.
+			_accountEntryOrganizationRelService.
 				deleteAccountEntryOrganizationRel(accountId, organizationId);
 		}
 	}
@@ -163,7 +163,7 @@ public class AccountResourceImpl
 		throws Exception {
 
 		for (String externalReferenceCode : externalReferenceCodes) {
-			_accountEntryOrganizationRelLocalService.
+			_accountEntryOrganizationRelService.
 				deleteAccountEntryOrganizationRel(
 					DTOConverterUtil.getModelPrimaryKey(
 						_accountResourceDTOConverter, externalReferenceCode),
@@ -515,8 +515,8 @@ public class AccountResourceImpl
 		throws Exception {
 
 		for (Long accountId : accountIds) {
-			_accountEntryOrganizationRelLocalService.
-				addAccountEntryOrganizationRel(accountId, organizationId);
+			_accountEntryOrganizationRelService.addAccountEntryOrganizationRel(
+				accountId, organizationId);
 		}
 	}
 
@@ -526,11 +526,10 @@ public class AccountResourceImpl
 		throws Exception {
 
 		for (String externalReferenceCode : externalReferenceCodes) {
-			_accountEntryOrganizationRelLocalService.
-				addAccountEntryOrganizationRel(
-					DTOConverterUtil.getModelPrimaryKey(
-						_accountResourceDTOConverter, externalReferenceCode),
-					organizationId);
+			_accountEntryOrganizationRelService.addAccountEntryOrganizationRel(
+				DTOConverterUtil.getModelPrimaryKey(
+					_accountResourceDTOConverter, externalReferenceCode),
+				organizationId);
 		}
 	}
 
@@ -1337,8 +1336,8 @@ public class AccountResourceImpl
 		long[] organizationIds = _getOrganizationIds(account);
 
 		if (organizationIds != null) {
-			_accountEntryOrganizationRelLocalService.
-				setAccountEntryOrganizationRels(accountId, organizationIds);
+			_accountEntryOrganizationRelService.setAccountEntryOrganizationRels(
+				accountId, organizationIds);
 		}
 
 		UserAccount[] userAccounts = account.getAccountUserAccounts();
@@ -1430,7 +1429,7 @@ public class AccountResourceImpl
 
 		return ResourcePermissionUtil.setResourcePermissions(
 			accountEntry, accountEntry.getCompanyId(), account.getPermissions(),
-			_resourcePermissionLocalService, _roleService,
+			_resourcePermissionService, _roleService,
 			_roleTypeContributorProvider);
 	}
 
@@ -1449,8 +1448,8 @@ public class AccountResourceImpl
 		_accountEntryModelResourcePermission;
 
 	@Reference
-	private AccountEntryOrganizationRelLocalService
-		_accountEntryOrganizationRelLocalService;
+	private AccountEntryOrganizationRelService
+		_accountEntryOrganizationRelService;
 
 	@Reference
 	private AccountEntryService _accountEntryService;
@@ -1514,7 +1513,7 @@ public class AccountResourceImpl
 	private Portal _portal;
 
 	@Reference
-	private ResourcePermissionLocalService _resourcePermissionLocalService;
+	private ResourcePermissionService _resourcePermissionService;
 
 	@Reference
 	private RoleService _roleService;

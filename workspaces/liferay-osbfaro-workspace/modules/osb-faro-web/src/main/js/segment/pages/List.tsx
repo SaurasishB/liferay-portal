@@ -56,6 +56,7 @@ import {
 	NAME,
 	paginationDefaults,
 } from 'shared/util/pagination';
+import {isNil} from 'lodash';
 import {Link} from 'react-router-dom';
 import {OrderedMap} from 'immutable';
 import {OrderParams} from 'shared/util/records';
@@ -115,6 +116,28 @@ const SEGMENT_CATEGORIES_LABEL_MAP = {
 const SEGMENT_TYPES_LABEL_MAP = {
 	[SegmentTypes.Batch]: Liferay.Language.get('batch'),
 	[SegmentTypes.RealTime]: Liferay.Language.get('real-time'),
+};
+
+/**
+ * A membership count always arrives as a number, because the engine flattens a
+ * count it has not computed yet to zero, so a zero count cannot tell a segment
+ * with no members apart from one that has not been counted. The last
+ * membership update date is the only field that still separates the two, so it
+ * decides for both membership columns.
+ */
+const isMembershipProcessing = (lastMembershipUpdateDate: number | null) =>
+	isNil(lastMembershipUpdateDate);
+
+const getMembershipLabel = (count: number, accountSegment: boolean) => {
+	if (!count) {
+		return '-';
+	}
+
+	const membershipLabel = accountSegment
+		? Liferay.Language.get('x-accounts')
+		: Liferay.Language.get('x-individuals');
+
+	return sub(membershipLabel.toLowerCase(), [toThousands(count)]);
 };
 
 const FILTER_BY_OPTIONS = [
@@ -687,12 +710,16 @@ export const List: React.FC<IListProps> = ({
 										data: {
 											accountsCount: number;
 											individualCount: number;
+											lastMembershipUpdateDate:
+												| number
+												| null;
 											segmentCategory: SegmentCategories;
 										};
 									}) => {
 										const {
 											accountsCount,
 											individualCount,
+											lastMembershipUpdateDate,
 											segmentCategory,
 										} = item.data;
 
@@ -700,23 +727,21 @@ export const List: React.FC<IListProps> = ({
 											segmentCategory ===
 											SegmentCategories.Account;
 
-										const count = accountSegment
-											? accountsCount
-											: individualCount;
-
-										const membershipLabel = accountSegment
-											? Liferay.Language.get('x-accounts')
-											: Liferay.Language.get(
-													'x-individuals'
-												);
-
 										return (
 											<td className="table-cell-expand">
 												<div className="text-truncate text-right">
-													{sub(
-														membershipLabel.toLowerCase(),
-														[toThousands(count)]
-													)}
+													{isMembershipProcessing(
+														lastMembershipUpdateDate
+													)
+														? Liferay.Language.get(
+																'processing'
+															)
+														: getMembershipLabel(
+																accountSegment
+																	? accountsCount
+																	: individualCount,
+																accountSegment
+															)}
 												</div>
 											</td>
 										);
@@ -725,17 +750,36 @@ export const List: React.FC<IListProps> = ({
 								},
 								{
 									accessor: 'lastMembershipUpdateDate',
-									cellRenderer: DateCell,
-									cellRendererProps: {
-										dateFormatter: (
-											date: string | number
-										) =>
-											formatDateToTimeZone(
-												date,
-												getCustomDateTimeFormat()
-											),
-										datePath: 'lastMembershipUpdateDate',
-									},
+									cellRenderer: (item: {
+										className?: string;
+										data: {
+											lastMembershipUpdateDate:
+												| number
+												| null;
+										};
+									}) =>
+										isMembershipProcessing(
+											item.data.lastMembershipUpdateDate
+										) ? (
+											<td className={item.className}>
+												{Liferay.Language.get(
+													'processing'
+												)}
+											</td>
+										) : (
+											<DateCell
+												{...item}
+												dateFormatter={(
+													date: string | number
+												) =>
+													formatDateToTimeZone(
+														date,
+														getCustomDateTimeFormat()
+													)
+												}
+												datePath="lastMembershipUpdateDate"
+											/>
+										),
 									className: 'table-column-text-start',
 									label: Liferay.Language.get(
 										'last-membership-update'

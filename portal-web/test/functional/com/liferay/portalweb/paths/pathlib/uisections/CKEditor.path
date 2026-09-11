@@ -46,6 +46,11 @@
 	<td></td>
 </tr>
 <tr>
+	<td>BODY_FIELD_CONTENTEDITABLE</td>
+	<td>//div[contains(@class,'ck-editor__editable_inline')]</td>
+	<td></td>
+</tr>
+<tr>
 	<td>BODY_FIELD_IFRAME_2</td>
 	<td>xpath=(//*[contains(@id,'cke')]/iframe)[2]</td>
 	<td></td>
@@ -53,6 +58,11 @@
 <tr>
 	<td>BODY_FIELD_IFRAME_WEB_CONTENT_ARTICLE</td>
 	<td>//label[contains(.,'${key_fieldLabel}')]//following-sibling::div//div[contains(@id,'cke')]/iframe</td>
+	<td></td>
+</tr>
+<tr>
+	<td>BODY_FIELD_EITHER_EDITOR</td>
+	<td>//*[contains(@id,'cke')]/iframe | //div[contains(@class,'ck-editor__editable_inline')]</td>
 	<td></td>
 </tr>
 <tr>

@@ -157,6 +157,21 @@ public class ObjectEntryServiceImpl extends ObjectEntryServiceBaseImpl {
 	}
 
 	@Override
+	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	public void checkModelResourcePermission(
+			ObjectEntry objectEntry, String actionId)
+		throws PortalException {
+
+		ObjectDefinition objectDefinition = objectEntry.getObjectDefinition();
+
+		_checkPermission(
+			actionId,
+			ModelResourcePermissionRegistryUtil.getModelResourcePermission(
+				objectDefinition.getClassName()),
+			objectEntry);
+	}
+
+	@Override
 	public ObjectEntry copyObjectEntry(
 			long objectEntryId, long objectEntryFolderId,
 			Map<String, Serializable> values, ServiceContext serviceContext)
@@ -326,20 +341,36 @@ public class ObjectEntryServiceImpl extends ObjectEntryServiceBaseImpl {
 			int end)
 		throws PortalException {
 
-		List<ObjectEntry> objectEntries = objectEntryPersistence.findByG_ODI_S(
-			groupId, objectDefinitionId, status, start, end);
+		List<ObjectEntry> objectEntries = null;
+
+		if (status == WorkflowConstants.STATUS_ANY) {
+			objectEntries = objectEntryPersistence.findByG_ODI_NotS(
+				groupId, objectDefinitionId, WorkflowConstants.STATUS_IN_TRASH,
+				start, end);
+		}
+		else {
+			objectEntries = objectEntryPersistence.findByG_ODI_S(
+				groupId, objectDefinitionId, status, start, end);
+		}
 
 		if (ObjectEntryThreadLocal.isSkipObjectEntryResourcePermission()) {
 			return objectEntries;
 		}
 
+		ObjectDefinition objectDefinition =
+			_objectDefinitionPersistence.findByPrimaryKey(objectDefinitionId);
+
 		ModelResourcePermission<ObjectEntry> modelResourcePermission =
-			getModelResourcePermission(objectDefinitionId);
+			ModelResourcePermissionRegistryUtil.getModelResourcePermission(
+				objectDefinition.getClassName());
+
 		PermissionChecker permissionChecker = getPermissionChecker();
 
 		return TransformUtil.transform(
 			objectEntries,
 			objectEntry -> {
+				objectEntry.setObjectDefinition(objectDefinition);
+
 				if (modelResourcePermission.contains(
 						permissionChecker, objectEntry, ActionKeys.VIEW)) {
 
@@ -348,6 +379,19 @@ public class ObjectEntryServiceImpl extends ObjectEntryServiceBaseImpl {
 
 				return null;
 			});
+	}
+
+	@Override
+	public int getObjectEntriesCount(
+		long groupId, long objectDefinitionId, int status) {
+
+		if (status == WorkflowConstants.STATUS_ANY) {
+			return objectEntryPersistence.countByG_ODI_NotS(
+				groupId, objectDefinitionId, WorkflowConstants.STATUS_IN_TRASH);
+		}
+
+		return objectEntryPersistence.countByG_ODI_S(
+			groupId, objectDefinitionId, status);
 	}
 
 	@Override
@@ -745,8 +789,16 @@ public class ObjectEntryServiceImpl extends ObjectEntryServiceBaseImpl {
 			String actionId, long objectDefinitionId, ObjectEntry objectEntry)
 		throws PortalException {
 
-		ModelResourcePermission<ObjectEntry> modelResourcePermission =
-			getModelResourcePermission(objectDefinitionId);
+		_checkPermission(
+			actionId, getModelResourcePermission(objectDefinitionId),
+			objectEntry);
+	}
+
+	private void _checkPermission(
+			String actionId,
+			ModelResourcePermission<ObjectEntry> modelResourcePermission,
+			ObjectEntry objectEntry)
+		throws PortalException {
 
 		if (objectEntry.isRootDescendantNode() &&
 			(actionId.equals(ActionKeys.DELETE) ||

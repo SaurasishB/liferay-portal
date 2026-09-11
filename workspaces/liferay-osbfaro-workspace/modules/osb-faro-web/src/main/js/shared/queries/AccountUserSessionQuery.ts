@@ -4,10 +4,14 @@ import {SessionEntityTypes} from 'shared/util/constants';
 export interface AccountUserSessionEvent {
 	applicationId: string;
 	assetTitle: string;
+	campaignId: string | null;
+	campaignName: string | null;
 	canonicalUrl: string;
 	createDate: string;
 	eventDate: string;
 	eventId: string;
+	experienceId?: string | null;
+	experienceName?: string | null;
 	name: string;
 	pageDescription: string;
 	pageGroupId?: string | null;
@@ -16,8 +20,6 @@ export interface AccountUserSessionEvent {
 	properties: Array<{name: string; value: string}>;
 	referrer: string;
 	url: string;
-	utmCampaignId?: string | null;
-	utmCampaignName?: string | null;
 }
 
 export interface AccountUserSession {
@@ -29,6 +31,7 @@ export interface AccountUserSession {
 	deviceType: string;
 	events: AccountUserSessionEvent[];
 	individualId: string | null;
+	jobTitle?: string | null;
 	languageId: string;
 	screenHeight: number;
 	screenWidth: number;
@@ -98,10 +101,14 @@ export default gql`
 					events {
 						applicationId
 						assetTitle
+						campaignId
+						campaignName
 						canonicalUrl
 						createDate
 						eventDate
 						eventId
+						experienceId
+						experienceName
 						name
 						pageDescription
 						pageGroupId

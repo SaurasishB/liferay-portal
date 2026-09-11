@@ -61,6 +61,14 @@ public class ObjectEntryServiceWrapper
 	}
 
 	@Override
+	public void checkModelResourcePermission(
+			com.liferay.object.model.ObjectEntry objectEntry, String actionId)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		_objectEntryService.checkModelResourcePermission(objectEntry, actionId);
+	}
+
+	@Override
 	public com.liferay.object.model.ObjectEntry copyObjectEntry(
 			long objectEntryId, long objectEntryFolderId,
 			java.util.Map<String, java.io.Serializable> values,
@@ -158,6 +166,14 @@ public class ObjectEntryServiceWrapper
 
 		return _objectEntryService.getObjectEntries(
 			groupId, objectDefinitionId, status, start, end);
+	}
+
+	@Override
+	public int getObjectEntriesCount(
+		long groupId, long objectDefinitionId, int status) {
+
+		return _objectEntryService.getObjectEntriesCount(
+			groupId, objectDefinitionId, status);
 	}
 
 	@Override
@@ -352,4 +368,4 @@ public class ObjectEntryServiceWrapper
 	private ObjectEntryService _objectEntryService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-29569206
+// LIFERAY-SERVICE-BUILDER-HASH:-2010359252

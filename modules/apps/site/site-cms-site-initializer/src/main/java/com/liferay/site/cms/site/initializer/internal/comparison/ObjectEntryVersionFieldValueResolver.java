@@ -5,6 +5,7 @@
 
 package com.liferay.site.cms.site.initializer.internal.comparison;
 
+import com.liferay.diff.DiffHtml;
 import com.liferay.document.library.kernel.model.DLFileEntry;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.document.library.kernel.service.DLFileEntryLocalService;
@@ -32,6 +33,9 @@ import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.TimeZoneUtil;
+import com.liferay.portal.kernel.util.Validator;
+
+import java.io.StringReader;
 
 import java.text.DateFormat;
 import java.text.Format;
@@ -56,12 +60,13 @@ import java.util.TimeZone;
 public class ObjectEntryVersionFieldValueResolver {
 
 	public ObjectEntryVersionFieldValueResolver(
-		DLAppLocalService dlAppLocalService,
+		DiffHtml diffHtml, DLAppLocalService dlAppLocalService,
 		DLFileEntryLocalService dlFileEntryLocalService,
 		DLURLHelper dlURLHelper, Language language,
 		ListTypeEntryLocalService listTypeEntryLocalService,
 		ObjectEntryVersionService objectEntryVersionService) {
 
+		_diffHtml = diffHtml;
 		_dlAppLocalService = dlAppLocalService;
 		_dlFileEntryLocalService = dlFileEntryLocalService;
 		_dlURLHelper = dlURLHelper;
@@ -71,7 +76,8 @@ public class ObjectEntryVersionFieldValueResolver {
 	}
 
 	public Map<String, Object> getFieldValues(
-			String languageId, long objectEntryId, int version)
+			String defaultLanguageId, String languageId, long objectEntryId,
+			int version)
 		throws Exception {
 
 		Map<String, Object> fieldValues = new HashMap<>();
@@ -106,7 +112,15 @@ public class ObjectEntryVersionFieldValueResolver {
 				Map<String, Object> localizedValuesMap =
 					(Map<String, Object>)localizedValues;
 
-				fieldValue = localizedValuesMap.get(languageId);
+				Object localizedValue = localizedValuesMap.get(languageId);
+
+				if (Validator.isNull(localizedValue)) {
+					localizedValue = localizedValuesMap.get(defaultLanguageId);
+				}
+
+				if (Validator.isNotNull(localizedValue)) {
+					fieldValue = localizedValue;
+				}
 			}
 
 			fieldValues.put(fieldName, fieldValue);
@@ -129,17 +143,39 @@ public class ObjectEntryVersionFieldValueResolver {
 		return fieldValues;
 	}
 
-	public boolean isDateBusinessType(ObjectField objectField) {
+	public String toDiffHtml(
+			String addedDisplayValue, ObjectField objectField,
+			String removedDisplayValue)
+		throws Exception {
+
 		String businessType =
 			(objectField == null) ? null : objectField.getBusinessType();
 
-		if (ObjectFieldConstants.BUSINESS_TYPE_DATE.equals(businessType) ||
+		if (ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT.equals(
+				businessType) ||
+			ObjectFieldConstants.BUSINESS_TYPE_DATE.equals(businessType) ||
 			ObjectFieldConstants.BUSINESS_TYPE_DATE_TIME.equals(businessType)) {
 
-			return true;
+			StringBundler sb = new StringBundler(6);
+
+			if (!removedDisplayValue.isEmpty()) {
+				sb.append("<span class=\"diff-html-removed\">");
+				sb.append(removedDisplayValue);
+				sb.append("</span>");
+			}
+
+			if (!addedDisplayValue.isEmpty()) {
+				sb.append("<span class=\"diff-html-added\">");
+				sb.append(addedDisplayValue);
+				sb.append("</span>");
+			}
+
+			return sb.toString();
 		}
 
-		return false;
+		return _diffHtml.diff(
+			new StringReader(removedDisplayValue),
+			new StringReader(addedDisplayValue));
 	}
 
 	public String toDisplayValue(
@@ -274,7 +310,8 @@ public class ObjectEntryVersionFieldValueResolver {
 
 			return StringBundler.concat(
 				"<img alt=\"", fileName,
-				"\" class=\"cms-compare-versions-attachment\" src=\"",
+				"\" class=\"border cms-compare-versions-attachment d-block ",
+				"mb-2 mw-100 rounded\" src=\"",
 				_dlURLHelper.getPreviewURL(
 					fileEntry, fileEntry.getFileVersion(), null,
 					StringPool.BLANK),
@@ -324,7 +361,7 @@ public class ObjectEntryVersionFieldValueResolver {
 				_log.warn(dateTimeParseException);
 			}
 
-			return valueString;
+			return HtmlUtil.escape(valueString);
 		}
 	}
 
@@ -394,6 +431,7 @@ public class ObjectEntryVersionFieldValueResolver {
 	private static final Log _log = LogFactoryUtil.getLog(
 		ObjectEntryVersionFieldValueResolver.class);
 
+	private final DiffHtml _diffHtml;
 	private final DLAppLocalService _dlAppLocalService;
 	private final DLFileEntryLocalService _dlFileEntryLocalService;
 	private final DLURLHelper _dlURLHelper;

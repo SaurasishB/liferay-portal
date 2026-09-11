@@ -179,13 +179,18 @@ resource "kubernetes_manifest" "infrastructure_appproject" {
 					server="https://kubernetes.default.svc"
 				},
 			]
-			sourceRepos=[
-				var.infrastructure_helm_chart_config.chart_url,
-				"${var.infrastructure_helm_chart_config.chart_url}/*",
-				var.infrastructure_provider_helm_chart_config.chart_url,
-				"${var.infrastructure_provider_helm_chart_config.chart_url}/*",
-				local.infrastructure_git_repo_url,
-			]
+			sourceRepos=concat(
+				[
+					var.infrastructure_helm_chart_config.chart_url,
+					"${var.infrastructure_helm_chart_config.chart_url}/*",
+					var.infrastructure_provider_helm_chart_config.chart_url,
+					"${var.infrastructure_provider_helm_chart_config.chart_url}/*",
+					local.infrastructure_git_repo_url,
+				],
+				var.observability_config.enabled ? [
+					var.observability_helm_chart_config.chart_url,
+					"${var.observability_helm_chart_config.chart_url}/*",
+				] : [])
 		}
 	}
 }
@@ -445,6 +450,14 @@ resource "kubernetes_manifest" "liferay_applicationset" {
 								"liferay.com/observable"="true"
 								"pod-security.kubernetes.io/enforce"="restricted"
 							}
+						}
+						retry={
+							backoff={
+								duration="15s"
+								factor=2
+								maxDuration="5m"
+							}
+							limit=10
 						}
 						syncOptions=[
 							"CreateNamespace=true",

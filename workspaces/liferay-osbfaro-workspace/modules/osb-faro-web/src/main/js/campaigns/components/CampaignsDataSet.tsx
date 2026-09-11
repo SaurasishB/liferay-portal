@@ -5,11 +5,11 @@ import {
 	FrontendDataSet,
 	pagination,
 } from 'shared/components/FrontendDataSet';
-import {ICampaign} from '../utils/mock-campaigns';
-import {Text} from '@clayui/core';
+import {Routes} from 'shared/util/router';
 
 interface ICampaignsDataSetProps {
-	items: ICampaign[];
+	channelId: string;
+	groupId: string;
 }
 
 const views = [
@@ -45,23 +45,39 @@ const views = [
 	},
 ];
 
-const CampaignsDataSet: React.FC<ICampaignsDataSetProps> = ({items}) => (
+const CampaignsDataSet: React.FC<ICampaignsDataSetProps> = ({
+	channelId,
+	groupId,
+}) => (
 	<Card minHeight={300}>
 		<FrontendDataSet
+			apiURL={`/o/faro/contacts/${groupId}/campaigns?channelId=${channelId}`}
 			customDataRenderers={{
-				campaignNameRenderer: ({value}: {value: string}) => (
-					<Text weight="semi-bold">{value}</Text>
-				),
+				campaignNameRenderer: ({
+					itemData,
+					value,
+				}: {
+					itemData: {id: string};
+					value: string;
+				}) =>
+					columns.nameAndLinkRenderer({
+						channelId,
+						groupId,
+						itemData,
+						route: Routes.CAMPAIGNS_DETAIL,
+						value,
+					}),
 				countRenderer: columns.countRenderer,
 			}}
 			id="campaigns-list-dataset"
-			items={items}
 			pagination={pagination}
 
-			// Search is served by the request, so it does nothing while the
-			// data set runs on `items`. Hiding it empties the management bar,
-			// which then renders as 65px of blank space, so that goes too. The
-			// backend integration task brings both back with the endpoint.
+			// The endpoint takes `search`, `filter` and `sort` and acts on
+			// none of them: asah declares all three on the controller and
+			// never reads them. Turning them on here would give the table a
+			// search box that filters nothing and headers that sort nothing,
+			// which reads as broken rather than as absent, so they stay off
+			// until asah implements them.
 
 			showManagementBar={false}
 			showPagination

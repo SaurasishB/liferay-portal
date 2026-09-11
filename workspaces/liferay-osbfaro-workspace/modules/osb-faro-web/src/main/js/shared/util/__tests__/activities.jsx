@@ -1,6 +1,7 @@
 import * as data from 'test/data';
 import {
 	buildLegendItems,
+	buildTouchIndividualUrls,
 	formatEvents,
 	formatGroupingTime,
 	formatSessions,
@@ -9,7 +10,10 @@ import {
 	getSafeRangeKey,
 	groupEventsByPage,
 	groupSessionsByDay,
-	isWebhookUserAgent
+	isWebhookUserAgent,
+	mapEventMetricToActivityHistory,
+	mergeCampaignDays,
+	toDayKey
 } from '../activities';
 
 describe('activities', () => {
@@ -59,8 +63,8 @@ describe('activities', () => {
 					applicationId: 'CustomEvent',
 					createDate: '2026-07-16T10:00:00.000Z',
 					name: 'eventName',
-					utmCampaignId: '7013a000002QwErtAAG',
-					utmCampaignName: 'Spring Compactor Promo 2026'
+					campaignId: '7013a000002QwErtAAG',
+					campaignName: 'Spring Compactor Promo 2026'
 				},
 				{
 					applicationId: 'CustomEvent',
@@ -74,6 +78,36 @@ describe('activities', () => {
 				campaignName: 'Spring Compactor Promo 2026'
 			});
 			expect(withoutCampaign.campaign).toBeUndefined();
+		});
+
+		it('includes the raw experience id and name in attributes when the event carries one', () => {
+			const result = formatEvents([
+				{
+					applicationId: 'Page',
+					createDate: '2026-07-16T10:00:00.000Z',
+					experienceId: '39201',
+					experienceName: 'Q3 Promo Experience',
+					name: 'pageViewed'
+				}
+			]);
+
+			expect(result[0].attributes.experienceId).toBe('39201');
+			expect(result[0].attributes.experienceName).toBe(
+				'Q3 Promo Experience'
+			);
+		});
+
+		it('omits the experience attributes when the event carries none', () => {
+			const result = formatEvents([
+				{
+					applicationId: 'Page',
+					createDate: '2026-07-16T10:00:00.000Z',
+					name: 'pageViewed'
+				}
+			]);
+
+			expect(result[0].attributes).not.toHaveProperty('experienceId');
+			expect(result[0].attributes).not.toHaveProperty('experienceName');
 		});
 
 		it('should decode canonicalUrl into subtitle for DXP events', () => {
@@ -185,8 +219,8 @@ describe('activities', () => {
 		it('reads a resolved touch as its campaign id and name', () => {
 			expect(
 				getEventCampaign({
-					utmCampaignId: '7013a000002QwErtAAG',
-					utmCampaignName: 'Spring Compactor Promo 2026'
+					campaignId: '7013a000002QwErtAAG',
+					campaignName: 'Spring Compactor Promo 2026'
 				})
 			).toEqual({
 				campaignId: '7013a000002QwErtAAG',
@@ -197,8 +231,8 @@ describe('activities', () => {
 		it('keeps the raw id of a touch that resolved to no campaign', () => {
 			expect(
 				getEventCampaign({
-					utmCampaignId: '7013a000002XyZbAAK',
-					utmCampaignName: null
+					campaignId: '7013a000002XyZbAAK',
+					campaignName: null
 				})
 			).toEqual({
 				campaignId: '7013a000002XyZbAAK',
@@ -209,8 +243,8 @@ describe('activities', () => {
 		it('reads an event that carried no campaign identity as no campaign', () => {
 			expect(
 				getEventCampaign({
-					utmCampaignId: null,
-					utmCampaignName: null
+					campaignId: null,
+					campaignName: null
 				})
 			).toBeUndefined();
 
@@ -256,8 +290,8 @@ describe('activities', () => {
 					createDate: '2026-07-16T10:00:00.000Z',
 					name: 'pageViewed',
 					pageGroupId: 'https://liferay.com/home',
-					utmCampaignId: '7013a000002QwErtAAG',
-					utmCampaignName: 'Spring Compactor Promo 2026'
+					campaignId: '7013a000002QwErtAAG',
+					campaignName: 'Spring Compactor Promo 2026'
 				}
 			]);
 
@@ -275,8 +309,8 @@ describe('activities', () => {
 					createDate: '2026-07-16T10:00:00.000Z',
 					name: 'pageViewed',
 					pageGroupId: 'https://liferay.com/home',
-					utmCampaignId: '7013a000002XyZbAAK',
-					utmCampaignName: null
+					campaignId: '7013a000002XyZbAAK',
+					campaignName: null
 				}
 			]);
 
@@ -308,12 +342,126 @@ describe('activities', () => {
 					createDate: '2026-07-16T10:00:00.000Z',
 					name: 'pageViewed',
 					pageGroupId: 'https://liferay.com/home',
-					utmCampaignId: '7013a000002QwErtAAG',
-					utmCampaignName: 'Spring Compactor Promo 2026'
+					campaignId: '7013a000002QwErtAAG',
+					campaignName: 'Spring Compactor Promo 2026'
 				}
 			]);
 
 			expect(result[0].nestedItems[0].campaign).toBeUndefined();
+		});
+
+		it('adds the experience a page view was served by onto the group', () => {
+			const result = groupEventsByPage([
+				{
+					applicationId: 'Page',
+					canonicalUrl: 'https://liferay.com/home',
+					createDate: '2026-07-16T10:00:00.000Z',
+					experienceId: '39201',
+					experienceName: 'Q3 Promo Experience',
+					name: 'pageViewed',
+					pageGroupId: 'https://liferay.com/home'
+				}
+			]);
+
+			expect(result[0].experienceNames).toEqual(['Q3 Promo Experience']);
+		});
+
+		it('falls back to the raw id when the group\'s experience has no name', () => {
+			const result = groupEventsByPage([
+				{
+					applicationId: 'Page',
+					canonicalUrl: 'https://liferay.com/home',
+					createDate: '2026-07-16T10:00:00.000Z',
+					experienceId: '39201',
+					name: 'pageViewed',
+					pageGroupId: 'https://liferay.com/home'
+				}
+			]);
+
+			expect(result[0].experienceNames).toEqual(['39201']);
+		});
+
+		it('excludes the default experience from the group', () => {
+			const result = groupEventsByPage([
+				{
+					applicationId: 'Page',
+					canonicalUrl: 'https://liferay.com/home',
+					createDate: '2026-07-16T10:00:00.000Z',
+					experienceId: 'DEFAULT',
+					experienceName: 'Default',
+					name: 'pageViewed',
+					pageGroupId: 'https://liferay.com/home'
+				}
+			]);
+
+			expect(result[0].experienceNames).toBeUndefined();
+		});
+
+		it('leaves a page no view specified an experience for without one', () => {
+			const result = groupEventsByPage([
+				{
+					applicationId: 'Page',
+					canonicalUrl: 'https://liferay.com/home',
+					createDate: '2026-07-16T10:00:00.000Z',
+					name: 'pageViewed',
+					pageGroupId: 'https://liferay.com/home'
+				}
+			]);
+
+			expect(result[0].experienceNames).toBeUndefined();
+		});
+
+		it('collapses the same experience seen on more than one view of the group into a single name', () => {
+			const result = groupEventsByPage([
+				{
+					applicationId: 'Page',
+					canonicalUrl: 'https://liferay.com/home',
+					createDate: '2026-07-16T10:00:00.000Z',
+					experienceId: '39201',
+					experienceName: 'Q3 Promo Experience',
+					name: 'pageViewed',
+					pageGroupId: 'https://liferay.com/home'
+				},
+				{
+					applicationId: 'Page',
+					canonicalUrl: 'https://liferay.com/home',
+					createDate: '2026-07-16T10:05:00.000Z',
+					experienceId: '39201',
+					experienceName: 'Q3 Promo Experience',
+					name: 'pageViewed',
+					pageGroupId: 'https://liferay.com/home'
+				}
+			]);
+
+			expect(result[0].experienceNames).toEqual(['Q3 Promo Experience']);
+		});
+
+		it('keeps every distinct experience a group\'s views were served by, in the order they were seen', () => {
+			const result = groupEventsByPage([
+				{
+					applicationId: 'Page',
+					canonicalUrl: 'https://liferay.com/home',
+					createDate: '2026-07-16T10:00:00.000Z',
+					experienceId: '39201',
+					experienceName: 'Q3 Promo Experience',
+					name: 'pageViewed',
+					pageGroupId: 'https://liferay.com/home'
+				},
+				{
+					applicationId: 'Page',
+					canonicalUrl: 'https://liferay.com/home',
+					createDate: '2026-07-16T10:05:00.000Z',
+					experienceId: '39202',
+					experienceName: 'Winter Sale Experience',
+					name: 'pageViewed',
+					pageGroupId: 'https://liferay.com/home'
+				}
+			]);
+
+			expect(result[0].experienceNames).toEqual([
+				'Q3 Promo Experience',
+				'Winter Sale Experience'
+			]);
 		});
 
 		it('does not repeat the page subtitle on the group\'s own nested events', () => {
@@ -434,12 +582,12 @@ describe('activities', () => {
 			expect(Array.isArray(result)).toBe(true);
 			expect(result.length).toBeGreaterThan(0);
 
-			const header = result[0];
+			const [{header, items}] = result;
 			expect(header.header).toBe(true);
 			expect(typeof header.title).toBe('string');
 			expect(typeof header.totalEvents).toBe('number');
 
-			const session = result[1];
+			const [session] = items;
 			expect(session.session).toBe(true);
 			expect(session).toHaveProperty('attributes');
 			expect(session).toHaveProperty('device');
@@ -448,13 +596,13 @@ describe('activities', () => {
 		});
 
 		it('does not carry a duration, since it is not developed yet', () => {
-			const [, session] = formatSessions([data.mockSession(0)]);
+			const [{items: [session]}] = formatSessions([data.mockSession(0)]);
 
 			expect(session.duration).toBeUndefined();
 		});
 
 		it('marks the session the individual became known in', () => {
-			const [, session] = formatSessions([
+			const [{items: [session]}] = formatSessions([
 				data.mockSession(0, {becameKnown: true})
 			]);
 
@@ -462,7 +610,7 @@ describe('activities', () => {
 		});
 
 		it('leaves the sessions unmarked when the individual is still anonymous', () => {
-			const [, session] = formatSessions([
+			const [{items: [session]}] = formatSessions([
 				data.mockSession(0, {becameKnown: false})
 			]);
 
@@ -485,6 +633,192 @@ describe('activities', () => {
 			expect(Array.isArray(result)).toBe(true);
 			expect(result.length).toBe(2);
 			expect(result[0]).toContain('Events');
+		});
+	});
+
+	describe('mapEventMetricToActivityHistory', () => {
+		const buildEventMetric = (extra = {}) => ({
+			totalEventsMetric: {
+				histogram: {
+					metrics: [
+						{key: '2026-09-07T00:00:00Z', value: 7},
+						{key: '2026-09-08T00:00:00Z', value: 4}
+					]
+				}
+			},
+			totalSessionsMetric: {
+				histogram: {metrics: [{value: 3}, {value: 2}]}
+			},
+			...extra
+		});
+
+		it('carries the campaign activities of each interval', () => {
+			const points = mapEventMetricToActivityHistory(
+				buildEventMetric({
+					totalCampaignActivitiesMetric: {
+						histogram: {metrics: [{value: 5}, {value: 1}]}
+					}
+				})
+			);
+
+			expect(points.map(({totalCampaignResponses}) => totalCampaignResponses)).toEqual([5, 1]);
+		});
+
+		it('leaves the campaign activities undefined while the metric is absent', () => {
+			const points = mapEventMetricToActivityHistory(buildEventMetric());
+
+			expect(points[0].totalCampaignResponses).toBeUndefined();
+			expect(points[0].totalEvents).toBe(7);
+			expect(points[0].totalSessions).toBe(3);
+		});
+	});
+
+	describe('mergeCampaignDays', () => {
+		const buildDay = (date) => ({
+			date,
+			header: {header: true, title: date, totalEvents: 1},
+			items: [{individual: true, individualName: 'Ada Lovelace'}]
+		});
+
+		const campaignDay = {campaigns: [{campaignId: 'c1'}]};
+
+		it('adds a day that only campaigns reached, newest first', () => {
+			const days = mergeCampaignDays(
+				[buildDay('2026-07-15T00:00:00Z')],
+				{'2026-07-16': campaignDay}
+			);
+
+			expect(days.map(({date}) => toDayKey(date))).toEqual([
+				'2026-07-16',
+				'2026-07-15'
+			]);
+			expect(days[0].items).toEqual([]);
+			expect(days[0].header.totalEvents).toBeUndefined();
+		});
+
+		it('anchors an added day to UTC, so its header cannot drift a day', () => {
+			const [day] = mergeCampaignDays([], {
+				'2026-07-16': campaignDay
+			});
+
+			expect(day.date).toBe('2026-07-16T00:00:00Z');
+			expect(day.header.title).toBe(formatGroupingTime(day.date));
+		});
+
+		it('does not repeat a day the sessions already cover', () => {
+			const days = mergeCampaignDays(
+				[buildDay('2026-07-16T10:00:00Z')],
+				{'2026-07-16': campaignDay}
+			);
+
+			expect(days).toHaveLength(1);
+			expect(days[0].items).toHaveLength(1);
+		});
+
+		it('ignores a day whose campaigns came back empty', () => {
+			const days = mergeCampaignDays([buildDay('2026-07-16T10:00:00Z')], {
+				'2026-07-14': {campaigns: []}
+			});
+
+			expect(days).toHaveLength(1);
+		});
+
+		it('leaves a campaign day to the page whose own days cover it', () => {
+			const middlePage = [
+				buildDay('2026-07-15T10:00:00Z'),
+				buildDay('2026-07-12T10:00:00Z')
+			];
+
+			const campaigns = {
+				'2026-07-13': campaignDay,
+				'2026-07-20': campaignDay,
+				'2026-07-01': campaignDay
+			};
+
+			const days = mergeCampaignDays(middlePage, campaigns, {
+				isFirstPage: false,
+				isLastPage: false
+			});
+
+			expect(days.map(({date}) => toDayKey(date))).toEqual([
+				'2026-07-15',
+				'2026-07-13',
+				'2026-07-12'
+			]);
+		});
+
+		it('gives the first page every day above it, so today is never dropped', () => {
+			const days = mergeCampaignDays(
+				[buildDay('2026-07-15T10:00:00Z')],
+				{'2026-07-20': campaignDay},
+				{isFirstPage: true, isLastPage: false}
+			);
+
+			expect(days.map(({date}) => toDayKey(date))).toEqual([
+				'2026-07-20',
+				'2026-07-15'
+			]);
+		});
+
+		it('gives the last page every day below it', () => {
+			const days = mergeCampaignDays(
+				[buildDay('2026-07-15T10:00:00Z')],
+				{'2026-07-01': campaignDay},
+				{isFirstPage: false, isLastPage: true}
+			);
+
+			expect(days.map(({date}) => toDayKey(date))).toEqual([
+				'2026-07-15',
+				'2026-07-01'
+			]);
+		});
+
+		it('returns the days untouched when nothing was fetched', () => {
+			const sessionDays = [buildDay('2026-07-16T10:00:00Z')];
+
+			expect(mergeCampaignDays(sessionDays)).toEqual(sessionDays);
+		});
+	});
+
+	describe('buildTouchIndividualUrls', () => {
+		const campaignDays = {
+			'2026-07-16': {
+				campaigns: [
+					{
+						touches: [
+							{individualId: 'ind-1'},
+							{individualId: null}
+						]
+					},
+					{touches: [{individualId: 'ind-2'}]}
+				]
+			}
+		};
+
+		it('routes every touch that matched an individual', () => {
+			const urls = buildTouchIndividualUrls(campaignDays, {
+				channelId: '456',
+				groupId: '23'
+			});
+
+			expect(Object.keys(urls)).toEqual(['ind-1', 'ind-2']);
+			expect(urls['ind-1']).toContain('ind-1');
+		});
+
+		it('routes nothing without a channel and a group to route within', () => {
+			expect(buildTouchIndividualUrls(campaignDays, {})).toEqual({});
+			expect(
+				buildTouchIndividualUrls(campaignDays, {channelId: '456'})
+			).toEqual({});
+		});
+
+		it('routes nothing when no day was fetched', () => {
+			expect(
+				buildTouchIndividualUrls(undefined, {
+					channelId: '456',
+					groupId: '23'
+				})
+			).toEqual({});
 		});
 	});
 

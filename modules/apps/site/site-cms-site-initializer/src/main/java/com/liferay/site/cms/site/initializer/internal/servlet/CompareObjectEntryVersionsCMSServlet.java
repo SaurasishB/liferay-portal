@@ -16,7 +16,6 @@ import com.liferay.object.service.ObjectEntryService;
 import com.liferay.object.service.ObjectEntryVersionService;
 import com.liferay.object.service.ObjectFieldLocalService;
 import com.liferay.petra.io.StreamUtil;
-import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONException;
@@ -27,9 +26,9 @@ import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.security.auth.PrincipalException;
 import com.liferay.portal.kernel.servlet.ServletResponseUtil;
 import com.liferay.portal.kernel.util.ContentTypes;
-import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.site.cms.site.initializer.internal.comparison.ObjectEntryVersionFieldValueResolver;
 
 import jakarta.servlet.Servlet;
@@ -37,7 +36,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
-import java.io.StringReader;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -65,8 +63,8 @@ public class CompareObjectEntryVersionsCMSServlet extends BaseCMSServlet {
 	protected void activate() {
 		_objectEntryVersionFieldValueResolver =
 			new ObjectEntryVersionFieldValueResolver(
-				_dlAppLocalService, _dlFileEntryLocalService, _dlURLHelper,
-				_language, _listTypeEntryLocalService,
+				_diffHtml, _dlAppLocalService, _dlFileEntryLocalService,
+				_dlURLHelper, _language, _listTypeEntryLocalService,
 				_objectEntryVersionService);
 	}
 
@@ -114,17 +112,19 @@ public class CompareObjectEntryVersionsCMSServlet extends BaseCMSServlet {
 				objectFields.put(objectField.getName(), objectField);
 			}
 
-			String languageId = requestJSONObject.getString("languageId");
-
 			User user = portal.getUser(httpServletRequest);
+
+			String defaultLanguageId = _language.getLanguageId(
+				portal.getSiteDefaultLocale(objectEntry.getGroupId()));
+			String languageId = requestJSONObject.getString("languageId");
 
 			Map<String, Object> sourceFieldValues =
 				_objectEntryVersionFieldValueResolver.getFieldValues(
-					languageId, objectEntryId,
+					defaultLanguageId, languageId, objectEntryId,
 					requestJSONObject.getInt("sourceVersion"));
 			Map<String, Object> targetFieldValues =
 				_objectEntryVersionFieldValueResolver.getFieldValues(
-					languageId, objectEntryId,
+					defaultLanguageId, languageId, objectEntryId,
 					requestJSONObject.getInt("targetVersion"));
 
 			JSONObject sourceDiffsJSONObject = _jsonFactory.createJSONObject();
@@ -150,31 +150,14 @@ public class CompareObjectEntryVersionsCMSServlet extends BaseCMSServlet {
 					continue;
 				}
 
-				if (_objectEntryVersionFieldValueResolver.isDateBusinessType(
-						objectField)) {
-
-					sourceDiffsJSONObject.put(
-						fieldName,
-						_toDateDiffHtml(
-							sourceDisplayValue, targetDisplayValue));
-					targetDiffsJSONObject.put(
-						fieldName,
-						_toDateDiffHtml(
-							targetDisplayValue, sourceDisplayValue));
-
-					continue;
-				}
-
 				sourceDiffsJSONObject.put(
 					fieldName,
-					_diffHtml.diff(
-						new StringReader(targetDisplayValue),
-						new StringReader(sourceDisplayValue)));
+					_objectEntryVersionFieldValueResolver.toDiffHtml(
+						sourceDisplayValue, objectField, targetDisplayValue));
 				targetDiffsJSONObject.put(
 					fieldName,
-					_diffHtml.diff(
-						new StringReader(sourceDisplayValue),
-						new StringReader(targetDisplayValue)));
+					_objectEntryVersionFieldValueResolver.toDiffHtml(
+						targetDisplayValue, objectField, sourceDisplayValue));
 			}
 
 			httpServletResponse.setContentType(ContentTypes.APPLICATION_JSON);
@@ -190,6 +173,13 @@ public class CompareObjectEntryVersionsCMSServlet extends BaseCMSServlet {
 					)
 				).toString());
 		}
+		catch (PrincipalException principalException) {
+			httpServletResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
+
+			if (_log.isWarnEnabled()) {
+				_log.warn(principalException);
+			}
+		}
 		catch (Exception exception) {
 			httpServletResponse.setStatus(
 				HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
@@ -198,24 +188,6 @@ public class CompareObjectEntryVersionsCMSServlet extends BaseCMSServlet {
 				_log.warn(exception);
 			}
 		}
-	}
-
-	private String _toDateDiffHtml(String added, String removed) {
-		StringBundler sb = new StringBundler(6);
-
-		if (!removed.isEmpty()) {
-			sb.append("<span class=\"diff-html-removed\">");
-			sb.append(HtmlUtil.escape(removed));
-			sb.append("</span>");
-		}
-
-		if (!added.isEmpty()) {
-			sb.append("<span class=\"diff-html-added\">");
-			sb.append(HtmlUtil.escape(added));
-			sb.append("</span>");
-		}
-
-		return sb.toString();
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
