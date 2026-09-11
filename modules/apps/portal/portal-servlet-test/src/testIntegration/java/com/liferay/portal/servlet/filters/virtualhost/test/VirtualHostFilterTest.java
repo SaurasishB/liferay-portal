@@ -7,6 +7,7 @@ package com.liferay.portal.servlet.filters.virtualhost.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.petra.lang.SafeCloseable;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.SystemException;
@@ -93,6 +94,21 @@ public class VirtualHostFilterTest {
 		_portalUtil.setPortal(_portal);
 
 		_virtualHostFilter.destroy();
+	}
+
+	@Test
+	public void testProcessFilterDoesNotForwardMissingFileEntryURL() {
+		Assert.assertNull(
+			_getForwardedDocumentURL(
+				StringBundler.concat(
+					"/d/", RandomTestUtil.randomString(), StringPool.SLASH,
+					RandomTestUtil.randomString())));
+
+		Assert.assertNull(
+			_getForwardedDocumentURL(
+				StringBundler.concat(
+					StringPool.SLASH, RandomTestUtil.randomLong(), "/0/",
+					RandomTestUtil.randomString())));
 	}
 
 	@Test
@@ -235,6 +251,13 @@ public class VirtualHostFilterTest {
 	}
 
 	@Test
+	public void testProcessFilterForwardsUnknownDocumentsURL() {
+		Assert.assertNotNull(
+			_getForwardedDocumentURL(
+				StringPool.SLASH + RandomTestUtil.randomString()));
+	}
+
+	@Test
 	public void testProcessFilterLastPath() {
 		_testProcessFilterLastPath(
 			_PATH_PROXY + _PATH_CONTEXT, _PATH_PROXY,
@@ -294,9 +317,22 @@ public class VirtualHostFilterTest {
 		}
 	}
 
-	private String _getForwardedURL(LayoutSet layoutSet, String requestURI) {
+	private String _getForwardedDocumentURL(String path) {
 		MockHttpServletRequest mockHttpServletRequest =
-			_getMockHttpServletRequest(layoutSet, requestURI);
+			_getMockHttpServletRequest("/documents" + path);
+
+		mockHttpServletRequest.setPathInfo(path);
+
+		return _getForwardedURL(mockHttpServletRequest);
+	}
+
+	private String _getForwardedURL(LayoutSet layoutSet, String requestURI) {
+		return _getForwardedURL(
+			_getMockHttpServletRequest(layoutSet, requestURI));
+	}
+
+	private String _getForwardedURL(
+		MockHttpServletRequest mockHttpServletRequest) {
 
 		MockHttpServletResponse mockHttpServletResponse =
 			new MockHttpServletResponse();
@@ -316,24 +352,7 @@ public class VirtualHostFilterTest {
 	}
 
 	private String _getForwardedURL(String requestURI) {
-		MockHttpServletRequest mockHttpServletRequest =
-			_getMockHttpServletRequest(requestURI);
-
-		MockHttpServletResponse mockHttpServletResponse =
-			new MockHttpServletResponse();
-
-		_virtualHostFilter.init(new MockFilterConfig());
-
-		ReflectionTestUtil.invoke(
-			_virtualHostFilter, "processFilter",
-			new Class<?>[] {
-				HttpServletRequest.class, HttpServletResponse.class,
-				FilterChain.class
-			},
-			mockHttpServletRequest, mockHttpServletResponse,
-			new MockFilterChain());
-
-		return mockHttpServletResponse.getForwardedUrl();
+		return _getForwardedURL(_getMockHttpServletRequest(requestURI));
 	}
 
 	private String _getGroupFriendlyURL(LayoutSet layoutSet)
