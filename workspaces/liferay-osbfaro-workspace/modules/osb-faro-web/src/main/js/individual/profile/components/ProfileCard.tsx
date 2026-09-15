@@ -1,5 +1,4 @@
 import ActivitiesChart from 'contacts/components/ActivitiesChart';
-import ActivitySectionEmptyState from 'shared/components/ActivitySectionEmptyState';
 import Card from 'shared/components/Card';
 import ClayButton from '@clayui/button';
 import ClayLink from '@clayui/link';
@@ -20,13 +19,6 @@ import UserSessionQuery, {
 	UserSessionVariables,
 } from 'shared/queries/UserSessionQuery';
 import {compose, withPaginationBar} from 'shared/hoc';
-import {
-	DEFAULT_DATE_FORMAT,
-	formatUTCDate,
-	getDateRangeLabel,
-	getDateRangeLabelFromDate,
-	getEndDate,
-} from 'shared/util/date';
 import {DropdownRangeKey} from 'shared/components/dropdown-range-key/DropdownRangeKey';
 import {fetchPolicyDefinition} from 'shared/util/graphql';
 import {
@@ -34,31 +26,19 @@ import {
 	getActivityLabel,
 	mapEventMetricToActivityHistory,
 } from 'shared/util/activities';
+import {getDateRangeLabel, getDateRangeLabelFromDate} from 'shared/util/date';
 import {getSafeRangeSelectors} from 'shared/util/util';
+import {getSessionsDateRange} from 'shared/util/activityDateRange';
 import {Individual} from 'shared/util/records';
-import {Interval, RangeSelectors, SafeRangeSelectors} from 'shared/types';
+import {Interval, RangeSelectors} from 'shared/types';
 import {isHourlyRangeKey} from 'shared/util/time';
-import {isNil} from 'lodash';
 import {mapListResultsToProps} from 'shared/util/mappers';
-import {
-	RangeKeyTimeRanges,
-	SessionEntityTypes,
-	Sizes,
-} from 'shared/util/constants';
+import {SessionEntityTypes, Sizes} from 'shared/util/constants';
 import {useLDPEnabled} from 'shared/hooks/useLDPEnabled';
 import {useQuery} from '@apollo/client';
 import {useSelectedPoint} from 'shared/hooks/useSelectedPoint';
 import {withEmpty} from 'cerebro-shared/hocs/utils';
 import {withError, withLoading, WrapSafeResults} from 'shared/hoc/util';
-
-const formatTimestamp = (timestamp: number) => {
-	const date = new Date(timestamp);
-	const hours = date.getUTCHours().toString().padStart(2, '0');
-	const minutes = date.getUTCMinutes().toString().padStart(2, '0');
-	const seconds = date.getUTCSeconds().toString().padStart(2, '0');
-
-	return `${hours}:${minutes}:${seconds}`;
-};
 
 const PaginatedDayList = compose<any>(
 	withPaginationBar(),
@@ -134,55 +114,17 @@ const ProfileCard: React.FC<IProfileCardProps> = ({
 		total: eventMetric.totalEventsMetric?.value,
 	}));
 
-	const getDateRange = (
-		{rangeEnd, rangeKey, rangeStart}: RangeSelectors,
-		interval: Interval
-	): SafeRangeSelectors => {
-		const {intervalInitDate} =
-			(selectedPoint !== undefined && activityHistory[selectedPoint]) ||
-			{};
-		const endDate = getEndDate(intervalInitDate, interval);
-
-		const hasSelectedDate = !isNil(endDate) && !isNil(intervalInitDate);
-
-		if (hasSelectedDate) {
-			const formattedRangeEnd = formatUTCDate(
-				getEndDate(intervalInitDate, interval),
-				DEFAULT_DATE_FORMAT
-			);
-			const formattedRangeStart = formatUTCDate(
-				intervalInitDate,
-				DEFAULT_DATE_FORMAT
-			);
-
-			if (rangeSelectors.rangeKey === RangeKeyTimeRanges.Last24Hours) {
-				return getSafeRangeSelectors({
-					rangeEnd: `${formattedRangeEnd}T${formatTimestamp(
-						intervalInitDate + 59 * 60000
-					)}`,
-					rangeKey,
-					rangeStart: `${formattedRangeStart}T${formatTimestamp(
-						intervalInitDate
-					)}`,
-				});
-			}
-
-			return getSafeRangeSelectors({
-				rangeEnd: formattedRangeEnd,
-				rangeKey,
-				rangeStart: formattedRangeStart,
-			});
-		}
-
-		return getSafeRangeSelectors({rangeEnd, rangeKey, rangeStart});
-	};
-
 	const sessionsResponse = useQuery<UserSessionData, UserSessionVariables>(
 		UserSessionQuery,
 		{
 			fetchPolicy: fetchPolicyDefinition(rangeSelectors),
 			variables: {
-				...getDateRange(rangeSelectors, interval),
+				...getSessionsDateRange({
+					activityHistory,
+					interval,
+					rangeSelectors,
+					selectedPoint,
+				}),
 				channelId,
 				entityId,
 				entityType: SessionEntityTypes.Individual,
@@ -268,7 +210,7 @@ const ProfileCard: React.FC<IProfileCardProps> = ({
 						<>
 							<span className="mr-1">
 								{Liferay.Language.get(
-									'check-back-later-to-verify-if-data-has-been-received-from-your-data-sources'
+									'check-back-later-to-verify-if-data-has-been-received-from-your-data-sources,-or-you-can-try-a-different-date-range'
 								)}
 							</span>
 
@@ -284,7 +226,9 @@ const ProfileCard: React.FC<IProfileCardProps> = ({
 						</>
 					}
 					spacer
-					title={Liferay.Language.get('no-events-were-found')}
+					title={Liferay.Language.get(
+						'there-is-no-activity-on-the-selected-period'
+					)}
 				/>
 			);
 		}
@@ -388,14 +332,6 @@ const ProfileCard: React.FC<IProfileCardProps> = ({
 			<PaginatedDayList
 				{...sessionsMappedResults}
 				delta={delta}
-				emptyState={
-					<ActivitySectionEmptyState
-						linkHref={URLConstants.IndividualProfilesDocument}
-						linkLabel={Liferay.Language.get(
-							'learn-more-about-individuals'
-						)}
-					/>
-				}
 				initialExpanded={false}
 				LDPEnabled={LDPEnabled}
 				noResultsRenderer={renderNoResults()}

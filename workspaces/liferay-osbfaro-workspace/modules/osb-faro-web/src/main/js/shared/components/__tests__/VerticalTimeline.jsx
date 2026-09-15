@@ -53,8 +53,8 @@ describe('VerticalTimeline', () => {
 			expect(screen.getByText('Ada Lovelace').closest('a')).toBeNull();
 		});
 
-		it('shows the raw id on its own line for an anonymous individual', () => {
-			renderTimeline({
+		it('heads an anonymous individual with their id and labels them beneath it', () => {
+			const {container} = renderTimeline({
 				items: [
 					{
 						...INDIVIDUAL_ITEM,
@@ -66,8 +66,31 @@ describe('VerticalTimeline', () => {
 				]
 			});
 
-			expect(screen.getByText('Anonymous User')).toBeInTheDocument();
-			expect(screen.getByText('e484348e-anon')).toBeInTheDocument();
+			expect(
+				container.querySelector('.individual-title')
+			).toHaveTextContent('e484348e-anon');
+			expect(
+				container.querySelector('.individual-subtitle')
+			).toHaveTextContent('Anonymous User');
+		});
+
+		it('falls back to the label alone for an anonymous individual with no id', () => {
+			const {container} = renderTimeline({
+				items: [
+					{
+						individual: true,
+						individualName: 'Anonymous User',
+						isAnonymous: true
+					}
+				]
+			});
+
+			expect(
+				container.querySelector('.individual-title')
+			).toHaveTextContent('Anonymous User');
+			expect(
+				container.querySelector('.individual-subtitle')
+			).not.toBeInTheDocument();
 		});
 
 		it('links an anonymous individual by their id, not by the generic label', () => {
@@ -133,6 +156,21 @@ describe('VerticalTimeline', () => {
 			expect(
 				screen.getByText('Session: 10:00 AM - 11:00 AM')
 			).toBeInTheDocument();
+		});
+
+		it('reads device, data source, then event count across its details', () => {
+			const {container} = renderTimeline({items: [SESSION_ITEM]});
+
+			const details = Array.from(
+				container.querySelector('.session-row .row-details').children
+			);
+
+			expect(details.map((detail) => detail.className)).toEqual([
+				expect.stringContaining('device-icon'),
+				expect.stringContaining('data-source-label'),
+				expect.stringContaining('event-count-pill')
+			]);
+			expect(details[2]).toHaveTextContent('2');
 		});
 
 		it('shows "in progress" when the session has no end time', () => {

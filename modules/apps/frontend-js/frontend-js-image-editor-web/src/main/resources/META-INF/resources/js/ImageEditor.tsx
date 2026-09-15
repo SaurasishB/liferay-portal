@@ -7,26 +7,30 @@ import '../css/ImageEditor.scss';
 
 import {ClayIconSpriteContext} from '@clayui/icon';
 import {sub} from 'frontend-js-web';
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 
 import {AnnouncerProvider, useAnnouncer} from './chrome/Announcer';
 import {BottomBar} from './chrome/BottomBar';
+import {EditorSidebar} from './chrome/EditorSidebar';
 import {ShortcutsDialog} from './chrome/ShortcutsDialog';
 import {
 	EditorInstanceProvider,
 	nextEditorInstancePrefix,
 } from './chrome/instance';
+import {EditorConfig, resolveConfig} from './editorConfig';
 import {useEditorHistory} from './hooks/useEditorHistory';
 import {useSaveController} from './hooks/useSaveController';
 import {anchoredScroll} from './imaging/geometry';
 import {LoadedImage} from './imaging/loadImage';
 import {Workspace} from './stage/Workspace';
 import {redoLabel, undoLabel} from './state/editorReducer';
-import {EditState, rotatedSize} from './state/types';
+import {CropRect, EditState, rotatedSize} from './state/types';
 
 const STAGE_PADDING = 48;
 
 const ZOOM_LEVELS = [0.05, 0.1, 0.15, 0.25, 0.35, 0.5, 0.75, 1, 1.5, 2, 3];
+
+const MAX_ZOOM = ZOOM_LEVELS[ZOOM_LEVELS.length - 1];
 
 export interface EditorSaveResult {
 	blob: Blob;
@@ -35,6 +39,7 @@ export interface EditorSaveResult {
 }
 
 export interface ImageEditorProps {
+	config?: EditorConfig;
 	image: LoadedImage;
 	onClose: () => void;
 
@@ -47,6 +52,7 @@ export interface ImageEditorProps {
 }
 
 export function ImageEditor({
+	config,
 	image,
 	onClose,
 	onSave,
@@ -56,6 +62,7 @@ export function ImageEditor({
 		<ClayIconSpriteContext.Provider value={spritemap}>
 			<AnnouncerProvider>
 				<Editor
+					config={config}
 					image={image}
 					key={image.previewUrl}
 					onClose={onClose}
@@ -66,15 +73,27 @@ export function ImageEditor({
 	);
 }
 
-function Editor({image, onClose, onSave}: Omit<ImageEditorProps, 'spritemap'>) {
+function Editor({
+	config,
+	image,
+	onClose,
+	onSave,
+}: Omit<ImageEditorProps, 'spritemap'>) {
 	const [instancePrefix] = useState(nextEditorInstancePrefix);
+
+	const enabled = useMemo(() => resolveConfig(config), [config]);
 
 	const announce = useAnnouncer();
 
 	const savingRef = useRef(false);
 
 	const {dispatch, editorRef, handleUndoShortcut, history, redo, undo} =
-		useEditorHistory(image, announce, () => savingRef.current);
+		useEditorHistory(
+			image,
+			enabled.crop.ratios,
+			announce,
+			() => savingRef.current
+		);
 
 	const state = history.present;
 
@@ -99,6 +118,12 @@ function Editor({image, onClose, onSave}: Omit<ImageEditorProps, 'spritemap'>) {
 	);
 
 	const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+	const [aspectLocked, setAspectLocked] = useState(false);
+
+	const [cropFramed, setCropFramed] = useState(false);
+
+	const programmaticScrollRef = useRef(false);
 
 	const workspaceRef = useRef<HTMLDivElement | null>(null);
 
@@ -151,6 +176,8 @@ function Editor({image, onClose, onSave}: Omit<ImageEditorProps, 'spritemap'>) {
 		resizeObserverRef.current = observer;
 	}, []);
 
+	useEffect(() => setCropFramed(false), [state.crop]);
+
 	useEffect(() => {
 		if (autoFitRef.current && workspaceRef.current) {
 			setZoom(
@@ -199,6 +226,8 @@ function Editor({image, onClose, onSave}: Omit<ImageEditorProps, 'spritemap'>) {
 	const zoomBy = (direction: -1 | 1) => {
 		autoFitRef.current = false;
 
+		setCropFramed(false);
+
 		const next = stepZoom(zoom, direction);
 
 		if (next === zoom) {
@@ -238,6 +267,7 @@ function Editor({image, onClose, onSave}: Omit<ImageEditorProps, 'spritemap'>) {
 	const zoomToActual = () => {
 		autoFitRef.current = false;
 
+		setCropFramed(false);
 		setZoom(1);
 
 		announceZoom(1);
@@ -245,6 +275,8 @@ function Editor({image, onClose, onSave}: Omit<ImageEditorProps, 'spritemap'>) {
 
 	const zoomToFit = () => {
 		autoFitRef.current = true;
+
+		setCropFramed(false);
 
 		const bounds = rotatedSize(state);
 
@@ -254,7 +286,38 @@ function Editor({image, onClose, onSave}: Omit<ImageEditorProps, 'spritemap'>) {
 		announceZoom(next);
 	};
 
+	const pendingCenterRef = useRef<{crop: CropRect; zoom: number} | null>(
+		null
+	);
+
+	const scrollCropToCenter = (crop: CropRect, level: number) => {
+		const element = workspaceRef.current;
+
+		if (!element) {
+			return;
+		}
+
+		programmaticScrollRef.current = true;
+
+		element.scrollLeft =
+			STAGE_PADDING / 2 +
+			(crop.x + crop.width / 2) * level -
+			element.clientWidth / 2;
+		element.scrollTop =
+			STAGE_PADDING / 2 +
+			(crop.y + crop.height / 2) * level -
+			element.clientHeight / 2;
+	};
+
 	useEffect(() => {
+		const pending = pendingCenterRef.current;
+
+		if (pending && pending.zoom === zoom) {
+			pendingCenterRef.current = null;
+
+			scrollCropToCenter(pending.crop, zoom);
+		}
+
 		const anchored = pendingAnchorRef.current;
 		const element = workspaceRef.current;
 
@@ -269,10 +332,46 @@ function Editor({image, onClose, onSave}: Omit<ImageEditorProps, 'spritemap'>) {
 				zoom: anchored.from,
 			});
 
+			programmaticScrollRef.current = true;
+
 			element.scrollLeft = scroll.left;
 			element.scrollTop = scroll.top;
 		}
 	});
+
+	const centerCrop = () => {
+		autoFitRef.current = false;
+
+		const element = workspaceRef.current;
+
+		if (!element) {
+			return;
+		}
+
+		const {crop} = state;
+
+		const next = fitZoom(element, crop.width, crop.height, MAX_ZOOM);
+
+		if (next === zoom) {
+			scrollCropToCenter(crop, next);
+		}
+		else {
+			pendingCenterRef.current = {crop, zoom: next};
+
+			setZoom(next);
+		}
+
+		setCropFramed(true);
+
+		announce(
+			sub(
+				Liferay.Language.get(
+					'crop-centered-in-the-view-at-x-percent-zoom'
+				),
+				Math.round(next * 100)
+			)
+		);
+	};
 
 	return (
 		<EditorInstanceProvider value={instancePrefix}>
@@ -283,16 +382,41 @@ function Editor({image, onClose, onSave}: Omit<ImageEditorProps, 'spritemap'>) {
 			>
 				<div className="editor-main">
 					<Workspace
+						aspectLocked={aspectLocked}
+						dispatch={dispatch}
 						image={image}
+						onAnnounce={announce}
+						onCenterCrop={centerCrop}
 						onWorkspacePointerLeave={handleWorkspacePointerLeave}
 						onWorkspacePointerMove={handleWorkspacePointerMove}
+						onWorkspaceScroll={() => {
+							if (programmaticScrollRef.current) {
+								programmaticScrollRef.current = false;
+							}
+							else {
+								setCropFramed(false);
+							}
+						}}
 						onZoom={zoomBy}
 						onZoomActual={zoomToActual}
 						onZoomFit={zoomToFit}
+						showCrop={enabled.crop.enabled}
+						showRecenter={!cropFramed}
 						state={state}
 						workspaceRef={handleWorkspaceRef}
 						zoom={zoom}
 					/>
+
+					{enabled.crop.enabled && (
+						<EditorSidebar
+							aspectLocked={aspectLocked}
+							dispatch={dispatch}
+							onAnnounce={announce}
+							onAspectLockedChange={setAspectLocked}
+							showStraighten={enabled.crop.straighten}
+							state={state}
+						/>
+					)}
 				</div>
 
 				{saveError && (
@@ -318,7 +442,10 @@ function Editor({image, onClose, onSave}: Omit<ImageEditorProps, 'spritemap'>) {
 					onUndo={undo}
 					onZoom={zoomBy}
 					onZoomFit={zoomToFit}
+					ratio={state.ratio}
+					ratios={enabled.crop.ratios}
 					saving={saving}
+					showRotate={enabled.crop.rotate}
 					zoom={zoom}
 				/>
 			</div>

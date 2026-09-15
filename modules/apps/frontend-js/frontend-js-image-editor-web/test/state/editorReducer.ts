@@ -89,3 +89,219 @@ describe('flip-horizontal', () => {
 		expect(undone.present.flipHorizontal).toBe(false);
 	});
 });
+
+describe('set-crop', () => {
+	const start = () => initialHistory(1000, 600);
+
+	it('covers the whole image at first', () => {
+		expect(start().present.crop).toEqual({
+			height: 600,
+			width: 1000,
+			x: 0,
+			y: 0,
+		});
+	});
+
+	it('keeps the crop inside the image', () => {
+		const next = editorReducer(start(), {
+			crop: {height: 700, width: 400, x: 800, y: -20},
+			type: 'set-crop',
+		});
+
+		expect(next.present.crop).toEqual({
+			height: 600,
+			width: 400,
+			x: 600,
+			y: 0,
+		});
+	});
+
+	it('ignores a crop that changes nothing', () => {
+		const initial = start();
+
+		expect(
+			editorReducer(initial, {
+				crop: initial.present.crop,
+				type: 'set-crop',
+			})
+		).toBe(initial);
+	});
+
+	it('collapses a gesture into one undoable step', () => {
+		let state = editorReducer(start(), {
+			crop: {height: 600, width: 900, x: 0, y: 0},
+			transient: true,
+			type: 'set-crop',
+		});
+
+		state = editorReducer(state, {
+			crop: {height: 600, width: 800, x: 0, y: 0},
+			transient: true,
+			type: 'set-crop',
+		});
+
+		expect(state.past).toHaveLength(0);
+		expect(undoLabel(state)).toBe('crop');
+
+		state = editorReducer(state, {
+			crop: {height: 600, width: 800, x: 0, y: 0},
+			type: 'set-crop',
+		});
+
+		expect(state.past).toHaveLength(1);
+
+		state = editorReducer(state, {type: 'undo'});
+
+		expect(state.present.crop.width).toBe(1000);
+	});
+
+	it('drops the pending gesture when it is cancelled or undone', () => {
+		const initial = start();
+
+		const gesture = editorReducer(initial, {
+			crop: {height: 600, width: 500, x: 0, y: 0},
+			transient: true,
+			type: 'set-crop',
+		});
+
+		expect(
+			editorReducer(gesture, {type: 'cancel-gesture'}).present.crop
+		).toEqual(initial.present.crop);
+
+		const undone = editorReducer(gesture, {type: 'undo'});
+
+		expect(undone.present.crop).toEqual(initial.present.crop);
+		expect(undone.past).toHaveLength(0);
+	});
+
+	it('resets the crop on rotation and mirrors it on flip', () => {
+		let state = editorReducer(start(), {
+			crop: {height: 300, width: 400, x: 100, y: 200},
+			type: 'set-crop',
+		});
+
+		state = editorReducer(state, {type: 'flip-horizontal'});
+
+		expect(state.present.crop).toEqual({
+			height: 300,
+			width: 400,
+			x: 500,
+			y: 200,
+		});
+
+		state = editorReducer(state, {type: 'rotate-90'});
+
+		expect(state.present.crop).toEqual({
+			height: 1000,
+			width: 600,
+			x: 0,
+			y: 0,
+		});
+	});
+});
+
+describe('set-ratio', () => {
+	const start = () => initialHistory(1000, 600);
+
+	it('starts on the original ratio', () => {
+		expect(start().present.ratio).toBe('original');
+	});
+
+	it('centers the largest crop of the chosen ratio', () => {
+		const next = editorReducer(start(), {ratio: '1:1', type: 'set-ratio'});
+
+		expect(next.present.ratio).toBe('1:1');
+		expect(next.present.crop).toEqual({
+			height: 600,
+			width: 600,
+			x: 200,
+			y: 0,
+		});
+		expect(undoLabel(next)).toBe('ratio');
+	});
+
+	it('restores the full image on original and keeps the crop on custom', () => {
+		let state = editorReducer(start(), {ratio: '16:9', type: 'set-ratio'});
+
+		const framed = state.present.crop;
+
+		state = editorReducer(state, {ratio: 'custom', type: 'set-ratio'});
+
+		expect(state.present.crop).toEqual(framed);
+
+		state = editorReducer(state, {ratio: 'original', type: 'set-ratio'});
+
+		expect(state.present.crop).toEqual({
+			height: 600,
+			width: 1000,
+			x: 0,
+			y: 0,
+		});
+	});
+
+	it('falls back to custom when the crop is edited and to original on rotation', () => {
+		let state = editorReducer(start(), {ratio: '1:1', type: 'set-ratio'});
+
+		state = editorReducer(state, {
+			crop: {...state.present.crop, width: 500},
+			type: 'set-crop',
+		});
+
+		expect(state.present.ratio).toBe('custom');
+
+		state = editorReducer(state, {type: 'rotate-90'});
+
+		expect(state.present.ratio).toBe('original');
+	});
+});
+
+describe('set-angle', () => {
+	it('collapses a slider gesture into one undoable step', () => {
+		let state = initialHistory(WIDTH, HEIGHT);
+
+		for (const angle of [2, 4, 6]) {
+			state = editorReducer(state, {
+				angle,
+				transient: true,
+				type: 'set-angle',
+			});
+		}
+
+		state = editorReducer(state, {angle: 6, type: 'set-angle'});
+
+		expect(state.present.angle).toBe(6);
+		expect(state.past).toHaveLength(1);
+		expect(undoLabel(state)).toBe('straighten');
+
+		state = editorReducer(state, {type: 'undo'});
+
+		expect(state.present.angle).toBe(0);
+	});
+
+	it('ignores an angle that changes nothing', () => {
+		const initial = initialHistory(WIDTH, HEIGHT);
+
+		expect(editorReducer(initial, {angle: 0, type: 'set-angle'})).toBe(
+			initial
+		);
+	});
+});
+
+describe('initialHistory with allowed ratios', () => {
+	it('starts framed on the only allowed preset', () => {
+		const {present} = initialHistory(1000, 600, {ratios: ['1:1']});
+
+		expect(present.ratio).toBe('1:1');
+		expect(present.crop).toEqual({height: 600, width: 600, x: 200, y: 0});
+	});
+
+	it('prefers original, then custom, over a preset', () => {
+		expect(
+			initialHistory(1000, 600, {ratios: ['1:1', 'original']}).present
+				.ratio
+		).toBe('original');
+		expect(
+			initialHistory(1000, 600, {ratios: ['1:1', 'custom']}).present.ratio
+		).toBe('custom');
+	});
+});

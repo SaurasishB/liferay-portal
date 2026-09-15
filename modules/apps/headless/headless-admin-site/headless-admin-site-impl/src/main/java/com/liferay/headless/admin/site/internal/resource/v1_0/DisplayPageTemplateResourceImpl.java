@@ -45,12 +45,14 @@ import com.liferay.layout.page.template.service.LayoutPageTemplateEntryService;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.lazy.referencing.LazyReferencingThreadLocal;
 import com.liferay.portal.kernel.model.ClassName;
+import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutConstants;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.search.filter.Filter;
 import com.liferay.portal.kernel.service.ClassNameLocalService;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.util.GetterUtil;
@@ -61,6 +63,7 @@ import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.odata.entity.EntityModel;
 import com.liferay.portal.vulcan.aggregation.Aggregation;
+import com.liferay.portal.vulcan.crud.VulcanCRUDItemDelegate;
 import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterRegistry;
 import com.liferay.portal.vulcan.pagination.Page;
@@ -68,6 +71,7 @@ import com.liferay.portal.vulcan.pagination.Pagination;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
 import com.liferay.portal.vulcan.util.SearchUtil;
 
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.MultivaluedMap;
 
 import java.util.Collections;
@@ -88,13 +92,18 @@ import org.osgi.service.component.annotations.ServiceScope;
  */
 @Component(
 	properties = "OSGI-INF/liferay/rest/v1_0/display-page-template.properties",
-	property = "export.import.vulcan.batch.engine.task.item.delegate=true",
+	property = {
+		"crud.entity.class.name=com.liferay.headless.admin.site.dto.v1_0.DisplayPageTemplate",
+		"crud.item.delegate=true",
+		"export.import.vulcan.batch.engine.task.item.delegate=true"
+	},
 	scope = ServiceScope.PROTOTYPE, service = DisplayPageTemplateResource.class
 )
 public class DisplayPageTemplateResourceImpl
 	extends BaseDisplayPageTemplateResourceImpl
 	implements ExportImportVulcanBatchEngineTaskItemDelegate
-		<DisplayPageTemplate> {
+		<DisplayPageTemplate>,
+			   VulcanCRUDItemDelegate<DisplayPageTemplate> {
 
 	@Override
 	public void deleteSiteDisplayPageTemplate(
@@ -175,6 +184,33 @@ public class DisplayPageTemplateResourceImpl
 	}
 
 	@Override
+	public DisplayPageTemplate getItem(Long id) throws Exception {
+		LayoutPageTemplateEntry layoutPageTemplateEntry =
+			_layoutPageTemplateEntryService.getLayoutPageTemplateEntry(id);
+
+		if (!Objects.equals(
+				LayoutPageTemplateEntryTypeConstants.DISPLAY_PAGE,
+				layoutPageTemplateEntry.getType())) {
+
+			throw new NotFoundException(
+				"The display page template type does not match the display " +
+					"page type");
+		}
+
+		Group group = _groupLocalService.getGroup(
+			layoutPageTemplateEntry.getGroupId());
+
+		if (group.isDepot()) {
+			EnabledUtil.checkDesignLibrariesEnabled(contextCompany);
+		}
+		else {
+			EnabledUtil.checkEnabled(contextCompany);
+		}
+
+		return _toDisplayPageTemplate(layoutPageTemplateEntry);
+	}
+
+	@Override
 	public Page<DisplayPageTemplate>
 			getSiteDisplayPageTemplateFolderDisplayPageTemplatesPage(
 				String siteExternalReferenceCode,
@@ -208,15 +244,7 @@ public class DisplayPageTemplateResourceImpl
 					layoutPageTemplateCollection.
 						getLayoutPageTemplateCollectionId(),
 					QueryUtil.ALL_POS, QueryUtil.ALL_POS, null),
-				layoutPageTemplateEntry ->
-					_displayPageTemplateDTOConverter.toDTO(
-						DTOConverterContextUtil.getDTOConverterContext(
-							contextAcceptLanguage, _dtoConverterRegistry,
-							contextHttpServletRequest,
-							layoutPageTemplateEntry.
-								getLayoutPageTemplateEntryId(),
-							contextUriInfo, contextUser),
-						layoutPageTemplateEntry)));
+				this::_toDisplayPageTemplate));
 	}
 
 	@Override
@@ -318,13 +346,7 @@ public class DisplayPageTemplateResourceImpl
 					"page type");
 		}
 
-		return _displayPageTemplateDTOConverter.toDTO(
-			DTOConverterContextUtil.getDTOConverterContext(
-				contextAcceptLanguage, _dtoConverterRegistry,
-				contextHttpServletRequest,
-				layoutPageTemplateEntry.getLayoutPageTemplateEntryId(),
-				contextUriInfo, contextUser),
-			layoutPageTemplateEntry);
+		return _toDisplayPageTemplate(layoutPageTemplateEntry);
 	}
 
 	@Override
@@ -501,12 +523,7 @@ public class DisplayPageTemplateResourceImpl
 						displayPageTemplate.getMarkedAsDefault()));
 		}
 
-		return _displayPageTemplateDTOConverter.toDTO(
-			DTOConverterContextUtil.getDTOConverterContext(
-				contextAcceptLanguage, _dtoConverterRegistry,
-				contextHttpServletRequest,
-				layoutPageTemplateEntry.getLayoutPageTemplateEntryId(),
-				contextUriInfo, contextUser),
+		return _toDisplayPageTemplate(
 			_layoutPageTemplateEntryService.updateLayoutPageTemplateEntry(
 				layoutPageTemplateEntry.getLayoutPageTemplateEntryId(),
 				displayPageTemplate.getName()));
@@ -636,13 +653,7 @@ public class DisplayPageTemplateResourceImpl
 					displayPageTemplate.getPageSpecifications()),
 				serviceContext);
 
-		return _displayPageTemplateDTOConverter.toDTO(
-			DTOConverterContextUtil.getDTOConverterContext(
-				contextAcceptLanguage, _dtoConverterRegistry,
-				contextHttpServletRequest,
-				layoutPageTemplateEntry.getLayoutPageTemplateEntryId(),
-				contextUriInfo, contextUser),
-			layoutPageTemplateEntry);
+		return _toDisplayPageTemplate(layoutPageTemplateEntry);
 	}
 
 	private long _getClassNameId(String contentTypeClassName) {
@@ -812,6 +823,19 @@ public class DisplayPageTemplateResourceImpl
 		return unicodeProperties;
 	}
 
+	private DisplayPageTemplate _toDisplayPageTemplate(
+			LayoutPageTemplateEntry layoutPageTemplateEntry)
+		throws Exception {
+
+		return _displayPageTemplateDTOConverter.toDTO(
+			DTOConverterContextUtil.getDTOConverterContext(
+				contextAcceptLanguage, _dtoConverterRegistry,
+				contextHttpServletRequest,
+				layoutPageTemplateEntry.getLayoutPageTemplateEntryId(),
+				contextUriInfo, contextUser),
+			layoutPageTemplateEntry);
+	}
+
 	private static final EntityModel _entityModel =
 		new DisplayPageTemplateEntityModel();
 
@@ -832,6 +856,9 @@ public class DisplayPageTemplateResourceImpl
 
 	@Reference
 	private FragmentEntryProcessorRegistry _fragmentEntryProcessorRegistry;
+
+	@Reference
+	private GroupLocalService _groupLocalService;
 
 	@Reference
 	private InfoItemServiceRegistry _infoItemServiceRegistry;

@@ -7,6 +7,7 @@ package com.liferay.portal.vulcan.dto.converter.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
+import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
@@ -14,6 +15,7 @@ import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterRegistry;
 
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -25,6 +27,7 @@ import org.junit.runner.RunWith;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 
 /**
@@ -63,6 +66,32 @@ public class DTOConverterRegistryTest {
 	}
 
 	@Test
+	public void testGetDTOClassNamesWithMultipleConvertersAndNoDefault()
+		throws Exception {
+
+		String dtoClassName = RandomTestUtil.randomString();
+
+		try (AutoCloseable autoCloseable1 = _registerDTOConverter(
+				null, dtoClassName, new TestDTOConverter(), null);
+			AutoCloseable autoCloseable2 = _registerDTOConverter(
+				null, dtoClassName, new TestDTOConverter(), null)) {
+
+			Set<String> dtoClassNames =
+				_dtoConverterRegistry.getDTOClassNames();
+
+			Assert.assertFalse(dtoClassNames.contains(dtoClassName));
+
+			try (AutoCloseable autoCloseable3 = _registerDefaultDTOConverter(
+					dtoClassName, new TestDTOConverter(), null)) {
+
+				dtoClassNames = _dtoConverterRegistry.getDTOClassNames();
+
+				Assert.assertTrue(dtoClassNames.contains(dtoClassName));
+			}
+		}
+	}
+
+	@Test
 	public void testGetDTOConverterWithApplicationNameDTOClassNameAndVersionProperties()
 		throws Exception {
 
@@ -91,6 +120,62 @@ public class DTOConverterRegistryTest {
 	}
 
 	@Test
+	public void testGetDTOConverterWithDefaultProperty() throws Exception {
+		String dtoClassName = RandomTestUtil.randomString();
+		DTOConverter<?, ?> dtoConverter = new TestDTOConverter();
+
+		try (AutoCloseable autoCloseable1 = _registerDefaultDTOConverter(
+				dtoClassName, dtoConverter, null);
+			AutoCloseable autoCloseable2 = _registerDTOConverter(
+				null, dtoClassName, new TestDTOConverter(), null)) {
+
+			Assert.assertSame(
+				dtoConverter,
+				_dtoConverterRegistry.getDTOConverter(dtoClassName));
+		}
+
+		try (AutoCloseable autoCloseable1 = _registerDTOConverter(
+				null, dtoClassName, new TestDTOConverter(), null);
+			AutoCloseable autoCloseable2 = _registerDefaultDTOConverter(
+				dtoClassName, dtoConverter, null)) {
+
+			Assert.assertSame(
+				dtoConverter,
+				_dtoConverterRegistry.getDTOConverter(dtoClassName));
+		}
+	}
+
+	@Test
+	public void testGetDTOConverterWithDefaultPropertyOverridesServiceRanking()
+		throws Exception {
+
+		String dtoClassName = RandomTestUtil.randomString();
+		DTOConverter<?, ?> dtoConverter = new TestDTOConverter();
+
+		try (AutoCloseable autoCloseable1 = _registerDefaultDTOConverter(
+				dtoClassName, dtoConverter, null);
+			AutoCloseable autoCloseable2 =
+				_registerDTOConverterWithServiceRanking(
+					dtoClassName, new TestDTOConverter(), Integer.MAX_VALUE)) {
+
+			Assert.assertSame(
+				dtoConverter,
+				_dtoConverterRegistry.getDTOConverter(dtoClassName));
+		}
+
+		try (AutoCloseable autoCloseable1 =
+				_registerDTOConverterWithServiceRanking(
+					dtoClassName, new TestDTOConverter(), Integer.MAX_VALUE);
+			AutoCloseable autoCloseable2 = _registerDefaultDTOConverter(
+				dtoClassName, dtoConverter, null)) {
+
+			Assert.assertSame(
+				dtoConverter,
+				_dtoConverterRegistry.getDTOConverter(dtoClassName));
+		}
+	}
+
+	@Test
 	public void testGetDTOConverterWithDTOClassNameProperty() throws Exception {
 		String dtoClassName = RandomTestUtil.randomString();
 
@@ -107,6 +192,102 @@ public class DTOConverterRegistryTest {
 		}
 	}
 
+	@Test
+	public void testGetDTOConverterWithEveryRegisteredDTOClassName()
+		throws Exception {
+
+		Set<String> unresolvedDTOClassNames = new TreeSet<>();
+
+		for (ServiceReference<DTOConverter<?, ?>> serviceReference :
+				_bundleContext.getServiceReferences(
+					(Class<DTOConverter<?, ?>>)(Class<?>)DTOConverter.class,
+					"(dto.class.name=*)")) {
+
+			String dtoClassName = GetterUtil.getString(
+				serviceReference.getProperty("dto.class.name"));
+
+			if (_dtoConverterRegistry.getDTOConverter(dtoClassName) != null) {
+				continue;
+			}
+
+			unresolvedDTOClassNames.add(dtoClassName);
+		}
+
+		Assert.assertTrue(
+			unresolvedDTOClassNames.toString(),
+			unresolvedDTOClassNames.isEmpty());
+	}
+
+	@Test
+	public void testGetDTOConverterWithMultipleConvertersAndMultipleDefaults()
+		throws Exception {
+
+		String dtoClassName = RandomTestUtil.randomString();
+
+		try (AutoCloseable autoCloseable1 = _registerDefaultDTOConverter(
+				dtoClassName, new TestDTOConverter(), null);
+			AutoCloseable autoCloseable2 = _registerDefaultDTOConverter(
+				dtoClassName, new TestDTOConverter(), null)) {
+
+			Assert.assertNull(
+				_dtoConverterRegistry.getDTOConverter(dtoClassName));
+		}
+	}
+
+	@Test
+	public void testGetDTOConverterWithMultipleConvertersAndNoDefault()
+		throws Exception {
+
+		String dtoClassName = RandomTestUtil.randomString();
+
+		try (AutoCloseable autoCloseable1 = _registerDTOConverter(
+				null, dtoClassName, new TestDTOConverter(), null);
+			AutoCloseable autoCloseable2 = _registerDTOConverter(
+				null, dtoClassName, new TestDTOConverter(), null)) {
+
+			Assert.assertNull(
+				_dtoConverterRegistry.getDTOConverter(dtoClassName));
+		}
+	}
+
+	@Test
+	public void testGetDTOConverterWithMultipleDefaultsAndHigherServiceRanking()
+		throws Exception {
+
+		String dtoClassName = RandomTestUtil.randomString();
+
+		DTOConverter<?, ?> dtoConverter = new TestDTOConverter();
+
+		try (AutoCloseable autoCloseable1 = _registerDefaultDTOConverter(
+				dtoClassName, new TestDTOConverter(), null);
+			AutoCloseable autoCloseable2 = _registerDefaultDTOConverter(
+				dtoClassName, dtoConverter, 100)) {
+
+			Assert.assertSame(
+				dtoConverter,
+				_dtoConverterRegistry.getDTOConverter(dtoClassName));
+		}
+	}
+
+	private AutoCloseable _registerDefaultDTOConverter(
+		String dtoClassName, DTOConverter<?, ?> dtoConverter,
+		Integer serviceRanking) {
+
+		ServiceRegistration<DTOConverter<?, ?>> serviceRegistration =
+			_bundleContext.registerService(
+				(Class<DTOConverter<?, ?>>)(Class<?>)DTOConverter.class,
+				dtoConverter,
+				HashMapDictionaryBuilder.<String, Object>put(
+					"default", "true"
+				).put(
+					"dto.class.name", dtoClassName
+				).put(
+					"service.ranking", () -> serviceRanking
+				).build());
+
+		return serviceRegistration::unregister;
+	}
+
 	private AutoCloseable _registerDTOConverter(
 		String applicationName, String dtoClassName,
 		DTOConverter<?, ?> dtoConverter, String version) {
@@ -121,6 +302,23 @@ public class DTOConverterRegistryTest {
 					"dto.class.name", dtoClassName
 				).put(
 					"version", () -> version
+				).build());
+
+		return serviceRegistration::unregister;
+	}
+
+	private AutoCloseable _registerDTOConverterWithServiceRanking(
+		String dtoClassName, DTOConverter<?, ?> dtoConverter,
+		int serviceRanking) {
+
+		ServiceRegistration<DTOConverter<?, ?>> serviceRegistration =
+			_bundleContext.registerService(
+				(Class<DTOConverter<?, ?>>)(Class<?>)DTOConverter.class,
+				dtoConverter,
+				HashMapDictionaryBuilder.<String, Object>put(
+					"dto.class.name", dtoClassName
+				).put(
+					"service.ranking", serviceRanking
 				).build());
 
 		return serviceRegistration::unregister;

@@ -48,17 +48,20 @@ type TCurrency = {
 
 export type TDiagram = {
 	attachmentBase64: TAttachmentBase64;
+	color?: string;
+	radius?: number;
+	type?: string;
 };
 
 export type TPin = {
 	id?: number;
 	mappedProduct: {
-		productId: number;
-		quantity: number;
+		productId?: number;
+		quantity?: number;
 		sequence: string;
-		sku: string;
-		skuId: number;
-		type?: number;
+		sku?: string;
+		skuId?: number;
+		type?: 'diagram' | 'external' | 'sku';
 	};
 	positionX?: number;
 	positionY?: number;
@@ -352,6 +355,12 @@ export class HeadlessCommerceAdminCatalogApiHelper {
 		);
 	}
 
+	async getPins(productId: number) {
+		return this.apiHelpers.get(
+			`${this.apiHelpers.baseUrl}${this.basePath}/products/${productId}/pins`
+		);
+	}
+
 	async getProduct(productId: number) {
 		return this.apiHelpers.get(
 			`${this.apiHelpers.baseUrl}${this.basePath}/products/${productId}?nestedFields=skus`
@@ -577,12 +586,14 @@ export class HeadlessCommerceAdminCatalogApiHelper {
 		fieldType: string = 'select',
 		key: string = 'key-' + getRandomInt(),
 		name: string = 'Option' + getRandomInt(),
-		priority: number = getRandomInt()
+		priority: number = getRandomInt(),
+		facetable: boolean = false
 	) {
 		const postOption = await this.apiHelpers.post(
 			`${this.apiHelpers.baseUrl}${this.basePath}/options`,
 			{
 				data: {
+					facetable,
 					fieldType,
 					key,
 					name: {

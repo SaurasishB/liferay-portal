@@ -10,7 +10,10 @@
 		--cadmin-primary-l0,
 		var(--primary-l0, #{$primary-l0})
 	);
+	--editor-accent-text: var(--editor-primary);
 	--editor-border: var(--cadmin-gray-300, var(--gray-300, #{$gray-300}));
+	--editor-primary: var(--cadmin-primary, var(--primary, #{$primary}));
+	--editor-surface: var(--cadmin-body-bg, var(--body-bg, #{$body-bg}));
 	--editor-workspace-bg: #{$dark};
 
 	display: flex;
@@ -70,6 +73,14 @@
 	min-width: 24px;
 }
 
+.image-editor .editor-ratio-label {
+	margin-bottom: 0;
+}
+
+.image-editor .editor-ratio-select {
+	width: auto;
+}
+
 .image-editor .editor-zoom-level {
 	min-width: 3.5rem;
 	text-align: center;
@@ -93,6 +104,16 @@
 
 .image-editor-shortcuts .editor-shortcut-list dd {
 	margin: 0;
+}
+
+@keyframes image-editor-stage-fade-in {
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
 }
 
 @media (max-width: 700px) {

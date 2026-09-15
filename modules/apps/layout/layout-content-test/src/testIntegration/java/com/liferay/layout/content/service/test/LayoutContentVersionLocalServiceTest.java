@@ -6,9 +6,12 @@
 package com.liferay.layout.content.service.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
-import com.liferay.fragment.contributor.FragmentCollectionContributorRegistry;
+import com.liferay.fragment.constants.FragmentConstants;
 import com.liferay.fragment.entry.processor.constants.FragmentEntryProcessorConstants;
+import com.liferay.fragment.model.FragmentCollection;
 import com.liferay.fragment.model.FragmentEntry;
+import com.liferay.fragment.service.FragmentCollectionLocalService;
+import com.liferay.fragment.service.FragmentEntryLocalService;
 import com.liferay.layout.content.exception.LayoutContentVersionExternalReferenceCodeException;
 import com.liferay.layout.content.exception.LayoutContentVersionNameException;
 import com.liferay.layout.content.exception.RequiredLayoutContentVersionException;
@@ -27,6 +30,7 @@ import com.liferay.layout.test.util.LayoutTestUtil;
 import com.liferay.layout.utility.page.model.LayoutUtilityPageEntry;
 import com.liferay.layout.utility.page.service.LayoutUtilityPageEntryLocalService;
 import com.liferay.petra.lang.SafeCloseable;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
@@ -37,8 +41,11 @@ import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.ModelHintsUtil;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCActionCommand;
 import com.liferay.portal.kernel.service.CompanyLocalService;
+import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
+import com.liferay.portal.kernel.servlet.HttpMethods;
 import com.liferay.portal.kernel.servlet.PortletServlet;
+import com.liferay.portal.kernel.servlet.ServletContextPool;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.portlet.MockLiferayPortletActionRequest;
@@ -49,9 +56,11 @@ import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
+import com.liferay.portal.kernel.util.Constants;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.ProxyUtil;
+import com.liferay.portal.kernel.util.ScopeUtil;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.spring.aop.AopInvocationHandler;
@@ -110,9 +119,21 @@ public class LayoutContentVersionLocalServiceTest {
 
 		_draftLayout = layout.fetchDraftLayout();
 
-		ServiceContextThreadLocal.pushServiceContext(
+		ServiceContext serviceContext =
 			ServiceContextTestUtil.getServiceContext(
-				_group, TestPropsValues.getUserId()));
+				_group, TestPropsValues.getUserId());
+
+		MockHttpServletRequest mockHttpServletRequest =
+			new MockHttpServletRequest(
+				ServletContextPool.get(StringPool.BLANK));
+
+		mockHttpServletRequest.setMethod(HttpMethods.GET);
+		mockHttpServletRequest.setParameter("p_l_mode", Constants.EDIT);
+		mockHttpServletRequest.setRequestURI(StringPool.SLASH);
+
+		serviceContext.setRequest(mockHttpServletRequest);
+
+		ServiceContextThreadLocal.pushServiceContext(serviceContext);
 	}
 
 	@After
@@ -121,14 +142,17 @@ public class LayoutContentVersionLocalServiceTest {
 	}
 
 	@Test
-	@TestInfo({"LPD-103233", "LPD-103846", "LPD-104550"})
+	@TestInfo({"LPD-103233", "LPD-103846", "LPD-104550", "LPD-104976"})
 	public void testAddLayoutContentVersion() throws Exception {
 		_addSegmentsExperiences(2);
 
 		Map<SegmentsExperience, JSONObject> segmentsExperienceJSONObjectsMap =
 			_getRandomSegmentsExperienceLocalizedContentMap();
 
-		_addFragmentEntryLinksToLayout(segmentsExperienceJSONObjectsMap);
+		FragmentEntry fragmentEntry = _addFragmentEntry();
+
+		_addFragmentEntryLinksToLayout(
+			fragmentEntry, segmentsExperienceJSONObjectsMap);
 
 		String data = RandomTestUtil.randomString();
 
@@ -147,7 +171,8 @@ public class LayoutContentVersionLocalServiceTest {
 			draftLayoutContentVersion.getStatus());
 
 		_assertLayoutContentVersionPreviews(
-			draftLayoutContentVersion, segmentsExperienceJSONObjectsMap);
+			fragmentEntry.getCss(), draftLayoutContentVersion,
+			segmentsExperienceJSONObjectsMap);
 
 		try (SafeCloseable safeCloseable =
 				_swapLayoutPreviewRendererWithSafeCloseable()) {
@@ -329,17 +354,35 @@ public class LayoutContentVersionLocalServiceTest {
 				layoutContentVersion.getLayoutContentVersionId(), null));
 	}
 
+	private FragmentEntry _addFragmentEntry() throws Exception {
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext(
+				_group, TestPropsValues.getUserId());
+
+		FragmentCollection fragmentCollection =
+			_fragmentCollectionLocalService.addFragmentCollection(
+				null, TestPropsValues.getUserId(), _group.getGroupId(),
+				RandomTestUtil.randomString(), null, serviceContext);
+
+		return _fragmentEntryLocalService.addFragmentEntry(
+			null, TestPropsValues.getUserId(), _group.getGroupId(),
+			fragmentCollection.getFragmentCollectionId(), null,
+			RandomTestUtil.randomString(), RandomTestUtil.randomString(),
+			"<h1 data-lfr-editable-id=\"element-text\" " +
+				"data-lfr-editable-type=\"text\">Heading Example</h1>",
+			null, false, null, null, 0, false, false,
+			FragmentConstants.TYPE_COMPONENT, null,
+			WorkflowConstants.STATUS_APPROVED, serviceContext);
+	}
+
 	private void _addFragmentEntryLinksToLayout(
+			FragmentEntry fragmentEntry,
 			Map<SegmentsExperience, JSONObject>
 				segmentsExperienceJSONObjectsMap)
 		throws Exception {
 
 		JSONObject defaultValueJSONObject = JSONUtil.put(
 			"defaultValue", "Heading Example");
-
-		FragmentEntry fragmentEntry =
-			_fragmentCollectionContributorRegistry.getFragmentEntry(
-				"BASIC_COMPONENT-heading");
 
 		for (Map.Entry<SegmentsExperience, JSONObject> entry :
 				segmentsExperienceJSONObjectsMap.entrySet()) {
@@ -356,7 +399,9 @@ public class LayoutContentVersionLocalServiceTest {
 							entry.getValue(), defaultValueJSONObject))
 				).toString(),
 				fragmentEntry.getCss(), fragmentEntry.getConfiguration(),
-				fragmentEntry.getExternalReferenceCode(), null,
+				fragmentEntry.getExternalReferenceCode(),
+				ScopeUtil.getItemScopeExternalReferenceCode(
+					fragmentEntry.getGroupId(), _draftLayout.getGroupId()),
 				fragmentEntry.getHtml(), fragmentEntry.getJs(), _draftLayout,
 				fragmentEntry.getFragmentEntryKey(), fragmentEntry.getType(),
 				null, 0, segmentsExperience.getSegmentsExperienceId());
@@ -426,7 +471,7 @@ public class LayoutContentVersionLocalServiceTest {
 	}
 
 	private void _assertLayoutContentVersionPreviews(
-			LayoutContentVersion layoutContentVersion,
+			String css, LayoutContentVersion layoutContentVersion,
 			Map<SegmentsExperience, JSONObject>
 				segmentsExperienceJSONObjectsMap)
 		throws Exception {
@@ -447,8 +492,11 @@ public class LayoutContentVersionLocalServiceTest {
 
 				String html = layoutContentVersionPreview.getHtml();
 
-				Assert.assertTrue(html, html.contains("/company_logo"));
 				Assert.assertFalse(html, html.contains("\"signInURL\":\"\""));
+				Assert.assertTrue(html, html.contains("/company_logo"));
+				Assert.assertTrue(
+					html, html.contains("/o/layout-common-styles/main.css"));
+				Assert.assertTrue(html, html.contains(css));
 				Assert.assertTrue(
 					html, html.contains(jsonObject.getString(languageId)));
 			}
@@ -555,8 +603,27 @@ public class LayoutContentVersionLocalServiceTest {
 		LayoutPreviewRenderer originalLayoutPreviewRenderer =
 			ReflectionTestUtil.getAndSetFieldValue(
 				layoutContentVersionLocalServiceImpl, "_layoutPreviewRenderer",
-				(layout, locale, segmentsExperienceId, serviceContext) -> {
-					throw new Exception();
+				new LayoutPreviewRenderer() {
+
+					@Override
+					public String render(
+							Layout layout, Locale locale,
+							long segmentsExperienceId)
+						throws Exception {
+
+						throw new Exception();
+					}
+
+					@Override
+					public String render(
+							Layout layout, Locale locale,
+							long segmentsExperienceId,
+							ServiceContext serviceContext)
+						throws Exception {
+
+						throw new Exception();
+					}
+
 				});
 
 		return () -> ReflectionTestUtil.setFieldValue(
@@ -662,8 +729,10 @@ public class LayoutContentVersionLocalServiceTest {
 	private Layout _draftLayout;
 
 	@Inject
-	private FragmentCollectionContributorRegistry
-		_fragmentCollectionContributorRegistry;
+	private FragmentCollectionLocalService _fragmentCollectionLocalService;
+
+	@Inject
+	private FragmentEntryLocalService _fragmentEntryLocalService;
 
 	@DeleteAfterTestRun
 	private Group _group;

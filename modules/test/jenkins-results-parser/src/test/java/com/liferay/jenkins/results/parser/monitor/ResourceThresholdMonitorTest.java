@@ -237,35 +237,11 @@ public class ResourceThresholdMonitorTest
 
 	@Test
 	public void testExecuteReadFailure() throws Exception {
-		String failureMessage = RandomTestUtil.randomString();
+		_testExecuteReadFailure("java.io.IOException", new IOException());
 
-		UrlReader urlReader = mockUrlReader();
+		String message = RandomTestUtil.randomString();
 
-		setUrlReaderException(
-			new IOException(failureMessage), "/prometheus", urlReader);
-
-		String masterName = MonitorTestUtil.newJenkinsMasterName();
-
-		Properties monitorProperties = _newMonitorProperties(
-			masterName, "queue.depth");
-
-		monitorProperties.setProperty(
-			"monitor[a].parameter[label]", RandomTestUtil.randomString());
-		monitorProperties.setProperty("monitor[a].threshold[warn]", "25");
-
-		MonitorResult monitorResult = _execute(monitorProperties);
-
-		testEquals(MonitorResult.Status.CRITICAL, monitorResult.getStatus());
-
-		Map<String, String> metrics = monitorResult.getMetrics();
-
-		Assert.assertTrue(metrics.isEmpty());
-
-		String message = monitorResult.getMessage();
-
-		Assert.assertTrue(message, message.contains("queue depth metric"));
-		Assert.assertTrue(message, message.contains(failureMessage));
-		Assert.assertTrue(message, message.contains(masterName));
+		_testExecuteReadFailure(message, new IOException(message));
 	}
 
 	@Test
@@ -520,6 +496,38 @@ public class ResourceThresholdMonitorTest
 		String ram = metrics.get("ram");
 
 		Assert.assertTrue(ram, ram.startsWith(expectedValue));
+	}
+
+	private void _testExecuteReadFailure(
+			String expectedMessage, IOException ioException)
+		throws Exception {
+
+		UrlReader urlReader = mockUrlReader();
+
+		setUrlReaderException(ioException, "/prometheus", urlReader);
+
+		String masterName = MonitorTestUtil.newJenkinsMasterName();
+
+		Properties monitorProperties = _newMonitorProperties(
+			masterName, "queue.depth");
+
+		monitorProperties.setProperty(
+			"monitor[a].parameter[label]", RandomTestUtil.randomString());
+		monitorProperties.setProperty("monitor[a].threshold[warn]", "25");
+
+		MonitorResult monitorResult = _execute(monitorProperties);
+
+		testEquals(MonitorResult.Status.CRITICAL, monitorResult.getStatus());
+
+		Map<String, String> metrics = monitorResult.getMetrics();
+
+		Assert.assertTrue(metrics.isEmpty());
+
+		String message = monitorResult.getMessage();
+
+		Assert.assertTrue(message, message.contains("queue depth metric"));
+		Assert.assertTrue(message, message.contains(expectedMessage));
+		Assert.assertTrue(message, message.contains(masterName));
 	}
 
 	private void _testExecuteThresholds(

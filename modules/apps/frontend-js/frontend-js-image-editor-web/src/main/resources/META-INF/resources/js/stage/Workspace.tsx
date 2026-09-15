@@ -10,27 +10,44 @@ import React from 'react';
 import {useEditorId} from '../chrome/instance';
 import {imageTransform} from '../imaging/geometry';
 import {LoadedImage} from '../imaging/loadImage';
+import {EditorAction} from '../state/editorReducer';
 import {EditState, rotatedSize} from '../state/types';
+import {CropMarquee} from './CropMarquee';
 
 interface Props {
+	aspectLocked: boolean;
+
+	dispatch: (action: EditorAction) => void;
 	image: LoadedImage;
+	onAnnounce: (message: string) => void;
+	onCenterCrop: () => void;
 	onWorkspacePointerLeave?: () => void;
 	onWorkspacePointerMove?: (event: React.PointerEvent) => void;
+	onWorkspaceScroll?: () => void;
 	onZoom: (direction: -1 | 1) => void;
 	onZoomActual: () => void;
 	onZoomFit: () => void;
+	showCrop: boolean;
+	showRecenter: boolean;
 	state: EditState;
 	workspaceRef?: React.Ref<HTMLDivElement>;
 	zoom: number;
 }
 
 export function Workspace({
+	aspectLocked,
+	dispatch,
 	image,
+	onAnnounce,
+	onCenterCrop,
 	onWorkspacePointerLeave,
 	onWorkspacePointerMove,
+	onWorkspaceScroll,
 	onZoom,
 	onZoomActual,
 	onZoomFit,
+	showCrop,
+	showRecenter,
 	state,
 	workspaceRef,
 	zoom,
@@ -38,6 +55,7 @@ export function Workspace({
 	const eid = useEditorId();
 
 	const bounds = rotatedSize(state);
+	const {crop} = state;
 
 	const handleKeyDown = (event: React.KeyboardEvent) => {
 		if (event.key === '+' || event.key === '=') {
@@ -56,6 +74,10 @@ export function Workspace({
 			event.preventDefault();
 			onZoomActual();
 		}
+		else if (event.key === '2') {
+			event.preventDefault();
+			onCenterCrop();
+		}
 	};
 
 	return (
@@ -66,6 +88,7 @@ export function Workspace({
 			onKeyDown={handleKeyDown}
 			onPointerLeave={onWorkspacePointerLeave}
 			onPointerMove={onWorkspacePointerMove}
+			onScroll={onWorkspaceScroll}
 			ref={workspaceRef}
 			role="region"
 			tabIndex={0}
@@ -82,14 +105,54 @@ export function Workspace({
 				viewBox={`0 0 ${bounds.width} ${bounds.height}`}
 				width={bounds.width * zoom}
 			>
-				<g transform={imageTransform(state)}>
-					<image
-						height={state.sourceHeight}
-						href={image.previewUrl}
-						preserveAspectRatio="none"
-						width={state.sourceWidth}
-					/>
+				<defs>
+
+					{/*
+					 * A straighten angle scales the image up, so it
+					 * spills past the stage: clip it to the image area
+					 * to keep the surrounding padding clean.
+					 */}
+
+					<clipPath id={eid('stage-clip')}>
+						<rect
+							height={bounds.height}
+							width={bounds.width}
+							x={0}
+							y={0}
+						/>
+					</clipPath>
+				</defs>
+
+				<g
+					clipPath={
+
+						// Only needed while straightening, and clipping a
+						// 20MP-derived bitmap is not free.
+
+						state.angle ? `url(#${eid('stage-clip')})` : undefined
+					}
+				>
+					<g transform={imageTransform(state)}>
+						<image
+							height={state.sourceHeight}
+							href={image.previewUrl}
+							preserveAspectRatio="none"
+							width={state.sourceWidth}
+						/>
+					</g>
 				</g>
+
+				<CropMarquee
+					aspectLocked={aspectLocked}
+					bounds={bounds}
+					crop={crop}
+					dispatch={dispatch}
+					onAnnounce={onAnnounce}
+					onCenterCrop={onCenterCrop}
+					showCrop={showCrop}
+					showRecenter={showRecenter}
+					zoom={zoom}
+				/>
 			</svg>
 		</div>
 	);

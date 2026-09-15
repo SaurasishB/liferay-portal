@@ -180,6 +180,7 @@ import com.liferay.portal.kernel.settings.Settings;
 import com.liferay.portal.kernel.settings.SettingsLocator;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DataGuard;
+import com.liferay.portal.kernel.test.util.FeatureFlagTestUtil;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
@@ -357,9 +358,14 @@ public class BundleSiteInitializerTest {
 		}
 	}
 
-	@FeatureFlag("LPD-76864")
+	@FeatureFlags(
+		featureFlags = {@FeatureFlag("LPD-57283"), @FeatureFlag("LPD-76864")}
+	)
 	@Test
 	public void testInitializeFromBundle() throws Exception {
+		FeatureFlagTestUtil.invokeFeatureFlagListeners(
+			TestPropsValues.getCompanyId(), true, "LPD-57283");
+
 		Bundle bundle1 = _getBundle(
 			"/com.liferay.site.initializer.extender.test.bundle.1.jar");
 		Bundle bundle2 = _getBundle(
@@ -442,21 +448,93 @@ public class BundleSiteInitializerTest {
 		}
 	}
 
-	@FeatureFlag("LPD-76864")
+	@FeatureFlags(
+		featureFlags = {
+			@FeatureFlag(enable = false, value = "LPD-57283"),
+			@FeatureFlag("LPD-76864")
+		}
+	)
+	@Test
+	public void testInitializeFromBundleWithDesignLibraryFeatureFlagDisabled()
+		throws Exception {
+
+		Bundle bundle1 = _getBundle(
+			"/com.liferay.site.initializer.extender.test.bundle.1.jar");
+		Bundle bundle2 = _getBundle(
+			"/com.liferay.site.initializer.extender.test.bundle.2.jar");
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.site.initializer.extender.internal." +
+					"BundleSiteInitializer",
+				LoggerTestUtil.INFO)) {
+
+			SiteInitializer siteInitializer1 =
+				_siteInitializerRegistry.getSiteInitializer(
+					bundle1.getSymbolicName());
+
+			siteInitializer1.initialize(_group.getGroupId());
+
+			SiteInitializer siteInitializer2 =
+				_siteInitializerRegistry.getSiteInitializer(
+					bundle2.getSymbolicName());
+
+			siteInitializer2.initialize(_group.getGroupId());
+
+			List<LogEntry> logEntries = logCapture.getLogEntries();
+
+			Assert.assertTrue(
+				logEntries.toString(),
+				_hasLogEntryMessage(
+					logEntries,
+					"Skipping design library since LPD-57283 is disabled"));
+			Assert.assertFalse(
+				logEntries.toString(),
+				_hasLogEntryMessage(
+					logEntries,
+					"Unable to get design library Test Design Library 1"));
+
+			Assert.assertNull(
+				_groupLocalService.fetchGroup(
+					_serviceContext.getCompanyId(), "Test Design Library 1"));
+		}
+		finally {
+			bundle1.uninstall();
+			bundle2.uninstall();
+		}
+	}
+
+	@FeatureFlags(
+		featureFlags = {@FeatureFlag("LPD-57283"), @FeatureFlag("LPD-76864")}
+	)
 	@Test
 	public void testInitializeFromFile() throws Exception {
+		FeatureFlagTestUtil.invokeFeatureFlagListeners(
+			TestPropsValues.getCompanyId(), true, "LPD-57283");
+
 		File tempDir1 = _getTempDir(
 			"/com.liferay.site.initializer.extender.test.bundle.1.jar");
 		File tempDir2 = _getTempDir(
 			"/com.liferay.site.initializer.extender.test.bundle.2.jar");
 
-		try {
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.site.initializer.extender.internal." +
+					"BundleSiteInitializer",
+				LoggerTestUtil.ERROR)) {
+
 			_test1(
 				_siteInitializerFactory.create(
 					new File(tempDir1, "site-initializer"), null));
 			_test2(
 				_siteInitializerFactory.create(
 					new File(tempDir2, "site-initializer"), null));
+
+			List<LogEntry> logEntries = logCapture.getLogEntries();
+
+			Assert.assertTrue(
+				logEntries.toString(),
+				_hasLogEntryMessage(
+					logEntries,
+					"Design library Test Design Library 1 has no path"));
 		}
 		finally {
 			FileUtil.deltree(tempDir1);
@@ -1628,7 +1706,7 @@ public class BundleSiteInitializerTest {
 			_depotEntryLocalService.getGroupConnectedDepotEntries(
 				_group.getGroupId(), DepotConstants.TYPE_ANY, -1, -1);
 
-		Assert.assertEquals(depotEntries.toString(), 3, depotEntries.size());
+		Assert.assertEquals(depotEntries.toString(), 5, depotEntries.size());
 
 		List<DepotAppCustomization> depotAppCustomizations =
 			_depotAppCustomizationLocalService.getDepotAppCustomizations(
@@ -1662,6 +1740,89 @@ public class BundleSiteInitializerTest {
 			depotAppCustomizations.get(
 				0
 			).getEnabled());
+	}
+
+	private void _assertDesignLibraryDepotEntries2() throws Exception {
+		Group group1 = _getDesignLibraryGroup("Test Design Library 1");
+
+		_assertDesignLibraryDepotEntryType(group1);
+
+		Group group2 = _getDesignLibraryGroup("Test Design Library 2");
+
+		_assertDesignLibraryDepotEntryType(group2);
+
+		_assertDesignLibraryFragmentEntry(
+			group1, "test-design-library-1-fragment-entry",
+			"Test Design Library 1 Fragment Entry");
+		_assertDesignLibraryFragmentEntry(
+			group2, "test-design-library-2-fragment-entry",
+			"Test Design Library 2 Fragment Entry");
+		_assertDesignLibraryStyleBookEntry(
+			group1, "test-design-library-1-style-book",
+			"Test Design Library 1 Style Book Entry");
+		_assertDesignLibraryStyleBookEntry(
+			group2, "test-design-library-2-style-book",
+			"Test Design Library 2 Style Book Entry");
+
+		Assert.assertNull(
+			_fragmentEntryLocalService.fetchFragmentEntry(
+				group1.getGroupId(), "test-design-library-2-fragment-entry"));
+		Assert.assertNull(
+			_fragmentEntryLocalService.fetchFragmentEntry(
+				group2.getGroupId(), "test-design-library-1-fragment-entry"));
+		Assert.assertNull(
+			_styleBookEntryLocalService.fetchStyleBookEntry(
+				group1.getGroupId(), "test-design-library-2-style-book"));
+		Assert.assertNull(
+			_styleBookEntryLocalService.fetchStyleBookEntry(
+				group2.getGroupId(), "test-design-library-1-style-book"));
+
+		List<DepotAppCustomization> depotAppCustomizations =
+			_depotAppCustomizationLocalService.getDepotAppCustomizations(
+				group2.getClassPK());
+
+		Assert.assertTrue(
+			depotAppCustomizations.toString(),
+			depotAppCustomizations.isEmpty());
+	}
+
+	private void _assertDesignLibraryDepotEntryType(Group group)
+		throws Exception {
+
+		DepotEntry depotEntry = _depotEntryLocalService.getDepotEntry(
+			group.getClassPK());
+
+		Assert.assertEquals(
+			DepotConstants.TYPE_DESIGN_LIBRARY, depotEntry.getType());
+	}
+
+	private void _assertDesignLibraryFragmentEntry(
+		Group group, String fragmentEntryKey, String fragmentEntryName) {
+
+		FragmentEntry fragmentEntry =
+			_fragmentEntryLocalService.fetchFragmentEntry(
+				group.getGroupId(), fragmentEntryKey);
+
+		Assert.assertNotNull(fragmentEntry);
+		Assert.assertEquals(fragmentEntryName, fragmentEntry.getName());
+
+		Assert.assertNull(
+			_fragmentEntryLocalService.fetchFragmentEntry(
+				_group.getGroupId(), fragmentEntryKey));
+	}
+
+	private void _assertDesignLibraryStyleBookEntry(
+		Group group, String styleBookEntryKey, String styleBookEntryName) {
+
+		StyleBookEntry styleBookEntry =
+			_styleBookEntryLocalService.fetchStyleBookEntry(
+				group.getGroupId(), styleBookEntryKey);
+
+		Assert.assertEquals(styleBookEntryName, styleBookEntry.getName());
+
+		Assert.assertNull(
+			_styleBookEntryLocalService.fetchStyleBookEntry(
+				_group.getGroupId(), styleBookEntryKey));
 	}
 
 	private void _assertDLFileEntry1() throws Exception {
@@ -4646,6 +4807,11 @@ public class BundleSiteInitializerTest {
 		return bundle;
 	}
 
+	private Group _getDesignLibraryGroup(String designLibraryName) {
+		return _groupLocalService.fetchGroup(
+			_serviceContext.getCompanyId(), designLibraryName);
+	}
+
 	private Configuration _getFactoryConfiguration(
 			String factoryPid, ExtendedObjectClassDefinition.Scope scope,
 			Serializable scopePK)
@@ -4764,6 +4930,7 @@ public class BundleSiteInitializerTest {
 		_assertDataDefinition2();
 		_assertDDMTemplate2();
 		_assertDepotEntries2();
+		_assertDesignLibraryDepotEntries2();
 		_assertDLFileEntry2();
 		_assertExpandoColumns2();
 		_assertExpandoValues2();

@@ -82,6 +82,10 @@
 					},
 					"string": {
 						"type": "string"
+					},
+					"writeOnly": {
+						"type": "string",
+						"writeOnly": true
 					}
 				},
 				"required": [
@@ -297,6 +301,7 @@
 						"description": "This is the description",
 						"in": "query",
 						"name": "active",
+						"required": true,
 						"schema": {
 							"type": "boolean"
 						}
@@ -368,6 +373,14 @@
 							}
 						}
 					}
+				},
+				"responses": {
+					"default": {
+						"content": {
+							"application/json": {
+							}
+						}
+					}
 				}
 			},
 			"put": {
@@ -389,6 +402,11 @@
 								"$ref": "#/components/schemas/Item"
 							}
 						}
+					}
+				},
+				"responses": {
+					"204": {
+						"description": "no content"
 					}
 				}
 			}

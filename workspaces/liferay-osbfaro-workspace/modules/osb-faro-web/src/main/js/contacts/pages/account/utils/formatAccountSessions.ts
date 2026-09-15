@@ -18,10 +18,10 @@ const ANONYMOUS_KEY = '__anonymous__';
  * Resolves the individual shown ahead of their sessions. A session that
  * carries an `individualId` is a known individual (the user icon); one
  * without is anonymous (the anonymize icon). An anonymous session always
- * displays the generic "Anonymous User" label — never the tracked
- * `userName`, which would otherwise read as if the visitor were identified —
- * and its raw id goes on a second line, since the anonymous label carries no
- * information on its own. Either way the name links to the profile page — by
+ * carries the generic "Anonymous User" label — never the tracked `userName`,
+ * which would otherwise read as if the visitor were identified — and its raw
+ * id, which the row heads with, since the anonymous label carries no
+ * information on its own. Either way the row links to the profile page — by
  * `individualId` when present, otherwise by `userId` — as long as one of the
  * two ids is available.
  */
@@ -98,28 +98,32 @@ export const formatAccountSessions = (
 	sessions: AccountUserSession[] = [],
 	context: EventDashboardContext = {}
 ): TimelineDay[] =>
-	groupSessionsByDay(sessions).map(({date, daySessions, header}) => {
-		const items: (VerticalTimelineIndividual | VerticalTimelineSession)[] =
-			[];
+	groupSessionsByDay(sessions, context.timeZoneId).map(
+		({date, daySessions, header}) => {
+			const items: (
+				| VerticalTimelineIndividual
+				| VerticalTimelineSession
+			)[] = [];
 
-		const sessionsByIndividual = groupBy(
-			daySessions,
-			(session) =>
-				session.individualId ??
-				session.userId ??
-				session.userName ??
-				ANONYMOUS_KEY
-		);
-
-		sessionsByIndividual.forEach((individualSessions) => {
-			items.push(getIndividual(individualSessions[0], context));
-
-			individualSessions.forEach((session) =>
-				items.push(toSessionItem(session, context))
+			const sessionsByIndividual = groupBy(
+				daySessions,
+				(session) =>
+					session.individualId ??
+					session.userId ??
+					session.userName ??
+					ANONYMOUS_KEY
 			);
-		});
 
-		return {date, header, items};
-	});
+			sessionsByIndividual.forEach((individualSessions) => {
+				items.push(getIndividual(individualSessions[0], context));
+
+				individualSessions.forEach((session) =>
+					items.push(toSessionItem(session, context))
+				);
+			});
+
+			return {date, header, items};
+		}
+	);
 
 export default formatAccountSessions;

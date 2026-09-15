@@ -158,11 +158,15 @@ public class AttachmentObjectFieldBusinessType
 
 		LiferayFileEntry liferayFileEntry = new LiferayFileEntry(dlFileEntry);
 
-		FileVersion fileVersion = liferayFileEntry.getFileVersion();
-
 		return new FileEntry() {
 			{
-				setAlternativeText(fileVersion::getDescription);
+				setAlternativeText(
+					() -> {
+						FileVersion fileVersion =
+							liferayFileEntry.getFileVersion();
+
+						return fileVersion.getDescription();
+					});
 				setExtension(dlFileEntry::getExtension);
 				setExternalReferenceCode(dlFileEntry::getExternalReferenceCode);
 				setFileBase64(() -> _getFileBase64(dlFileEntry, objectField));
@@ -178,8 +182,8 @@ public class AttachmentObjectFieldBusinessType
 						GuestOrUserUtil.getPermissionChecker(), _portal));
 				setMetadata(
 					() -> _getMetadata(
-						fileVersion, dtoConverterContext.getLocale(),
-						objectField));
+						liferayFileEntry.getFileVersion(),
+						dtoConverterContext.getLocale(), objectField));
 				setMimeType(dlFileEntry::getMimeType);
 				setName(dlFileEntry::getFileName);
 				setPreviewURL(
@@ -480,6 +484,14 @@ public class AttachmentObjectFieldBusinessType
 	}
 
 	private Object _getFileEntryId(Object value) throws PortalException {
+		if (value instanceof FileEntry fileEntry) {
+			long fileEntryId = GetterUtil.getLong(fileEntry.getId());
+
+			if (fileEntryId > 0) {
+				return fileEntryId;
+			}
+		}
+
 		long fileEntryId = GetterUtil.getLong(value);
 
 		if (fileEntryId > 0) {

@@ -313,62 +313,67 @@ const RowAttributes: FC<{payload: Record<string, unknown>}> = ({payload}) => {
 /**
  * The individual a group of sessions belongs to: a plain, unexpandable row —
  * no caret, no click handler — ahead of that individual's sessions for the
- * day.
+ * day. The heading is what identifies the person and carries the profile
+ * link: their name, or their raw id when they are still anonymous. The line
+ * beneath describes them: a known individual's job title, or the anonymous
+ * label standing in for one.
  */
 const IndividualRow: FC<{item: VerticalTimelineIndividual}> = ({
 	item: {individualId, individualName, individualUrl, isAnonymous, jobTitle},
-}) => (
-	<li className="timeline-row individual-row bg-white w-100">
-		<div className="row-content flex-fill d-flex align-items-center">
-			<ClaySticker className="individual-sticker" shape="user-icon">
-				<ClayIcon
-					color="gray"
-					symbol={isAnonymous ? 'anonymize' : 'user'}
-				/>
-			</ClaySticker>
+}) => {
+	const title = (isAnonymous && individualId) || individualName;
 
-			<div className="individual-info">
-				{individualUrl && !isAnonymous ? (
-					<ClayLink className="individual-name" href={individualUrl}>
-						<Text size={3} weight="semi-bold">
-							{individualName}
-						</Text>
-					</ClayLink>
-				) : (
-					<span className="individual-name">
-						<Text size={3} weight="semi-bold">
-							{individualName}
-						</Text>
-					</span>
-				)}
+	const subtitle = isAnonymous
+		? individualId && individualName
+		: jobTitle || individualId;
 
-				{!!(jobTitle || individualId) &&
-					(individualUrl && isAnonymous ? (
+	return (
+		<li className="timeline-row individual-row bg-white w-100">
+			<div className="row-content flex-fill d-flex align-items-center">
+				<ClaySticker className="individual-sticker" shape="user-icon">
+					<ClayIcon
+						color="gray"
+						symbol={isAnonymous ? 'anonymize' : 'user'}
+					/>
+				</ClaySticker>
+
+				<div className="individual-info">
+					{individualUrl ? (
 						<ClayLink
-							className="individual-id"
+							className="individual-title"
 							href={individualUrl}
 						>
-							<Text color="secondary" size={3} weight="normal">
-								{individualId}
+							<Text size={3} weight="semi-bold">
+								{title}
 							</Text>
 						</ClayLink>
 					) : (
-						<div className="individual-id">
+						<span className="individual-title">
+							<Text size={3} weight="semi-bold">
+								{title}
+							</Text>
+						</span>
+					)}
+
+					{subtitle && (
+						<div className="individual-subtitle">
 							<Text color="secondary" size={3} weight="normal">
-								{jobTitle || individualId}
+								{subtitle}
 							</Text>
 						</div>
-					))}
+					)}
+				</div>
 			</div>
-		</div>
-	</li>
-);
+		</li>
+	);
+};
 
 /**
- * A session. Expanding it reveals its raw attributes (browser, device, screen
- * size…) — the pages visited during the session are not gated behind that
- * expand; they always render below, so the stream reads as a list of visited
- * pages without an extra click.
+ * A session. Its details read device, data source, then event count, so the
+ * count closes the row in the same column as a campaign row's touch count. Expanding it reveals its
+ * raw attributes (browser, device, screen size…) — the pages visited during the
+ * session are not gated behind that expand; they always render below, so the
+ * stream reads as a list of visited pages without an extra click.
  */
 const SessionRow: FC<IRowProps<VerticalTimelineSession>> = ({
 	LDPEnabled,
@@ -431,6 +436,8 @@ const SessionRow: FC<IRowProps<VerticalTimelineSession>> = ({
 				<div className="row-details ml-auto pl-3 d-flex align-items-center">
 					{becameKnown && <BecameKnownLabel />}
 
+					<DeviceIcon browserName={browserName} device={device} />
+
 					{LDPEnabled && (
 						<DataSourceLabel
 							applicationId={applicationId}
@@ -439,8 +446,6 @@ const SessionRow: FC<IRowProps<VerticalTimelineSession>> = ({
 					)}
 
 					<EventCountPill totalEvents={totalEvents} />
-
-					<DeviceIcon browserName={browserName} device={device} />
 				</div>
 			</RowMain>
 

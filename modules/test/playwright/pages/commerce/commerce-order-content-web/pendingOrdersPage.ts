@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {Locator, Page} from '@playwright/test';
+import {Locator, Page, expect} from '@playwright/test';
 
 import {DataApiHelpers} from '../../../helpers/ApiHelpers';
 import {
@@ -19,7 +19,10 @@ export class PendingOrdersPage extends CommerceDNDTablePage {
 	readonly doneButton: Locator;
 	readonly editMenuItem: Locator;
 	readonly errorMessageCloseButton: Locator;
+	readonly importFromCSVMenuItem: Locator;
+	readonly importerTypeMenuButton: Locator;
 	readonly layoutsPage: CommerceLayoutsPage;
+	readonly orderActionsButton: Locator;
 	readonly orderCell: (orderId: string) => Locator;
 	readonly orderColumn: (rowIndex: number, rowColumn: number) => Locator;
 	readonly orderItemActionsButton: Locator;
@@ -32,12 +35,14 @@ export class PendingOrdersPage extends CommerceDNDTablePage {
 		strictEqual?: boolean
 	) => Promise<{column: Locator; row: Locator}>;
 	readonly orderItemsTableRowLink: (productName: string) => Promise<Locator>;
+	readonly orderRowLink: (orderId: number | string) => Locator;
 	readonly orderType: Locator;
 	readonly orderId: Locator;
 	readonly page: Page;
 	readonly pageLabel: Locator;
 	readonly pageTitle: Locator;
 	readonly panelList: Locator;
+	readonly printMenuItem: Locator;
 	readonly questionsAndAnswersLink: Locator;
 	readonly questionAndAnswersText: Locator;
 	readonly rejectButton: Locator;
@@ -72,7 +77,16 @@ export class PendingOrdersPage extends CommerceDNDTablePage {
 			exact: true,
 			name: 'Close',
 		});
+		this.importFromCSVMenuItem = page.getByRole('menuitem', {
+			exact: true,
+			name: 'Import from CSV',
+		});
+		this.importerTypeMenuButton = page.locator('.thumb-menu');
 		this.layoutsPage = new CommerceLayoutsPage(page);
+		this.orderActionsButton = page.getByRole('button', {
+			exact: true,
+			name: 'Actions',
+		});
 		this.orderCell = (orderId) => page.getByRole('cell', {name: orderId});
 		this.orderColumn = (rowIndex, colIndex) =>
 			page.getByRole('row').nth(rowIndex).locator('td').nth(colIndex);
@@ -119,6 +133,10 @@ export class PendingOrdersPage extends CommerceDNDTablePage {
 				`Cannot locate order item row with productName ${productName}`
 			);
 		};
+		this.orderRowLink = (orderId: number | string) =>
+			page
+				.locator('.table-list-title')
+				.getByRole('link', {name: String(orderId)});
 		this.orderType = page
 			.locator('dl')
 			.filter({hasText: 'Order Type'})
@@ -139,6 +157,10 @@ export class PendingOrdersPage extends CommerceDNDTablePage {
 		this.panelList = page
 			.getByTestId('specificationFacetPanel')
 			.getByRole('button');
+		this.printMenuItem = page.getByRole('menuitem', {
+			exact: true,
+			name: 'Print',
+		});
 		this.questionsAndAnswersLink = page.getByRole('link', {
 			name: 'Questions and Answers',
 		});
@@ -149,6 +171,29 @@ export class PendingOrdersPage extends CommerceDNDTablePage {
 		this.saveButton = page.getByRole('button', {name: 'Save'});
 		this.skuLink = (sku) => page.getByRole('link', {name: sku});
 		this.viewButton = page.getByLabel('View');
+	}
+
+	async gotoOrder(siteFriendlyUrlPath: string, orderId: number) {
+		const portletId =
+			'com_liferay_commerce_order_content_web_internal_portlet_CommerceOpenOrderContentPortlet';
+
+		await this.page.goto(
+			`/web${siteFriendlyUrlPath}/pending-orders?p_p_id=${portletId}` +
+				'&p_p_lifecycle=0' +
+				`&_${portletId}_mvcRenderCommandName=` +
+				'%2Fcommerce_open_order_content%2Fedit_commerce_order' +
+				`&_${portletId}_commerceOrderId=${orderId}`
+		);
+
+		await expect(this.orderId).toHaveText(String(orderId));
+	}
+
+	async openImportFromCSV() {
+		await this.importerTypeMenuButton.click();
+
+		await this.importFromCSVMenuItem.click();
+
+		await expect(this.layoutsPage.importCsvFileInput).toBeVisible();
 	}
 
 	async addPendingOrdersWidget() {

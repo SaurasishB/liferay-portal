@@ -258,8 +258,9 @@
 			min-width: 0;
 		}
 
-		.individual-name {
+		.individual-title {
 			color: $main;
+			word-break: break-all;
 
 			&:focus,
 			&:hover {
@@ -267,14 +268,8 @@
 			}
 		}
 
-		.individual-id {
+		.individual-subtitle {
 			color: $secondary;
-			word-break: break-all;
-
-			&:focus,
-			&:hover {
-				color: $secondary;
-			}
 		}
 	}
 
@@ -335,21 +330,20 @@
 		}
 	}
 
-	// The event row follows the same layout as the page row: time and title
-	// share one line, and the details stack below, indented to align with the
-	// title.
+	// The event row follows the same layout as the page row: time, sticker and
+	// title share one line, and the details stack below the title. The sticker
+	// stays in the page sticker's column while the title and details step one
+	// indent in, so the event reads as belonging to the page above it.
 
 	.event-row {
 		.event-header {
 			align-items: center;
 			display: flex;
 			gap: $baseline * 2;
-			.event-sticker {
-				margin-left: $rowIndent;
-			}
 
 			.title {
 				flex: 0 1 auto;
+				margin-left: $rowIndent;
 				min-width: 0;
 			}
 		}

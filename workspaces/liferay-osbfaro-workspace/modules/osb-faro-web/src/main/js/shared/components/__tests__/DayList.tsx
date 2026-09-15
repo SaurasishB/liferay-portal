@@ -4,13 +4,6 @@ import {cleanup, render, screen} from '@testing-library/react';
 
 jest.unmock('react-dom');
 
-jest.mock('shared/util/feature-flags', () => ({
-	...jest.requireActual('shared/util/feature-flags'),
-	ENABLE_DAY_LEVEL_ACTIVITY: true,
-}));
-
-const featureFlags = jest.requireMock('shared/util/feature-flags');
-
 const TIME_ZONE_ID = 'UTC';
 
 const buildDay = (
@@ -34,7 +27,7 @@ const buildDay = (
 const CAMPAIGN = {
 	campaignId: 'c1',
 	campaignName: 'Q3 Manufacturing ABM',
-	dataSourceType: 'salesforce',
+	origin: 'SALESFORCE',
 	touches: [
 		{
 			individualId: null,
@@ -43,6 +36,7 @@ const CAMPAIGN = {
 			status: 'Registered',
 		},
 	],
+	touchesCount: 1,
 };
 
 const buildCampaignDays = (date: string) => ({
@@ -57,10 +51,6 @@ const buildCampaignDays = (date: string) => ({
 
 describe('DayList', () => {
 	afterEach(cleanup);
-
-	beforeEach(() => {
-		featureFlags.ENABLE_DAY_LEVEL_ACTIVITY = true;
-	});
 
 	it('renders a date header per day, most recent first', () => {
 		const {container} = render(
@@ -95,11 +85,10 @@ describe('DayList', () => {
 		expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
 	});
 
-	it('gives every day both cards, whichever one holds the data', () => {
+	it('gives a day only the cards that hold something', () => {
 		render(
 			<DayList
 				campaignDays={buildCampaignDays('2026-07-16')}
-				emptyState={<div>{'Nothing here'}</div>}
 				items={[
 					buildDay('Jul 16', 3, 'Ada Lovelace', '2026-07-16'),
 					buildDay('Jul 15', 2, 'Grace Hopper', '2026-07-15'),
@@ -108,11 +97,11 @@ describe('DayList', () => {
 			/>
 		);
 
-		expect(screen.getAllByText(/day.level/i)).toHaveLength(2);
+		expect(screen.getAllByText(/day.level/i)).toHaveLength(1);
 		expect(screen.getAllByText(/timed.activity/i)).toHaveLength(2);
 	});
 
-	it('fills the two cards independently', () => {
+	it('keeps the day-level card when the day has no sessions', () => {
 		const campaignsOnly = buildDay(
 			'Jul 16',
 			3,
@@ -125,34 +114,32 @@ describe('DayList', () => {
 		render(
 			<DayList
 				campaignDays={buildCampaignDays('2026-07-16')}
-				emptyState={<div>{'Nothing here'}</div>}
 				items={[campaignsOnly]}
 				timeZoneId={TIME_ZONE_ID}
 			/>
 		);
 
 		expect(screen.getByText('Q3 Manufacturing ABM')).toBeInTheDocument();
-		expect(screen.getByText('Nothing here')).toBeInTheDocument();
+		expect(screen.queryByText(/timed.activity/i)).not.toBeInTheDocument();
 	});
 
-	it('shows the empty state on the day-level card when only sessions exist', () => {
+	it('leaves the day-level card out when only sessions exist', () => {
 		render(
 			<DayList
-				emptyState={<div>{'Nothing here'}</div>}
 				items={[buildDay('Jul 15', 2, 'Grace Hopper')]}
 				timeZoneId={TIME_ZONE_ID}
 			/>
 		);
 
 		expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
-		expect(screen.getByText('Nothing here')).toBeInTheDocument();
+		expect(screen.queryByText(/day.level/i)).not.toBeInTheDocument();
+		expect(screen.getByText(/timed.activity/i)).toBeInTheDocument();
 	});
 
 	it('matches a day to its campaigns by day, not by instant', () => {
 		render(
 			<DayList
 				campaignDays={buildCampaignDays('2026-07-16')}
-				emptyState={<div>{'Nothing here'}</div>}
 				items={[
 					buildDay(
 						'Jul 16',
@@ -195,25 +182,6 @@ describe('DayList', () => {
 		expect(
 			container.querySelectorAll('.date-header .event-count-pill')
 		).toHaveLength(1);
-	});
-
-	it('leaves the day-level card out while the feature is off', () => {
-		featureFlags.ENABLE_DAY_LEVEL_ACTIVITY = false;
-
-		render(
-			<DayList
-				campaignDays={buildCampaignDays('2026-07-16')}
-				emptyState={<div>{'Nothing here'}</div>}
-				items={[buildDay('Jul 16', 3, 'Ada Lovelace', '2026-07-16')]}
-				timeZoneId={TIME_ZONE_ID}
-			/>
-		);
-
-		expect(screen.queryByText(/day.level/i)).not.toBeInTheDocument();
-		expect(screen.getByText(/timed.activity/i)).toBeInTheDocument();
-		expect(
-			screen.queryByText('Q3 Manufacturing ABM')
-		).not.toBeInTheDocument();
 	});
 
 	it('renders nothing when there are no days', () => {

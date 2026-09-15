@@ -43,22 +43,26 @@ const TouchRow: FC<{
 				)}
 			</div>
 
-			<ClayLabel
-				className="touch-status ml-auto flex-shrink-0 m-0"
-				displayType="info"
-				withClose={false}
-			>
-				{status}
-			</ClayLabel>
+			{status && (
+				<ClayLabel
+					className="touch-status ml-auto flex-shrink-0 m-0"
+					displayType="info"
+					withClose={false}
+				>
+					{status}
+				</ClayLabel>
+			)}
 		</div>
 	</li>
 );
 
 const CampaignRow: FC<{
 	campaign: CampaignTouch;
+	campaignUrl?: string;
 	individualUrls?: Record<string, string>;
 }> = ({
-	campaign: {campaignName, dataSourceType, touches},
+	campaign: {campaignName, origin, touches, touchesCount},
+	campaignUrl,
 	individualUrls = {},
 }) => {
 	const [expanded, setExpanded] = useState<boolean>(false);
@@ -84,7 +88,13 @@ const CampaignRow: FC<{
 					/>
 				</ClaySticker>
 
-				<span className="title text-dark">{campaignName}</span>
+				{campaignUrl ? (
+					<ClayLink className="title text-dark" href={campaignUrl}>
+						{campaignName}
+					</ClayLink>
+				) : (
+					<span className="title text-dark">{campaignName}</span>
+				)}
 
 				<div className="row-details ml-auto pl-3 d-flex align-items-center">
 					<ClayLabel
@@ -93,12 +103,12 @@ const CampaignRow: FC<{
 						inverse
 						withClose={false}
 					>
-						<strong>{dataSourceType.toUpperCase()}</strong>
+						<strong>{origin.toUpperCase()}</strong>
 					</ClayLabel>
 
 					<EventCountPill
 						symbol="comments"
-						totalEvents={touches.length}
+						totalEvents={touchesCount}
 					/>
 				</div>
 			</RowMain>

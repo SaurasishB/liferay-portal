@@ -5,6 +5,7 @@ import getEventDashboardUrl, {
 	EventDashboardContext,
 } from './getEventDashboardUrl';
 import {
+	applyTimeZone,
 	DEFAULT_DATE_FORMAT,
 	formatUTCDate,
 	getCustomDateFormat,
@@ -125,14 +126,15 @@ export type CampaignTouchMember = {
 	individualId: string | null;
 	individualName: string;
 	jobTitle: string | null;
-	status: string;
+	status: string | null;
 };
 
 export type CampaignTouch = {
 	campaignId: string;
 	campaignName: string;
-	dataSourceType: string;
+	origin: string;
 	touches: CampaignTouchMember[];
+	touchesCount: number;
 };
 
 export type TimelineDay = {
@@ -449,13 +451,14 @@ export const groupEventsByPage = (
  * @returns {Moment} Date label to be displayed.
  */
 export const formatGroupingTime = (
-	datetime: Date | string | number
+	datetime: Date | string | number,
+	timeZoneId?: string
 ): string => {
-	const time = moment(datetime);
+	const day = toDayKey(datetime, timeZoneId);
 
-	return time.isSame(moment(), 'day')
+	return day === toDayKey(Date.now(), timeZoneId)
 		? Liferay.Language.get('today')
-		: time.utc().format(getCustomDateFormat());
+		: moment.utc(day).format(getCustomDateFormat());
 };
 
 /**
@@ -480,8 +483,13 @@ export const groupBy = <T,>(
 	return grouped;
 };
 
-export const toDayKey = (datetime: Date | string | number): string =>
-	formatUTCDate(datetime, DEFAULT_DATE_FORMAT);
+export const toDayKey = (
+	datetime: Date | string | number,
+	timeZoneId?: string
+): string =>
+	timeZoneId
+		? applyTimeZone(datetime, timeZoneId).format(DEFAULT_DATE_FORMAT)
+		: formatUTCDate(datetime, DEFAULT_DATE_FORMAT);
 
 export const buildTouchIndividualUrls = (
 	campaignDays: Record<
@@ -513,13 +521,38 @@ export const buildTouchIndividualUrls = (
 	);
 };
 
+export const buildCampaignUrls = (
+	campaignDays: Record<string, {campaigns: Array<{campaignId: string}>}> = {},
+	{channelId, groupId}: EventDashboardContext = {}
+): Record<string, string> => {
+	if (!channelId || !groupId) {
+		return {};
+	}
+
+	return Object.values(campaignDays).reduce<Record<string, string>>(
+		(urls, {campaigns}) => {
+			campaigns.forEach(({campaignId}) => {
+				urls[campaignId] = toRoute(Routes.CAMPAIGNS_DETAIL, {
+					channelId,
+					groupId,
+					id: campaignId,
+				});
+			});
+
+			return urls;
+		},
+		{}
+	);
+};
+
 export const mergeCampaignDays = (
 	days: TimelineDay[],
 	campaignDays: Record<string, {campaigns: unknown[]}> = {},
 	{
 		isFirstPage = true,
 		isLastPage = true,
-	}: {isFirstPage?: boolean; isLastPage?: boolean} = {}
+		timeZoneId,
+	}: {isFirstPage?: boolean; isLastPage?: boolean; timeZoneId?: string} = {}
 ): TimelineDay[] => {
 	const dayKeys = days.map(({date}) => toDayKey(date));
 
@@ -547,20 +580,16 @@ export const mergeCampaignDays = (
 				!sessionDayKeys.has(dayKey) &&
 				ownsDay(dayKey)
 		)
-		.map(([dayKey]) => {
-			const date = moment.utc(dayKey).startOf('day').format();
+		.map(([dayKey]) => ({
+			date: dayKey,
+			header: {
+				header: true as const,
+				title: formatGroupingTime(dayKey, timeZoneId),
+			},
+			items: [],
+		}));
 
-			return {
-				date,
-				header: {
-					header: true as const,
-					title: formatGroupingTime(date),
-				},
-				items: [],
-			};
-		});
-
-	// Every date here is a UTC ISO string of the same fixed shape, so string
+	// Every date here is a calendar date of the same fixed shape, so string
 	// order matches chronological order. ownsDay above already relies on that.
 
 	return [...days, ...campaignOnlyDays].sort((a, b) =>
@@ -576,14 +605,15 @@ export const mergeCampaignDays = (
 export const groupSessionsByDay = <
 	T extends {createDate: string; events?: unknown[] | null},
 >(
-	sessions: T[]
+	sessions: T[],
+	timeZoneId?: string
 ): {date: string; daySessions: T[]; header: VerticalTimelineHeader}[] => {
 	const sessionsByDay = groupBy(sessions, (session) =>
-		moment.utc(session.createDate).startOf('day').format()
+		toDayKey(session.createDate, timeZoneId)
 	);
 
 	return Array.from(sessionsByDay.keys())
-		.sort((a, b) => moment(b).valueOf() - moment(a).valueOf())
+		.sort((a, b) => b.localeCompare(a))
 		.map((dayKey) => {
 			const daySessions = sessionsByDay.get(dayKey) ?? [];
 
@@ -596,7 +626,7 @@ export const groupSessionsByDay = <
 				),
 				header: {
 					header: true,
-					title: formatGroupingTime(dayKey),
+					title: formatGroupingTime(dayKey, timeZoneId),
 					totalEvents: daySessions.reduce(
 						(total, {events}) => total + (events?.length ?? 0),
 						0
@@ -616,44 +646,46 @@ export const formatSessions = (
 	sessions: UserSession[] = [],
 	context: EventDashboardContext = {}
 ): TimelineDay[] =>
-	groupSessionsByDay(sessions).map(({date, daySessions, header}) => {
-		const items: VerticalTimelineSession[] = [];
+	groupSessionsByDay(sessions, context.timeZoneId).map(
+		({date, daySessions, header}) => {
+			const items: VerticalTimelineSession[] = [];
 
-		daySessions.forEach((session) => {
-			const events = (session.events ??
-				[]) as unknown as UserSessionEvent[];
+			daySessions.forEach((session) => {
+				const events = (session.events ??
+					[]) as unknown as UserSessionEvent[];
 
-			items.push({
-				applicationId: events[0]?.applicationId ?? '',
-				attributes: {
-					contentLanguageID: session.contentLanguageID,
-					devicePixelRatioz: session.devicePixelRatioz,
-					header: Liferay.Language.get('session-attributes'),
-					languageID: session.languageID,
-					screenHeight: session.screenHeight,
-					screenWidth: session.screenWidth,
-					timezoneOffset: session.timezoneOffset,
+				items.push({
+					applicationId: events[0]?.applicationId ?? '',
+					attributes: {
+						contentLanguageID: session.contentLanguageID,
+						devicePixelRatioz: session.devicePixelRatioz,
+						header: Liferay.Language.get('session-attributes'),
+						languageID: session.languageID,
+						screenHeight: session.screenHeight,
+						screenWidth: session.screenWidth,
+						timezoneOffset: session.timezoneOffset,
+						userAgent: session.userAgent,
+					},
+					becameKnown: session.becameKnown,
+					browserName: session.browserName,
+					device: session.deviceType,
+					endTime: session.completeDate,
+					nestedItems: groupEventsByPage(
+						events,
+						session.userAgent,
+						context
+					),
+					noTimestamps: isWebhookUserAgent(session.userAgent),
+					session: true,
+					time: session.createDate,
+					totalEvents: events.length,
 					userAgent: session.userAgent,
-				},
-				becameKnown: session.becameKnown,
-				browserName: session.browserName,
-				device: session.deviceType,
-				endTime: session.completeDate,
-				nestedItems: groupEventsByPage(
-					events,
-					session.userAgent,
-					context
-				),
-				noTimestamps: isWebhookUserAgent(session.userAgent),
-				session: true,
-				time: session.createDate,
-				totalEvents: events.length,
-				userAgent: session.userAgent,
+				});
 			});
-		});
 
-		return {date, header, items};
-	});
+			return {date, header, items};
+		}
+	);
 
 /**
  * Helper function get the correct pluralization of count label.

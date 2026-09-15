@@ -27,7 +27,7 @@ import org.osgi.service.component.annotations.Reference;
  */
 @Component(
 	property = {
-		"application.name=Liferay.Headless.DSR",
+		"application.name=Liferay.Headless.DSR", "default=true",
 		"dto.class.name=com.liferay.headless.dsr.dto.v1_0.UserAccount",
 		"version=v1.0"
 	},
@@ -38,7 +38,7 @@ public class UserAccountDTOConverter
 
 	@Override
 	public String getContentType() {
-		return User.class.getSimpleName();
+		return UserAccount.class.getSimpleName();
 	}
 
 	@Override

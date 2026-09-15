@@ -66,7 +66,9 @@ import org.osgi.service.component.annotations.Reference;
  * @author Mikel Lorza
  */
 @Component(
-	property = "dto.class.name=com.liferay.sharing.model.SharingEntry",
+	property = {
+		"default=true", "dto.class.name=com.liferay.sharing.model.SharingEntry"
+	},
 	service = DTOConverter.class
 )
 public class SharedAssetDTOConverter
@@ -83,7 +85,7 @@ public class SharedAssetDTOConverter
 
 	@Override
 	public String getContentType() {
-		return SharingEntry.class.getSimpleName();
+		return SharedAsset.class.getSimpleName();
 	}
 
 	@Override

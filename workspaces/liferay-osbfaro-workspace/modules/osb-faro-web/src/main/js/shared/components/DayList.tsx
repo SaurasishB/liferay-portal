@@ -4,12 +4,11 @@ import DateHeader from 'shared/components/DateHeader';
 import React, {FC} from 'react';
 import VerticalTimeline from 'shared/components/VerticalTimeline';
 import {CampaignDays} from 'shared/hooks/useCampaignTouchesByDay';
-import {ENABLE_DAY_LEVEL_ACTIVITY} from 'shared/util/feature-flags';
 import {TimelineDay, toDayKey} from 'shared/util/activities';
 
 type IDayListProps = {
 	campaignDays?: CampaignDays;
-	emptyState?: React.ReactNode;
+	campaignUrls?: Record<string, string>;
 	individualUrls?: Record<string, string>;
 	initialExpanded?: boolean;
 	items?: TimelineDay[];
@@ -21,7 +20,7 @@ type IDayListProps = {
 
 const DayList: FC<IDayListProps> = ({
 	campaignDays = {},
-	emptyState,
+	campaignUrls,
 	individualUrls,
 	initialExpanded,
 	items = [],
@@ -42,44 +41,39 @@ const DayList: FC<IDayListProps> = ({
 						totalTouches={campaignDay?.touchesCount}
 					/>
 
-					{ENABLE_DAY_LEVEL_ACTIVITY && (
+					{!!campaignDay?.campaigns.length && (
 						<ActivitySection
 							label={Liferay.Language.get('day-level')}
 						>
-							{campaignDay?.campaigns.length ? (
-								<CampaignList
-									campaigns={campaignDay.campaigns}
-									individualUrls={individualUrls}
-									onDeltaChange={(delta) =>
-										onCampaignDeltaChange?.(date, delta)
-									}
-									onPageChange={(page) =>
-										onCampaignPageChange?.(date, page)
-									}
-									page={campaignDay.page}
-									selectedDelta={campaignDay.delta}
-									totalItems={campaignDay.campaignsCount}
-								/>
-							) : (
-								emptyState
-							)}
+							<CampaignList
+								campaigns={campaignDay.campaigns}
+								campaignUrls={campaignUrls}
+								individualUrls={individualUrls}
+								onDeltaChange={(delta) =>
+									onCampaignDeltaChange?.(date, delta)
+								}
+								onPageChange={(page) =>
+									onCampaignPageChange?.(date, page)
+								}
+								page={campaignDay.page}
+								selectedDelta={campaignDay.delta}
+								totalItems={campaignDay.campaignsCount}
+							/>
 						</ActivitySection>
 					)}
 
-					<ActivitySection
-						label={Liferay.Language.get('timed-activity')}
-					>
-						{dayItems.length ? (
+					{!!dayItems.length && (
+						<ActivitySection
+							label={Liferay.Language.get('timed-activity')}
+						>
 							<VerticalTimeline
 								initialExpanded={initialExpanded}
 								items={dayItems}
 								LDPEnabled={LDPEnabled}
 								timeZoneId={timeZoneId}
 							/>
-						) : (
-							emptyState
-						)}
-					</ActivitySection>
+						</ActivitySection>
+					)}
 				</div>
 			);
 		})}

@@ -1,5 +1,4 @@
 import ActivityChartEmptyState from 'shared/components/ActivityChartEmptyState';
-import ActivitySectionEmptyState from 'shared/components/ActivitySectionEmptyState';
 import ActivityStreamCard from 'shared/components/ActivityStreamCard';
 import ActivityStreamNoResults from 'shared/components/ActivityStreamNoResults';
 import ClayIcon from '@clayui/icon';
@@ -23,6 +22,7 @@ import {fetchPolicyDefinition} from 'shared/util/graphql';
 import {
 	formatSessions,
 	mapEventMetricToActivityHistory,
+	buildCampaignUrls,
 	buildTouchIndividualUrls,
 	mergeCampaignDays,
 } from 'shared/util/activities';
@@ -31,7 +31,6 @@ import {getSessionsDateRange} from 'shared/util/activityDateRange';
 import {Individual} from 'shared/util/records';
 import {Interval, RangeSelectors} from 'shared/types';
 import {mapListResultsToProps} from 'shared/util/mappers';
-import {ENABLE_DAY_LEVEL_ACTIVITY} from 'shared/util/feature-flags';
 import {SessionEntityTypes} from 'shared/util/constants';
 import {useParams} from 'react-router-dom';
 import {useCampaignTouchesByDay} from 'shared/hooks/useCampaignTouchesByDay';
@@ -117,21 +116,18 @@ const ProfileCardWithDataCDP: React.FC<IProfileCardWithDataCDPProps> = ({
 		}
 	);
 
-	const campaignTouches = useCampaignTouchesByDay(
-		{
-			channelId,
-			entityId,
-			entityType: SessionEntityTypes.Individual,
-			keywords: query,
-			...getSessionsDateRange({
-				activityHistory,
-				interval,
-				rangeSelectors,
-				selectedPoint,
-			}),
-		},
-		{skip: !ENABLE_DAY_LEVEL_ACTIVITY}
-	);
+	const campaignTouches = useCampaignTouchesByDay({
+		channelId,
+		entityId,
+		entityType: SessionEntityTypes.Individual,
+		keywords: query,
+		...getSessionsDateRange({
+			activityHistory,
+			interval,
+			rangeSelectors,
+			selectedPoint,
+		}),
+	});
 
 	const sessionsResponse = useQuery<UserSessionData, UserSessionVariables>(
 		UserSessionQuery,
@@ -166,6 +162,7 @@ const ProfileCardWithDataCDP: React.FC<IProfileCardWithDataCDPProps> = ({
 								channelId,
 								groupId,
 								rangeSelectors,
+								timeZoneId,
 							}
 						),
 						campaignTouches.days,
@@ -175,6 +172,7 @@ const ProfileCardWithDataCDP: React.FC<IProfileCardWithDataCDPProps> = ({
 								page * delta >=
 								(eventsByUserSessions?.totalPageGroupsMetric
 									?.value ?? 0),
+							timeZoneId,
 						}
 					),
 					total:
@@ -191,6 +189,7 @@ const ProfileCardWithDataCDP: React.FC<IProfileCardWithDataCDPProps> = ({
 			page,
 			groupId,
 			rangeSelectors,
+			timeZoneId,
 		]
 	);
 
@@ -205,6 +204,11 @@ const ProfileCardWithDataCDP: React.FC<IProfileCardWithDataCDPProps> = ({
 				channelId,
 				groupId,
 			}),
+		[campaignTouches.days, channelId, groupId]
+	);
+
+	const campaignUrls = useMemo(
+		() => buildCampaignUrls(campaignTouches.days, {channelId, groupId}),
 		[campaignTouches.days, channelId, groupId]
 	);
 
@@ -239,6 +243,7 @@ const ProfileCardWithDataCDP: React.FC<IProfileCardWithDataCDPProps> = ({
 		<ActivityStreamCard
 			activityHistory={activityHistory}
 			campaignDays={campaignTouches.days}
+			campaignUrls={campaignUrls}
 			chartError={error}
 			chartLoading={loading}
 			delta={delta}
@@ -250,14 +255,6 @@ const ProfileCardWithDataCDP: React.FC<IProfileCardWithDataCDPProps> = ({
 					)}
 					title={Liferay.Language.get(
 						'there-is-no-data-for-individual-activities'
-					)}
-				/>
-			}
-			emptyState={
-				<ActivitySectionEmptyState
-					linkHref={URLConstants.IndividualProfilesDocument}
-					linkLabel={Liferay.Language.get(
-						'learn-more-about-individuals'
 					)}
 				/>
 			}
@@ -274,7 +271,7 @@ const ProfileCardWithDataCDP: React.FC<IProfileCardWithDataCDPProps> = ({
 								<>
 									<span>
 										{Liferay.Language.get(
-											'check-back-later-to-see-if-data-has-been-received-from-your-data-sources,-or-try-a-different-date-range'
+											'check-back-later-to-verify-if-data-has-been-received-from-your-data-sources,-or-you-can-try-a-different-date-range'
 										)}
 									</span>
 
@@ -301,7 +298,9 @@ const ProfileCardWithDataCDP: React.FC<IProfileCardWithDataCDPProps> = ({
 								</>
 							}
 							spacer
-							title={Liferay.Language.get('no-data-was-found')}
+							title={Liferay.Language.get(
+								'there-is-no-activity-on-the-selected-period'
+							)}
 						/>
 					}
 					onClearSearch={handleClearSearch}

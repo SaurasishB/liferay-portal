@@ -13,15 +13,17 @@ import {
 	redoLabel,
 	undoLabel,
 } from '../state/editorReducer';
+import {RatioPreset} from '../state/types';
 
 export function useEditorHistory(
 	image: LoadedImage,
+	ratios: RatioPreset[],
 	announce: (message: string) => void,
 
 	frozen?: () => boolean
 ) {
 	const [history, dispatch] = useReducer(editorReducer, undefined, () =>
-		initialHistory(image.width, image.height)
+		initialHistory(image.width, image.height, {ratios})
 	);
 
 	const undo = () => {
