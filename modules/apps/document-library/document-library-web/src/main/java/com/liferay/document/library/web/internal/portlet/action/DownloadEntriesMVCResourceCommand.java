@@ -8,9 +8,9 @@ package com.liferay.document.library.web.internal.portlet.action;
 import com.liferay.document.library.constants.DLPortletKeys;
 import com.liferay.document.library.kernel.model.DLFolderConstants;
 import com.liferay.document.library.kernel.service.DLAppService;
+import com.liferay.petra.io.StreamUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.InvalidRepositoryException;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.portlet.PortletResponseUtil;
@@ -23,24 +23,26 @@ import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.servlet.HttpHeaders;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.ContentTypes;
+import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
-import com.liferay.portal.kernel.zip.ZipWriter;
-import com.liferay.portal.kernel.zip.ZipWriterFactory;
 import com.liferay.portal.util.RepositoryUtil;
 
 import jakarta.portlet.PortletException;
 import jakarta.portlet.ResourceRequest;
 import jakarta.portlet.ResourceResponse;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -148,46 +150,41 @@ public class DownloadEntriesMVCResourceCommand implements MVCResourceCommand {
 
 			long folderId = ParamUtil.getLong(resourceRequest, "folderId");
 
-			String zipFileName = _getZipFileName(folderId, themeDisplay);
+			PortletResponseUtil.setHeaders(
+				resourceRequest, resourceResponse, null, null,
+				ContentTypes.APPLICATION_ZIP,
+				_getZipFileName(folderId, themeDisplay));
 
-			ZipWriter zipWriter = _zipWriterFactory.getZipWriter();
+			PermissionChecker permissionChecker =
+				themeDisplay.getPermissionChecker();
 
-			try {
+			try (ZipOutputStream zipOutputStream = new ZipOutputStream(
+					resourceResponse.getPortletOutputStream())) {
+
+				Set<String> fileNames = new HashSet<>();
+
 				for (FileEntry fileEntry : fileEntries) {
 					_zipFileEntry(
-						fileEntry, StringPool.SLASH,
-						themeDisplay.getPermissionChecker(), zipWriter);
+						fileEntry, StringPool.BLANK, permissionChecker,
+						fileNames, zipOutputStream);
 				}
 
 				for (FileShortcut fileShortcut : fileShortcuts) {
 					_zipFileEntry(
 						_dlAppService.getFileEntry(
 							fileShortcut.getToFileEntryId()),
-						StringPool.SLASH, themeDisplay.getPermissionChecker(),
-						zipWriter);
+						StringPool.BLANK, permissionChecker, fileNames,
+						zipOutputStream);
 				}
 
 				for (Folder folder : folders) {
 					if (!_isExternalRepositoryFolder(folder)) {
 						_zipFolder(
 							folder.getRepositoryId(), folder.getFolderId(),
-							StringPool.SLASH.concat(folder.getName()),
-							themeDisplay.getPermissionChecker(), zipWriter);
+							folder.getName(), permissionChecker,
+							zipOutputStream);
 					}
 				}
-
-				try (InputStream inputStream = new FileInputStream(
-						zipWriter.getFile())) {
-
-					PortletResponseUtil.sendFile(
-						resourceRequest, resourceResponse, zipFileName,
-						inputStream, ContentTypes.APPLICATION_ZIP);
-				}
-			}
-			finally {
-				File file = zipWriter.getFile();
-
-				file.delete();
 			}
 		}
 	}
@@ -203,30 +200,52 @@ public class DownloadEntriesMVCResourceCommand implements MVCResourceCommand {
 
 		_checkFolder(folderId);
 
-		ZipWriter zipWriter = _zipWriterFactory.getZipWriter();
+		long repositoryId = ParamUtil.getLong(resourceRequest, "repositoryId");
 
-		try {
-			String zipFileName = _getZipFileName(folderId, themeDisplay);
+		PortletResponseUtil.setHeaders(
+			resourceRequest, resourceResponse, null, null,
+			ContentTypes.APPLICATION_ZIP,
+			_getZipFileName(folderId, themeDisplay));
 
-			long repositoryId = ParamUtil.getLong(
-				resourceRequest, "repositoryId");
+		try (ZipOutputStream zipOutputStream = new ZipOutputStream(
+				resourceResponse.getPortletOutputStream())) {
 
 			_zipFolder(
-				repositoryId, folderId, StringPool.SLASH,
-				themeDisplay.getPermissionChecker(), zipWriter);
-
-			try (InputStream inputStream = new FileInputStream(
-					zipWriter.getFile())) {
-
-				PortletResponseUtil.sendFile(
-					resourceRequest, resourceResponse, zipFileName, inputStream,
-					ContentTypes.APPLICATION_ZIP);
-			}
+				repositoryId, folderId, StringPool.BLANK,
+				themeDisplay.getPermissionChecker(), zipOutputStream);
 		}
-		finally {
-			File file = zipWriter.getFile();
+	}
 
-			file.delete();
+	private String _getPath(String path, String name) {
+		if (Validator.isNull(path)) {
+			return name;
+		}
+
+		return StringBundler.concat(path, StringPool.SLASH, name);
+	}
+
+	private String _getUniqueFileName(Set<String> fileNames, String fileName) {
+		if (fileNames.add(fileName)) {
+			return fileName;
+		}
+
+		String extension = FileUtil.getExtension(fileName);
+
+		if (Validator.isNotNull(extension)) {
+			extension = StringPool.PERIOD + extension;
+		}
+
+		String strippedFileName = FileUtil.stripExtension(fileName);
+
+		int i = 1;
+
+		while (true) {
+			String uniqueFileName = StringBundler.concat(
+				strippedFileName, StringPool.UNDERLINE, i++, extension);
+
+			if (fileNames.add(uniqueFileName)) {
+				return uniqueFileName;
+			}
 		}
 	}
 
@@ -265,56 +284,79 @@ public class DownloadEntriesMVCResourceCommand implements MVCResourceCommand {
 
 	private void _zipFileEntry(
 			FileEntry fileEntry, String path,
-			PermissionChecker permissionChecker, ZipWriter zipWriter)
+			PermissionChecker permissionChecker, Set<String> fileNames,
+			ZipOutputStream zipOutputStream)
 		throws IOException, PortalException {
 
-		if (fileEntry.containsPermission(
+		if (!fileEntry.containsPermission(
 				permissionChecker, ActionKeys.DOWNLOAD)) {
 
-			zipWriter.addEntry(
-				path + StringPool.SLASH + fileEntry.getFileName(),
-				fileEntry.getContentStream());
+			return;
+		}
+
+		try (InputStream inputStream = fileEntry.getContentStream()) {
+			if (inputStream == null) {
+				return;
+			}
+
+			String fileName = _getUniqueFileName(
+				fileNames, fileEntry.getFileName());
+
+			zipOutputStream.putNextEntry(
+				new ZipEntry(_getPath(path, fileName)));
+
+			StreamUtil.transfer(inputStream, zipOutputStream, false);
+
+			zipOutputStream.closeEntry();
 		}
 	}
 
 	private void _zipFolder(
 			long repositoryId, long folderId, String path,
-			PermissionChecker permissionChecker, ZipWriter zipWriter)
+			PermissionChecker permissionChecker,
+			ZipOutputStream zipOutputStream)
 		throws IOException, PortalException {
 
-		List<Object> foldersAndFileEntriesAndFileShortcuts =
-			_dlAppService.getFoldersAndFileEntriesAndFileShortcuts(
-				repositoryId, folderId, WorkflowConstants.STATUS_APPROVED,
-				false, QueryUtil.ALL_POS, QueryUtil.ALL_POS);
+		int count = _dlAppService.getFoldersAndFileEntriesAndFileShortcutsCount(
+			repositoryId, folderId, WorkflowConstants.STATUS_APPROVED, false);
 
-		for (Object entry : foldersAndFileEntriesAndFileShortcuts) {
-			if (entry instanceof Folder) {
-				Folder folder = (Folder)entry;
+		Set<String> fileNames = new HashSet<>();
 
-				_zipFolder(
-					folder.getRepositoryId(), folder.getFolderId(),
-					StringBundler.concat(
-						path, StringPool.SLASH, folder.getName()),
-					permissionChecker, zipWriter);
-			}
-			else if (entry instanceof FileEntry) {
-				_zipFileEntry(
-					(FileEntry)entry, path, permissionChecker, zipWriter);
-			}
-			else if (entry instanceof FileShortcut) {
-				FileShortcut fileShortcut = (FileShortcut)entry;
+		for (int start = 0; start < count; start += _BATCH_SIZE) {
+			List<Object> foldersAndFileEntriesAndFileShortcuts =
+				_dlAppService.getFoldersAndFileEntriesAndFileShortcuts(
+					repositoryId, folderId, WorkflowConstants.STATUS_APPROVED,
+					false, start, start + _BATCH_SIZE);
 
-				_zipFileEntry(
-					_dlAppService.getFileEntry(fileShortcut.getToFileEntryId()),
-					path, permissionChecker, zipWriter);
+			for (Object entry : foldersAndFileEntriesAndFileShortcuts) {
+				if (entry instanceof Folder) {
+					Folder folder = (Folder)entry;
+
+					_zipFolder(
+						folder.getRepositoryId(), folder.getFolderId(),
+						_getPath(path, folder.getName()), permissionChecker,
+						zipOutputStream);
+				}
+				else if (entry instanceof FileEntry) {
+					_zipFileEntry(
+						(FileEntry)entry, path, permissionChecker, fileNames,
+						zipOutputStream);
+				}
+				else if (entry instanceof FileShortcut) {
+					FileShortcut fileShortcut = (FileShortcut)entry;
+
+					_zipFileEntry(
+						_dlAppService.getFileEntry(
+							fileShortcut.getToFileEntryId()),
+						path, permissionChecker, fileNames, zipOutputStream);
+				}
 			}
 		}
 	}
 
-	@Reference
-	private DLAppService _dlAppService;
+	private static final int _BATCH_SIZE = 100;
 
 	@Reference
-	private ZipWriterFactory _zipWriterFactory;
+	private DLAppService _dlAppService;
 
 }
