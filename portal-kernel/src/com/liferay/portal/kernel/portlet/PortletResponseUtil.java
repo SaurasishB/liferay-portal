@@ -121,6 +121,72 @@ public class PortletResponseUtil {
 			contentType);
 	}
 
+	public static void setHeaders(
+		PortletRequest portletRequest, MimeResponse mimeResponse,
+		String cacheControlValue, String contentDispositionType,
+		String contentType, String fileName) {
+
+		if (_log.isDebugEnabled()) {
+			_log.debug("Sending file of type " + contentType);
+		}
+
+		// LEP-2201
+
+		if (Validator.isNotNull(contentType)) {
+			mimeResponse.setContentType(contentType);
+		}
+
+		if (Validator.isNull(cacheControlValue)) {
+			mimeResponse.setProperty(
+				HttpHeaders.CACHE_CONTROL,
+				HttpHeaders.CACHE_CONTROL_PRIVATE_VALUE);
+		}
+		else {
+			mimeResponse.setProperty(
+				HttpHeaders.CACHE_CONTROL, cacheControlValue);
+		}
+
+		if (Validator.isNull(fileName)) {
+			return;
+		}
+
+		if (Validator.isNull(contentDispositionType)) {
+			String extension = GetterUtil.getString(
+				FileUtil.getExtension(fileName));
+
+			extension = StringUtil.toLowerCase(extension);
+
+			String[] mimeTypesContentDispositionInline = null;
+
+			try {
+				mimeTypesContentDispositionInline = PropsUtil.getArray(
+					"mime.types.content.disposition.inline");
+			}
+			catch (Exception exception) {
+				if (_log.isDebugEnabled()) {
+					_log.debug(exception);
+				}
+
+				mimeTypesContentDispositionInline = new String[0];
+			}
+
+			if (ArrayUtil.contains(
+					mimeTypesContentDispositionInline, extension)) {
+
+				contentDispositionType = HttpHeaders.CONTENT_DISPOSITION_INLINE;
+			}
+			else {
+				contentDispositionType =
+					HttpHeaders.CONTENT_DISPOSITION_ATTACHMENT;
+			}
+		}
+
+		mimeResponse.setProperty(
+			HttpHeaders.CONTENT_DISPOSITION,
+			ContentDispositionUtil.getContentDispositionHeaderValue(
+				contentDispositionType, fileName));
+	}
+
 	public static void write(MimeResponse mimeResponse, byte[] bytes)
 		throws IOException {
 
@@ -252,72 +318,6 @@ public class PortletResponseUtil {
 
 		response.setProperty(
 			HttpHeaders.CONTENT_LENGTH, String.valueOf(contentLength));
-	}
-
-	protected static void setHeaders(
-		PortletRequest portletRequest, MimeResponse mimeResponse,
-		String cacheControlValue, String contentDispositionType,
-		String contentType, String fileName) {
-
-		if (_log.isDebugEnabled()) {
-			_log.debug("Sending file of type " + contentType);
-		}
-
-		// LEP-2201
-
-		if (Validator.isNotNull(contentType)) {
-			mimeResponse.setContentType(contentType);
-		}
-
-		if (Validator.isNull(cacheControlValue)) {
-			mimeResponse.setProperty(
-				HttpHeaders.CACHE_CONTROL,
-				HttpHeaders.CACHE_CONTROL_PRIVATE_VALUE);
-		}
-		else {
-			mimeResponse.setProperty(
-				HttpHeaders.CACHE_CONTROL, cacheControlValue);
-		}
-
-		if (Validator.isNull(fileName)) {
-			return;
-		}
-
-		if (Validator.isNull(contentDispositionType)) {
-			String extension = GetterUtil.getString(
-				FileUtil.getExtension(fileName));
-
-			extension = StringUtil.toLowerCase(extension);
-
-			String[] mimeTypesContentDispositionInline = null;
-
-			try {
-				mimeTypesContentDispositionInline = PropsUtil.getArray(
-					"mime.types.content.disposition.inline");
-			}
-			catch (Exception exception) {
-				if (_log.isDebugEnabled()) {
-					_log.debug(exception);
-				}
-
-				mimeTypesContentDispositionInline = new String[0];
-			}
-
-			if (ArrayUtil.contains(
-					mimeTypesContentDispositionInline, extension)) {
-
-				contentDispositionType = HttpHeaders.CONTENT_DISPOSITION_INLINE;
-			}
-			else {
-				contentDispositionType =
-					HttpHeaders.CONTENT_DISPOSITION_ATTACHMENT;
-			}
-		}
-
-		mimeResponse.setProperty(
-			HttpHeaders.CONTENT_DISPOSITION,
-			ContentDispositionUtil.getContentDispositionHeaderValue(
-				contentDispositionType, fileName));
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
