@@ -1465,6 +1465,39 @@ public class DefaultObjectEntryManagerImpl
 
 	@Override
 	public ObjectEntry updateObjectEntry(
+			DTOConverterContext dtoConverterContext,
+			ObjectDefinition objectDefinition, ObjectEntry objectEntry,
+			String scopeKey,
+			com.liferay.object.model.ObjectEntry serviceBuilderObjectEntry)
+		throws Exception {
+
+		_checkObjectEntryStatus(serviceBuilderObjectEntry);
+
+		validateReadOnlyObjectFields(
+			objectDefinition, objectEntry, serviceBuilderObjectEntry);
+
+		ServiceContext serviceContext = _createServiceContext(
+			dtoConverterContext, objectDefinition, objectEntry, scopeKey);
+
+		serviceContext.setCompanyId(serviceBuilderObjectEntry.getCompanyId());
+
+		return _toUpdatedObjectEntry(
+			dtoConverterContext, objectDefinition, objectEntry, false, scopeKey,
+			_objectEntryService.updateObjectEntry(
+				serviceBuilderObjectEntry.getObjectEntryId(),
+				_getObjectEntryFolderId(
+					objectDefinition.getCompanyId(),
+					getGroupId(objectDefinition, scopeKey), objectEntry,
+					objectDefinition, serviceContext),
+				_toObjectValues(
+					0L, dtoConverterContext.getLocale(), objectDefinition,
+					objectEntry, scopeKey, serviceContext),
+				serviceContext),
+			serviceContext);
+	}
+
+	@Override
+	public ObjectEntry updateObjectEntry(
 			long companyId, DTOConverterContext dtoConverterContext,
 			String externalReferenceCode, ObjectDefinition objectDefinition,
 			ObjectEntry objectEntry, String scopeKey)
@@ -4011,6 +4044,27 @@ public class DefaultObjectEntryManagerImpl
 		return values;
 	}
 
+	private ObjectEntry _toUpdatedObjectEntry(
+			DTOConverterContext dtoConverterContext,
+			ObjectDefinition objectDefinition, ObjectEntry objectEntry,
+			boolean partialUpdateNestedObjectEntries, String scopeKey,
+			com.liferay.object.model.ObjectEntry serviceBuilderObjectEntry,
+			ServiceContext serviceContext)
+		throws Exception {
+
+		return _toObjectEntry(
+			dtoConverterContext, objectDefinition,
+			_addOrUpdateNestedObjectEntries(
+				dtoConverterContext, objectDefinition, objectEntry,
+				_getObjectRelationships(objectDefinition, objectEntry),
+				partialUpdateNestedObjectEntries,
+				_updateStatus(
+					dtoConverterContext, objectEntry, serviceBuilderObjectEntry,
+					serviceContext),
+				scopeKey),
+			null);
+	}
+
 	private void _updateDuplicateObjectEntryName(
 			ObjectDefinition objectDefinition,
 			ObjectEntryFolder objectEntryFolder, String languageId,
@@ -4102,9 +4156,7 @@ public class DefaultObjectEntryManagerImpl
 			serviceBuilderObjectEntry, skipCheckRootDescendantNode);
 
 		validateReadOnlyObjectFields(
-			serviceBuilderObjectEntry.getExternalReferenceCode(),
-			serviceBuilderObjectEntry.getGroupId(), objectDefinition,
-			objectEntry);
+			objectDefinition, objectEntry, serviceBuilderObjectEntry);
 
 		String scopeKey = String.valueOf(
 			serviceBuilderObjectEntry.getGroupId());
@@ -4145,17 +4197,9 @@ public class DefaultObjectEntryManagerImpl
 				values, serviceContext);
 		}
 
-		return _toObjectEntry(
-			dtoConverterContext, objectDefinition,
-			_addOrUpdateNestedObjectEntries(
-				dtoConverterContext, objectDefinition, objectEntry,
-				_getObjectRelationships(objectDefinition, objectEntry),
-				partialUpdate,
-				_updateStatus(
-					dtoConverterContext, objectEntry, serviceBuilderObjectEntry,
-					serviceContext),
-				scopeKey),
-			null);
+		return _toUpdatedObjectEntry(
+			dtoConverterContext, objectDefinition, objectEntry, partialUpdate,
+			scopeKey, serviceBuilderObjectEntry, serviceContext);
 	}
 
 	private ObjectEntry _updateObjectEntry(
@@ -4172,40 +4216,36 @@ public class DefaultObjectEntryManagerImpl
 				externalReferenceCode, groupId,
 				objectDefinition.getObjectDefinitionId());
 
-		if (serviceBuilderObjectEntry != null) {
-			_checkObjectEntryStatus(serviceBuilderObjectEntry);
+		if (serviceBuilderObjectEntry == null) {
+			validateReadOnlyObjectFields(
+				externalReferenceCode, groupId, objectDefinition, objectEntry);
 		}
+		else {
+			_checkObjectEntryStatus(serviceBuilderObjectEntry);
 
-		validateReadOnlyObjectFields(
-			externalReferenceCode, groupId, objectDefinition, objectEntry);
+			validateReadOnlyObjectFields(
+				objectDefinition, objectEntry, serviceBuilderObjectEntry);
+		}
 
 		ServiceContext serviceContext = _createServiceContext(
 			dtoConverterContext, objectDefinition, objectEntry, scopeKey);
 
 		serviceContext.setCompanyId(companyId);
 
-		return _toObjectEntry(
-			dtoConverterContext, objectDefinition,
-			_addOrUpdateNestedObjectEntries(
-				dtoConverterContext, objectDefinition, objectEntry,
-				_getObjectRelationships(objectDefinition, objectEntry),
-				partialUpdateNestedObjectEntries,
-				_updateStatus(
-					dtoConverterContext, objectEntry,
-					_objectEntryService.addOrUpdateObjectEntry(
-						externalReferenceCode, groupId,
-						objectDefinition.getObjectDefinitionId(),
-						_getObjectEntryFolderId(
-							objectDefinition.getCompanyId(), groupId,
-							objectEntry, objectDefinition, serviceContext),
-						_toObjectValues(
-							0L, dtoConverterContext.getLocale(),
-							objectDefinition, objectEntry, scopeKey,
-							serviceContext),
-						serviceContext),
-					serviceContext),
-				scopeKey),
-			null);
+		return _toUpdatedObjectEntry(
+			dtoConverterContext, objectDefinition, objectEntry,
+			partialUpdateNestedObjectEntries, scopeKey,
+			_objectEntryService.addOrUpdateObjectEntry(
+				externalReferenceCode, groupId,
+				objectDefinition.getObjectDefinitionId(),
+				_getObjectEntryFolderId(
+					objectDefinition.getCompanyId(), groupId, objectEntry,
+					objectDefinition, serviceContext),
+				_toObjectValues(
+					0L, dtoConverterContext.getLocale(), objectDefinition,
+					objectEntry, scopeKey, serviceContext),
+				serviceContext),
+			serviceContext);
 	}
 
 	private ObjectEntry _updateRelatedObjectEntry(

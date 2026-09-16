@@ -1404,8 +1404,12 @@ public class ObjectEntryLocalServiceImpl
 		long groupId, long objectDefinitionId, int status) {
 
 		if (status == WorkflowConstants.STATUS_ANY) {
-			return objectEntryPersistence.countByG_ODI_NotS(
+			int count = objectEntryPersistence.countByG_ODI(
+				groupId, objectDefinitionId);
+			int trashCount = objectEntryPersistence.countByG_ODI_S(
 				groupId, objectDefinitionId, WorkflowConstants.STATUS_IN_TRASH);
+
+			return count - trashCount;
 		}
 
 		return objectEntryPersistence.countByG_ODI_S(
@@ -1751,20 +1755,15 @@ public class ObjectEntryLocalServiceImpl
 
 		ObjectDefinition objectDefinition = objectEntry.getObjectDefinition();
 
-		ObjectFieldBag objectFieldBag = objectDefinition.getObjectFieldBag();
-
-		List<Object[]> rows = _list(
-			DSLQueryFactoryUtil.select(
-				_EXPRESSIONS
-			).from(
-				ObjectEntryTable.INSTANCE
-			).where(
-				ObjectEntryTable.INSTANCE.objectEntryId.eq(
-					objectEntry.getObjectEntryId())
-			),
-			objectFieldBag, _EXPRESSIONS);
-
-		return _getValues(objectFieldBag, rows.get(0), _EXPRESSIONS);
+		return _getValues(
+			objectDefinition.getObjectFieldBag(),
+			new Object[] {
+				objectEntry.getObjectEntryId(), objectEntry.getUserName(),
+				_getValue(objectEntry.getCreateDate(), Types.TIMESTAMP),
+				_getValue(objectEntry.getModifiedDate(), Types.TIMESTAMP),
+				objectEntry.getExternalReferenceCode(), objectEntry.getStatus()
+			},
+			_EXPRESSIONS);
 	}
 
 	@Override
@@ -7297,17 +7296,10 @@ public class ObjectEntryLocalServiceImpl
 			}
 		}
 
-		FriendlyURLEntry friendlyURLEntry =
-			_friendlyURLEntryLocalService.fetchMainFriendlyURLEntry(
-				_classNameLocalService.getClassNameId(
-					objectDefinition.getClassName()),
-				objectEntry.getObjectEntryId());
-
-		if (friendlyURLEntry == null) {
-			return true;
-		}
-
-		return false;
+		return !_friendlyURLEntryLocalService.hasMainFriendlyURLEntry(
+			_classNameLocalService.getClassNameId(
+				objectDefinition.getClassName()),
+			objectEntry.getObjectEntryId());
 	}
 
 	private void _startWorkflowInstance(
@@ -7636,8 +7628,6 @@ public class ObjectEntryLocalServiceImpl
 			DynamicObjectDefinitionTableUtil.getDynamicObjectDefinitionTable(
 				true, objectDefinition, _objectFieldLocalService),
 			objectEntryId, partialUpdate, values);
-
-		objectEntryPersistence.clearCache(SetUtil.fromArray(objectEntryId));
 
 		objectEntry = objectEntryPersistence.findByPrimaryKey(objectEntryId);
 

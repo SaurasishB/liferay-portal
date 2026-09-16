@@ -4,6 +4,7 @@
  */
 
 import '@testing-library/jest-dom';
+import {SidePanel} from '@clayui/core';
 
 // eslint-disable-next-line @liferay/portal/no-cross-module-deep-import
 import {checkAccessibility} from '@liferay/layout-js-components-web/test/__lib__/index';
@@ -33,6 +34,11 @@ const EDITABLE_ELEMENT_OPTIONS = [
 	{label: 'Body (body)', value: '.body'},
 ];
 
+const AUDIENCES = [
+	{label: 'First audience', value: 'audience-1'},
+	{label: 'Second audience', value: 'audience-2'},
+];
+
 const LOCALES = [{id: 'en_US', label: 'English', symbol: 'en-us'}];
 
 const TRANSLATING_PROPS = {
@@ -49,9 +55,14 @@ function renderForm(
 ) {
 	const onChange = jest.fn();
 
-	return {
-		onChange,
-		...render(
+	const getForm = (
+		currentElementVariation: Partial<ElementVariationProp>
+	) => (
+		<SidePanel
+			containerRef={{current: document.body}}
+			onOpenChange={jest.fn()}
+			open
+		>
 			<ElementVariationForm
 				audiences={[]}
 				defaultLanguageId="en_US"
@@ -59,7 +70,7 @@ function renderForm(
 				editableElementOptions={EDITABLE_ELEMENT_OPTIONS}
 				elementVariation={{
 					...BASE_ELEMENT_VARIATION,
-					...elementVariation,
+					...currentElementVariation,
 				}}
 				elementVariations={[]}
 				languageId="en_US"
@@ -71,11 +82,34 @@ function renderForm(
 				onSave={jest.fn()}
 				{...props}
 			/>
-		),
+		</SidePanel>
+	);
+
+	const {rerender, ...result} = render(getForm(elementVariation));
+
+	return {
+		...result,
+		onChange,
+		rerender: (nextElementVariation: Partial<ElementVariationProp>) =>
+			rerender(getForm(nextElementVariation)),
 	};
 }
 
 describe('ElementVariationForm', () => {
+	const {ResizeObserver: ResizeObserverOriginal} = window;
+
+	beforeAll(() => {
+		window.ResizeObserver = jest.fn().mockImplementation(() => ({
+			disconnect: jest.fn(),
+			observe: jest.fn(),
+			unobserve: jest.fn(),
+		}));
+	});
+
+	afterAll(() => {
+		window.ResizeObserver = ResizeObserverOriginal;
+	});
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
@@ -274,6 +308,37 @@ describe('ElementVariationForm', () => {
 			screen.queryByText('this-field-is-required')
 		).not.toBeInTheDocument();
 		expect(onSave).toHaveBeenCalledTimes(1);
+	});
+
+	it('updates the available audiences when the page element changes', async () => {
+		const {rerender} = renderForm(
+			{targetElement: '.title'},
+			{
+				audiences: AUDIENCES,
+				elementVariations: [
+					{
+						...BASE_ELEMENT_VARIATION,
+						audienceEntryERCs: ['audience-1'],
+						externalReferenceCode: 'erc',
+						key: 'variation-2',
+						segmentsExperienceERC: 'experience',
+						targetElement: '.body',
+					},
+				],
+			}
+		);
+
+		await userEvent.click(screen.getByLabelText('audience'));
+
+		expect(screen.getByText('First audience')).toBeInTheDocument();
+		expect(screen.getByText('Second audience')).toBeInTheDocument();
+
+		rerender({audienceEntryERCs: [], targetElement: '.body'});
+
+		await userEvent.click(screen.getByLabelText('audience'));
+
+		expect(screen.queryByText('First audience')).not.toBeInTheDocument();
+		expect(screen.getByText('Second audience')).toBeInTheDocument();
 	});
 
 	it('has no accessibility violations', async () => {

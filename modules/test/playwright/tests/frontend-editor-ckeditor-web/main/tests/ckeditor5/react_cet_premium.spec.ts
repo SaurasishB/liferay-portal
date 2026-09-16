@@ -146,4 +146,23 @@ if (!process.env.CI) {
 			}
 		}
 	);
+
+	test(
+		'Clicking Insert table layout opens the table size picker',
+		{tag: '@LPD-95092'},
+		async ({classicPage, page}) => {
+			const insertTableLayoutButton =
+				classicPage.toolbar.container.getByRole('button', {
+					name: 'Insert table layout',
+				});
+
+			await expect(insertTableLayoutButton).toBeVisible();
+
+			await insertTableLayoutButton.click();
+
+			await expect(
+				page.locator('.ck-insert-table-dropdown__grid')
+			).toBeVisible();
+		}
+	);
 }

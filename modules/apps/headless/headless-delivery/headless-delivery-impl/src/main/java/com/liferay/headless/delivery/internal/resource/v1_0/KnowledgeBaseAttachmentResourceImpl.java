@@ -14,6 +14,8 @@ import com.liferay.knowledge.base.model.KBArticle;
 import com.liferay.knowledge.base.service.KBArticleService;
 import com.liferay.portal.kernel.portletfilerepository.PortletFileRepository;
 import com.liferay.portal.kernel.repository.model.FileEntry;
+import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
+import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.vulcan.multipart.BinaryFile;
@@ -77,10 +79,9 @@ public class KnowledgeBaseAttachmentResourceImpl
 			HashMapBuilder.<String, Map<String, String>>put(
 				"createBatch",
 				addAction(
-					KBActionKeys.ADD_KB_ARTICLE, kbArticle.getResourcePrimKey(),
+					KBActionKeys.UPDATE, kbArticle.getResourcePrimKey(),
 					"postKnowledgeBaseArticleKnowledgeBaseAttachmentBatch",
-					kbArticle.getUserId(), KBConstants.RESOURCE_NAME_ADMIN,
-					kbArticle.getGroupId())
+					_kbArticleModelResourcePermission)
 			).build(),
 			transform(
 				kbArticle.getAttachmentsFileEntries(),
@@ -127,6 +128,10 @@ public class KnowledgeBaseAttachmentResourceImpl
 
 		KBArticle kbArticle = _kbArticleService.getLatestKBArticle(
 			knowledgeBaseArticleId, WorkflowConstants.STATUS_APPROVED);
+
+		_kbArticleModelResourcePermission.check(
+			PermissionThreadLocal.getPermissionChecker(), kbArticle,
+			KBActionKeys.UPDATE);
 
 		return _toKnowledgeBaseAttachment(
 			_portletFileRepository.addPortletFileEntry(
@@ -175,6 +180,12 @@ public class KnowledgeBaseAttachmentResourceImpl
 			}
 		};
 	}
+
+	@Reference(
+		target = "(model.class.name=com.liferay.knowledge.base.model.KBArticle)"
+	)
+	private ModelResourcePermission<KBArticle>
+		_kbArticleModelResourcePermission;
 
 	@Reference
 	private KBArticleService _kbArticleService;

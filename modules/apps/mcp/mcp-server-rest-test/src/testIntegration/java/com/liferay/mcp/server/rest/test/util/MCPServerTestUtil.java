@@ -92,7 +92,8 @@ public class MCPServerTestUtil {
 	}
 
 	public static ObjectEntry addMCPServerProfileObjectEntry(
-			String description, String name, String... tools)
+			String description, String instructions, String name,
+			String... tools)
 		throws Exception {
 
 		ObjectDefinition objectDefinition =
@@ -109,6 +110,8 @@ public class MCPServerTestUtil {
 				null,
 				HashMapBuilder.<String, Serializable>put(
 					"description", description
+				).put(
+					"instructions", instructions
 				).put(
 					"name", name
 				).put(
@@ -130,6 +133,15 @@ public class MCPServerTestUtil {
 	public static ObjectEntry addMCPServerProfileToolObjectEntry(
 			String mcpServerProfileExternalReferenceCode, String toolName,
 			String toolSetName)
+		throws Exception {
+
+		return addMCPServerProfileToolObjectEntry(
+			mcpServerProfileExternalReferenceCode, null, toolName, toolSetName);
+	}
+
+	public static ObjectEntry addMCPServerProfileToolObjectEntry(
+			String mcpServerProfileExternalReferenceCode, String restrictFields,
+			String toolName, String toolSetName)
 		throws Exception {
 
 		ObjectDefinition mcpServerProfileObjectDefinition =
@@ -156,6 +168,8 @@ public class MCPServerTestUtil {
 			HashMapBuilder.<String, Serializable>put(
 				"r_mcpServerProfileToTools_l_mcpServerProfileId",
 				mcpServerProfileObjectEntry.getObjectEntryId()
+			).put(
+				"restrictFields", () -> restrictFields
 			).put(
 				"toolName", toolName
 			).put(
@@ -376,6 +390,33 @@ public class MCPServerTestUtil {
 				prefix + "01.list.type.definition",
 				prefix + "02.object.definition", prefix + "03.object.entry"
 			});
+	}
+
+	public static void updateMCPServerProfileToolObjectEntry(
+			ObjectEntry mcpServerProfileToolObjectEntry,
+			Map<String, Serializable> values)
+		throws Exception {
+
+		ObjectEntryLocalServiceUtil.updateObjectEntry(
+			TestPropsValues.getUserId(),
+			mcpServerProfileToolObjectEntry.getObjectEntryId(), 0,
+			HashMapBuilder.<String, Serializable>putAll(
+				mcpServerProfileToolObjectEntry.getValues()
+			).putAll(
+				values
+			).build(),
+			ServiceContextTestUtil.getServiceContext());
+	}
+
+	public static void updateMCPServerProfileToolRestrictFields(
+			ObjectEntry mcpServerProfileToolObjectEntry, String restrictFields)
+		throws Exception {
+
+		updateMCPServerProfileToolObjectEntry(
+			mcpServerProfileToolObjectEntry,
+			HashMapBuilder.<String, Serializable>put(
+				"restrictFields", restrictFields
+			).build());
 	}
 
 	private static ObjectEntry _fetchObjectEntry(

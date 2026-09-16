@@ -56,7 +56,8 @@ public class ToolSetUtil {
 	}
 
 	public static Tool getTool(
-		HttpServletRequest httpServletRequest, String toolName,
+		HttpServletRequest httpServletRequest,
+		Map<String, String> restrictFieldsMap, String toolName,
 		String toolSetName) {
 
 		return OpenAPIUtil.getTool(
@@ -64,7 +65,12 @@ public class ToolSetUtil {
 			_getOpenAPIJSONObject(
 				httpServletRequest, _getOpenAPIDocument(toolSetName),
 				toolSetName),
+			_getRestrictFields(restrictFieldsMap, toolName, toolSetName),
 			toolName);
+	}
+
+	public static String getToolKey(String toolName, String toolSetName) {
+		return toolSetName + StringPool.POUND + toolName;
 	}
 
 	public static Map<String, ?> getToolOutputSchema(
@@ -113,7 +119,8 @@ public class ToolSetUtil {
 	public static Response invokeTool(
 			List<String> dataMaskExternalReferenceCodes,
 			HttpServletRequest httpServletRequest, Object inputObject,
-			String toolName, String toolSetName)
+			Map<String, String> restrictFieldsMap, String toolName,
+			String toolSetName)
 		throws Exception {
 
 		JSONObject inputJSONObject = null;
@@ -133,7 +140,7 @@ public class ToolSetUtil {
 			if (Objects.equals(toolName, "getToolSetToolSetNameTool")) {
 				return _getResponse(
 					getTool(
-						httpServletRequest,
+						httpServletRequest, restrictFieldsMap,
 						inputJSONObject.getString("toolName"),
 						inputJSONObject.getString("toolSetName")));
 			}
@@ -154,7 +161,7 @@ public class ToolSetUtil {
 			if (Objects.equals(toolName, "postToolSetToolSetNameToolInvoke")) {
 				return invokeTool(
 					dataMaskExternalReferenceCodes, httpServletRequest,
-					inputJSONObject.opt("body"),
+					inputJSONObject.opt("body"), restrictFieldsMap,
 					inputJSONObject.getString("toolName"),
 					inputJSONObject.getString("toolSetName"));
 			}
@@ -182,6 +189,8 @@ public class ToolSetUtil {
 					inputJSONObject,
 					_getOpenAPIJSONObject(
 						httpServletRequest, openAPIDocument, toolSetName),
+					_getRestrictFields(
+						restrictFieldsMap, toolName, toolSetName),
 					toolName,
 					UserLocalServiceUtil.fetchUser(
 						GetterUtil.getLong(
@@ -237,7 +246,7 @@ public class ToolSetUtil {
 
 		if (openAPIDocument == null) {
 			throw new IllegalArgumentException(
-				"No tool-set was found with name \"" + toolSetName + "\"");
+				"No tool set was found with name \"" + toolSetName + "\"");
 		}
 
 		return openAPIDocument;
@@ -299,7 +308,7 @@ public class ToolSetUtil {
 				if (Validator.isNull(content)) {
 					throw new IllegalStateException(
 						"Unable to read the OpenAPI document of the \"" +
-							toolSetName + "\" tool-set");
+							toolSetName + "\" tool set");
 				}
 
 				try {
@@ -317,6 +326,17 @@ public class ToolSetUtil {
 		return Response.ok(
 			objectMapper.writeValueAsString(value), ContentTypes.TEXT_PLAIN_UTF8
 		).build();
+	}
+
+	private static String _getRestrictFields(
+		Map<String, String> restrictFieldsMap, String toolName,
+		String toolSetName) {
+
+		if (restrictFieldsMap == null) {
+			return null;
+		}
+
+		return restrictFieldsMap.get(getToolKey(toolName, toolSetName));
 	}
 
 	private static final String _TOOL_SET_NAME = "mcp-server-v1.0";

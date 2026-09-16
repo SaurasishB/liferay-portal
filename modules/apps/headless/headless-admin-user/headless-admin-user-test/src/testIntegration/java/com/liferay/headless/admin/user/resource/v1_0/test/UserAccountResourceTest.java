@@ -361,20 +361,29 @@ public class UserAccountResourceTest extends BaseUserAccountResourceTestCase {
 
 		_setUpTestUserAccountResource();
 
-		HttpInvoker.HttpResponse httpResponse =
+		long accountId = RandomTestUtil.randomLong();
+
+		HttpInvoker.HttpResponse httpResponse1 =
 			_regularUserAccountResource.getAccountUserAccountsPageHttpResponse(
-				RandomTestUtil.randomLong(), null, null, null, null);
+				accountId, null, null, null, null);
 
 		Assert.assertEquals(
 			Response.Status.NOT_FOUND.getStatusCode(),
-			httpResponse.getStatusCode());
+			httpResponse1.getStatusCode());
+
+		String content = httpResponse1.getContent();
+
+		Assert.assertFalse(content.contains(String.valueOf(accountId)));
+
+		AccountEntry accountEntry = _addAccountEntry();
+
+		HttpInvoker.HttpResponse httpResponse2 =
+			_regularUserAccountResource.getAccountUserAccountsPageHttpResponse(
+				accountEntry.getAccountEntryId(), null, null, null, null);
+
 		Assert.assertEquals(
-			JSONUtil.put(
-				"status", "NOT_FOUND"
-			).toString(),
-			_jsonFactory.createJSONObject(
-				httpResponse.getContent()
-			).toString());
+			Response.Status.NOT_FOUND.getStatusCode(),
+			httpResponse2.getStatusCode());
 	}
 
 	@Override

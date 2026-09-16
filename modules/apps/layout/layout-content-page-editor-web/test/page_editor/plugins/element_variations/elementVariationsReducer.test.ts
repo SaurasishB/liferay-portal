@@ -36,8 +36,10 @@ function buildState(properties: Partial<State> = {}): State {
 		editableElementOptions: [],
 		elementVariations: [],
 		experienceKey: '',
+		filters: [],
 		highlightedTargetElement: null,
 		languageId: 'en_US',
+		searchTerm: '',
 		...properties,
 	};
 }
@@ -74,8 +76,10 @@ describe('elementVariationsReducer', () => {
 				editableElementOptions: null,
 				elementVariations: [],
 				experienceKey: '',
+				filters: [],
 				highlightedTargetElement: null,
 				languageId: 'en_US',
+				searchTerm: '',
 			});
 		});
 
@@ -131,6 +135,93 @@ describe('elementVariationsReducer', () => {
 
 			expect(state.draftElementVariation?.name).toBe('Renamed');
 			expect(state.draftElementVariation?.hide).toBe(true);
+		});
+
+		it('appends a filter on ADD_FILTER', () => {
+			const filter = {
+				exclude: false,
+				type: 'audience' as const,
+				values: ['audience-1'],
+			};
+
+			const state = reducer(buildState(), {filter, type: 'ADD_FILTER'});
+
+			expect(state.filters).toEqual([filter]);
+		});
+
+		it('replaces the filter of the same type on ADD_FILTER', () => {
+			const filter = {
+				exclude: true,
+				type: 'audience' as const,
+				values: ['audience-2'],
+			};
+
+			const state = reducer(
+				buildState({
+					filters: [
+						{
+							exclude: false,
+							type: 'audience',
+							values: ['audience-1'],
+						},
+						{exclude: false, type: 'status', values: ['enabled']},
+					],
+				}),
+				{filter, type: 'ADD_FILTER'}
+			);
+
+			expect(state.filters).toEqual([
+				{exclude: false, type: 'status', values: ['enabled']},
+				filter,
+			]);
+		});
+
+		it('removes the filter of the given type on DELETE_FILTER', () => {
+			const state = reducer(
+				buildState({
+					filters: [
+						{
+							exclude: false,
+							type: 'audience',
+							values: ['audience-1'],
+						},
+						{exclude: false, type: 'status', values: ['enabled']},
+					],
+				}),
+				{filterType: 'audience', type: 'DELETE_FILTER'}
+			);
+
+			expect(state.filters).toEqual([
+				{exclude: false, type: 'status', values: ['enabled']},
+			]);
+		});
+
+		it('removes every filter and the search term on CLEAR_FILTERS', () => {
+			const state = reducer(
+				buildState({
+					filters: [
+						{
+							exclude: false,
+							type: 'audience',
+							values: ['audience-1'],
+						},
+					],
+					searchTerm: 'vip',
+				}),
+				{type: 'CLEAR_FILTERS'}
+			);
+
+			expect(state.filters).toEqual([]);
+			expect(state.searchTerm).toBe('');
+		});
+
+		it('sets the search term on SET_SEARCH_TERM', () => {
+			const state = reducer(buildState(), {
+				searchTerm: 'vip',
+				type: 'SET_SEARCH_TERM',
+			});
+
+			expect(state.searchTerm).toBe('vip');
 		});
 
 		it('sets the language on SET_LANGUAGE_ID', () => {

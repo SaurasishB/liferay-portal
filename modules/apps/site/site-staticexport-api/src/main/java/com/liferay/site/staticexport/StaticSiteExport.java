@@ -13,8 +13,13 @@ import org.osgi.annotation.versioning.ProviderType;
  * @author Víctor Galán
  */
 @ProviderType
-public interface StaticSiteExport {
+public interface StaticSiteExport extends AutoCloseable {
+
+	@Override
+	public void close();
 
 	public List<StaticSiteExportLayout> getStaticSiteExportLayouts();
+
+	public List<StaticSiteExportResource> getStaticSiteExportResources();
 
 }

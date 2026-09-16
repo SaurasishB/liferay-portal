@@ -4720,14 +4720,6 @@
 	},
 	{
 		"classNames": [
-			"PortletSharedSearchSettings"
-		],
-		"from": "getParameterValues71",
-		"issueKey": "LPD-48215",
-		"to": "getParameterValues"
-	},
-	{
-		"classNames": [
 			"CommerceOrderItem"
 		],
 		"from": "getBookedQuantityId",
@@ -5573,6 +5565,11 @@
 				"to": "@Override\n\tpublic CPAttachmentFileEntry\n\t\tgetDefaultImageCPAttachmentFileEntry("
 			}
 		]
+	},
+	{
+		"from": "regex:Optional<String\\[\\]>\\s+(?<variableName>\\w+)\\s*=\\s*portletSharedSearchSettings\\s*\\.\\s*getParameterValues71\\s*\\(\\s*(?<param>\\w+)\\s*\\)",
+		"issueKey": "LPD-60899",
+		"to": "String[] ${variableName} = portletSharedSearchSettings.getParameterValues(${param})"
 	},
 	{
 		"classNames": [
@@ -6622,26 +6619,57 @@
 		"classNames": [
 			"AddressLocalService",
 			"AddressLocalServiceUtil",
-			"AddressService",
-			"AddressServiceUtil"
+			"AddressLocalServiceWrapper"
 		],
 		"from": "addAddress(long paramName, String paramName, long paramName, String paramName, String paramName, String paramName, String paramName, String paramName, long paramName, long paramName, long paramName, boolean paramName, boolean paramName)",
 		"issueKey": "LPS-193462",
 		"newImports": [
 			"com.liferay.portal.kernel.service.ServiceContextThreadLocal"
 		],
-		"to": "addAddress(null, param#0#, param#1#, param#2#, null, null, param#3#, param#4#, param#5#, param#6#, param#7#, param#8#, param#9#, param#10#, param#11#, param#12#, null, ServiceContextThreadLocal.getServiceContext())"
+		"to": "addAddress(null, param#0#, param#1#, param#2#, param#9#, param#10#, param#8#, param#6#, null, param#11#, null, param#12#, param#3#, param#4#, param#5#, null, param#7#, null, ServiceContextThreadLocal.getServiceContext())"
 	},
 	{
 		"classNames": [
 			"AddressLocalService",
 			"AddressLocalServiceUtil",
-			"AddressService",
-			"AddressServiceUtil"
+			"AddressLocalServiceWrapper"
 		],
 		"from": "addAddress(long paramName, String paramName, long paramName, String paramName, String paramName, String paramName, String paramName, String paramName, long paramName, long paramName, long paramName, boolean paramName, boolean paramName, ServiceContext paramName)",
 		"issueKey": "LPS-193462",
-		"to": "addAddress(null, param#0#, param#1#, param#2#, null, null, param#3#, param#4#, param#5#, param#6#, param#7#, param#8#, param#9#, param#10#, param#11#, param#12#, null, param#13#)"
+		"to": "addAddress(null, param#0#, param#1#, param#2#, param#9#, param#10#, param#8#, param#6#, null, param#11#, null, param#12#, param#3#, param#4#, param#5#, null, param#7#, null, param#13#)"
+	},
+	{
+		"classNames": [
+			"AddressLocalService",
+			"AddressLocalServiceUtil",
+			"AddressLocalServiceWrapper"
+		],
+		"from": "addAddress(String paramName, long paramName, String paramName, long paramName, String paramName, String paramName, String paramName, String paramName, String paramName, String paramName, String paramName, long paramName, long paramName, long paramName, boolean paramName, boolean paramName, String paramName, ServiceContext paramName)",
+		"issueKey": "LPS-193462",
+		"to": "addAddress(param#0#, param#1#, param#2#, param#3#, param#12#, param#13#, param#11#, param#9#, param#5#, param#14#, param#4#, param#15#, param#6#, param#7#, param#8#, null, param#10#, param#16#, param#17#)"
+	},
+	{
+		"classNames": [
+			"AddressService",
+			"AddressServiceUtil",
+			"AddressServiceWrapper"
+		],
+		"from": "addAddress(String paramName, long paramName, String paramName, String paramName, String paramName, String paramName, String paramName, long paramName, long paramName, long paramName, boolean paramName, boolean paramName)",
+		"issueKey": "LPS-193462",
+		"newImports": [
+			"com.liferay.portal.kernel.service.ServiceContextThreadLocal"
+		],
+		"to": "addAddress(null, param#0#, param#1#, param#8#, param#9#, param#7#, param#5#, null, param#10#, null, param#11#, param#2#, param#3#, param#4#, null, param#6#, null, ServiceContextThreadLocal.getServiceContext())"
+	},
+	{
+		"classNames": [
+			"AddressService",
+			"AddressServiceUtil",
+			"AddressServiceWrapper"
+		],
+		"from": "addAddress(String paramName, String paramName, long paramName, String paramName, String paramName, String paramName, String paramName, String paramName, String paramName, String paramName, long paramName, long paramName, long paramName, boolean paramName, boolean paramName, String paramName, ServiceContext paramName)",
+		"issueKey": "LPS-193462",
+		"to": "addAddress(param#0#, param#1#, param#2#, param#11#, param#12#, param#10#, param#8#, param#4#, param#13#, param#3#, param#14#, param#5#, param#6#, param#7#, null, param#9#, param#15#, param#16#)"
 	},
 	{
 		"classNames": [

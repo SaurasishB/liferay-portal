@@ -11,6 +11,7 @@ import {globalMenuPagesTest} from '../../../fixtures/globalMenuPagesTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {productMenuPageTest} from '../../../fixtures/productMenuPageTest';
 import {sitesPageTest} from '../../../fixtures/sitesPageTest';
+import {ApiHelpers} from '../../../helpers/ApiHelpers';
 import {ChangeTrackingPage} from '../../../pages/change-tracking-web/ChangeTrackingPage';
 import {clickAndExpectToBeVisible} from '../../../utils/clickAndExpectToBeVisible';
 import getRandomString from '../../../utils/getRandomString';
@@ -31,6 +32,43 @@ export const test = mergeTests(
 	sitesAdminPagesTest,
 	sitesPageTest
 );
+
+const testWithPublications = mergeTests(
+	dataApiHelpersTest,
+	featureFlagsTest({
+		'LPD-35443': {enabled: true},
+		'LPD-82107': {enabled: true},
+		'LPD-104837': {enabled: true},
+	}),
+	globalMenuPagesTest,
+	layoutSetPrototypePageTest,
+	loginTest(),
+	productMenuPageTest,
+	sitesAdminPagesTest,
+	sitesPageTest
+);
+
+/**
+ * Checks the layouts of the site through the layout service instead of the
+ * site pages endpoint, which is search based and does not see the pages
+ * imported into a Publication until it is published.
+ */
+async function hasSitePage(
+	apiHelpers: ApiHelpers,
+	pageName: string,
+	siteExternalReferenceCode: string
+) {
+	const site = await apiHelpers.headlessAdminSite.getSite(
+		siteExternalReferenceCode
+	);
+
+	const layouts = await apiHelpers.jsonWebServicesLayout.getLayouts(
+		Number(site.id),
+		false
+	);
+
+	return layouts.some((layout) => layout.nameCurrentValue === pageName);
+}
 
 test(
 	'Execute Site Template Sync action is hidden for inactive Site Templates',
@@ -208,16 +246,135 @@ test(
 		// The new page propagates to the linked Site
 
 		await expect(async () => {
-			const sitePages = await apiHelpers.headlessAdminSite.getPages(
-				externalReferenceCode,
-				'pageSize=100&privateLayout=false'
-			);
-
 			expect(
-				sitePages.items.some(
-					(item) => item.name_i18n['en-US'] === newPageName
+				await hasSitePage(
+					apiHelpers,
+					newPageName,
+					externalReferenceCode
 				)
 			).toBeTruthy();
 		}).toPass();
+	}
+);
+
+testWithPublications(
+	'Execute Site Template Sync applies changes to the active Publication and publishes them to production',
+	{tag: '@LPD-105505'},
+	async ({
+		apiHelpers,
+		globalMenuPage,
+		layoutSetPrototypePage,
+		page,
+		productMenuPage,
+		sitesAdminPage,
+		sitesPage,
+	}) => {
+		test.slow();
+
+		// Create the Site Template and a linked Site
+
+		const siteTemplateName = 'SiteTemplate-' + getRandomString();
+
+		const layoutSetPrototype = await createSiteTemplate({
+			apiHelpers,
+			page,
+			productMenuPage,
+			templateName: siteTemplateName,
+		});
+
+		apiHelpers.data.push({
+			id: layoutSetPrototype.layoutSetPrototypeId,
+			type: 'layoutSetPrototype',
+		});
+
+		await sitesAdminPage.goto();
+
+		const siteName = 'Site-' + getRandomString();
+
+		const {externalReferenceCode} = await sitesPage.createSite({
+			isCustom: true,
+			siteName,
+			templateName: siteTemplateName,
+		});
+
+		apiHelpers.data.push({id: externalReferenceCode, type: 'site'});
+
+		// Add a new page to the Site Template
+
+		const layoutSetPrototypeGroup =
+			await apiHelpers.jsonWebServicesGroup.getGroupByKey(
+				layoutSetPrototype.companyId,
+				layoutSetPrototype.layoutSetPrototypeId
+			);
+
+		const newPageName = 'NewPage-' + getRandomString();
+
+		await apiHelpers.jsonWebServicesLayout.addLayout({
+			groupId: layoutSetPrototypeGroup.groupId,
+			privateLayout: 'true',
+			title: newPageName,
+		});
+
+		const changeTrackingPage = new ChangeTrackingPage(page);
+
+		try {
+			await changeTrackingPage.enablePublications(true);
+
+			// Trigger the manual sync while working on a Publication
+
+			const ctCollection =
+				await apiHelpers.headlessChangeTracking.createCTCollection(
+					'Publication-' + getRandomString()
+				);
+
+			await changeTrackingPage.workOnPublication(ctCollection);
+
+			await globalMenuPage.goToControlPanel('Site Templates');
+
+			await layoutSetPrototypePage.executeSyncAndWaitForSuccess(
+				siteTemplateName
+			);
+
+			// The new page is in the Publication but not in production
+
+			expect(
+				await hasSitePage(
+					apiHelpers,
+					newPageName,
+					externalReferenceCode
+				)
+			).toBeTruthy();
+
+			await changeTrackingPage.workOnProduction();
+
+			expect(
+				await hasSitePage(
+					apiHelpers,
+					newPageName,
+					externalReferenceCode
+				)
+			).toBeFalsy();
+
+			// Publishing the Publication propagates the new page to production
+
+			await apiHelpers.headlessChangeTracking.publishCTCollection(
+				ctCollection.body.id
+			);
+
+			await expect(async () => {
+				expect(
+					await hasSitePage(
+						apiHelpers,
+						newPageName,
+						externalReferenceCode
+					)
+				).toBeTruthy();
+			}).toPass();
+		}
+		finally {
+			await changeTrackingPage.workOnProduction();
+
+			await changeTrackingPage.enablePublications(false);
+		}
 	}
 );
