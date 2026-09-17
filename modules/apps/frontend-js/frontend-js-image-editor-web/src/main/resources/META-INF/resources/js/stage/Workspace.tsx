@@ -8,6 +8,8 @@ import '../../css/Stage.scss';
 import React from 'react';
 
 import {useEditorId} from '../chrome/instance';
+import {FilterDefs, isIdentityFilter} from '../imaging/FilterDefs';
+import {FrameShape} from '../imaging/frameShapes';
 import {imageTransform} from '../imaging/geometry';
 import {LoadedImage} from '../imaging/loadImage';
 import {EditorAction} from '../state/editorReducer';
@@ -121,6 +123,12 @@ export function Workspace({
 							y={0}
 						/>
 					</clipPath>
+
+					<FilterDefs
+						adjustments={state.adjustments}
+						filter={state.filter}
+						id={eid('preview-filter')}
+					/>
 				</defs>
 
 				<g
@@ -134,6 +142,14 @@ export function Workspace({
 				>
 					<g transform={imageTransform(state)}>
 						<image
+							filter={
+								isIdentityFilter(
+									state.adjustments,
+									state.filter
+								)
+									? undefined
+									: `url(#${eid('preview-filter')})`
+							}
 							height={state.sourceHeight}
 							href={image.previewUrl}
 							preserveAspectRatio="none"
@@ -141,6 +157,8 @@ export function Workspace({
 						/>
 					</g>
 				</g>
+
+				<FrameShape crop={crop} frame={state.frame} />
 
 				<CropMarquee
 					aspectLocked={aspectLocked}

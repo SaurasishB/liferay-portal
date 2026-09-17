@@ -96,6 +96,14 @@ public class VirtualHostFilterTest {
 	}
 
 	@Test
+	public void testProcessFilterDoesNotForwardMissingFileEntryURL() {
+		Assert.assertNull(_getForwardedDLURL("/1234/0/file"));
+		Assert.assertNull(_getForwardedDLURL("/d/site/file"));
+		Assert.assertNull(_getForwardedDLURL("/portlet_file_entry/1/2/3"));
+		Assert.assertNull(_getForwardedDLURL("/portlet_file_entry/file"));
+	}
+
+	@Test
 	public void testProcessFilterDoesNotSetGroupOnRequestForUnknownPath() {
 		try (SafeCloseable safeCloseable =
 				PropsValuesTestUtil.swapWithSafeCloseable(
@@ -190,7 +198,8 @@ public class VirtualHostFilterTest {
 
 			Assert.assertEquals(
 				"/group" + groupFriendlyURL + "/home",
-				_getForwardedURL(_privateLayoutSet, "/home"));
+				_getForwardedURL(
+					_getMockHttpServletRequest(_privateLayoutSet, "/home")));
 		}
 		catch (PortalException portalException) {
 			throw new RuntimeException(portalException);
@@ -227,11 +236,20 @@ public class VirtualHostFilterTest {
 
 			Assert.assertEquals(
 				"/web" + groupFriendlyURL + "/home",
-				_getForwardedURL(null, groupFriendlyURL + "/home"));
+				_getForwardedURL(
+					_getMockHttpServletRequest(
+						null, groupFriendlyURL + "/home")));
 		}
 		catch (PortalException portalException) {
 			throw new RuntimeException(portalException);
 		}
+	}
+
+	@Test
+	public void testProcessFilterForwardsUnknownDocumentsURL() {
+		Assert.assertNotNull(
+			_getForwardedDLURL(
+				StringPool.SLASH + RandomTestUtil.randomString()));
 	}
 
 	@Test
@@ -294,9 +312,17 @@ public class VirtualHostFilterTest {
 		}
 	}
 
-	private String _getForwardedURL(LayoutSet layoutSet, String requestURI) {
+	private String _getForwardedDLURL(String path) {
 		MockHttpServletRequest mockHttpServletRequest =
-			_getMockHttpServletRequest(layoutSet, requestURI);
+			_getMockHttpServletRequest("/documents" + path);
+
+		mockHttpServletRequest.setPathInfo(path);
+
+		return _getForwardedURL(mockHttpServletRequest);
+	}
+
+	private String _getForwardedURL(
+		MockHttpServletRequest mockHttpServletRequest) {
 
 		MockHttpServletResponse mockHttpServletResponse =
 			new MockHttpServletResponse();
@@ -316,24 +342,7 @@ public class VirtualHostFilterTest {
 	}
 
 	private String _getForwardedURL(String requestURI) {
-		MockHttpServletRequest mockHttpServletRequest =
-			_getMockHttpServletRequest(requestURI);
-
-		MockHttpServletResponse mockHttpServletResponse =
-			new MockHttpServletResponse();
-
-		_virtualHostFilter.init(new MockFilterConfig());
-
-		ReflectionTestUtil.invoke(
-			_virtualHostFilter, "processFilter",
-			new Class<?>[] {
-				HttpServletRequest.class, HttpServletResponse.class,
-				FilterChain.class
-			},
-			mockHttpServletRequest, mockHttpServletResponse,
-			new MockFilterChain());
-
-		return mockHttpServletResponse.getForwardedUrl();
+		return _getForwardedURL(_getMockHttpServletRequest(requestURI));
 	}
 
 	private String _getGroupFriendlyURL(LayoutSet layoutSet)

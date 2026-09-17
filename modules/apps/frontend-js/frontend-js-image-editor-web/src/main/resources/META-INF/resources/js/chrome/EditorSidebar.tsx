@@ -7,26 +7,46 @@ import '../../css/Panels.scss';
 
 import React from 'react';
 
+import {LoadedImage} from '../imaging/loadImage';
+import {AdjustPanel} from '../panels/AdjustPanel';
 import {CropPanel} from '../panels/CropPanel';
+import {FilterGallery} from '../panels/FilterGallery';
+import {FramePanel} from '../panels/FramePanel';
 import {EditorAction} from '../state/editorReducer';
-import {EditState, rotatedSize} from '../state/types';
+import {
+	AdjustmentKey,
+	EditState,
+	FilterPreset,
+	FrameKind,
+	rotatedSize,
+} from '../state/types';
 
 interface Props {
 	aspectLocked: boolean;
 
 	dispatch: (action: EditorAction) => void;
+	frames: FrameKind[];
+	image: LoadedImage;
 	onAnnounce: (message: string) => void;
 	onAspectLockedChange: (locked: boolean) => void;
+	presets: FilterPreset[];
+	showCrop: boolean;
 	showStraighten: boolean;
+	sliders: AdjustmentKey[];
 	state: EditState;
 }
 
 export function EditorSidebar({
 	aspectLocked,
 	dispatch,
+	frames,
+	image,
 	onAnnounce,
 	onAspectLockedChange,
+	presets,
+	showCrop,
 	showStraighten,
+	sliders,
 	state,
 }: Props) {
 	return (
@@ -34,16 +54,47 @@ export function EditorSidebar({
 			aria-label={Liferay.Language.get('edit-controls')}
 			className="editor-sidebar"
 		>
-			<CropPanel
-				angle={state.angle}
-				aspectLocked={aspectLocked}
-				bounds={rotatedSize(state)}
-				crop={state.crop}
-				dispatch={dispatch}
-				onAnnounce={onAnnounce}
-				onAspectLockedChange={onAspectLockedChange}
-				showStraighten={showStraighten}
-			/>
+			{showCrop && (
+				<CropPanel
+					angle={state.angle}
+					aspectLocked={aspectLocked}
+					bounds={rotatedSize(state)}
+					crop={state.crop}
+					dispatch={dispatch}
+					onAnnounce={onAnnounce}
+					onAspectLockedChange={onAspectLockedChange}
+					showStraighten={showStraighten}
+				/>
+			)}
+
+			{!!sliders.length && (
+				<AdjustPanel
+					adjustments={state.adjustments}
+					dispatch={dispatch}
+					onAnnounce={onAnnounce}
+					sliders={sliders}
+				/>
+			)}
+
+			{!!presets.length && (
+				<FilterGallery
+					dispatch={dispatch}
+					filter={state.filter}
+					image={image}
+					onAnnounce={onAnnounce}
+					presets={presets}
+				/>
+			)}
+
+			{!!frames.length && (
+				<FramePanel
+					dispatch={dispatch}
+					frame={state.frame}
+					image={image}
+					onAnnounce={onAnnounce}
+					presets={frames}
+				/>
+			)}
 		</aside>
 	);
 }

@@ -98,43 +98,37 @@ public class VirtualHostFilter extends BasePortalFilter {
 			String friendlyURL)
 		throws Exception {
 
-		if (friendlyURL.startsWith(_PATH_DOCUMENTS) &&
-			WebServerServlet.hasFiles(httpServletRequest)) {
-
-			String path = HttpComponentsUtil.fixPath(
-				httpServletRequest.getPathInfo());
-
-			String[] pathArray = StringUtil.split(path, CharPool.SLASH);
-
-			if (pathArray.length == 0) {
-				PortalUtil.sendError(
-					new NoSuchLayoutException(), httpServletRequest,
-					httpServletResponse);
-
-				return true;
-			}
-			else if (pathArray.length == 2) {
-				try {
-					LayoutLocalServiceUtil.getFriendlyURLLayout(
-						groupId, false, friendlyURL);
-				}
-				catch (NoSuchLayoutException noSuchLayoutException) {
-
-					// LPS-52675
-
-					if (_log.isDebugEnabled()) {
-						_log.debug(noSuchLayoutException);
-					}
-
-					return true;
-				}
-			}
-			else {
-				return true;
-			}
+		if (!friendlyURL.startsWith(_PATH_DOCUMENTS)) {
+			return false;
 		}
 
-		return false;
+		String path = HttpComponentsUtil.fixPath(
+			httpServletRequest.getPathInfo());
+
+		String[] pathArray = StringUtil.split(path, CharPool.SLASH);
+
+		if (!WebServerServlet.hasFiles(httpServletRequest)) {
+
+			// LPD-105342
+
+			if (!WebServerServlet.isFileEntryPath(pathArray)) {
+				return false;
+			}
+		}
+		else if (pathArray.length == 0) {
+			PortalUtil.sendError(
+				new NoSuchLayoutException(), httpServletRequest,
+				httpServletResponse);
+
+			return true;
+		}
+		else if (pathArray.length != 2) {
+			return true;
+		}
+
+		// LPS-52675
+
+		return !_hasFriendlyURLLayout(groupId, friendlyURL);
 	}
 
 	protected boolean isValidFriendlyURL(String friendlyURL) {
@@ -491,6 +485,24 @@ public class VirtualHostFilter extends BasePortalFilter {
 		}
 
 		return languageId;
+	}
+
+	private boolean _hasFriendlyURLLayout(long groupId, String friendlyURL)
+		throws Exception {
+
+		try {
+			LayoutLocalServiceUtil.getFriendlyURLLayout(
+				groupId, false, friendlyURL);
+
+			return true;
+		}
+		catch (NoSuchLayoutException noSuchLayoutException) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(noSuchLayoutException);
+			}
+
+			return false;
+		}
 	}
 
 	private static final String _PATH_DOCUMENTS = "/documents/";

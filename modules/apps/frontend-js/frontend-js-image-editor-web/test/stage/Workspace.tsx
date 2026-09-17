@@ -4,16 +4,24 @@
  */
 
 import {ClayIconSpriteContext} from '@clayui/icon';
-import {fireEvent, render, screen} from '@testing-library/react';
+import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import React, {useReducer, useState} from 'react';
 
 import '@testing-library/jest-dom';
 
 import {BottomBar} from '../../src/main/resources/META-INF/resources/js/chrome/BottomBar';
 import {EditorInstanceProvider} from '../../src/main/resources/META-INF/resources/js/chrome/instance';
-import {RATIO_PRESETS} from '../../src/main/resources/META-INF/resources/js/editorConfig';
+import {
+	ADJUSTMENT_KEYS,
+	FILTER_PRESETS,
+	FRAME_KINDS,
+	RATIO_PRESETS,
+} from '../../src/main/resources/META-INF/resources/js/editorConfig';
 import {LoadedImage} from '../../src/main/resources/META-INF/resources/js/imaging/loadImage';
+import {AdjustPanel} from '../../src/main/resources/META-INF/resources/js/panels/AdjustPanel';
 import {CropPanel} from '../../src/main/resources/META-INF/resources/js/panels/CropPanel';
+import {FilterGallery} from '../../src/main/resources/META-INF/resources/js/panels/FilterGallery';
+import {FramePanel} from '../../src/main/resources/META-INF/resources/js/panels/FramePanel';
 import {Workspace} from '../../src/main/resources/META-INF/resources/js/stage/Workspace';
 import {
 	editorReducer,
@@ -29,6 +37,7 @@ const IMAGE: LoadedImage = {
 	fileName: 'test.jpg',
 	height: 800,
 	previewUrl: 'test.jpg',
+	thumbUrl: 'thumb.jpg',
 	type: 'image/jpeg',
 	width: 1200,
 };
@@ -73,6 +82,29 @@ function EditorHarness() {
 					showStraighten
 				/>
 
+				<AdjustPanel
+					adjustments={history.present.adjustments}
+					dispatch={dispatch}
+					onAnnounce={() => {}}
+					sliders={ADJUSTMENT_KEYS}
+				/>
+
+				<FilterGallery
+					dispatch={dispatch}
+					filter={history.present.filter}
+					image={IMAGE}
+					onAnnounce={() => {}}
+					presets={FILTER_PRESETS}
+				/>
+
+				<FramePanel
+					dispatch={dispatch}
+					frame={history.present.frame}
+					image={IMAGE}
+					onAnnounce={() => {}}
+					presets={FRAME_KINDS}
+				/>
+
 				<BottomBar
 					canRedo={!!history.future.length}
 					canUndo={!!history.past.length}
@@ -108,6 +140,171 @@ describe('Editor workspace composition', () => {
 		expect(workspace).toHaveAccessibleDescription(
 			'scrollable-view-of-the-image-use-the-zoom-buttons-or-plus-and-minus-keys-to-zoom-tab-to-reach-the-crop-area-and-its-handles'
 		);
+	});
+
+	it('applies the color pipeline when an adjustment slider commits', () => {
+		const {container} = render(<EditorHarness />);
+
+		expect(container.querySelector('image')).not.toHaveAttribute('filter');
+
+		const slider = screen.getByLabelText('brightness');
+
+		fireEvent.change(slider, {target: {value: '40'}});
+		fireEvent.keyUp(slider, {key: 'ArrowRight'});
+
+		expect(container.querySelector('image')).toHaveAttribute(
+			'filter',
+			'url(#aie-preview-filter)'
+		);
+		expect(
+			container.querySelector('#aie-preview-filter feFuncR')
+		).toHaveAttribute('slope', '1.4');
+	});
+
+	it('clears the color pipeline when the adjustments are reset', () => {
+		const {container} = render(<EditorHarness />);
+
+		const slider = screen.getByLabelText('brightness');
+
+		fireEvent.change(slider, {target: {value: '40'}});
+		fireEvent.keyUp(slider, {key: 'ArrowRight'});
+
+		expect(container.querySelector('image')).toHaveAttribute('filter');
+
+		fireEvent.click(screen.getByRole('button', {name: 'reset-all'}));
+
+		expect(container.querySelector('image')).not.toHaveAttribute('filter');
+	});
+
+	it('hands the focus to the last slider when the reset control disappears', async () => {
+		render(<EditorHarness />);
+
+		const slider = screen.getByLabelText('brightness');
+
+		fireEvent.change(slider, {target: {value: '40'}});
+		fireEvent.keyUp(slider, {key: 'ArrowRight'});
+
+		const resetAll = screen.getByRole('button', {name: 'reset-all'});
+
+		resetAll.focus();
+		fireEvent.click(resetAll);
+
+		expect(resetAll).not.toBeInTheDocument();
+
+		await waitFor(() =>
+			expect(screen.getByLabelText('highlights')).toHaveFocus()
+		);
+	});
+
+	it('reverts a cancelled adjustment gesture without a history entry', () => {
+		const {container} = render(<EditorHarness />);
+
+		const slider = screen.getByLabelText('brightness');
+
+		fireEvent.change(slider, {target: {value: '40'}});
+
+		expect(slider).toHaveValue('40');
+		expect(container.querySelector('image')).toHaveAttribute('filter');
+
+		fireEvent.pointerCancel(slider);
+
+		expect(slider).toHaveValue('0');
+		expect(container.querySelector('image')).not.toHaveAttribute('filter');
+		expect(screen.getByRole('button', {name: 'undo'})).toBeDisabled();
+	});
+
+	it('applies a preset picked from the filter gallery', () => {
+		const {container} = render(<EditorHarness />);
+
+		expect(container.querySelector('image')).not.toHaveAttribute('filter');
+
+		fireEvent.click(screen.getByLabelText('sepia'));
+
+		expect(screen.getByLabelText('sepia')).toBeChecked();
+		expect(container.querySelector('.editor-stage image')).toHaveAttribute(
+			'filter',
+			'url(#aie-preview-filter)'
+		);
+		expect(
+			container.querySelector(
+				'#aie-preview-filter feColorMatrix[type="matrix"]'
+			)
+		).not.toBeNull();
+	});
+
+	it('draws the picked frame over the crop area and sizes it from there', () => {
+		const {container} = render(<EditorHarness />);
+
+		expect(
+			container.querySelector('.editor-stage .editor-frame')
+		).toBeNull();
+		expect(screen.queryByLabelText('frame-size')).toBeNull();
+
+		fireEvent.click(screen.getByLabelText('mat'));
+
+		expect(screen.getByLabelText('mat')).toBeChecked();
+
+		const frame = container.querySelector(
+			'.editor-stage .editor-frame rect'
+		);
+
+		expect(frame).toHaveAttribute('stroke-width', '32');
+		expect(frame).toHaveAttribute('x', '16');
+		expect(frame).toHaveAttribute('width', '1168');
+
+		const size = screen.getByLabelText('frame-size');
+
+		fireEvent.change(size, {target: {value: '10'}});
+		fireEvent.keyUp(size, {key: 'ArrowRight'});
+
+		expect(
+			container.querySelector('.editor-stage .editor-frame rect')
+		).toHaveAttribute('stroke-width', '80');
+	});
+
+	it('recolors the frame while the picker moves and commits it once', () => {
+		const {container} = render(<EditorHarness />);
+
+		fireEvent.click(screen.getByLabelText('mat'));
+
+		const frame = () =>
+			container.querySelector('.editor-stage .editor-frame rect');
+
+		expect(frame()).toHaveAttribute('stroke', '#ffffff');
+
+		const picker = screen.getByLabelText('frame-color');
+
+		fireEvent.change(picker, {target: {value: '#ff0000'}});
+
+		expect(frame()).toHaveAttribute('stroke', '#ff0000');
+
+		fireEvent.blur(picker);
+
+		fireEvent.click(screen.getByRole('button', {name: 'undo'}));
+
+		expect(frame()).toHaveAttribute('stroke', '#ffffff');
+		expect(screen.getByLabelText('mat')).toBeChecked();
+	});
+
+	it('lays the adjustment sliders out in the configured order', () => {
+		render(<EditorHarness />);
+
+		const labels = [...document.querySelectorAll('label')]
+			.map((label) => label.textContent)
+			.filter((label) => ADJUSTMENT_KEYS.includes(label as never));
+
+		expect(labels).toEqual(ADJUSTMENT_KEYS);
+	});
+
+	it('steps an adjustment slider by 10 with shift plus arrows', () => {
+		render(<EditorHarness />);
+
+		const slider = screen.getByLabelText('brightness');
+
+		fireEvent.keyDown(slider, {key: 'ArrowRight', shiftKey: true});
+		fireEvent.keyUp(slider, {key: 'ArrowRight', shiftKey: true});
+
+		expect(screen.getByText('10')).toBeInTheDocument();
 	});
 
 	it('scales the stage with the zoom', () => {

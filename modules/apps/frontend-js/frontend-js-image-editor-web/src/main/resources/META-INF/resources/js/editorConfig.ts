@@ -3,7 +3,56 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {RatioPreset} from './state/types';
+import {
+	AdjustmentKey,
+	FilterPreset,
+	FrameKind,
+	RatioPreset,
+} from './state/types';
+
+export const ADJUSTMENT_KEYS: AdjustmentKey[] = [
+	'brightness',
+	'contrast',
+	'saturation',
+	'shadows',
+	'highlights',
+];
+
+export const FILTER_PRESETS: FilterPreset[] = [
+	'none',
+	'grayscale',
+	'noir',
+	'sepia',
+	'cyanotype',
+	'vintage',
+	'fade',
+	'matte',
+	'warm',
+	'cool',
+	'splittone',
+	'crossprocess',
+	'tealorange',
+	'vivid',
+	'technicolor',
+	'polaroid',
+	'bleach',
+	'posterize',
+	'solarize',
+	'invert',
+];
+
+export const FRAME_KINDS: FrameKind[] = [
+	'none',
+	'mat',
+	'bevel',
+	'line',
+	'double',
+	'dashed',
+	'ticks',
+	'corners',
+	'inset',
+	'polaroid',
+];
 
 export const RATIO_PRESETS: RatioPreset[] = [
 	'custom',
@@ -16,6 +65,8 @@ export const RATIO_PRESETS: RatioPreset[] = [
 ];
 
 export interface EditorConfig {
+	adjustments?: false | {sliders?: AdjustmentKey[]};
+
 	crop?:
 		| false
 		| {
@@ -23,21 +74,32 @@ export interface EditorConfig {
 				rotate?: boolean;
 				straighten?: boolean;
 		  };
+
+	filters?: false | {presets?: FilterPreset[]};
+
+	frames?: false | {presets?: FrameKind[]};
 }
 
 interface ResolvedEditorConfig {
+	adjustments: AdjustmentKey[];
 	crop: {
 		enabled: boolean;
 		ratios: RatioPreset[];
 		rotate: boolean;
 		straighten: boolean;
 	};
+	filters: FilterPreset[];
+	frames: FrameKind[];
 }
 
 export function resolveConfig(config: EditorConfig = {}): ResolvedEditorConfig {
 	const crop = config.crop;
 
 	return {
+		adjustments:
+			config.adjustments === false
+				? []
+				: pick(ADJUSTMENT_KEYS, config.adjustments?.sliders),
 		crop:
 			crop === false
 				? {enabled: false, ratios: [], rotate: false, straighten: false}
@@ -47,6 +109,14 @@ export function resolveConfig(config: EditorConfig = {}): ResolvedEditorConfig {
 						rotate: crop?.rotate ?? true,
 						straighten: crop?.straighten ?? true,
 					},
+		filters:
+			config.filters === false
+				? []
+				: pick(FILTER_PRESETS, config.filters?.presets),
+		frames:
+			config.frames === false
+				? []
+				: pick(FRAME_KINDS, config.frames?.presets),
 	};
 }
 

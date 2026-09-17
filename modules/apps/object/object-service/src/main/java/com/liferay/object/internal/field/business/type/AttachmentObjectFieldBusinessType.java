@@ -36,6 +36,8 @@ import com.liferay.object.scope.ObjectScopeProvider;
 import com.liferay.object.scope.ObjectScopeProviderRegistry;
 import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.object.service.ObjectEntryService;
+import com.liferay.petra.function.UnsafeFunction;
+import com.liferay.petra.function.UnsafeSupplierValue;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONObject;
@@ -135,7 +137,7 @@ public class AttachmentObjectFieldBusinessType
 			return serializable;
 		}
 
-		long fileEntryId = 0;
+		final long fileEntryId;
 
 		if (serializable instanceof Long) {
 			fileEntryId = GetterUtil.getLong(serializable);
@@ -144,59 +146,99 @@ public class AttachmentObjectFieldBusinessType
 			fileEntryId = MapUtil.getLong(
 				(Map<String, Serializable>)serializable, "id");
 		}
+		else {
+			fileEntryId = 0;
+		}
 
 		if (fileEntryId == 0) {
 			return null;
 		}
 
-		DLFileEntry dlFileEntry = _dLFileEntryLocalService.fetchDLFileEntry(
-			fileEntryId);
+		UnsafeSupplierValue<DLFileEntry, Exception>
+			dlFileEntryUnsafeSupplierValue = new UnsafeSupplierValue<>(
+				() -> _dLFileEntryLocalService.fetchDLFileEntry(fileEntryId));
 
-		if (dlFileEntry == null) {
-			return new FileEntry();
-		}
-
-		LiferayFileEntry liferayFileEntry = new LiferayFileEntry(dlFileEntry);
+		UnsafeSupplierValue<LiferayFileEntry, Exception>
+			liferayFileEntryUnsafeSupplierValue = new UnsafeSupplierValue<>(
+				() -> _toValue(
+					LiferayFileEntry::new, dlFileEntryUnsafeSupplierValue));
 
 		return new FileEntry() {
 			{
 				setAlternativeText(
-					() -> {
-						FileVersion fileVersion =
-							liferayFileEntry.getFileVersion();
+					() -> _toValue(
+						liferayFileEntry -> {
+							FileVersion fileVersion =
+								liferayFileEntry.getFileVersion();
 
-						return fileVersion.getDescription();
-					});
-				setExtension(dlFileEntry::getExtension);
-				setExternalReferenceCode(dlFileEntry::getExternalReferenceCode);
-				setFileBase64(() -> _getFileBase64(dlFileEntry, objectField));
-				setFileURL(() -> _getFileURL(dlFileEntry, objectField));
-				setFolder(() -> _getFolder(dlFileEntry, objectField));
-				setId(dlFileEntry::getFileEntryId);
+							return fileVersion.getDescription();
+						},
+						liferayFileEntryUnsafeSupplierValue));
+				setExtension(
+					() -> _toValue(
+						DLFileEntry::getExtension,
+						dlFileEntryUnsafeSupplierValue));
+				setExternalReferenceCode(
+					() -> _toValue(
+						DLFileEntry::getExternalReferenceCode,
+						dlFileEntryUnsafeSupplierValue));
+				setFileBase64(
+					() -> _toValue(
+						dlFileEntry -> _getFileBase64(dlFileEntry, objectField),
+						dlFileEntryUnsafeSupplierValue));
+				setFileURL(
+					() -> _toValue(
+						dlFileEntry -> _getFileURL(dlFileEntry, objectField),
+						dlFileEntryUnsafeSupplierValue));
+				setFolder(
+					() -> _toValue(
+						dlFileEntry -> _getFolder(dlFileEntry, objectField),
+						dlFileEntryUnsafeSupplierValue));
+				setId(() -> fileEntryId);
 				setLink(
-					() -> LinkUtil.toLink(
-						_dlAppService, dlFileEntry, _dlURLHelper,
-						objectEntry.getGroupId(),
-						objectDefinition.getExternalReferenceCode(),
-						objectEntry, _objectEntryService, objectField,
-						GuestOrUserUtil.getPermissionChecker(), _portal));
+					() -> _toValue(
+						dlFileEntry -> LinkUtil.toLink(
+							_dlAppService, dlFileEntry, _dlURLHelper,
+							objectEntry.getGroupId(),
+							objectDefinition.getExternalReferenceCode(),
+							objectEntry, _objectEntryService, objectField,
+							GuestOrUserUtil.getPermissionChecker(), _portal),
+						dlFileEntryUnsafeSupplierValue));
 				setMetadata(
-					() -> _getMetadata(
-						liferayFileEntry.getFileVersion(),
-						dtoConverterContext.getLocale(), objectField));
-				setMimeType(dlFileEntry::getMimeType);
-				setName(dlFileEntry::getFileName);
+					() -> _toValue(
+						liferayFileEntry -> _getMetadata(
+							liferayFileEntry.getFileVersion(),
+							dtoConverterContext.getLocale(), objectField),
+						liferayFileEntryUnsafeSupplierValue));
+				setMimeType(
+					() -> _toValue(
+						DLFileEntry::getMimeType,
+						dlFileEntryUnsafeSupplierValue));
+				setName(
+					() -> _toValue(
+						DLFileEntry::getFileName,
+						dlFileEntryUnsafeSupplierValue));
 				setPreviewURL(
-					() -> _getPreviewURL(liferayFileEntry, objectField));
+					() -> _toValue(
+						liferayFileEntry -> _getPreviewURL(
+							liferayFileEntry, objectField),
+						liferayFileEntryUnsafeSupplierValue));
 				setScope(
-					() -> _getScope(
-						dlFileEntry, objectDefinition, objectEntry));
+					() -> _toValue(
+						dlFileEntry -> _getScope(
+							dlFileEntry, objectDefinition, objectEntry),
+						dlFileEntryUnsafeSupplierValue));
 				setSize(
-					() -> LanguageUtil.formatStorageSize(
-						dlFileEntry.getSize(),
-						dtoConverterContext.getLocale()));
+					() -> _toValue(
+						dlFileEntry -> LanguageUtil.formatStorageSize(
+							dlFileEntry.getSize(),
+							dtoConverterContext.getLocale()),
+						dlFileEntryUnsafeSupplierValue));
 				setThumbnailURL(
-					() -> _getThumbnailURL(dlFileEntry, objectField));
+					() -> _toValue(
+						dlFileEntry -> _getThumbnailURL(
+							dlFileEntry, objectField),
+						dlFileEntryUnsafeSupplierValue));
 			}
 		};
 	}
@@ -716,6 +758,20 @@ public class AttachmentObjectFieldBusinessType
 
 				return thumbnailURL;
 			});
+	}
+
+	private <S, T> T _toValue(
+			UnsafeFunction<S, T, Exception> unsafeFunction,
+			UnsafeSupplierValue<S, Exception> unsafeSupplierValue)
+		throws Exception {
+
+		S value = unsafeSupplierValue.getValue();
+
+		if (value == null) {
+			return null;
+		}
+
+		return unsafeFunction.apply(value);
 	}
 
 	private static final long _RESOLUTION_MEDIUM_MAX = 1024;
