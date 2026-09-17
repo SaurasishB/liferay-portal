@@ -1,5 +1,5 @@
 /**
- * SPDX-FileCopyrightText: (c) 2000 Liferay, Inc. https://liferay.com
+ * SPDX-FileCopyrightText: (c) 2026 Liferay, Inc. https://liferay.com
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
@@ -9,6 +9,7 @@ import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.document.library.kernel.model.DLFolderConstants;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.configuration.test.util.ConfigurationTemporarySwapper;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCResourceCommand;
 import com.liferay.portal.kernel.repository.model.FileEntry;
@@ -24,14 +25,21 @@ import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.ContentTypes;
+import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
+import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 
+import jakarta.portlet.ResourceResponse;
+
+import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.zip.ZipEntry;
@@ -137,6 +145,48 @@ public class DownloadEntriesMVCResourceCommandTest {
 			zipEntries.toString(), zipEntries.containsKey("report_1.txt"));
 	}
 
+	@Test
+	public void testServeResourceDownloadFolderWhenSizeExceedsLimit()
+		throws Exception {
+
+		Folder folder = _addFolder(
+			DLFolderConstants.DEFAULT_PARENT_FOLDER_ID, "Reports");
+
+		_addFileEntry(folder.getFolderId(), "q1.txt", "q1");
+
+		try (ConfigurationTemporarySwapper configurationTemporarySwapper =
+				new ConfigurationTemporarySwapper(
+					"com.liferay.document.library.internal.configuration." +
+						"DLSizeLimitConfiguration",
+					HashMapDictionaryBuilder.<String, Object>put(
+						"maxSizeToDownload", 1L
+					).build())) {
+
+			TestMockLiferayResourceResponse testMockLiferayResourceResponse =
+				new TestMockLiferayResourceResponse();
+
+			_mvcResourceCommand.serveResource(
+				_getMockLiferayResourceRequest(
+					"/document_library/download_folder", folder.getFolderId()),
+				testMockLiferayResourceResponse);
+
+			Assert.assertEquals(
+				String.valueOf(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE),
+				testMockLiferayResourceResponse.getProperty(
+					ResourceResponse.HTTP_STATUS_CODE));
+
+			ByteArrayOutputStream byteArrayOutputStream =
+				(ByteArrayOutputStream)
+					testMockLiferayResourceResponse.getPortletOutputStream();
+
+			Assert.assertEquals(
+				0,
+				_getZipEntries(
+					byteArrayOutputStream.toByteArray()
+				).size());
+		}
+	}
+
 	private FileEntry _addFileEntry(
 			long folderId, String fileName, String content)
 		throws Exception {
@@ -168,6 +218,7 @@ public class DownloadEntriesMVCResourceCommandTest {
 
 		themeDisplay.setCompany(
 			_companyLocalService.getCompany(TestPropsValues.getCompanyId()));
+		themeDisplay.setLocale(LocaleUtil.US);
 		themeDisplay.setPermissionChecker(
 			PermissionThreadLocal.getPermissionChecker());
 		themeDisplay.setScopeGroupId(_group.getGroupId());
@@ -186,25 +237,11 @@ public class DownloadEntriesMVCResourceCommandTest {
 		return mockLiferayResourceRequest;
 	}
 
-	private Map<String, String> _serveResource(
-			MockLiferayResourceRequest mockLiferayResourceRequest)
-		throws Exception {
-
-		MockLiferayResourceResponse mockLiferayResourceResponse =
-			new MockLiferayResourceResponse();
-
-		_mvcResourceCommand.serveResource(
-			mockLiferayResourceRequest, mockLiferayResourceResponse);
-
-		ByteArrayOutputStream byteArrayOutputStream =
-			(ByteArrayOutputStream)
-				mockLiferayResourceResponse.getPortletOutputStream();
-
+	private Map<String, String> _getZipEntries(byte[] bytes) throws Exception {
 		Map<String, String> zipEntries = new LinkedHashMap<>();
 
 		try (ZipInputStream zipInputStream = new ZipInputStream(
-				new ByteArrayInputStream(
-					byteArrayOutputStream.toByteArray()))) {
+				new ByteArrayInputStream(bytes))) {
 
 			ZipEntry zipEntry = zipInputStream.getNextEntry();
 
@@ -220,6 +257,23 @@ public class DownloadEntriesMVCResourceCommandTest {
 		return zipEntries;
 	}
 
+	private Map<String, String> _serveResource(
+			MockLiferayResourceRequest mockLiferayResourceRequest)
+		throws Exception {
+
+		MockLiferayResourceResponse mockLiferayResourceResponse =
+			new MockLiferayResourceResponse();
+
+		_mvcResourceCommand.serveResource(
+			mockLiferayResourceRequest, mockLiferayResourceResponse);
+
+		ByteArrayOutputStream byteArrayOutputStream =
+			(ByteArrayOutputStream)
+				mockLiferayResourceResponse.getPortletOutputStream();
+
+		return _getZipEntries(byteArrayOutputStream.toByteArray());
+	}
+
 	private static final int _BATCH_SIZE = 100;
 
 	@Inject
@@ -233,5 +287,22 @@ public class DownloadEntriesMVCResourceCommandTest {
 
 	@Inject(filter = "mvc.command.name=/document_library/download_folder")
 	private MVCResourceCommand _mvcResourceCommand;
+
+	private static class TestMockLiferayResourceResponse
+		extends MockLiferayResourceResponse {
+
+		@Override
+		public String getProperty(String name) {
+			return _properties.get(name);
+		}
+
+		@Override
+		public void setProperty(String name, String value) {
+			_properties.put(name, value);
+		}
+
+		private final Map<String, String> _properties = new HashMap<>();
+
+	}
 
 }
