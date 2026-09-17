@@ -103,6 +103,49 @@ public class LayoutServiceContextHelperTest {
 	}
 
 	@Test
+	@TestInfo("LPD-106119")
+	public void testGetServiceContextAutoCloseableI18nLanguageId()
+		throws Exception {
+
+		ServiceContext serviceContext = new ServiceContext();
+
+		HttpServletRequest httpServletRequest = new MockHttpServletRequest();
+
+		Locale locale = LocaleUtil.GERMANY;
+
+		httpServletRequest.setAttribute(
+			WebKeys.I18N_LANGUAGE_ID, LocaleUtil.toLanguageId(locale));
+
+		serviceContext.setRequest(httpServletRequest);
+
+		ServiceContextThreadLocal.pushServiceContext(serviceContext);
+
+		Layout layout = LayoutTestUtil.addTypeContentLayout(
+			GroupTestUtil.addGroup());
+
+		Assert.assertNotEquals(
+			locale, LocaleUtil.fromLanguageId(layout.getDefaultLanguageId()));
+
+		try (AutoCloseable autoCloseable =
+				_layoutServiceContextHelper.getServiceContextAutoCloseable(
+					layout)) {
+
+			Assert.assertEquals(
+				locale, httpServletRequest.getAttribute(WebKeys.LOCALE));
+
+			ThemeDisplay themeDisplay =
+				(ThemeDisplay)httpServletRequest.getAttribute(
+					WebKeys.THEME_DISPLAY);
+
+			Assert.assertEquals(
+				LocaleUtil.toLanguageId(locale), themeDisplay.getLanguageId());
+		}
+		finally {
+			ServiceContextThreadLocal.popServiceContext();
+		}
+	}
+
+	@Test
 	@TestInfo("LPD-102690")
 	public void testGetServiceContextAutoCloseableLocale() throws Exception {
 		ServiceContext serviceContext = new ServiceContext();
