@@ -562,6 +562,20 @@ function prepare_additional_bundles {
 	done
 }
 
+function rebuild_legacy_database {
+	local data_archive_type=${1}
+	local portal_version=${2}
+
+	cd "${_PORTAL_PROJECT_DIR}"
+
+	ant -f build-test.xml \
+		-Ddata.archive.type="${data_archive_type}" \
+		-Dkeep.cached.app.server.data=true \
+		-Dportal.version="${portal_version}" \
+		-Dskip.get.testcase.database.properties=true \
+		rebuild-legacy-database
+}
+
 function set_variables {
 	local playwright_env_dir=$(dirname ${BASH_SOURCE[0]})
 
@@ -845,6 +859,31 @@ function update_property {
 	do
 		sed -i "s/${property_name}=.*/${property_name}=${property_value}/g" "${properties_file}"
 	done
+}
+
+function upgrade_legacy_database_set_up {
+	local custom_upgrade_properties=${3}
+	local data_archive_type=${1}
+	local portal_version=${2}
+
+	rebuild_legacy_database "${data_archive_type}" "${portal_version}"
+
+	if [[ -n ${custom_upgrade_properties} ]]
+	then
+		ant -f build-test.xml \
+			-Dcustom.upgrade.properties="${custom_upgrade_properties}" \
+			-Dportal.version="${portal_version}" \
+			-Dtest.class=PortalSmokeUpgrade \
+			upgrade-legacy-database
+	else
+		ant -f build-test.xml \
+			-Dportal.version="${portal_version}" \
+			upgrade-legacy-database
+	fi
+
+	assert_clean_upgrade_log
+
+	default_set_up
 }
 
 function validate_environment_variables {

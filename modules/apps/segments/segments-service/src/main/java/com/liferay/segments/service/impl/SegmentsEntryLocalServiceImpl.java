@@ -100,7 +100,7 @@ public class SegmentsEntryLocalServiceImpl
 	public SegmentsEntry addSegmentsEntry(
 			String externalReferenceCode, String segmentsEntryKey,
 			Map<Locale, String> nameMap, Map<Locale, String> descriptionMap,
-			boolean active, String criteria, String source,
+			boolean active, String criteria, String source, int type,
 			ServiceContext serviceContext)
 		throws PortalException {
 
@@ -143,6 +143,8 @@ public class SegmentsEntryLocalServiceImpl
 
 		segmentsEntry.setActive(_isActive(active, source));
 		segmentsEntry.setSource(source);
+
+		segmentsEntry.setType(_getType(source, type));
 
 		segmentsEntry = segmentsEntryPersistence.update(segmentsEntry);
 
@@ -335,12 +337,12 @@ public class SegmentsEntryLocalServiceImpl
 
 	@Override
 	public List<SegmentsEntry> getSegmentsEntries(
-		long groupId, String[] sources, int start, int end,
+		long groupId, String[] sources, int[] types, int start, int end,
 		OrderByComparator<SegmentsEntry> orderByComparator) {
 
-		return segmentsEntryPersistence.findByG_SRC(
-			_portal.getCurrentAndAncestorSiteGroupIds(groupId), sources, start,
-			end, orderByComparator);
+		return segmentsEntryPersistence.findByG_SRC_T(
+			_portal.getCurrentAndAncestorSiteGroupIds(groupId), sources, types,
+			start, end, orderByComparator);
 	}
 
 	@Override
@@ -361,20 +363,21 @@ public class SegmentsEntryLocalServiceImpl
 
 	@Override
 	public List<SegmentsEntry> getSegmentsEntriesBySource(
-		long companyId, String source, int start, int end,
+		long companyId, String source, int[] types, int start, int end,
 		OrderByComparator<SegmentsEntry> orderByComparator) {
 
-		return segmentsEntryPersistence.findByC_SRC(
-			companyId, source, start, end, orderByComparator);
+		return segmentsEntryPersistence.findByC_SRC_T(
+			companyId, new String[] {source}, types, start, end,
+			orderByComparator);
 	}
 
 	@Override
 	public List<SegmentsEntry> getSegmentsEntriesBySource(
-		String source, int start, int end,
+		String source, int[] types, int start, int end,
 		OrderByComparator<SegmentsEntry> orderByComparator) {
 
-		return segmentsEntryPersistence.findBySource(
-			source, start, end, orderByComparator);
+		return segmentsEntryPersistence.findBySRC_T(
+			new String[] {source}, types, start, end, orderByComparator);
 	}
 
 	@Override
@@ -384,9 +387,11 @@ public class SegmentsEntryLocalServiceImpl
 	}
 
 	@Override
-	public int getSegmentsEntriesCount(long groupId, String[] sources) {
-		return segmentsEntryPersistence.countByG_SRC(
-			_portal.getCurrentAndAncestorSiteGroupIds(groupId), sources);
+	public int getSegmentsEntriesCount(
+		long groupId, String[] sources, int[] types) {
+
+		return segmentsEntryPersistence.countByG_SRC_T(
+			_portal.getCurrentAndAncestorSiteGroupIds(groupId), sources, types);
 	}
 
 	@Override
@@ -430,7 +435,7 @@ public class SegmentsEntryLocalServiceImpl
 			String externalReferenceCode, long segmentsEntryId,
 			String segmentsEntryKey, Map<Locale, String> nameMap,
 			Map<Locale, String> descriptionMap, boolean active, String criteria,
-			ServiceContext serviceContext)
+			int type, ServiceContext serviceContext)
 		throws PortalException {
 
 		// Segments entry
@@ -460,6 +465,8 @@ public class SegmentsEntryLocalServiceImpl
 		segmentsEntry.setActive(_isActive(active, source));
 		segmentsEntry.setSource(source);
 
+		segmentsEntry.setType(type);
+
 		segmentsEntry = segmentsEntryPersistence.update(segmentsEntry);
 
 		// Indexer
@@ -487,6 +494,9 @@ public class SegmentsEntryLocalServiceImpl
 			).build();
 
 		params.put("keywords", keywords);
+
+		params.putIfAbsent(
+			"excludedTypes", new int[] {SegmentsEntryConstants.TYPE_REAL_TIME});
 
 		attributes.put("params", params);
 
@@ -581,6 +591,16 @@ public class SegmentsEntryLocalServiceImpl
 		}
 
 		return source;
+	}
+
+	private int _getType(String source, int type) {
+		if ((type == SegmentsEntryConstants.TYPE_DEFAULT) &&
+			SegmentsEntryConstants.SOURCE_ASAH_FARO_BACKEND.equals(source)) {
+
+			return SegmentsEntryConstants.TYPE_BATCH;
+		}
+
+		return type;
 	}
 
 	private boolean _isActive(boolean active, String source) {

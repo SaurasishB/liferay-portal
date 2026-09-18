@@ -28,8 +28,8 @@ import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.style.book.model.StyleBookEntry;
 import com.liferay.style.book.service.StyleBookEntryLocalService;
+import com.liferay.style.book.test.util.FrontendTokenDefinitionTestUtil;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,11 +52,25 @@ public class StyleBookEntryStagedModelDataHandlerTest
 		new LiferayIntegrationTestRule();
 
 	@Test
-	public void testExportImportPreservesModifiedDateWithPreviewFileEntry()
-		throws Exception {
+	public void testExportImport() throws Exception {
+		String frontendTokenName = RandomTestUtil.randomString();
 
-		StyleBookEntry styleBookEntry = (StyleBookEntry)addStagedModel(
-			stagingGroup, new HashMap<>());
+		String frontendTokenDefinition =
+			FrontendTokenDefinitionTestUtil.getFrontendTokenDefinition(
+				frontendTokenName);
+		String frontendTokensValues = JSONUtil.put(
+			frontendTokenName,
+			JSONUtil.put("value", RandomTestUtil.randomString())
+		).toString();
+
+		StyleBookEntry styleBookEntry =
+			_styleBookEntryLocalService.addStyleBookEntry(
+				null, TestPropsValues.getUserId(), stagingGroup.getGroupId(),
+				false, frontendTokenDefinition, frontendTokensValues,
+				RandomTestUtil.randomString(), StringPool.BLANK,
+				_THEME_ID_ADMIN,
+				ServiceContextTestUtil.getServiceContext(
+					stagingGroup.getGroupId(), TestPropsValues.getUserId()));
 
 		FileEntry previewFileEntry = _addPreviewFileEntry(styleBookEntry);
 
@@ -73,12 +87,21 @@ public class StyleBookEntryStagedModelDataHandlerTest
 		StyleBookEntry importedStyleBookEntry = (StyleBookEntry)getStagedModel(
 			styleBookEntry.getUuid(), liveGroup);
 
-		Assert.assertNotNull(importedStyleBookEntry);
+		Assert.assertEquals(
+			styleBookEntry.getName(), importedStyleBookEntry.getName());
+		Assert.assertEquals(
+			frontendTokenDefinition,
+			importedStyleBookEntry.getFrontendTokenDefinition());
+		Assert.assertEquals(
+			frontendTokensValues,
+			importedStyleBookEntry.getFrontendTokensValues());
 		Assert.assertTrue(importedStyleBookEntry.getPreviewFileEntryId() > 0);
-
 		DateTestUtil.assertEquals(
 			styleBookEntry.getModifiedDate(),
 			importedStyleBookEntry.getModifiedDate());
+
+		Assert.assertNull(
+			_getWarningExportImportReportEntry(liveGroup.getGroupId()));
 	}
 
 	@Test
@@ -89,7 +112,7 @@ public class StyleBookEntryStagedModelDataHandlerTest
 
 		_styleBookEntryLocalService.addStyleBookEntry(
 			externalReferenceCode, TestPropsValues.getUserId(),
-			liveGroup.getGroupId(), false, StringPool.BLANK,
+			liveGroup.getGroupId(), false, StringPool.BLANK, StringPool.BLANK,
 			RandomTestUtil.randomString(), StringPool.BLANK,
 			RandomTestUtil.randomString(),
 			ServiceContextTestUtil.getServiceContext(
@@ -99,8 +122,8 @@ public class StyleBookEntryStagedModelDataHandlerTest
 			_styleBookEntryLocalService.addStyleBookEntry(
 				externalReferenceCode, TestPropsValues.getUserId(),
 				stagingGroup.getGroupId(), false, StringPool.BLANK,
-				RandomTestUtil.randomString(), StringPool.BLANK,
-				RandomTestUtil.randomString(),
+				StringPool.BLANK, RandomTestUtil.randomString(),
+				StringPool.BLANK, RandomTestUtil.randomString(),
 				ServiceContextTestUtil.getServiceContext(
 					stagingGroup.getGroupId(), TestPropsValues.getUserId()));
 
@@ -109,7 +132,6 @@ public class StyleBookEntryStagedModelDataHandlerTest
 		StyleBookEntry importedStyleBookEntry = (StyleBookEntry)getStagedModel(
 			styleBookEntry.getUuid(), liveGroup);
 
-		Assert.assertNotNull(importedStyleBookEntry);
 		Assert.assertNotEquals(
 			externalReferenceCode,
 			importedStyleBookEntry.getExternalReferenceCode());
@@ -124,16 +146,16 @@ public class StyleBookEntryStagedModelDataHandlerTest
 		StyleBookEntry liveStyleBookEntry =
 			_styleBookEntryLocalService.addStyleBookEntry(
 				null, TestPropsValues.getUserId(), liveGroup.getGroupId(),
-				false, StringPool.BLANK, name, StringPool.BLANK,
-				RandomTestUtil.randomString(),
+				false, StringPool.BLANK, StringPool.BLANK, name,
+				StringPool.BLANK, RandomTestUtil.randomString(),
 				ServiceContextTestUtil.getServiceContext(
 					liveGroup.getGroupId(), TestPropsValues.getUserId()));
 
 		StyleBookEntry styleBookEntry =
 			_styleBookEntryLocalService.addStyleBookEntry(
 				null, TestPropsValues.getUserId(), stagingGroup.getGroupId(),
-				false, StringPool.BLANK, name, StringPool.BLANK,
-				RandomTestUtil.randomString(),
+				false, StringPool.BLANK, StringPool.BLANK, name,
+				StringPool.BLANK, RandomTestUtil.randomString(),
 				ServiceContextTestUtil.getServiceContext(
 					stagingGroup.getGroupId(), TestPropsValues.getUserId()));
 
@@ -142,7 +164,6 @@ public class StyleBookEntryStagedModelDataHandlerTest
 		StyleBookEntry importedStyleBookEntry = (StyleBookEntry)getStagedModel(
 			styleBookEntry.getUuid(), liveGroup);
 
-		Assert.assertNotNull(importedStyleBookEntry);
 		Assert.assertEquals(
 			styleBookEntry.getUuid(), importedStyleBookEntry.getUuid());
 		Assert.assertNotEquals(name, importedStyleBookEntry.getName());
@@ -156,8 +177,9 @@ public class StyleBookEntryStagedModelDataHandlerTest
 		StyleBookEntry styleBookEntry =
 			_styleBookEntryLocalService.addStyleBookEntry(
 				null, TestPropsValues.getUserId(), stagingGroup.getGroupId(),
-				false, StringPool.BLANK, RandomTestUtil.randomString(),
-				StringPool.BLANK, RandomTestUtil.randomString(),
+				false, StringPool.BLANK, StringPool.BLANK,
+				RandomTestUtil.randomString(), StringPool.BLANK,
+				RandomTestUtil.randomString(),
 				ServiceContextTestUtil.getServiceContext(
 					stagingGroup.getGroupId(), TestPropsValues.getUserId()));
 
@@ -182,12 +204,14 @@ public class StyleBookEntryStagedModelDataHandlerTest
 			_styleBookEntryLocalService.addStyleBookEntry(
 				null, TestPropsValues.getUserId(), stagingGroup.getGroupId(),
 				false,
+				FrontendTokenDefinitionTestUtil.getFrontendTokenDefinition(
+					RandomTestUtil.randomString()),
 				JSONUtil.put(
-					"this-token-does-not-exist",
-					JSONUtil.put("value", "#000000")
+					RandomTestUtil.randomString(),
+					JSONUtil.put("value", RandomTestUtil.randomString())
 				).toString(),
 				RandomTestUtil.randomString(), StringPool.BLANK,
-				"classic_WAR_classictheme",
+				_THEME_ID_ADMIN,
 				ServiceContextTestUtil.getServiceContext(
 					stagingGroup.getGroupId(), TestPropsValues.getUserId()));
 
@@ -203,24 +227,7 @@ public class StyleBookEntryStagedModelDataHandlerTest
 
 		String errorMessage = exportImportReportEntry.getErrorMessage();
 
-		Assert.assertTrue(errorMessage.contains("do not exist"));
-	}
-
-	@Test
-	public void testExportImportWithoutConflictPreservesName()
-		throws Exception {
-
-		StyleBookEntry styleBookEntry = (StyleBookEntry)addStagedModel(
-			stagingGroup, new HashMap<>());
-
-		exportImportStagedModel(styleBookEntry);
-
-		StyleBookEntry importedStyleBookEntry = (StyleBookEntry)getStagedModel(
-			styleBookEntry.getUuid(), liveGroup);
-
-		Assert.assertNotNull(importedStyleBookEntry);
-		Assert.assertEquals(
-			styleBookEntry.getName(), importedStyleBookEntry.getName());
+		Assert.assertTrue(errorMessage, errorMessage.contains("do not exist"));
 	}
 
 	@Override
@@ -231,8 +238,8 @@ public class StyleBookEntryStagedModelDataHandlerTest
 
 		return _styleBookEntryLocalService.addStyleBookEntry(
 			null, TestPropsValues.getUserId(), group.getGroupId(), false,
-			StringPool.BLANK, RandomTestUtil.randomString(), StringPool.BLANK,
-			RandomTestUtil.randomString(),
+			StringPool.BLANK, StringPool.BLANK, RandomTestUtil.randomString(),
+			StringPool.BLANK, RandomTestUtil.randomString(),
 			ServiceContextTestUtil.getServiceContext());
 	}
 
@@ -243,7 +250,8 @@ public class StyleBookEntryStagedModelDataHandlerTest
 		Thread.sleep(1000);
 
 		return _styleBookEntryLocalService.updateStyleBookEntry(
-			styleBookEntry.getStyleBookEntryId(), "{}",
+			styleBookEntry.getStyleBookEntryId(),
+			styleBookEntry.getFrontendTokenDefinition(), "{}",
 			RandomTestUtil.randomString(),
 			ServiceContextTestUtil.getServiceContext(
 				styleBookEntry.getGroupId(), TestPropsValues.getUserId()));
@@ -306,6 +314,8 @@ public class StyleBookEntryStagedModelDataHandlerTest
 
 		return null;
 	}
+
+	private static final String _THEME_ID_ADMIN = "admin_WAR_admintheme";
 
 	@Inject
 	private ExportImportReportEntryLocalService

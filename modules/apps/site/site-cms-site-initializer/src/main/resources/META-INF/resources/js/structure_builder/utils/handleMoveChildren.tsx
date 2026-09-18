@@ -13,8 +13,9 @@ import {Dispatch} from 'react';
 
 import getLocalizedValue from '../../common/utils/getLocalizedValue';
 import {Action, State} from '../contexts/StateContext';
-import {RepeatableGroup, Structure, StructureChild} from '../types/Structure';
+import {Group, Structure, StructureChild} from '../types/Structure';
 import {Uuid} from '../types/Uuid';
+import exceedsMaxNesting, {MAX_NESTING} from './exceedsMaxNesting';
 import findAvailableFieldName from './findAvailableFieldName';
 import findChild from './findChild';
 import getUndeletableChildren, {
@@ -37,6 +38,26 @@ export default async function handleMoveChildren({
 	targetUuid: Uuid;
 	uuids: Uuid[];
 }) {
+	if (
+		exceedsMaxNesting({
+			items: uuids.map((uuid) => findChild({root: structure, uuid})!),
+			structure,
+			targetUuid,
+		})
+	) {
+		openToast({
+			message: sub(
+				Liferay.Language.get(
+					'groups-cannot-be-nested-more-than-x-levels-deep'
+				),
+				MAX_NESTING
+			),
+			type: 'danger',
+		});
+
+		return;
+	}
+
 	const movingPublished = uuids.some(
 		(uuid) =>
 			!isReferenced({root: structure, uuid}) &&
@@ -85,7 +106,7 @@ export default async function handleMoveChildren({
 			: (findChild({
 					root: structure,
 					uuid: targetUuid,
-				}) as RepeatableGroup);
+				}) as Group);
 
 	if (hasNameConflict(movableItems, target)) {
 		const onNameConflict = await openOptionsModal({
@@ -116,14 +137,20 @@ export default async function handleMoveChildren({
 		}
 
 		if (onNameConflict === 'rename') {
-			movableItems = movableItems.map((item) => ({
-				...item,
-				name: findAvailableFieldName(
-					target.children,
-					deletedChildren,
-					item.name
-				),
-			}));
+			movableItems = movableItems.map((item) => {
+				if (!item.name) {
+					return item;
+				}
+
+				return {
+					...item,
+					name: findAvailableFieldName(
+						target.children,
+						deletedChildren,
+						item.name
+					),
+				};
+			});
 		}
 		else if (onNameConflict === 'do-not-move') {
 			movableItems = movableItems.filter(
@@ -152,11 +179,11 @@ export default async function handleMoveChildren({
 
 function hasNameConflict(
 	movableItems: StructureChild[],
-	target: Structure | RepeatableGroup
+	target: Structure | Group
 ): boolean {
 	return movableItems.some((item) =>
 		Array.from(target.children.values()).some(
-			(child) => child.name === item.name
+			(child) => Boolean(item.name) && child.name === item.name
 		)
 	);
 }

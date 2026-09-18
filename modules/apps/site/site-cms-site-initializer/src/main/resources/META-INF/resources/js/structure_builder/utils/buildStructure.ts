@@ -294,12 +294,13 @@ export function buildRepeatableGroup({
 			parent: uuid,
 		}),
 		erc,
+		isRepeatable: true,
 		label: objectDefinition.label,
 		name: objectDefinition.name!,
 		parent,
 		relationshipERC,
 		relationshipName,
-		type: 'repeatable-group',
+		type: 'group',
 		uuid,
 	};
 }

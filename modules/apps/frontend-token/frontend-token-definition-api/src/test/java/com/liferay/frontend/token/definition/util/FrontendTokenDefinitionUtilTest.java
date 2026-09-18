@@ -177,12 +177,17 @@ public class FrontendTokenDefinitionUtilTest {
 
 	private void _testGetFrontendTokenNamesWithBlankDefinition() {
 		List<String> frontendTokenNames =
-			FrontendTokenDefinitionUtil.getFrontendTokenNames(null);
+			FrontendTokenDefinitionUtil.getFrontendTokenNames((String)null);
 
 		Assert.assertTrue(frontendTokenNames.isEmpty());
 
 		frontendTokenNames = FrontendTokenDefinitionUtil.getFrontendTokenNames(
 			"");
+
+		Assert.assertTrue(frontendTokenNames.isEmpty());
+
+		frontendTokenNames = FrontendTokenDefinitionUtil.getFrontendTokenNames(
+			(JSONObject)null);
 
 		Assert.assertTrue(frontendTokenNames.isEmpty());
 	}

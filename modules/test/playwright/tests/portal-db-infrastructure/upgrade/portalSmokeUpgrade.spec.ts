@@ -147,7 +147,7 @@ async function viewUpgradedPortalContent(page: Page) {
 test.describe.serial('View portal smoke upgrade', () => {
 	test(
 		'Can view upgraded portal content as admin',
-		{tag: ['@LPD-96642', '@LPD-104520']},
+		{tag: ['@LPD-96642', '@LPD-104393', '@LPD-104520']},
 		async ({page, searchAdminPage}) => {
 			await test.step('Reindex all search indexes', async () => {
 				await searchAdminPage.goto();
@@ -174,11 +174,19 @@ test.describe.serial('View portal smoke upgrade', () => {
 
 	test(
 		'Can view upgraded portal content as the archive user',
-		{tag: ['@LPD-96642', '@LPD-104520']},
+		{tag: ['@LPD-96642', '@LPD-104393', '@LPD-104520']},
 		async ({page}) => {
 			await performLogout(page);
 
-			await performLoginViaApi({page, screenName: 'user'});
+			const {archiveUserPassword} = test.info().project.use as {
+				archiveUserPassword?: string;
+			};
+
+			await performLoginViaApi({
+				page,
+				password: archiveUserPassword,
+				screenName: 'user',
+			});
 
 			const response = await page.request.get(
 				'/o/headless-admin-user/v1.0/my-user-account',

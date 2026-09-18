@@ -17,6 +17,7 @@ import {Space} from '../../common/types/Space';
 import {Workflow} from '../../common/types/Workflow';
 import getLocalizedValue from '../../common/utils/getLocalizedValue';
 import {
+	Group,
 	ReferencedStructure,
 	RelatedContent,
 	RepeatableGroup,
@@ -34,22 +35,24 @@ import getRandomId from '../utils/getRandomId';
 import getUuid from '../utils/getUuid';
 import normalizeString from '../utils/normalizeString';
 import addChild from '../utils/state/addChild';
+import addGroup from '../utils/state/addGroup';
 import addRepeatableGroup from '../utils/state/addRepeatableGroup';
 import cloneChild from '../utils/state/cloneChild';
 import deleteChildren from '../utils/state/deleteChildren';
 import moveChildren from '../utils/state/moveChildren';
 import refreshReferencedStructures from '../utils/state/refreshReferencedStructures';
 import sortChildren from '../utils/state/sortChildren';
-import ungroup from '../utils/state/ungroupRepeatableGroup';
+import ungroup from '../utils/state/ungroup';
 import updateChild from '../utils/state/updateChild';
+import updateGroupRepeatable from '../utils/state/updateGroupRepeatable';
 import updateHistory from '../utils/state/updateHistory';
 import {
 	ErrorMap,
 	ValidationError,
 	ValidationProperty,
 	validateField,
+	validateGroup,
 	validateRelatedContent,
-	validateRepeatableGroup,
 	validateStructure,
 } from '../utils/validation';
 
@@ -126,6 +129,12 @@ type AddReferencedStructuresAction = {
 type AddRelatedContentAction = {
 	relatedContent: RelatedContent;
 	type: 'add-related-content';
+};
+
+type AddGroupAction = {
+	parent: Uuid;
+	type: 'add-group';
+	uuids: Uuid[];
 };
 
 type AddRepeatableGroupAction = {
@@ -230,9 +239,10 @@ type UpdateRelatedContentAction = {
 	uuid: Uuid;
 };
 
-type UpdateRepeatableGroupAction = {
-	label: Liferay.Language.LocalizedValue<string>;
-	type: 'update-repeatable-group';
+type UpdateGroupAction = {
+	isRepeatable?: boolean;
+	label?: Liferay.Language.LocalizedValue<string>;
+	type: 'update-group';
 	uuid: Uuid;
 };
 
@@ -255,6 +265,7 @@ export type Action =
 	| AddFieldAction
 	| AddReferencedStructuresAction
 	| AddRelatedContentAction
+	| AddGroupAction
 	| AddRepeatableGroupAction
 	| AddErrorAction
 	| ClearErrorsAction
@@ -276,7 +287,7 @@ export type Action =
 	| UngroupAction
 	| UpdateFieldAction
 	| UpdateRelatedContentAction
-	| UpdateRepeatableGroupAction
+	| UpdateGroupAction
 	| UpdateStructureAction
 	| ValidateAction;
 
@@ -291,12 +302,12 @@ function reducer(state: State, action: Action): State {
 
 			const {structure} = state;
 
-			let parent: Structure | RepeatableGroup = structure;
+			let parent: Structure | Group = structure;
 
 			if (field.parent !== structure.uuid) {
 				const item = findChild({root: structure, uuid: field.parent});
 
-				if (item?.type === 'repeatable-group') {
+				if (item?.type === 'group') {
 					parent = item;
 				}
 			}
@@ -389,6 +400,30 @@ function reducer(state: State, action: Action): State {
 				...state,
 				selection: [relatedContent.uuid],
 				structure: {...structure, children: sortedChildren},
+			};
+		}
+		case 'add-group': {
+			const {structure} = state;
+
+			const {parent, uuids} = action;
+
+			const items = uuids.map(
+				(uuid) => findChild({root: structure, uuid})!
+			);
+
+			const groupUuid = getUuid();
+
+			const children = addGroup({
+				groupChildren: items,
+				groupParent: parent,
+				groupUuid,
+				root: structure,
+			});
+
+			return {
+				...state,
+				selection: [groupUuid],
+				structure: {...structure, children},
 			};
 		}
 		case 'add-repeatable-group': {
@@ -530,7 +565,7 @@ function reducer(state: State, action: Action): State {
 				const parent = (findChild({
 					root: nextStructure,
 					uuid: child.parent,
-				}) || nextStructure) as Structure | RepeatableGroup;
+				}) || nextStructure) as Structure | Group;
 
 				const copy = cloneChild({
 					child,
@@ -936,41 +971,41 @@ function reducer(state: State, action: Action): State {
 				},
 			};
 		}
-		case 'update-repeatable-group': {
-			const {label, uuid} = action;
+		case 'update-group': {
+			const {isRepeatable, label, uuid} = action;
 
-			const {structure} = state;
+			const {history, savedChildren, structure} = state;
 
-			const group = findChild({root: structure, uuid}) as RepeatableGroup;
+			const group = findChild({root: structure, uuid});
 
-			if (!group) {
+			if (!group || group.type !== 'group') {
 				return state;
 			}
 
-			const nextGroup = {
-				...group,
-				label,
-			};
+			if (isRepeatable !== undefined) {
+				if (group.isRepeatable === isRepeatable) {
+					return state;
+				}
 
-			const nextChildren = updateChild({
-				child: nextGroup,
-				root: structure,
-			});
+				const {children, history: nextHistory} = updateGroupRepeatable({
+					group,
+					history,
+					isRepeatable,
+					savedChildren,
+					structure,
+				});
 
-			const nextState: State = {
-				...state,
-				structure: {
-					...structure,
-					children: nextChildren,
-				},
-			};
-
-			// Validate the data sent in the action
+				return {
+					...state,
+					history: nextHistory,
+					structure: {...structure, children},
+				};
+			}
 
 			const invalids = new Map(state.invalids);
 
-			const errors = validateRepeatableGroup({
-				currentErrors: invalids.get(structure.uuid),
+			const errors = validateGroup({
+				currentErrors: invalids.get(group.uuid),
 				data: {label},
 			});
 
@@ -981,11 +1016,16 @@ function reducer(state: State, action: Action): State {
 				invalids.delete(group.uuid);
 			}
 
-			// Return new state
-
 			return {
-				...nextState,
+				...state,
 				invalids,
+				structure: {
+					...structure,
+					children: updateChild({
+						child: {...group, label: label!},
+						root: structure,
+					}),
+				},
 			};
 		}
 		case 'update-structure': {
@@ -1256,8 +1296,7 @@ function getTargetChildren({
 
 	if (
 		target &&
-		(target.type === 'repeatable-group' ||
-			target.type === 'referenced-structure')
+		(target.type === 'group' || target.type === 'referenced-structure')
 	) {
 		return target.children;
 	}

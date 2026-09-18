@@ -7,11 +7,7 @@ import {
 	ObjectDefinition,
 	ObjectDefinitions,
 } from '../../../common/types/ObjectDefinition';
-import {
-	ReferencedStructure,
-	RepeatableGroup,
-	Structure,
-} from '../../types/Structure';
+import {Group, ReferencedStructure, Structure} from '../../types/Structure';
 import {
 	buildField,
 	buildReferencedStructure,
@@ -19,6 +15,7 @@ import {
 	getSpaces,
 } from '../buildStructure';
 import isCustomObjectField from '../isCustomObjectField';
+import isRepeatableGroup from '../isRepeatableGroup';
 import sortChildren from './sortChildren';
 
 export default function refreshReferencedStructures({
@@ -30,9 +27,11 @@ export default function refreshReferencedStructures({
 	ancestors?: Array<ObjectDefinition['externalReferenceCode']>;
 	objectDefinition?: ObjectDefinition;
 	objectDefinitions: ObjectDefinitions;
-	root: ReferencedStructure | RepeatableGroup | Structure;
+	root: ReferencedStructure | Group | Structure;
 }) {
 	const children = new Map();
+
+	const nextAncestors = root.erc ? [...ancestors, root.erc] : ancestors;
 
 	// Iterate over children
 
@@ -61,7 +60,7 @@ export default function refreshReferencedStructures({
 			const referencedStructure: ReferencedStructure = {
 				...child,
 				children: refreshReferencedStructures({
-					ancestors: [...ancestors, root.erc],
+					ancestors: nextAncestors,
 					objectDefinition: relatedObjectDefinition,
 					objectDefinitions,
 					root: child,
@@ -75,7 +74,7 @@ export default function refreshReferencedStructures({
 
 		// It's repeatable group
 
-		else if (child.type === 'repeatable-group') {
+		else if (isRepeatableGroup(child)) {
 
 			// Ignore it if it's not in the new objectDefinition
 
@@ -99,10 +98,10 @@ export default function refreshReferencedStructures({
 				continue;
 			}
 
-			const repeatableGroup: RepeatableGroup = {
+			const repeatableGroup: Group = {
 				...child,
 				children: refreshReferencedStructures({
-					ancestors: [...ancestors, root.erc],
+					ancestors: nextAncestors,
 					objectDefinition: relatedObjectDefinition,
 					objectDefinitions,
 					root: child,
@@ -111,6 +110,19 @@ export default function refreshReferencedStructures({
 			};
 
 			children.set(repeatableGroup.uuid, repeatableGroup);
+		}
+		else if (child.type === 'group') {
+			const group: Group = {
+				...child,
+				children: refreshReferencedStructures({
+					ancestors: nextAncestors,
+					objectDefinition,
+					objectDefinitions,
+					root: child,
+				}),
+			};
+
+			children.set(group.uuid, group);
 		}
 
 		// It's a field
