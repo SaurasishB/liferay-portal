@@ -55,6 +55,7 @@ public class UserAnalyticsDXPEntityBatchEngineTaskItemDelegateTest {
 			CompanyLocalServiceUtil.getCompany(TestPropsValues.getCompanyId()));
 
 		_permissionChecker = PermissionThreadLocal.getPermissionChecker();
+		_user = UserTestUtil.addUser();
 	}
 
 	@After
@@ -63,16 +64,24 @@ public class UserAnalyticsDXPEntityBatchEngineTaskItemDelegateTest {
 	}
 
 	@Test
-	public void testReadIfAdministratorUser() throws Exception {
+	public void testRead() throws Exception {
+		_testReadWithAdministratorUser();
+		_testReadWithAnalyticsAdministratorUser();
+		_testReadWithRegularUser();
+	}
+
+	private Page<DXPEntity> _read() throws Exception {
+		return _batchEngineTaskItemDelegate.read(
+			null, Pagination.of(1, 1), null, Collections.emptyMap(), null);
+	}
+
+	private void _testReadWithAdministratorUser() throws Exception {
 		UserTestUtil.setUser(TestPropsValues.getUser());
 
 		Assert.assertNotNull(_read());
 	}
 
-	@Test
-	public void testReadIfAnalyticsAdministratorUser() throws Exception {
-		_user = UserTestUtil.addUser();
-
+	private void _testReadWithAnalyticsAdministratorUser() throws Exception {
 		Role role = _roleLocalService.getRole(
 			_user.getCompanyId(), RoleConstants.ANALYTICS_ADMINISTRATOR);
 
@@ -83,18 +92,17 @@ public class UserAnalyticsDXPEntityBatchEngineTaskItemDelegateTest {
 		Assert.assertNotNull(_read());
 	}
 
-	@Test(expected = PrincipalException.MustHavePermission.class)
-	public void testReadIfRegularUser() throws Exception {
-		_user = UserTestUtil.addUser();
-
+	private void _testReadWithRegularUser() throws Exception {
 		UserTestUtil.setUser(_user);
 
-		_read();
-	}
+		try {
+			_read();
 
-	private Page<DXPEntity> _read() throws Exception {
-		return _batchEngineTaskItemDelegate.read(
-			null, Pagination.of(1, 1), null, Collections.emptyMap(), null);
+			Assert.fail();
+		}
+		catch (PrincipalException.MustHavePermission principalException) {
+			Assert.assertNotNull(principalException);
+		}
 	}
 
 	@Inject(

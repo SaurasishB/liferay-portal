@@ -12,6 +12,7 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.security.auth.CompanyInheritableThreadLocalCallable;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
 import com.liferay.portal.kernel.servlet.HttpMethods;
@@ -35,6 +36,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Assert;
 import org.junit.ClassRule;
@@ -58,8 +62,56 @@ public class LayoutServiceContextHelperTest {
 			PermissionCheckerMethodTestRule.INSTANCE);
 
 	@Test
-	@TestInfo({"LPD-79722", "LPD-99386"})
+	@TestInfo(
+		{"LPD-79722", "LPD-99386", "LPD-102690", "LPD-103697", "LPD-105885"}
+	)
 	public void testGetServiceContextAutoCloseable() throws Exception {
+		_testGetServiceContextAutoCloseable();
+		_testGetServiceContextAutoCloseableWithConcurrentSwaps();
+		_testGetServiceContextAutoCloseableWithLocale();
+		_testGetServiceContextAutoCloseableWithRequestAttributes();
+		_testGetServiceContextAutoCloseableWithThemeDisplay();
+	}
+
+	private FutureTask<Void> _getFutureTask(
+		Layout layout, CountDownLatch openCountDownLatch,
+		CountDownLatch otherOpenCountDownLatch, ServiceContext serviceContext) {
+
+		return new FutureTask<>(
+			new CompanyInheritableThreadLocalCallable<>(
+				() -> {
+					ServiceContextThreadLocal.pushServiceContext(
+						(ServiceContext)serviceContext.clone());
+
+					try (AutoCloseable autoCloseable =
+							_layoutServiceContextHelper.
+								getServiceContextAutoCloseable(layout)) {
+
+						openCountDownLatch.countDown();
+
+						Assert.assertTrue(
+							otherOpenCountDownLatch.await(1, TimeUnit.MINUTES));
+
+						ServiceContext currentServiceContext =
+							ServiceContextThreadLocal.getServiceContext();
+
+						ThemeDisplay themeDisplay =
+							currentServiceContext.getThemeDisplay();
+
+						Assert.assertEquals(
+							layout.getPlid(), themeDisplay.getPlid());
+					}
+					finally {
+						openCountDownLatch.countDown();
+
+						ServiceContextThreadLocal.popServiceContext();
+					}
+
+					return null;
+				}));
+	}
+
+	private void _testGetServiceContextAutoCloseable() throws Exception {
 		Group group = GroupTestUtil.addGroup();
 
 		Layout layout = LayoutTestUtil.addTypeContentLayout(group);
@@ -102,9 +154,42 @@ public class LayoutServiceContextHelperTest {
 		}
 	}
 
-	@Test
-	@TestInfo("LPD-102690")
-	public void testGetServiceContextAutoCloseableLocale() throws Exception {
+	private void _testGetServiceContextAutoCloseableWithConcurrentSwaps()
+		throws Exception {
+
+		Group group = GroupTestUtil.addGroup();
+
+		ServiceContext serviceContext = new ServiceContext();
+
+		serviceContext.setCompanyId(group.getCompanyId());
+		serviceContext.setRequest(new MockHttpServletRequest());
+		serviceContext.setUserId(TestPropsValues.getUserId());
+
+		CountDownLatch openCountDownLatch1 = new CountDownLatch(1);
+		CountDownLatch openCountDownLatch2 = new CountDownLatch(1);
+
+		FutureTask<Void> futureTask1 = _getFutureTask(
+			LayoutTestUtil.addTypeContentLayout(group), openCountDownLatch1,
+			openCountDownLatch2, serviceContext);
+		FutureTask<Void> futureTask2 = _getFutureTask(
+			LayoutTestUtil.addTypeContentLayout(group), openCountDownLatch2,
+			openCountDownLatch1, serviceContext);
+
+		Thread thread1 = new Thread(
+			futureTask1, "Layout Service Context Helper Test 1");
+		Thread thread2 = new Thread(
+			futureTask2, "Layout Service Context Helper Test 2");
+
+		thread1.start();
+		thread2.start();
+
+		futureTask1.get();
+		futureTask2.get();
+	}
+
+	private void _testGetServiceContextAutoCloseableWithLocale()
+		throws Exception {
+
 		ServiceContext serviceContext = new ServiceContext();
 
 		HttpServletRequest httpServletRequest = new MockHttpServletRequest();
@@ -124,9 +209,18 @@ public class LayoutServiceContextHelperTest {
 				_layoutServiceContextHelper.getServiceContextAutoCloseable(
 					layout)) {
 
+			ServiceContext currentServiceContext =
+				ServiceContextThreadLocal.getServiceContext();
+
+			HttpServletRequest currentHttpServletRequest =
+				currentServiceContext.getRequest();
+
 			Assert.assertEquals(
 				LocaleUtil.fromLanguageId(layout.getDefaultLanguageId()),
-				httpServletRequest.getAttribute(WebKeys.LOCALE));
+				currentHttpServletRequest.getAttribute(WebKeys.LOCALE));
+
+			Assert.assertEquals(
+				locale, httpServletRequest.getAttribute(WebKeys.LOCALE));
 		}
 		finally {
 			ServiceContextThreadLocal.popServiceContext();
@@ -136,9 +230,52 @@ public class LayoutServiceContextHelperTest {
 			locale, httpServletRequest.getAttribute(WebKeys.LOCALE));
 	}
 
-	@Test
-	@TestInfo("LPD-103697")
-	public void testGetServiceContextAutoCloseableThemeDisplay()
+	private void _testGetServiceContextAutoCloseableWithRequestAttributes()
+		throws Exception {
+
+		Group group = GroupTestUtil.addGroup();
+
+		Layout layout = LayoutTestUtil.addTypeContentLayout(group);
+
+		HttpServletRequest httpServletRequest = new MockHttpServletRequest();
+
+		ThemeDisplay themeDisplay = new ThemeDisplay();
+
+		httpServletRequest.setAttribute(WebKeys.THEME_DISPLAY, themeDisplay);
+
+		ServiceContext serviceContext = new ServiceContext();
+
+		serviceContext.setRequest(httpServletRequest);
+
+		ServiceContextThreadLocal.pushServiceContext(serviceContext);
+
+		try (AutoCloseable autoCloseable =
+				_layoutServiceContextHelper.getServiceContextAutoCloseable(
+					layout)) {
+
+			ServiceContext currentServiceContext =
+				ServiceContextThreadLocal.getServiceContext();
+
+			ThemeDisplay currentThemeDisplay =
+				currentServiceContext.getThemeDisplay();
+
+			Assert.assertEquals(
+				layout.getPlid(), currentThemeDisplay.getPlid());
+
+			Assert.assertSame(
+				themeDisplay,
+				httpServletRequest.getAttribute(WebKeys.THEME_DISPLAY));
+		}
+		finally {
+			ServiceContextThreadLocal.popServiceContext();
+		}
+
+		Assert.assertSame(
+			themeDisplay,
+			httpServletRequest.getAttribute(WebKeys.THEME_DISPLAY));
+	}
+
+	private void _testGetServiceContextAutoCloseableWithThemeDisplay()
 		throws Exception {
 
 		Group group = GroupTestUtil.addGroup();
@@ -155,8 +292,6 @@ public class LayoutServiceContextHelperTest {
 				ServiceContextThreadLocal.getServiceContext();
 
 			ThemeDisplay themeDisplay = serviceContext.getThemeDisplay();
-
-			Assert.assertNotNull(themeDisplay);
 
 			String cdnBaseURL = themeDisplay.getCDNBaseURL();
 

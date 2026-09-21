@@ -560,8 +560,8 @@ public class BatchEngineBrokerTest {
 			objectField.getExternalReferenceCode(), TestPropsValues.getUserId(),
 			objectField.getListTypeDefinitionId(),
 			objectField.getObjectDefinitionId(), objectField.getBusinessType(),
-			objectField.getDBType(), objectField.isIndexed(),
-			objectField.isIndexedAsKeyword(),
+			objectField.getDBType(), objectField.getDescriptionMap(),
+			objectField.isIndexed(), objectField.isIndexedAsKeyword(),
 			objectField.getIndexedLanguageId(), objectField.getLabelMap(),
 			objectField.isLocalized(), objectField.getName(),
 			objectField.getReadOnly(),
@@ -934,12 +934,6 @@ public class BatchEngineBrokerTest {
 			batchPlannerPlan.getBatchPlannerPlanId());
 	}
 
-	private List<CSVRecord> _getCSVRecords(String csvString) throws Exception {
-		CSVParser csvParser = CSVParser.parse(csvString, _csvFormat);
-
-		return csvParser.getRecords();
-	}
-
 	private Map<String, List<String>> _getCSVRecordStringsMap(
 		List<CSVRecord> csvRecords, int index) {
 
@@ -958,6 +952,12 @@ public class BatchEngineBrokerTest {
 		}
 
 		return csvRecordStringsMap;
+	}
+
+	private List<CSVRecord> _getCSVRecords(String csvString) throws Exception {
+		CSVParser csvParser = CSVParser.parse(csvString, _csvFormat);
+
+		return csvParser.getRecords();
 	}
 
 	private String _getCSVString(

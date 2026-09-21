@@ -17,6 +17,7 @@ import com.liferay.object.relationship.util.ObjectRelationshipUtil;
 import com.liferay.object.rest.dto.v1_0.Assignee;
 import com.liferay.object.rest.dto.v1_0.FileEntry;
 import com.liferay.object.rest.dto.v1_0.ListEntry;
+import com.liferay.object.rest.internal.util.ObjectFieldDescriptionUtil;
 import com.liferay.object.rest.internal.vulcan.openapi.contributor.util.OpenAPIContributorUtil;
 import com.liferay.object.rest.openapi.v1_0.ObjectEntryOpenAPIResource;
 import com.liferay.object.rest.openapi.v1_0.ObjectEntryOpenAPIResourceProvider;
@@ -35,6 +36,7 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.vulcan.dto.converter.DTOConverterRegistry;
 import com.liferay.portal.vulcan.openapi.OpenAPIContext;
 import com.liferay.portal.vulcan.resource.OpenAPIResource;
+import com.liferay.portal.vulcan.util.OpenAPISchemaUtil;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -267,6 +269,7 @@ public class ObjectEntryOpenAPIContributor extends BaseOpenAPIContributor {
 		}
 
 		_setBatchUnsupportedFormats(objectDefinitionSchemaProperties);
+		_setFieldDescriptions(schemas);
 		_setFieldRefs(schemas);
 		_setReadOnlyProperties(schemas);
 	}
@@ -349,7 +352,7 @@ public class ObjectEntryOpenAPIContributor extends BaseOpenAPIContributor {
 
 		_addSchemas(entityClass, schemas);
 
-		schema.$ref(entityClass.getSimpleName());
+		OpenAPISchemaUtil.setReference(entityClass.getSimpleName(), schema);
 	}
 
 	private void _addSchemas(
@@ -814,6 +817,32 @@ public class ObjectEntryOpenAPIContributor extends BaseOpenAPIContributor {
 		}
 	}
 
+	private void _setFieldDescriptions(Map<String, Schema> schemas) {
+		Map<String, ObjectField> objectFields =
+			ObjectFieldUtil.toObjectFieldsMap(
+				_objectFieldLocalService.getObjectFields(
+					_objectDefinition.getObjectDefinitionId()));
+
+		Schema objectDefinitionSchema = schemas.get(
+			_objectDefinition.getShortName());
+
+		Map<String, Schema> properties = objectDefinitionSchema.getProperties();
+
+		for (Map.Entry<String, Schema> entry : properties.entrySet()) {
+			ObjectField objectField = objectFields.get(entry.getKey());
+
+			if ((objectField == null) || objectField.isMetadata()) {
+				continue;
+			}
+
+			entry.setValue(
+				OpenAPISchemaUtil.setDescription(
+					ObjectFieldDescriptionUtil.getDescription(
+						_objectDefinition, objectField),
+					entry.getValue()));
+		}
+	}
+
 	private void _setFieldRefs(Map<String, Schema> schemas) {
 		Map<String, ObjectField> objectFields =
 			ObjectFieldUtil.toObjectFieldsMap(
@@ -865,6 +894,7 @@ public class ObjectEntryOpenAPIContributor extends BaseOpenAPIContributor {
 					key,
 					new ArraySchema() {
 						{
+							setDescription(schema.getDescription());
 							setExtensions(schema.getExtensions());
 							setItems(
 								new Schema() {
