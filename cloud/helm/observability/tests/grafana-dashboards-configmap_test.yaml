@@ -4,6 +4,19 @@ templates:
 tests:
     -   asserts:
             -   matchRegex:
+                    path: data["kubernetes-workloads.json"]
+                    pattern: "kube_pod_container_status_restarts_total\{[^}]*\}\\n  - kube_pod_container_status_restarts_total\{[^}]*\} offset \$__interval"
+            -   notMatchRegex:
+                    path: data["kubernetes-workloads.json"]
+                    pattern: "increase\(kube_pod_container_status_restarts_total"
+        documentSelector:
+            path: metadata.name
+            value: RELEASE-NAME-observability-dashboard-kubernetes-workloads
+        it: Counts the restarts in each interval as whole numbers rather than extrapolating them
+        set:
+            cloudProvider: azure
+    -   asserts:
+            -   matchRegex:
                     path: data["databases.json"]
                     pattern: "\"query\": \"aws\""
             -   notMatchRegex:
@@ -60,5 +73,53 @@ tests:
             path: metadata.name
             value: RELEASE-NAME-observability-dashboard-databases
         it: Renders the databases dashboard as a v2 resource carrying both the capacity and the utilization panels
+        set:
+            cloudProvider: gcp
+    -   asserts:
+            -   matchRegex:
+                    path: data["kubernetes-workloads.json"]
+                    pattern: "container_memory_working_set_bytes\{namespace=\\\"\$environment-elasticsearch\\\""
+            -   matchRegex:
+                    path: data["kubernetes-workloads.json"]
+                    pattern: "kube_pod_container_status_restarts_total\{namespace=\\\"\$environment-elasticsearch\\\""
+            -   notMatchRegex:
+                    path: data["kubernetes-workloads.json"]
+                    pattern: "namespace=~\\\"\$environment"
+        documentSelector:
+            path: metadata.name
+            value: RELEASE-NAME-observability-dashboard-kubernetes-workloads
+        it: Selects the dedicated Elasticsearch namespace when the cloud provider is AWS
+        set:
+            cloudProvider: aws
+    -   asserts:
+            -   matchRegex:
+                    path: data["kubernetes-workloads.json"]
+                    pattern: "container_memory_working_set_bytes\{namespace=\\\"\$environment-elasticsearch\\\""
+            -   matchRegex:
+                    path: data["kubernetes-workloads.json"]
+                    pattern: "kube_pod_container_status_restarts_total\{namespace=\\\"\$environment-elasticsearch\\\""
+            -   notMatchRegex:
+                    path: data["kubernetes-workloads.json"]
+                    pattern: "namespace=~\\\"\$environment"
+        documentSelector:
+            path: metadata.name
+            value: RELEASE-NAME-observability-dashboard-kubernetes-workloads
+        it: Selects the dedicated Elasticsearch namespace when the cloud provider is Azure
+        set:
+            cloudProvider: azure
+    -   asserts:
+            -   matchRegex:
+                    path: data["kubernetes-workloads.json"]
+                    pattern: "container_memory_working_set_bytes\{namespace=\\\"\$environment-elasticsearch\\\""
+            -   matchRegex:
+                    path: data["kubernetes-workloads.json"]
+                    pattern: "kube_pod_container_status_restarts_total\{exported_namespace=\\\"\$environment-elasticsearch\\\""
+            -   notMatchRegex:
+                    path: data["kubernetes-workloads.json"]
+                    pattern: "namespace=~\\\"\$environment"
+        documentSelector:
+            path: metadata.name
+            value: RELEASE-NAME-observability-dashboard-kubernetes-workloads
+        it: Selects the dedicated Elasticsearch namespace when the cloud provider is GCP
         set:
             cloudProvider: gcp

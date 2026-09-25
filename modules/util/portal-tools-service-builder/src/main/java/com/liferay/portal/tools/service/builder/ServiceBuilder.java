@@ -7,6 +7,7 @@ package com.liferay.portal.tools.service.builder;
 
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.io.unsync.UnsyncBufferedReader;
+import com.liferay.petra.io.unsync.UnsyncByteArrayInputStream;
 import com.liferay.petra.io.unsync.UnsyncByteArrayOutputStream;
 import com.liferay.petra.io.unsync.UnsyncStringReader;
 import com.liferay.petra.io.unsync.UnsyncStringWriter;
@@ -827,6 +828,8 @@ public class ServiceBuilder {
 			if (build) {
 				Collections.sort(_entities);
 
+				_createModelHintsXml();
+
 				for (Entity entity : _entities) {
 					if (_isTargetEntity(entity)) {
 						System.out.println("Building " + entity.getName());
@@ -999,7 +1002,6 @@ public class ServiceBuilder {
 				}
 
 				_createHbmXml();
-				_createModelHintsXml();
 				_createSpringXml();
 
 				_createExceptions(exceptionList);
@@ -3615,6 +3617,8 @@ public class ServiceBuilder {
 		Map<String, Object> context = _getContext();
 
 		context.put("entity", entity);
+		context.put(
+			"entityFinderWhereClauses", _getEntityFinderWhereClauses(entity));
 
 		JavaClass modelImplJavaClass = _getJavaClass(
 			StringBundler.concat(
@@ -3695,8 +3699,16 @@ public class ServiceBuilder {
 					newContent.substring(lastModel);
 		}
 
-		ToolsUtil.writeFileRaw(
-			xmlFile, _formatXml(newContent), _modifiedFileNames);
+		String modelHintsXml = _formatXml(newContent);
+
+		ToolsUtil.writeFileRaw(xmlFile, modelHintsXml, _modifiedFileNames);
+
+		ModelHints modelHints = ModelHintsUtil.getModelHints();
+
+		modelHints.read(
+			ServiceBuilder.class.getClassLoader(),
+			new UnsyncByteArrayInputStream(
+				modelHintsXml.getBytes(StandardCharsets.UTF_8)));
 	}
 
 	private void _createModelImpl(Entity entity) throws Exception {
@@ -5922,6 +5934,27 @@ public class ServiceBuilder {
 		}
 
 		return name;
+	}
+
+	private Map<String, EntityFinderWhereClause> _getEntityFinderWhereClauses(
+		Entity entity) {
+
+		Map<String, EntityFinderWhereClause> entityFinderWhereClauses =
+			new LinkedHashMap<>();
+
+		for (EntityFinder entityFinder : entity.getEntityFinders()) {
+			String where = entityFinder.getWhere();
+
+			if (Validator.isNotNull(where)) {
+				EntityFinderWhereClause entityFinderWhereClause =
+					entityFinderWhereClauses.computeIfAbsent(
+						where, key -> new EntityFinderWhereClause(entity, key));
+
+				entityFinderWhereClause.addEntityFinder(entityFinder);
+			}
+		}
+
+		return entityFinderWhereClauses;
 	}
 
 	private List<String> _getEntityMappingPKEntityColumnDBNames(

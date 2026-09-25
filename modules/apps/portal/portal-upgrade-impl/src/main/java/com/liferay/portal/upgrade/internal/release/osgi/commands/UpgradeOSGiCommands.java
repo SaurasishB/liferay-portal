@@ -73,7 +73,7 @@ public class UpgradeOSGiCommands implements OSGiCommands {
 				}
 				catch (Throwable throwable) {
 					_log.error(
-						"Failed upgrade process for module ".concat(
+						ReleaseManagerUtil.getFailedModuleMessage(
 							bundleSymbolicName),
 						throwable);
 				}
@@ -84,8 +84,19 @@ public class UpgradeOSGiCommands implements OSGiCommands {
 
 	@Descriptor("Execute upgrade for a specific module and final version")
 	public String execute(String bundleSymbolicName, String toVersionString) {
-		List<UpgradeInfo> upgradeInfos = _upgradeExecutor.getUpgradeInfos(
-			bundleSymbolicName);
+		List<UpgradeInfo> upgradeInfos = null;
+
+		try {
+			upgradeInfos = _upgradeExecutor.getUpgradeInfos(bundleSymbolicName);
+		}
+		catch (Throwable throwable) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(throwable);
+			}
+
+			return ReleaseManagerUtil.getFailedModuleMessage(
+				bundleSymbolicName);
+		}
 
 		if (upgradeInfos == null) {
 			return "No upgrade processes registered for " + bundleSymbolicName;
@@ -140,16 +151,16 @@ public class UpgradeOSGiCommands implements OSGiCommands {
 		Set<String> bundleSymbolicNames =
 			_upgradeExecutor.getBundleSymbolicNames();
 
-		StringBundler sb = new StringBundler(4 * bundleSymbolicNames.size());
+		StringBundler sb = new StringBundler(2 * bundleSymbolicNames.size());
 
 		Set<String> failedBundleSymbolicNames =
 			_upgradeExecutor.getFailedBundleSymbolicNames();
 
 		for (String bundleSymbolicName : bundleSymbolicNames) {
 			if (failedBundleSymbolicNames.contains(bundleSymbolicName)) {
-				sb.append("The upgrade of module ");
-				sb.append(bundleSymbolicName);
-				sb.append(" failed");
+				sb.append(
+					ReleaseManagerUtil.getFailedModuleMessage(
+						bundleSymbolicName));
 			}
 			else {
 				sb.append(list(bundleSymbolicName));
@@ -165,8 +176,23 @@ public class UpgradeOSGiCommands implements OSGiCommands {
 
 	@Descriptor("List registered upgrade processes for a specific module")
 	public String list(String bundleSymbolicName) {
-		List<UpgradeInfo> upgradeInfos = _upgradeExecutor.getUpgradeInfos(
-			bundleSymbolicName);
+		List<UpgradeInfo> upgradeInfos = null;
+
+		try {
+			upgradeInfos = _upgradeExecutor.getUpgradeInfos(bundleSymbolicName);
+		}
+		catch (Throwable throwable) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(throwable);
+			}
+
+			return ReleaseManagerUtil.getFailedModuleMessage(
+				bundleSymbolicName);
+		}
+
+		if (upgradeInfos == null) {
+			return "No upgrade processes registered for " + bundleSymbolicName;
+		}
 
 		StringBundler sb = new StringBundler(5 + (3 * upgradeInfos.size()));
 
@@ -234,7 +260,7 @@ public class UpgradeOSGiCommands implements OSGiCommands {
 				}
 				catch (Throwable throwable) {
 					_log.error(
-						"Failed upgrade process for module ".concat(
+						ReleaseManagerUtil.getFailedModuleMessage(
 							upgradableBundleSymbolicName),
 						throwable);
 

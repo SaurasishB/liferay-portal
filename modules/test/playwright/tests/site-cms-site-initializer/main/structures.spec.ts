@@ -490,11 +490,13 @@ testWithExportImport(
 	}
 );
 
-testWithModalExportImport(
+testWithExportImport(
 	'CMS Administrator can export and import content structures',
 	{tag: '@LPD-87533'},
-	async ({apiHelpers, page, structuresPage}) => {
-		let larFilePath: string;
+	async ({apiHelpers, exportImportPage, page, structuresPage}) => {
+		const exportName = `MyExport-${getRandomString()}`;
+
+		let folderPath: string;
 
 		await test.step('Log in as a CMS Administrator', async () => {
 			const user = await addCMSAdministrator(apiHelpers);
@@ -503,11 +505,63 @@ testWithModalExportImport(
 		});
 
 		await test.step('Export content structures and download the LAR', async () => {
-			await structuresPage.openMenuItem('Export');
+			await structuresPage.openMenuItem('Export Content Structures');
 
-			await expect(page.locator('.modal-title')).toHaveText(
-				'Export Content Structures'
-			);
+			await exportImportPage.export(exportName);
+
+			await expect(
+				exportImportPage.taskStatusLabel(exportName)
+			).toBeVisible();
+
+			folderPath = await exportImportPage.download(exportName);
+		});
+
+		await test.step('Import the downloaded LAR back', async () => {
+			await structuresPage.openMenuItem('Import Content Structures');
+
+			await exportImportPage.newButton.click();
+
+			await exportImportPage.import({folderPath, name: exportName});
+		});
+	}
+);
+
+testWithModalExportImport(
+	'Content structure with a referenced structure and a repeatable group can be imported',
+	{tag: '@LPD-98702'},
+	async ({apiHelpers, page, structureBuilderPage, structuresPage}) => {
+		const structureLabel = getRandomString();
+		const structureName = `StructureName${getRandomInt()}`;
+
+		let larFilePath: string;
+
+		await test.step('Create a structure with a referenced structure and a repeatable group', async () => {
+			await structureBuilderPage.createStructureFromData({
+				autoDelete: false,
+				label: structureLabel,
+				name: structureName,
+				page: structureBuilderPage,
+				publish: false,
+			});
+
+			await structureBuilderPage.addReferencedStructures([
+				'Basic Web Content',
+			]);
+
+			await structureBuilderPage.addField('Text');
+
+			await structureBuilderPage.createRepeatableGroup({
+				fields: [{label: 'Text'}],
+				label: 'Repeatable Group',
+			});
+
+			await structureBuilderPage.publishStructure();
+		});
+
+		await test.step('Export content structures and download the LAR', async () => {
+			await structuresPage.goto();
+
+			await structuresPage.openMenuItem('Export');
 
 			const exportDialog = page
 				.getByRole('dialog', {name: 'Export Content Structures'})
@@ -517,20 +571,18 @@ testWithModalExportImport(
 				.getByRole('button', {exact: true, name: 'Export'})
 				.click();
 
-			await expect(
-				exportDialog.getByRole('cell', {name: 'In Progress'}).first()
-			).toBeVisible();
+			// The newest process is listed first
 
-			await expect(
-				exportDialog.getByRole('cell', {name: 'Successful'}).first()
-			).toBeVisible({timeout: 30000});
+			const exportRow = exportDialog.locator('tbody tr').first();
+
+			await expect(exportRow.locator('td.lfr-status-column')).toHaveText(
+				'Successful',
+				{timeout: 30000}
+			);
 
 			const downloadPromise = page.waitForEvent('download');
 
-			await exportDialog
-				.getByRole('link', {name: /\.lar/i})
-				.first()
-				.click();
+			await exportRow.getByRole('link', {name: /\.lar/i}).click();
 
 			const download = await downloadPromise;
 
@@ -539,12 +591,41 @@ testWithModalExportImport(
 			await download.saveAs(larFilePath);
 		});
 
-		await test.step('Import the downloaded LAR back', async () => {
-			await structuresPage.openMenuItem('Import');
+		await test.step('Remove the referenced structure and delete the structure', async () => {
+			await structuresPage.goto();
 
-			await expect(page.locator('.modal-title')).toHaveText(
-				'Import Content Structures'
+			await structuresPage.execItemAction({
+				action: 'Edit',
+				filter: structureLabel,
+			});
+
+			await structureBuilderPage.deleteFields([
+				{label: 'Basic Web Content'},
+			]);
+
+			await structureBuilderPage.publishStructure();
+
+			await structuresPage.goto();
+
+			await structuresPage.execItemAction({
+				action: 'Delete',
+				filter: structureLabel,
+			});
+
+			await page
+				.getByPlaceholder('Confirm Content Structure Name')
+				.fill(structureLabel);
+			await page.getByRole('button', {name: 'Delete'}).click();
+
+			await waitForAlert(
+				page,
+				`${structureLabel} was deleted successfully`,
+				{type: 'success'}
 			);
+		});
+
+		await test.step('Import the LAR back without errors', async () => {
+			await structuresPage.openMenuItem('Import');
 
 			const importDialog = page
 				.getByRole('dialog', {name: 'Import Content Structures'})
@@ -558,9 +639,33 @@ testWithModalExportImport(
 
 			await importDialog.getByRole('button', {name: 'Import'}).click();
 
+			// The newest process is listed first
+
 			await expect(
-				importDialog.getByRole('cell', {name: 'Successful'}).first()
-			).toBeVisible({timeout: 30000});
+				importDialog.locator('td.lfr-status-column').first()
+			).toHaveText('Successful', {timeout: 30000});
+		});
+
+		await test.step('The structure is restored with its referenced structure and repeatable group', async () => {
+			const objectDefinition =
+				await apiHelpers.objectAdmin.waitForObjectDefinition(
+					structureName,
+					{timeout: 30_000}
+				);
+
+			apiHelpers.data.push({
+				id: objectDefinition.id,
+				type: 'objectDefinition',
+			});
+
+			await structureBuilderPage.editStructure(objectDefinition.id);
+
+			await expect(
+				page.locator('.treeview-link', {hasText: 'Basic Web Content'})
+			).toBeVisible();
+			await expect(
+				page.locator('.treeview-link', {hasText: 'Repeatable Group'})
+			).toBeVisible();
 		});
 	}
 );

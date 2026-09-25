@@ -745,6 +745,12 @@ components:
                         Map of HATEOAS actions available to the current user, keyed by action name. Each value carries the href template and HTTP method, computed dynamically from user permissions. Read-only.
                     readOnly: true
                     type: object
+                creator:
+                    allOf:
+                        -   $ref: "#/components/schemas/Creator"
+                    description:
+                        User who created the catalog. Read-only; embedded through the `creator` nested field.
+                    readOnly: true
                 currencyCode:
                     description:
                         ISO 4217 code of the catalog's default currency; on write the catalog's default currency can be identified by `currencyCode`, `currencyExternalReferenceCode`, or `currencyId`.
@@ -762,6 +768,20 @@ components:
                     format: int64
                     minimum: 0
                     type: integer
+                dateCreated:
+                    description:
+                        Creation timestamp in ISO 8601 (UTC). Read-only; set when the catalog is first persisted. Filterable and sortable via the OData query parameter.
+                    example: 2017-07-21T19:30:00Z
+                    format: date-time
+                    readOnly: true
+                    type: string
+                dateModified:
+                    description:
+                        Last modification timestamp in ISO 8601 (UTC). Read-only; updated on each save. Filterable and sortable via the OData query parameter.
+                    example: 2017-07-21T19:30:00Z
+                    format: date-time
+                    readOnly: true
+                    type: string
                 defaultLanguageId:
                     description:
                         Liferay locale code used as the catalog's default language for localized product content.
@@ -785,6 +805,10 @@ components:
                         Display name of the catalog; required on create and used to seed the localized name map for the backing Liferay site group; matched by the search query parameter and filterable and sortable through the OData query parameter.
                     example: Default Catalog
                     type: string
+                permissions:
+                    items:
+                        type: permission
+                    type: array
                 system:
                     description:
                         Indicates that the catalog is platform-managed (the master catalog and similar); read-only; deletion of system catalogs is blocked.
@@ -877,6 +901,40 @@ components:
                     example: site
                     type: string
             type: object
+        Creator:
+            description:
+                User account that created the entity. Properties follow the [creator](https://schema.org/creator) specification; the batch engine uses `externalReferenceCode` and `id` to keep the original creator on import.
+            properties:
+                additionalName:
+                    readOnly: true
+                    type: string
+                contentType:
+                    readOnly: true
+                    type: string
+                externalReferenceCode:
+                    readOnly: true
+                    type: string
+                familyName:
+                    readOnly: true
+                    type: string
+                givenName:
+                    readOnly: true
+                    type: string
+                id:
+                    format: int64
+                    readOnly: true
+                    type: integer
+                image:
+                    format: uri
+                    readOnly: true
+                    type: string
+                name:
+                    readOnly: true
+                    type: string
+                profileURL:
+                    readOnly: true
+                    type: string
+            type: object
         Currency:
             description:
                 Currency definition specifying the formatting, fraction digits, rounding mode, and exchange rate used by catalogs and channels; supports create, read, update, and delete operations from the catalog admin perspective; every write triggers a reindex.
@@ -890,6 +948,26 @@ components:
                     description:
                         ISO 4217 currency code; required and rejected when blank; must be unique per company, and a duplicate code in the same company is rejected; filterable and sortable through the OData query parameter.
                     example: USD
+                    type: string
+                creator:
+                    allOf:
+                        -   $ref: "#/components/schemas/Creator"
+                    description:
+                        User who created the currency. Read-only; embedded through the `creator` nested field.
+                    readOnly: true
+                dateCreated:
+                    description:
+                        Creation timestamp in ISO 8601 (UTC). Read-only; set when the currency is first persisted. Filterable and sortable via the OData query parameter.
+                    example: 2017-07-21T19:30:00Z
+                    format: date-time
+                    readOnly: true
+                    type: string
+                dateModified:
+                    description:
+                        Last modification timestamp in ISO 8601 (UTC). Read-only; updated on each save. Filterable and sortable via the OData query parameter.
+                    example: 2017-07-21T19:30:00Z
+                    format: date-time
+                    readOnly: true
                     type: string
                 externalReferenceCode:
                     description:
@@ -995,9 +1073,14 @@ components:
                     format: int64
                     minimum: 0
                     type: integer
+                imageExternalReferenceCode:
+                    description:
+                        External reference code of the attachment that holds the diagram image. Preferred over `imageId` on import, because it survives a transfer between instances; the identifier is only consulted when this is omitted.
+                    example: exampleERC
+                    type: string
                 imageId:
                     description:
-                        Identifier of the attachment that holds the diagram image. Populated from the uploaded `attachmentBase64`; can also be set explicitly to point at an existing diagram-type attachment.
+                        Identifier of the attachment that holds the diagram image. Populated from the uploaded `attachmentBase64`; can also be set explicitly to point at an existing diagram-type attachment. Only consulted when `imageExternalReferenceCode` is omitted.
                     example: 33132
                     format: int64
                     minimum: 0
@@ -1095,6 +1178,11 @@ components:
                         hu_HU: Product Name HU
                     readOnly: true
                     type: object
+                entryProductType:
+                    description:
+                        Product type of the child product named by `entryProductExternalReferenceCode`. The type cannot be defaulted because it cannot be changed after a product is created, so it must travel with the reference whenever the child product is imported after its parent.
+                    example: simple
+                    type: string
                 id:
                     description:
                         Primary key of the bundle membership entry; read-only.
@@ -1296,6 +1384,11 @@ components:
                         hu_HU: Product Name HU
                     readOnly: true
                     type: object
+                productType:
+                    description:
+                        Product type of the referenced product named by `productExternalReferenceCode`. The type cannot be defaulted because it cannot be changed after a product is created, so it must travel with the reference whenever the referenced product is imported after the parent product.
+                    example: simple
+                    type: string
                 quantity:
                     description:
                         Quantity of the mapped product or SKU implied by selecting this pin.
@@ -1634,6 +1727,16 @@ components:
                     description:
                         Embedded parent catalog reference; read-only.
                     readOnly: true
+                catalogCurrencyCode:
+                    description:
+                        ISO 4217 code of the default currency of the parent catalog. A catalog cannot exist without a currency, so the currency must travel with the catalog reference whenever the product is imported before the catalog.
+                    example: USD
+                    type: string
+                catalogCurrencyExternalReferenceCode:
+                    description:
+                        External reference code of the default currency of the parent catalog; resolved after `catalogCurrencyCode` and used to create the currency when neither identifier matches an existing one.
+                    example: AB-34098-789-N
+                    type: string
                 catalogExternalReferenceCode:
                     description:
                         External reference code of the parent catalog; used on create when `catalogId` is not supplied to look up the catalog within the company; the request is rejected when neither resolves.
@@ -1658,12 +1761,32 @@ components:
                     example: 2017-07-21T19:30:00Z
                     format: date-time
                     type: string
+                creator:
+                    allOf:
+                        -   $ref: "#/components/schemas/Creator"
+                    description:
+                        User who created the product. Read-only; embedded through the `creator` nested field.
+                    readOnly: true
                 customFields:
                     description:
                         Custom field values stored against the product; written as expando attribute values during save.
                     items:
                         type: customField
                     type: array
+                dateCreated:
+                    description:
+                        Creation timestamp in ISO 8601 (UTC). Read-only; set when the product is first persisted. Filterable and sortable via the OData query parameter.
+                    example: 2017-07-21T19:30:00Z
+                    format: date-time
+                    readOnly: true
+                    type: string
+                dateModified:
+                    description:
+                        Last modification timestamp in ISO 8601 (UTC). Read-only; updated on each save. Filterable and sortable via the OData query parameter.
+                    example: 2017-07-21T19:30:00Z
+                    format: date-time
+                    readOnly: true
+                    type: string
                 defaultSku:
                     description:
                         Optional default SKU code used during product creation to seed the initial variant.
@@ -1810,6 +1933,12 @@ components:
                     type: array
                 productConfiguration:
                     $ref: "#/components/schemas/ProductConfiguration"
+                productGroups:
+                    description:
+                        Product groups the product belongs to. Each entry carries the external reference code of the product group, so the membership survives a transfer between instances.
+                    items:
+                        $ref: "#/components/schemas/ProductProductGroup"
+                    type: array
                 productId:
                     description:
                         Identifier of the parent product envelope; stable across product revisions; read-only; filterable and sortable via the OData query parameter.
@@ -2537,6 +2666,21 @@ components:
             description:
                 Membership entry that links a product to a product group; admin catalog write view used to add or remove products from a product group.
             properties:
+                catalogCurrencyCode:
+                    description:
+                        ISO 4217 code of the default currency of the catalog hosting the linked product. A catalog cannot exist without a currency, so the currency must travel with the catalog reference whenever the membership is imported before the catalog.
+                    example: USD
+                    type: string
+                catalogCurrencyExternalReferenceCode:
+                    description:
+                        External reference code of the default currency of the catalog hosting the linked product; resolved after `catalogCurrencyCode` and used to create the currency when neither identifier matches an existing one.
+                    example: AB-34098-789-N
+                    type: string
+                catalogExternalReferenceCode:
+                    description:
+                        External reference code of the catalog hosting the linked product. A product group belongs to no catalog, so the catalog must travel with the reference to give the product a home whenever it is imported after the product group.
+                    example: exampleERC
+                    type: string
                 id:
                     description:
                         Primary key of the membership row.
@@ -2573,6 +2717,11 @@ components:
                         Display name of the linked product in the requested locale; read-only.
                     example: Hand Saw
                     readOnly: true
+                    type: string
+                productType:
+                    description:
+                        Product type of the linked product named by `productExternalReferenceCode`. The type cannot be defaulted because it cannot be changed after a product is created, so it must travel with the reference whenever the product is imported after the product group.
+                    example: simple
                     type: string
                 sku:
                     description:
@@ -2782,6 +2931,36 @@ components:
             required:
                 -   key
                 -   name
+            type: object
+        ProductProductGroup:
+            description:
+                Association between a product and a product group; admin catalog write view used to manage which product groups a product belongs to. The product group itself is addressed by its external reference code.
+            properties:
+                externalReferenceCode:
+                    description:
+                        External reference code of the product group; the key the import resolves the membership by.
+                    example: AB-34098-789-N
+                    type: string
+                id:
+                    description:
+                        Primary key of the row that links the product to the product group.
+                    example: 31130
+                    format: int64
+                    minimum: 0
+                    type: integer
+                productGroupId:
+                    description:
+                        Identifier of the product group; consulted only when the external reference code is omitted.
+                    example: 31130
+                    format: int64
+                    minimum: 0
+                    type: integer
+                title:
+                    description:
+                        Title of the product group. Read-only; populated from the linked product group.
+                    example: Title
+                    readOnly: true
+                    type: string
             type: object
         ProductShippingConfiguration:
             description:
@@ -3222,6 +3401,11 @@ components:
                     format: int64
                     minimum: 0
                     type: integer
+                productType:
+                    description:
+                        Product type of the target product named by `productExternalReferenceCode`. The type cannot be defaulted because it cannot be changed after a product is created, so it must travel with the reference whenever the target product is imported after its source.
+                    example: simple
+                    type: string
                 type:
                     description:
                         Link type token; required on create; also accepted as a query parameter to filter the related-products listing.
@@ -4521,6 +4705,69 @@ paths:
             summary: Creates or updates a catalog.
             tags:
                 -   Catalog
+    /catalog/{catalogId}/permissions:
+        get:
+            description:
+                Lists the role permissions granted on the catalog identified by ID. Requires the PERMISSIONS action on the catalog.
+            operationId: getCatalogPermissionsPage
+            parameters:
+                -   in: path
+                    name: catalogId
+                    required: true
+                    schema:
+                        description:
+                            Internal numeric identifier of the catalog, the same `id` the catalog payload carries.
+                        format: int64
+                        type: integer
+                -   in: query
+                    name: fields
+                    schema:
+                        type: string
+                -   in: query
+                    name: restrictFields
+                    schema:
+                        type: string
+                -   in: query
+                    name: roleNames
+                    schema:
+                        type: string
+            responses:
+                204:
+                    content:
+                        application/json: {}
+                        application/xml: {}
+                    description:
+                        The role permissions of the catalog.
+            summary: Lists the permissions of a catalog by ID.
+            tags:
+                -   Catalog
+        put:
+            description:
+                Replaces the role permissions granted on the catalog identified by ID. Roles missing from the request lose their individual permissions. Requires the PERMISSIONS action on the catalog.
+            operationId: putCatalogPermissionsPage
+            parameters:
+                -   in: path
+                    name: catalogId
+                    required: true
+                    schema:
+                        description:
+                            Internal numeric identifier of the catalog, the same `id` the catalog payload carries.
+                        format: int64
+                        type: integer
+            requestBody:
+                content:
+                    application/json: {}
+                    application/xml: {}
+            responses:
+                204:
+                    content:
+                        application/json: {}
+                        application/xml: {}
+                    description:
+                        The updated role permissions of the catalog.
+            summary: Replaces the permissions of a catalog by ID.
+            tags:
+                -   Catalog
     /catalog/{id}:
         delete:
             description:
@@ -4699,7 +4946,7 @@ paths:
     /catalogs:
         get:
             description:
-                Returns a page of commerce catalogs scoped to the current company using free-text search, filter, and sort. Validation -- None (returns empty page when no matches). List query support — filterable fields -- name; sortable fields -- name.
+                Returns a page of commerce catalogs scoped to the current company using free-text search, filter, and sort. Validation -- None (returns empty page when no matches). List query support — filterable fields -- dateCreated, dateModified, externalReferenceCode, name; sortable fields -- dateCreated, dateModified, externalReferenceCode, name.
             operationId: getCatalogsPage
             parameters:
                 -   $ref: "#/components/parameters/filterQueryParam"
@@ -4834,7 +5081,7 @@ paths:
     /currencies:
         get:
             description:
-                Returns a page of commerce currencies scoped to the current company. List query support — filterable fields -- active, primary, priority, code, name; sortable fields -- active, primary, priority, code, name.
+                Returns a page of commerce currencies scoped to the current company. List query support — filterable fields -- active, primary, dateCreated, dateModified, priority, code, externalReferenceCode, name; sortable fields -- active, primary, dateCreated, dateModified, priority, code, externalReferenceCode, name.
             operationId: getCurrenciesPage
             parameters:
                 -   $ref: "#/components/parameters/filterQueryParam"
@@ -12620,7 +12867,7 @@ paths:
     /products:
         get:
             description:
-                Returns a page of products scoped to the current company, with filtering by indexed product fields and expando-backed custom fields. List query support — filterable fields -- channelId, statusCode, categoryIds, categoryNames, gtins, specificationNames, specificationValues, tags, customFields, createDate, modifiedDate, catalogId, productId, externalReferenceCode, name, productType; sortable fields -- channelId, statusCode, categoryIds, categoryNames, gtins, specificationNames, specificationValues, tags, customFields, createDate, modifiedDate, catalogId, productId, externalReferenceCode, name, productType.
+                Returns a page of products scoped to the current company, with filtering by indexed product fields and expando-backed custom fields. List query support — filterable fields -- channelId, statusCode, categoryIds, categoryNames, gtins, specificationNames, specificationValues, tags, customFields, createDate, dateCreated, dateModified, modifiedDate, catalogId, productId, externalReferenceCode, name, productType; sortable fields -- channelId, statusCode, categoryIds, categoryNames, gtins, specificationNames, specificationValues, tags, customFields, createDate, dateCreated, dateModified, modifiedDate, catalogId, productId, externalReferenceCode, name, productType.
             operationId: getProductsPage
             parameters:
                 -   $ref: "#/components/parameters/filterQueryParam"
@@ -18422,6 +18669,63 @@ paths:
             summary: Gets a list of channel related to a product.
             tags:
                 -   ProductChannel
+    /products/{id}/product-groups:
+        get:
+            description:
+                Lists the product groups the product identified by product ID belongs to. Validation -- Returns empty page when product ID not found (no exception).
+            operationId: getProductIdProductGroupsPage
+            parameters:
+                -   $ref: "#/components/parameters/idPathParam"
+                -   $ref: "#/components/parameters/pageQueryParam"
+                -   $ref: "#/components/parameters/pageSizeQueryParam"
+            responses:
+                200:
+                    content:
+                        application/json:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/ProductProductGroup"
+                                type: array
+                        application/xml:
+                            schema:
+                                items:
+                                    $ref: "#/components/schemas/ProductProductGroup"
+                                type: array
+                    description:
+                        Successful operation
+                401:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Error"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/Error"
+                    description:
+                        Authentication information is missing or invalid
+                404:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Error"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/Error"
+                    description:
+                        The specified resource was not found
+                500:
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/Error"
+                        application/xml:
+                            schema:
+                                $ref: "#/components/schemas/Error"
+                    description:
+                        Unexpected error
+            summary: Gets a list of product groups related to a product.
+            tags:
+                -   ProductProductGroup
     /products/{id}/product-virtual-settings:
         get:
             description:

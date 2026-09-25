@@ -35,7 +35,6 @@ import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.HTTPTestUtil;
 import com.liferay.portal.kernel.test.util.PropsValuesTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
-import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.Base64;
 import com.liferay.portal.kernel.util.ContentTypes;
@@ -210,6 +209,21 @@ public class MCPServerServletTest {
 			RandomTestUtil.randomString(), null, name, tools);
 	}
 
+	private void _assertAllowedQueryParameters(
+		Map<String, Object> arguments, McpSyncClient mcpSyncClient) {
+
+		McpSchema.CallToolResult callToolResult = mcpSyncClient.callTool(
+			new McpSchema.CallToolRequest(
+				"getMCPServerProfilesPage", arguments));
+
+		List<McpSchema.Content> contents = callToolResult.content();
+
+		McpSchema.TextContent textContent = (McpSchema.TextContent)contents.get(
+			0);
+
+		Assert.assertFalse(textContent.text(), callToolResult.isError());
+	}
+
 	private void _assertInvalidTokenChallenge(
 		Http.Response response, String description) {
 
@@ -225,6 +239,23 @@ public class MCPServerServletTest {
 			wwwAuthenticate,
 			wwwAuthenticate.contains(
 				"error_description=\"" + description + "\""));
+	}
+
+	private void _assertRestrictedQueryParameters(
+		Map<String, Object> arguments, String expectedMessage,
+		McpSyncClient mcpSyncClient) {
+
+		McpSchema.CallToolResult callToolResult = mcpSyncClient.callTool(
+			new McpSchema.CallToolRequest(
+				"getMCPServerProfilesPage", arguments));
+
+		List<McpSchema.Content> contents = callToolResult.content();
+
+		McpSchema.TextContent textContent = (McpSchema.TextContent)contents.get(
+			0);
+
+		Assert.assertTrue(textContent.text(), callToolResult.isError());
+		Assert.assertEquals(expectedMessage, textContent.text());
 	}
 
 	private void _assertTool(
@@ -762,11 +793,30 @@ public class MCPServerServletTest {
 
 		Assert.assertEquals(200, _getResponseCode(authorization, name));
 
-		_updateMCPServerProfileStatus(objectEntry, "inactive");
+		MCPServerTestUtil.updateMCPServerProfileStatus(objectEntry, "inactive");
 
-		Assert.assertEquals(404, _getResponseCode(authorization, name));
+		Http.Options options = new Http.Options();
 
-		_updateMCPServerProfileStatus(objectEntry, "active");
+		options.addHeader("Authorization", authorization);
+		options.setLocation(_getMCPURL() + StringPool.SLASH + name);
+
+		String responseContent = _http.URLtoString(options);
+
+		Http.Response response = options.getResponse();
+
+		Assert.assertEquals(404, response.getResponseCode());
+
+		Assert.assertEquals(
+			JSONUtil.put(
+				"error",
+				StringBundler.concat(
+					"MCP server profile \"", name,
+					"\" is inactive. Activate it in the MCP Server control ",
+					"panel to make its tools available.")
+			).toString(),
+			responseContent);
+
+		MCPServerTestUtil.updateMCPServerProfileStatus(objectEntry, "active");
 
 		Assert.assertEquals(200, _getResponseCode(authorization, name));
 	}
@@ -985,6 +1035,9 @@ public class MCPServerServletTest {
 				mcpServerProfileExternalReferenceCode, "description",
 				"postMCPServerProfile", "mcp-server-profiles");
 
+		MCPServerTestUtil.updateMCPServerProfileStatus(
+			mcpServerProfileObjectEntry, "active");
+
 		McpSyncClient mcpSyncClient = _getMcpSyncClient(
 			authorization, profileName);
 
@@ -1020,6 +1073,45 @@ public class MCPServerServletTest {
 
 		Assert.assertEquals(profileName, itemJSONObject.getString("name"));
 		Assert.assertFalse(itemJSONObject.has("description"));
+
+		_assertRestrictedQueryParameters(
+			HashMapBuilder.<String, Object>put(
+				"filter", "creator/givenName eq 'Test'"
+			).build(),
+			"Parameter \"filter\" references a restricted field",
+			mcpSyncClient);
+		_assertRestrictedQueryParameters(
+			HashMapBuilder.<String, Object>put(
+				"filter", "description eq 'Test'"
+			).build(),
+			"Parameter \"filter\" references a restricted field",
+			mcpSyncClient);
+		_assertRestrictedQueryParameters(
+			HashMapBuilder.<String, Object>put(
+				"sort", "description:asc"
+			).build(),
+			"Parameter \"sort\" references a restricted field", mcpSyncClient);
+		_assertRestrictedQueryParameters(
+			HashMapBuilder.<String, Object>put(
+				"sort", "name:asc, description:desc"
+			).build(),
+			"Parameter \"sort\" references a restricted field", mcpSyncClient);
+
+		itemJSONObject = _getMCPServerProfileItemJSONObject(
+			HashMapBuilder.<String, Object>put(
+				"filter", "name eq '" + profileName + "'"
+			).put(
+				"pageSize", "100"
+			).build(),
+			mcpSyncClient, profileName);
+
+		Assert.assertEquals(profileName, itemJSONObject.getString("name"));
+
+		_assertAllowedQueryParameters(
+			HashMapBuilder.<String, Object>put(
+				"filter", "name eq 'description'"
+			).build(),
+			mcpSyncClient);
 
 		String entryName = RandomTestUtil.randomString();
 
@@ -1331,21 +1423,6 @@ public class MCPServerServletTest {
 
 		Assert.assertNull(response.getHeader("Mcp-Session-Id"));
 		Assert.assertEquals(200, response.getResponseCode());
-	}
-
-	private void _updateMCPServerProfileStatus(
-			ObjectEntry objectEntry, String profileStatus)
-		throws Exception {
-
-		_objectEntryLocalService.updateObjectEntry(
-			TestPropsValues.getUserId(), objectEntry.getObjectEntryId(),
-			objectEntry.getObjectEntryFolderId(),
-			HashMapBuilder.<String, Serializable>putAll(
-				objectEntry.getValues()
-			).put(
-				"profileStatus", profileStatus
-			).build(),
-			ServiceContextTestUtil.getServiceContext());
 	}
 
 	private static final String _TEST_EMAIL_ADDRESS = "example@example.com";

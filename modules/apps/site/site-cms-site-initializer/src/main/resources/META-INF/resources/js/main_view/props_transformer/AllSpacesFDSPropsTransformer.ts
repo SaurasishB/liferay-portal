@@ -57,6 +57,7 @@ export default function AllSpacesFDSPropsTransformer({
 					component: ({itemData, value}) =>
 						SpaceRenderer({
 							href: additionalProps.baseSpaceURL + itemData.id,
+							itemData,
 							logoColor: itemData.settings.logoColor,
 							size: 'sm',
 							value,
@@ -255,5 +256,7 @@ export default function AllSpacesFDSPropsTransformer({
 				});
 			}
 		},
+		searchAsYouType: true,
+		searchSuggestionsEnabled: true,
 	};
 }

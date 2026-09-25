@@ -18,6 +18,7 @@ import com.liferay.commerce.product.exception.NoSuchCatalogException;
 import com.liferay.commerce.product.model.CPDefinition;
 import com.liferay.commerce.product.model.CommerceCatalog;
 import com.liferay.commerce.product.service.CPDefinitionService;
+import com.liferay.commerce.product.service.CommerceCatalogLocalService;
 import com.liferay.commerce.product.service.CommerceCatalogService;
 import com.liferay.exportimport.constants.ExportImportConstants;
 import com.liferay.exportimport.vulcan.batch.engine.ExportImportVulcanBatchEngineTaskItemDelegate;
@@ -50,6 +51,7 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import org.osgi.service.component.annotations.Component;
@@ -105,48 +107,6 @@ public class CatalogResourceImpl
 	}
 
 	@Override
-	public Catalog getCatalog(Long id) throws Exception {
-		return _toCatalog(_commerceCatalogService.getCommerceCatalog(id));
-	}
-
-	@Override
-	public Catalog getCatalogByExternalReferenceCode(
-			String externalReferenceCode)
-		throws Exception {
-
-		CommerceCatalog commerceCatalog =
-			_commerceCatalogService.fetchCommerceCatalogByExternalReferenceCode(
-				externalReferenceCode, contextCompany.getCompanyId());
-
-		if (commerceCatalog == null) {
-			throw new NoSuchCatalogException(
-				"Unable to find catalog with external reference code " +
-					externalReferenceCode);
-		}
-
-		return _toCatalog(commerceCatalog);
-	}
-
-	@Override
-	public Page<Catalog> getCatalogsPage(
-			String search, Filter filter, Pagination pagination, Sort[] sorts)
-		throws Exception {
-
-		return SearchUtil.search(
-			Collections.emptyMap(),
-			booleanQuery -> booleanQuery.getPreBooleanFilter(), filter,
-			CommerceCatalog.class.getName(), search, pagination,
-			queryConfig -> queryConfig.setSelectedFieldNames(
-				Field.ENTRY_CLASS_PK),
-			searchContext -> searchContext.setCompanyId(
-				contextCompany.getCompanyId()),
-			sorts,
-			document -> _toCatalog(
-				_commerceCatalogService.getCommerceCatalog(
-					GetterUtil.getLong(document.get(Field.ENTRY_CLASS_PK)))));
-	}
-
-	@Override
 	public EntityModel getEntityModel(MultivaluedMap multivaluedMap)
 		throws Exception {
 
@@ -170,6 +130,11 @@ public class CatalogResourceImpl
 			@Override
 			public Class<CommerceCatalog> getModelClass() {
 				return CommerceCatalog.class;
+			}
+
+			@Override
+			public List<String> getNestedFields() {
+				return List.of("creator");
 			}
 
 			@Override
@@ -260,7 +225,49 @@ public class CatalogResourceImpl
 	}
 
 	@Override
-	public Catalog postCatalog(Catalog catalog) throws Exception {
+	protected Catalog doGetCatalog(Long id) throws Exception {
+		return _toCatalog(_commerceCatalogService.getCommerceCatalog(id));
+	}
+
+	@Override
+	protected Catalog doGetCatalogByExternalReferenceCode(
+			String externalReferenceCode)
+		throws Exception {
+
+		CommerceCatalog commerceCatalog =
+			_commerceCatalogService.fetchCommerceCatalogByExternalReferenceCode(
+				externalReferenceCode, contextCompany.getCompanyId());
+
+		if (commerceCatalog == null) {
+			throw new NoSuchCatalogException(
+				"Unable to find catalog with external reference code " +
+					externalReferenceCode);
+		}
+
+		return _toCatalog(commerceCatalog);
+	}
+
+	@Override
+	protected Page<Catalog> doGetCatalogsPage(
+			String search, Filter filter, Pagination pagination, Sort[] sorts)
+		throws Exception {
+
+		return SearchUtil.search(
+			Collections.emptyMap(),
+			booleanQuery -> booleanQuery.getPreBooleanFilter(), filter,
+			CommerceCatalog.class.getName(), search, pagination,
+			queryConfig -> queryConfig.setSelectedFieldNames(
+				Field.ENTRY_CLASS_PK),
+			searchContext -> searchContext.setCompanyId(
+				contextCompany.getCompanyId()),
+			sorts,
+			document -> _toCatalog(
+				_commerceCatalogService.getCommerceCatalog(
+					GetterUtil.getLong(document.get(Field.ENTRY_CLASS_PK)))));
+	}
+
+	@Override
+	protected Catalog doPostCatalog(Catalog catalog) throws Exception {
 		CommerceCatalog commerceCatalog =
 			_commerceCatalogService.fetchCommerceCatalogByExternalReferenceCode(
 				catalog.getExternalReferenceCode(),
@@ -307,7 +314,7 @@ public class CatalogResourceImpl
 	}
 
 	@Override
-	public Catalog putCatalogByExternalReferenceCode(
+	protected Catalog doPutCatalogByExternalReferenceCode(
 			String externalReferenceCode, Catalog catalog)
 		throws Exception {
 
@@ -337,6 +344,19 @@ public class CatalogResourceImpl
 		}
 
 		return _toCatalog(commerceCatalog);
+	}
+
+	@Override
+	protected Long getPermissionCheckerGroupId(Object id) throws Exception {
+		CommerceCatalog commerceCatalog =
+			_commerceCatalogLocalService.getCommerceCatalog((Long)id);
+
+		return commerceCatalog.getGroupId();
+	}
+
+	@Override
+	protected String getPermissionCheckerResourceName(Object id) {
+		return CommerceCatalog.class.getName();
 	}
 
 	private long _getAccountEntryId(Catalog catalog, long defaultAccountEntryId)
@@ -470,6 +490,9 @@ public class CatalogResourceImpl
 		target = "(component.name=com.liferay.headless.commerce.admin.catalog.internal.dto.v1_0.converter.CatalogDTOConverter)"
 	)
 	private DTOConverter<CommerceCatalog, Catalog> _catalogDTOConverter;
+
+	@Reference
+	private CommerceCatalogLocalService _commerceCatalogLocalService;
 
 	@Reference
 	private CommerceCatalogService _commerceCatalogService;

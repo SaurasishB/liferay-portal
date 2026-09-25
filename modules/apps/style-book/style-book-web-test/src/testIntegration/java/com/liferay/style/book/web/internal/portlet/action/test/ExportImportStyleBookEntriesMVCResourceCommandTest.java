@@ -56,6 +56,8 @@ import com.liferay.style.book.zip.processor.StyleBookEntryZipProcessorImportResu
 import java.io.File;
 import java.io.InputStream;
 
+import java.nio.charset.StandardCharsets;
+
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -543,6 +545,22 @@ public class ExportImportStyleBookEntriesMVCResourceCommandTest {
 			null);
 	}
 
+	private MockHttpServletRequest _getMultipartMockHttpServletRequest() {
+		MockHttpServletRequest mockHttpServletRequest =
+			new MockHttpServletRequest();
+
+		String content = "--StyleBookEntryImportBoundary--\r\n";
+
+		mockHttpServletRequest.setContent(
+			content.getBytes(StandardCharsets.UTF_8));
+
+		mockHttpServletRequest.setContentType(
+			ContentTypes.MULTIPART_FORM_DATA +
+				"; boundary=StyleBookEntryImportBoundary");
+
+		return mockHttpServletRequest;
+	}
+
 	private ThemeDisplay _getThemeDisplay() throws Exception {
 		ThemeDisplay themeDisplay = new ThemeDisplay();
 
@@ -591,7 +609,7 @@ public class ExportImportStyleBookEntriesMVCResourceCommandTest {
 
 					return UploadTestUtil.createUploadPortletRequest(
 						UploadTestUtil.createUploadServletRequest(
-							new MockHttpServletRequest(),
+							_getMultipartMockHttpServletRequest(),
 							HashMapBuilder.put(
 								"file", new FileItem[] {_getFileItem(file)}
 							).build(),
