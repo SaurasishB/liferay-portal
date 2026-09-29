@@ -805,7 +805,7 @@ public class ObjectDefinitionResourceTest
 				serviceBuilderAccountEntryObjectDefinition.
 					getObjectDefinitionId(),
 				postObjectDefinition.getId(), 0,
-				ObjectRelationshipConstants.DELETION_TYPE_CASCADE, false,
+				ObjectRelationshipConstants.DELETION_TYPE_CASCADE, null, false,
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
 				"a" + RandomTestUtil.randomString(), false,
 				ObjectRelationshipConstants.TYPE_ONE_TO_MANY, null));
@@ -2388,7 +2388,8 @@ public class ObjectDefinitionResourceTest
 		ObjectAction objectAction = new ObjectAction();
 
 		objectAction.setActive(RandomTestUtil.randomBoolean());
-		objectAction.setDescription(RandomTestUtil.randomString());
+		objectAction.setDescription(
+			Collections.singletonMap("en_US", RandomTestUtil.randomString()));
 		objectAction.setErrorMessage(
 			Collections.singletonMap("en_US", RandomTestUtil.randomString()));
 		objectAction.setExternalReferenceCode(RandomTestUtil.randomString());

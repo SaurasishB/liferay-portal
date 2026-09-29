@@ -17,6 +17,7 @@ function mockAudiencesDefinition(audienceIds: string[]) {
 			rules: [
 				{attribute: 'hostname', operator: 'eq', value: 'localhost'},
 			],
+			scope: [],
 		})),
 	};
 
@@ -155,6 +156,40 @@ describe('implementation', () => {
 					"Handler 'brokenHandler' of audience 'broken' failed with error"
 				)
 			);
+		});
+	});
+
+	describe('set', () => {
+		it('replaces the detected audiences', async () => {
+			mockAudiencesDefinition(['a', 'b']);
+
+			await audiences.runDetection(DEFINITION_URL);
+
+			audiences.set(['c']);
+
+			expect([...audiences.get()]).toEqual(['c']);
+		});
+
+		it('sets the priorities in the given order', () => {
+			audiences.set(['b', 'a']);
+
+			expect(audiences.getPriority('a')).toBe(1);
+			expect(audiences.getPriority('b')).toBe(0);
+		});
+
+		it('runs the handlers of the audiences it sets', async () => {
+			const handler = jest.fn();
+			const otherHandler = jest.fn();
+
+			audiences.on('a', handler);
+			audiences.on('b', otherHandler);
+
+			audiences.set(['a']);
+
+			await audiences.runHandlers();
+
+			expect(handler).toHaveBeenCalledTimes(1);
+			expect(otherHandler).not.toHaveBeenCalled();
 		});
 	});
 

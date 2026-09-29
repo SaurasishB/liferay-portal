@@ -5000,7 +5000,7 @@ public class ObjectEntryLocalServiceTest {
 			null, TestPropsValues.getUserId(),
 			_objectDefinition.getObjectDefinitionId(),
 			_draftObjectDefinition.getObjectDefinitionId(), 0,
-			ObjectRelationshipConstants.DELETION_TYPE_PREVENT, false,
+			ObjectRelationshipConstants.DELETION_TYPE_PREVENT, null, false,
 			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
 			StringUtil.randomId(), false,
 			ObjectRelationshipConstants.TYPE_ONE_TO_MANY, null);
@@ -5085,7 +5085,7 @@ public class ObjectEntryLocalServiceTest {
 			null, TestPropsValues.getUserId(),
 			publishedObjectDefinition.getObjectDefinitionId(),
 			draftObjectDefinition.getObjectDefinitionId(), 0,
-			ObjectRelationshipConstants.DELETION_TYPE_PREVENT, false,
+			ObjectRelationshipConstants.DELETION_TYPE_PREVENT, null, false,
 			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
 			StringUtil.randomId(), false,
 			ObjectRelationshipConstants.TYPE_ONE_TO_MANY, null);
@@ -10115,7 +10115,7 @@ public class ObjectEntryLocalServiceTest {
 		return _objectActionLocalService.addObjectAction(
 			RandomTestUtil.randomString(), TestPropsValues.getUserId(),
 			objectDefinitionId, true, StringPool.BLANK,
-			RandomTestUtil.randomString(),
+			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
 			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
 			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
 			RandomTestUtil.randomString(), objectActionExecutorKey,
@@ -10815,7 +10815,9 @@ public class ObjectEntryLocalServiceTest {
 	}
 
 	private String _getNoSuchAlgorithmExceptionMessage() {
-		if (JavaDetector.isJDK21()) {
+		String javaVersion = JavaDetector.getJavaVersion();
+
+		if (javaVersion.startsWith("21")) {
 			return ": Null or empty transformation";
 		}
 

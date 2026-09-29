@@ -7,7 +7,7 @@
 import {checkAccessibility} from '@liferay/layout-js-components-web/test/__lib__/index';
 
 import '@testing-library/jest-dom';
-import {render, screen, waitFor} from '@testing-library/react';
+import {render, screen, waitFor, within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {fetch, navigate} from 'frontend-js-web';
 import React from 'react';
@@ -42,7 +42,7 @@ const RESULTS_RESPONSE = [
 				url: '/content-dashboard',
 			},
 			{
-				description: 'Control Panel › Configuration',
+				description: 'Control Panel › Instance: Liferay',
 				icon: 'grid',
 				title: 'Instance Settings',
 				type: 'ENTRY',
@@ -113,9 +113,17 @@ const mockFetchResponse = (response = RESULTS_RESPONSE) => {
 const openModal = async () => {
 	render(<OmniSearch resultsURL={RESULTS_URL} />);
 
-	await userEvent.click(screen.getByLabelText('omni-search (Ctrl+K)'));
+	await userEvent.click(screen.getByLabelText('omni-search'));
 
 	return screen.findByPlaceholderText('search');
+};
+
+const getTooltip = (button: HTMLElement) => {
+	const tooltip = document.createElement('div');
+
+	tooltip.innerHTML = button.getAttribute('data-title') ?? '';
+
+	return tooltip;
 };
 
 const searchFor = async (keywords: string) => {
@@ -141,6 +149,25 @@ describe('OmniSearch', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockFetchResponse();
+
+		global.Liferay.Browser = {
+			...(global as any).Liferay,
+			isMac: () => false,
+		};
+	});
+
+	it('shows the shortcut as styled keys in the button tooltip', () => {
+		render(<OmniSearch resultsURL={RESULTS_URL} />);
+
+		const button = screen.getByRole('button', {name: 'omni-search'});
+
+		expect(button).toHaveAttribute('data-title-set-as-html');
+
+		const tooltip = getTooltip(button);
+
+		expect(tooltip).toHaveTextContent('omni-search');
+		expect(within(tooltip).getByText('Ctrl').tagName).toBe('KBD');
+		expect(within(tooltip).getByText('K').tagName).toBe('KBD');
 	});
 
 	it('opens the modal when the search button is clicked', async () => {

@@ -108,15 +108,14 @@ test(
 	{tag: '@LPD-105914'},
 	async ({classicPage, page}) => {
 		await classicPage.toolbar.container
-			.getByRole('button', {name: 'Insert table'})
+			.getByRole('button', {exact: true, name: 'Insert table'})
 			.click();
 
-		await page
-			.locator('.ck-insert-table-dropdown__grid div')
-			.first()
-			.click();
+		await page.getByRole('button', {exact: true, name: '1 × 1'}).click();
 
-		const editableTable = classicPage.editable.locator('table').first();
+		const editableTable = classicPage.editable
+			.locator('figure.table')
+			.first();
 
 		await expect(editableTable).toBeVisible();
 		await expect(editableTable).toHaveAttribute('class', /.+/);

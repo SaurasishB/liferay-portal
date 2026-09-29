@@ -42,6 +42,7 @@ import com.liferay.layout.page.template.admin.constants.LayoutPageTemplateAdminP
 import com.liferay.layout.page.template.constants.LayoutPageTemplateCollectionTypeConstants;
 import com.liferay.layout.page.template.constants.LayoutPageTemplateConstants;
 import com.liferay.layout.page.template.constants.LayoutPageTemplateEntryTypeConstants;
+import com.liferay.layout.page.template.exception.LayoutPageTemplateEntryDefaultTemplateException;
 import com.liferay.layout.page.template.model.LayoutPageTemplateCollection;
 import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
 import com.liferay.layout.page.template.service.LayoutPageTemplateCollectionService;
@@ -333,6 +334,90 @@ public class DisplayPageTemplateResourceImpl
 						getLayoutPageTemplateCollectionId(),
 					QueryUtil.ALL_POS, QueryUtil.ALL_POS, null),
 				this::_toDisplayPageTemplate));
+	}
+
+	@Override
+	public DisplayPageTemplate postDesignLibraryDisplayPageTemplateCopy(
+			String designLibraryExternalReferenceCode,
+			String displayPageTemplateExternalReferenceCode)
+		throws Exception {
+
+		return _copyDesignLibraryDisplayPageTemplate(
+			false, designLibraryExternalReferenceCode,
+			displayPageTemplateExternalReferenceCode);
+	}
+
+	@Override
+	public DisplayPageTemplate
+			postDesignLibraryDisplayPageTemplateCopyWithPermission(
+				String designLibraryExternalReferenceCode,
+				String displayPageTemplateExternalReferenceCode)
+		throws Exception {
+
+		return _copyDesignLibraryDisplayPageTemplate(
+			true, designLibraryExternalReferenceCode,
+			displayPageTemplateExternalReferenceCode);
+	}
+
+	@Override
+	public DisplayPageTemplate
+			postDesignLibraryDisplayPageTemplateMarkAsDefault(
+				String designLibraryExternalReferenceCode,
+				String displayPageTemplateExternalReferenceCode)
+		throws Exception {
+
+		EnabledUtil.checkDesignLibrariesEnabled(contextCompany);
+
+		LayoutPageTemplateEntry layoutPageTemplateEntry =
+			_getLayoutPageTemplateEntry(
+				displayPageTemplateExternalReferenceCode,
+				_getDesignLibraryGroupId(designLibraryExternalReferenceCode));
+
+		if (Validator.isNull(layoutPageTemplateEntry.getClassName())) {
+			throw new LayoutPageTemplateEntryDefaultTemplateException(
+				"A display page template without a content type cannot be " +
+					"marked as default",
+				layoutPageTemplateEntry.getType());
+		}
+
+		if (layoutPageTemplateEntry.isDefaultTemplate()) {
+			throw new LayoutPageTemplateEntryDefaultTemplateException(
+				"The display page template already is the default for its " +
+					"content type",
+				layoutPageTemplateEntry.getType());
+		}
+
+		return _toDesignLibraryDisplayPageTemplate(
+			designLibraryExternalReferenceCode,
+			_layoutPageTemplateEntryService.updateLayoutPageTemplateEntry(
+				layoutPageTemplateEntry.getLayoutPageTemplateEntryId(), true));
+	}
+
+	@Override
+	public DisplayPageTemplate
+			postDesignLibraryDisplayPageTemplateUnmarkAsDefault(
+				String designLibraryExternalReferenceCode,
+				String displayPageTemplateExternalReferenceCode)
+		throws Exception {
+
+		EnabledUtil.checkDesignLibrariesEnabled(contextCompany);
+
+		LayoutPageTemplateEntry layoutPageTemplateEntry =
+			_getLayoutPageTemplateEntry(
+				displayPageTemplateExternalReferenceCode,
+				_getDesignLibraryGroupId(designLibraryExternalReferenceCode));
+
+		if (!layoutPageTemplateEntry.isDefaultTemplate()) {
+			throw new LayoutPageTemplateEntryDefaultTemplateException(
+				"The display page template is not the default for its " +
+					"content type",
+				layoutPageTemplateEntry.getType());
+		}
+
+		return _toDesignLibraryDisplayPageTemplate(
+			designLibraryExternalReferenceCode,
+			_layoutPageTemplateEntryService.updateLayoutPageTemplateEntry(
+				layoutPageTemplateEntry.getLayoutPageTemplateEntryId(), false));
 	}
 
 	@Override
@@ -751,6 +836,34 @@ public class DisplayPageTemplateResourceImpl
 		return _toDisplayPageTemplate(layoutPageTemplateEntry);
 	}
 
+	private DisplayPageTemplate _copyDesignLibraryDisplayPageTemplate(
+			boolean copyPermissions, String designLibraryExternalReferenceCode,
+			String displayPageTemplateExternalReferenceCode)
+		throws Exception {
+
+		EnabledUtil.checkDesignLibrariesEnabled(contextCompany);
+
+		long groupId = _getDesignLibraryGroupId(
+			designLibraryExternalReferenceCode);
+
+		LayoutPageTemplateEntry layoutPageTemplateEntry =
+			_getLayoutPageTemplateEntry(
+				displayPageTemplateExternalReferenceCode, groupId);
+
+		if (layoutPageTemplateEntry.isDraft()) {
+			throw new IllegalArgumentException(
+				"A draft display page template cannot be copied");
+		}
+
+		return _toDesignLibraryDisplayPageTemplate(
+			designLibraryExternalReferenceCode,
+			_layoutPageTemplateEntryService.copyLayoutPageTemplateEntry(
+				groupId,
+				layoutPageTemplateEntry.getLayoutPageTemplateCollectionId(),
+				layoutPageTemplateEntry.getLayoutPageTemplateEntryId(),
+				copyPermissions, _getServiceContext(groupId)));
+	}
+
 	private long _getClassNameId(String contentTypeClassName) {
 		ClassName className = _classNameLocalService.fetchClassName(
 			contentTypeClassName);
@@ -889,15 +1002,22 @@ public class DisplayPageTemplateResourceImpl
 	private ServiceContext _getServiceContext(
 		DisplayPageTemplate displayPageTemplate, long groupId) {
 
+		ServiceContext serviceContext = _getServiceContext(groupId);
+
+		serviceContext.setCreateDate(displayPageTemplate.getDateCreated());
+		serviceContext.setModifiedDate(displayPageTemplate.getDateModified());
+		serviceContext.setUuid(displayPageTemplate.getUuid());
+
+		return serviceContext;
+	}
+
+	private ServiceContext _getServiceContext(long groupId) {
 		ServiceContext serviceContext = ServiceContextBuilder.create(
 			groupId, contextHttpServletRequest, null
 		).build();
 
 		serviceContext.setCompanyId(contextCompany.getCompanyId());
-		serviceContext.setCreateDate(displayPageTemplate.getDateCreated());
-		serviceContext.setModifiedDate(displayPageTemplate.getDateModified());
 		serviceContext.setUserId(contextUser.getUserId());
-		serviceContext.setUuid(displayPageTemplate.getUuid());
 
 		return serviceContext;
 	}
