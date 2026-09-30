@@ -2279,40 +2279,6 @@ public class ObjectEntryLocalServiceImpl
 	}
 
 	@Override
-	public ObjectEntry updateModifiedDate(long objectEntryId, Date modifiedDate)
-		throws PortalException {
-
-		ObjectEntry objectEntry = objectEntryPersistence.findByPrimaryKey(
-			objectEntryId);
-
-		objectEntry.setModifiedDate(modifiedDate);
-
-		objectEntry = objectEntryPersistence.update(objectEntry);
-
-		_reindex(objectEntry);
-
-		ObjectDefinition objectDefinition =
-			_objectDefinitionPersistence.findByPrimaryKey(
-				objectEntry.getObjectDefinitionId());
-
-		if (!objectDefinition.isEnableObjectEntryVersioning()) {
-			return objectEntry;
-		}
-
-		int objectEntryVersionsCount =
-			_objectEntryVersionPersistence.countByObjectEntryId(
-				objectEntry.getObjectEntryId());
-
-		if (objectEntryVersionsCount > 0) {
-			_objectEntryVersionLocalService.
-				updateLatestObjectEntryVersionModifiedDate(
-					modifiedDate, objectEntry.getObjectEntryId());
-		}
-
-		return objectEntry;
-	}
-
-	@Override
 	public ObjectEntry updateObjectEntry(
 			long userId, long objectEntryId, long objectEntryFolderId,
 			Map<String, Serializable> values, ServiceContext serviceContext)
