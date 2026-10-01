@@ -1057,9 +1057,13 @@ public class WebServerServlet extends HttpServlet {
 				fileEntry, HttpHeaders.CACHE_CONTROL,
 				HttpHeaders.CACHE_CONTROL_PRIVATE_VALUE));
 
-		String contentDispositionType =
-			_isBrowserExecutableContentType(fileEntry.getMimeType()) ?
-				HttpHeaders.CONTENT_DISPOSITION_ATTACHMENT : null;
+		String contentDispositionType = null;
+
+		if (ServletResponseUtil.isBrowserExecutableContentType(
+				fileEntry.getMimeType(), fileEntry.getTitle())) {
+
+			contentDispositionType = HttpHeaders.CONTENT_DISPOSITION_ATTACHMENT;
+		}
 
 		ServletResponseUtil.sendFile(
 			null, httpServletResponse, fileEntry.getTitle(),
@@ -1274,9 +1278,13 @@ public class WebServerServlet extends HttpServlet {
 
 		String cacheControlValue = HttpHeaders.CACHE_CONTROL_PRIVATE_VALUE;
 
+		boolean browserExecutable =
+			ServletResponseUtil.isBrowserExecutableContentType(
+				contentType, fileName);
+
 		boolean download = ParamUtil.getBoolean(httpServletRequest, "download");
 
-		if (_isBrowserExecutableContentType(contentType)) {
+		if (browserExecutable) {
 			download = true;
 		}
 
@@ -1295,7 +1303,7 @@ public class WebServerServlet extends HttpServlet {
 		_sendObjectEntryAttachmentDownloadMessage(
 			fileEntry, httpServletRequest, user);
 
-		if (isSupportsRangeHeader(contentType)) {
+		if (!browserExecutable && isSupportsRangeHeader(contentType)) {
 			ServletResponseUtil.sendFileWithRangeHeader(
 				httpServletRequest, httpServletResponse, fileName, inputStream,
 				contentLength, contentType);
@@ -1412,7 +1420,10 @@ public class WebServerServlet extends HttpServlet {
 
 		String mimeType = fileEntry.getMimeType();
 
-		if (download || !mimeType.startsWith("image/")) {
+		if (download || !mimeType.startsWith("image/") ||
+			ServletResponseUtil.isBrowserExecutableContentType(
+				mimeType, fileName)) {
+
 			ServletResponseUtil.sendFile(
 				httpServletRequest, httpServletResponse, fileName,
 				fileEntry.getContentStream(), fileEntry.getSize(), mimeType,
@@ -1449,12 +1460,16 @@ public class WebServerServlet extends HttpServlet {
 		long groupId = ParamUtil.getLong(httpServletRequest, "groupId");
 		String uuid = ParamUtil.getString(httpServletRequest, "uuid");
 
+		String contentDispositionType = null;
+
 		if ((groupId > 0) && Validator.isNotNull(uuid) &&
-			_isBrowserExecutableContentType(contentType)) {
+			ServletResponseUtil.isBrowserExecutableContentType(
+				contentType, fileName)) {
+
+			contentDispositionType = HttpHeaders.CONTENT_DISPOSITION_ATTACHMENT;
 
 			httpServletResponse.setHeader(
-				HttpHeaders.CONTENT_DISPOSITION,
-				HttpHeaders.CONTENT_DISPOSITION_ATTACHMENT);
+				HttpHeaders.CONTENT_DISPOSITION, contentDispositionType);
 		}
 
 		byte[] bytes = getImageBytes(httpServletRequest, image);
@@ -1463,7 +1478,7 @@ public class WebServerServlet extends HttpServlet {
 			if (Validator.isNotNull(fileName)) {
 				ServletResponseUtil.sendFile(
 					httpServletRequest, httpServletResponse, fileName, bytes,
-					contentType);
+					contentType, contentDispositionType);
 			}
 			else {
 				ServletResponseUtil.write(httpServletResponse, bytes);
@@ -1999,11 +2014,6 @@ public class WebServerServlet extends HttpServlet {
 			FileEntry.class.getName(), PortletProvider.Action.VIEW);
 	}
 
-	private boolean _isBrowserExecutableContentType(String contentType) {
-		return _browserExecutableContentTypes.contains(
-			StringUtil.toLowerCase(contentType));
-	}
-
 	private boolean _isImageTokenAccepted(
 		HttpServletRequest httpServletRequest, long imageId) {
 
@@ -2157,11 +2167,6 @@ public class WebServerServlet extends HttpServlet {
 
 	private static final Set<String> _acceptRangesMimeTypes = SetUtil.fromArray(
 		PropsValues.WEB_SERVER_SERVLET_ACCEPT_RANGES_MIME_TYPES);
-	private static final Set<String> _browserExecutableContentTypes =
-		SetUtil.fromArray(
-			ContentTypes.APPLICATION_JAVASCRIPT, ContentTypes.IMAGE_SVG_XML,
-			ContentTypes.TEXT_HTML, ContentTypes.TEXT_JAVASCRIPT,
-			"application/xhtml+xml");
 	private static final Snapshot<FileEntryFriendlyURLResolver>
 		_fileEntryFriendlyURLResolverSnapshot = new Snapshot<>(
 			WebServerServlet.class, FileEntryFriendlyURLResolver.class);
