@@ -2193,18 +2193,6 @@ public class DLFileEntryLocalServiceImpl
 
 				dlFileEntry = dlFileEntryPersistence.update(dlFileEntry);
 			}
-
-			// Indexer
-
-			if (Objects.equals(
-					dlFileVersion.getVersion(),
-					DLFileEntryConstants.VERSION_DEFAULT)) {
-
-				Indexer<DLFileEntry> indexer =
-					IndexerRegistryUtil.nullSafeGetIndexer(DLFileEntry.class);
-
-				indexer.delete(dlFileEntry);
-			}
 		}
 
 		// App helper
@@ -2227,13 +2215,7 @@ public class DLFileEntryLocalServiceImpl
 
 		// Indexer
 
-		if (((status == WorkflowConstants.STATUS_APPROVED) ||
-			 (status == WorkflowConstants.STATUS_EXPIRED) ||
-			 (status == WorkflowConstants.STATUS_IN_TRASH) ||
-			 (status == WorkflowConstants.STATUS_SCHEDULED) ||
-			 (oldStatus == WorkflowConstants.STATUS_IN_TRASH)) &&
-			((serviceContext == null) || serviceContext.isIndexingEnabled())) {
-
+		if ((serviceContext == null) || serviceContext.isIndexingEnabled()) {
 			_reindex(dlFileEntry);
 		}
 
