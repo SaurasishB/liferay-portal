@@ -200,6 +200,11 @@ public final class AMImageAMProcessor implements AMProcessor<FileVersion> {
 					amImageScaledImage.getWidth(), inputStream,
 					amImageScaledImage.getSize());
 			}
+
+			if (!_hasDLFileVersion(fileVersion)) {
+				_amImageEntryLocalService.deleteAMImageEntryFileVersion(
+					fileVersion);
+			}
 		}
 		catch (IOException ioException) {
 			throw new AMRuntimeException.IOException(ioException);
