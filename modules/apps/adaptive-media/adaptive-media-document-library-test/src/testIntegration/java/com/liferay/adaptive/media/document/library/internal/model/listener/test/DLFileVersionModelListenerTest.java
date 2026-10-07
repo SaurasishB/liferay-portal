@@ -90,15 +90,29 @@ public class DLFileVersionModelListenerTest {
 		_testOnAfterRemoveWhenCancelCheckOut();
 		_testOnAfterRemoveWhenCancelCheckOutInCTCollection();
 		_testOnAfterRemoveWhenCheckInFileEntryWithoutVersionNumberIncrease();
+		_testOnAfterRemoveWhenDeleteFileEntry();
+		_testOnAfterRemoveWhenDeleteFileVersion();
 		_testOnAfterRemoveWhenImportIsInProcess();
 	}
 
-	private FileVersion _addPrivateWorkingCopyFileVersion() throws Exception {
+	private FileEntry _addFileEntry() throws Exception {
 		FileEntry fileEntry = _dlAppLocalService.addFileEntry(
 			null, TestPropsValues.getUserId(), _group.getGroupId(),
 			DLFolderConstants.DEFAULT_PARENT_FOLDER_ID,
 			RandomTestUtil.randomString(), ContentTypes.IMAGE_JPEG,
 			_getImageBytes(), null, null, null, _serviceContext);
+
+		FileVersion fileVersion = fileEntry.getFileVersion();
+
+		Assert.assertNotNull(
+			_amImageEntryLocalService.fetchAMImageEntry(
+				_configurationUuid, fileVersion.getFileVersionId()));
+
+		return fileEntry;
+	}
+
+	private FileVersion _addPrivateWorkingCopyFileVersion() throws Exception {
+		FileEntry fileEntry = _addFileEntry();
 
 		_dlAppService.checkOutFileEntry(
 			fileEntry.getFileEntryId(), _serviceContext);
@@ -190,6 +204,33 @@ public class DLFileVersionModelListenerTest {
 		_dlAppService.checkInFileEntry(
 			fileVersion.getFileEntryId(), DLVersionNumberIncrease.NONE,
 			StringPool.BLANK, _serviceContext);
+
+		_assertRemoved(fileVersion);
+	}
+
+	private void _testOnAfterRemoveWhenDeleteFileEntry() throws Exception {
+		FileEntry fileEntry = _addFileEntry();
+
+		FileVersion fileVersion = fileEntry.getFileVersion();
+
+		_dlAppService.deleteFileEntry(fileEntry.getFileEntryId());
+
+		_assertRemoved(fileVersion);
+	}
+
+	private void _testOnAfterRemoveWhenDeleteFileVersion() throws Exception {
+		FileEntry fileEntry = _addFileEntry();
+
+		FileVersion fileVersion = fileEntry.getFileVersion();
+
+		_dlAppService.updateFileEntry(
+			fileEntry.getFileEntryId(), fileEntry.getFileName(),
+			ContentTypes.IMAGE_JPEG, fileEntry.getTitle(), null,
+			StringPool.BLANK, StringPool.BLANK, DLVersionNumberIncrease.MAJOR,
+			_getImageBytes(), null, null, null, _serviceContext);
+
+		_dlAppService.deleteFileVersion(
+			fileEntry.getFileEntryId(), fileVersion.getVersion());
 
 		_assertRemoved(fileVersion);
 	}
