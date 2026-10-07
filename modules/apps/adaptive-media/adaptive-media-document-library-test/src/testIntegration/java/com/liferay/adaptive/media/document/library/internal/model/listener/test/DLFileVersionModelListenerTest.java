@@ -15,6 +15,7 @@ import com.liferay.document.library.kernel.model.DLVersionNumberIncrease;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.document.library.kernel.service.DLAppService;
 import com.liferay.document.library.kernel.service.DLFileVersionLocalService;
+import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.change.tracking.CTCollectionThreadLocal;
@@ -89,6 +90,7 @@ public class DLFileVersionModelListenerTest {
 		_testOnAfterRemoveWhenCancelCheckOut();
 		_testOnAfterRemoveWhenCancelCheckOutInCTCollection();
 		_testOnAfterRemoveWhenCheckInFileEntryWithoutVersionNumberIncrease();
+		_testOnAfterRemoveWhenImportIsInProcess();
 	}
 
 	private FileVersion _addPrivateWorkingCopyFileVersion() throws Exception {
@@ -188,6 +190,21 @@ public class DLFileVersionModelListenerTest {
 		_dlAppService.checkInFileEntry(
 			fileVersion.getFileEntryId(), DLVersionNumberIncrease.NONE,
 			StringPool.BLANK, _serviceContext);
+
+		_assertRemoved(fileVersion);
+	}
+
+	private void _testOnAfterRemoveWhenImportIsInProcess() throws Exception {
+		FileVersion fileVersion = _addPrivateWorkingCopyFileVersion();
+
+		ExportImportThreadLocal.setPortletImportInProcess(true);
+
+		try {
+			_dlAppService.cancelCheckOut(fileVersion.getFileEntryId());
+		}
+		finally {
+			ExportImportThreadLocal.setPortletImportInProcess(false);
+		}
 
 		_assertRemoved(fileVersion);
 	}
