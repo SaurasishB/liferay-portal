@@ -8,12 +8,16 @@ package com.liferay.adaptive.media.document.library.internal.model.listener.test
 import com.liferay.adaptive.media.image.configuration.AMImageConfigurationHelper;
 import com.liferay.adaptive.media.image.service.AMImageEntryLocalService;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
+import com.liferay.change.tracking.model.CTCollection;
+import com.liferay.change.tracking.service.CTCollectionLocalService;
 import com.liferay.document.library.kernel.model.DLFolderConstants;
 import com.liferay.document.library.kernel.model.DLVersionNumberIncrease;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.document.library.kernel.service.DLAppService;
 import com.liferay.document.library.kernel.service.DLFileVersionLocalService;
+import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.change.tracking.CTCollectionThreadLocal;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.FileVersion;
@@ -25,6 +29,9 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
+import com.liferay.portal.kernel.transaction.Propagation;
+import com.liferay.portal.kernel.transaction.TransactionConfig;
+import com.liferay.portal.kernel.transaction.TransactionInvokerUtil;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
@@ -78,8 +85,9 @@ public class DLFileVersionModelListenerTest {
 	}
 
 	@Test
-	public void testOnAfterRemove() throws Exception {
+	public void testOnAfterRemove() throws Throwable {
 		_testOnAfterRemoveWhenCancelCheckOut();
+		_testOnAfterRemoveWhenCancelCheckOutInCTCollection();
 		_testOnAfterRemoveWhenCheckInFileEntryWithoutVersionNumberIncrease();
 	}
 
@@ -133,6 +141,45 @@ public class DLFileVersionModelListenerTest {
 		_assertRemoved(fileVersion);
 	}
 
+	private void _testOnAfterRemoveWhenCancelCheckOutInCTCollection()
+		throws Throwable {
+
+		_ctCollection = _ctCollectionLocalService.addCTCollection(
+			null, TestPropsValues.getCompanyId(), TestPropsValues.getUserId(),
+			0, RandomTestUtil.randomString(), null);
+
+		FileVersion fileVersion;
+
+		try (SafeCloseable safeCloseable =
+				CTCollectionThreadLocal.setCTCollectionIdWithSafeCloseable(
+					_ctCollection.getCtCollectionId())) {
+
+			fileVersion = _addPrivateWorkingCopyFileVersion();
+		}
+
+		TransactionInvokerUtil.invoke(
+			TransactionConfig.Factory.create(
+				Propagation.REQUIRED, new Class<?>[] {Exception.class}),
+			() -> {
+				try (SafeCloseable safeCloseable =
+						CTCollectionThreadLocal.
+							setCTCollectionIdWithSafeCloseable(
+								_ctCollection.getCtCollectionId())) {
+
+					_dlAppService.cancelCheckOut(fileVersion.getFileEntryId());
+				}
+
+				return null;
+			});
+
+		try (SafeCloseable safeCloseable =
+				CTCollectionThreadLocal.setCTCollectionIdWithSafeCloseable(
+					_ctCollection.getCtCollectionId())) {
+
+			_assertRemoved(fileVersion);
+		}
+	}
+
 	private void _testOnAfterRemoveWhenCheckInFileEntryWithoutVersionNumberIncrease()
 		throws Exception {
 
@@ -152,6 +199,12 @@ public class DLFileVersionModelListenerTest {
 	private AMImageEntryLocalService _amImageEntryLocalService;
 
 	private String _configurationUuid;
+
+	@DeleteAfterTestRun
+	private CTCollection _ctCollection;
+
+	@Inject
+	private CTCollectionLocalService _ctCollectionLocalService;
 
 	@Inject
 	private DLAppLocalService _dlAppLocalService;
