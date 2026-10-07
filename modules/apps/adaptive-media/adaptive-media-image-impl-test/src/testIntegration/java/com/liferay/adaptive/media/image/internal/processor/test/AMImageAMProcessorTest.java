@@ -12,21 +12,29 @@ import com.liferay.adaptive.media.image.scaler.AMImageScalerRegistry;
 import com.liferay.adaptive.media.image.service.AMImageEntryLocalService;
 import com.liferay.adaptive.media.processor.AMProcessor;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
+import com.liferay.change.tracking.model.CTCollection;
+import com.liferay.change.tracking.service.CTCollectionLocalService;
 import com.liferay.document.library.kernel.model.DLFolderConstants;
 import com.liferay.document.library.kernel.model.DLVersionNumberIncrease;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.document.library.kernel.service.DLFileVersionLocalService;
+import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.change.tracking.CTCollectionThreadLocal;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.FileVersion;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
+import com.liferay.portal.kernel.test.rule.Sync;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
+import com.liferay.portal.kernel.transaction.Propagation;
+import com.liferay.portal.kernel.transaction.TransactionConfig;
+import com.liferay.portal.kernel.transaction.TransactionInvokerUtil;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
@@ -82,10 +90,12 @@ public class AMImageAMProcessorTest {
 			TestPropsValues.getCompanyId(), _configurationUuid);
 	}
 
+	@Sync
 	@Test
-	public void testProcess() throws Exception {
+	public void testProcess() throws Throwable {
 		_testProcessWhenFileVersionIsDeleted();
 		_testProcessWhenFileVersionIsDeletedWhileScaling();
+		_testProcessWhenFileVersionIsInCTCollection();
 	}
 
 	private FileVersion _addPreviousFileVersion() throws Exception {
@@ -201,6 +211,44 @@ public class AMImageAMProcessorTest {
 				_configurationUuid, fileVersion.getFileVersionId()));
 	}
 
+	private void _testProcessWhenFileVersionIsInCTCollection()
+		throws Throwable {
+
+		_ctCollection = _ctCollectionLocalService.addCTCollection(
+			null, TestPropsValues.getCompanyId(), TestPropsValues.getUserId(),
+			0, RandomTestUtil.randomString(), null);
+
+		FileVersion fileVersion = TransactionInvokerUtil.invoke(
+			TransactionConfig.Factory.create(
+				Propagation.REQUIRED, new Class<?>[] {Exception.class}),
+			() -> {
+				try (SafeCloseable safeCloseable =
+						CTCollectionThreadLocal.
+							setCTCollectionIdWithSafeCloseable(
+								_ctCollection.getCtCollectionId())) {
+
+					FileEntry fileEntry = _dlAppLocalService.addFileEntry(
+						null, TestPropsValues.getUserId(), _group.getGroupId(),
+						DLFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+						RandomTestUtil.randomString(), ContentTypes.IMAGE_JPEG,
+						_getImageBytes(), null, null, null,
+						ServiceContextTestUtil.getServiceContext(
+							_group, TestPropsValues.getUserId()));
+
+					return fileEntry.getFileVersion();
+				}
+			});
+
+		try (SafeCloseable safeCloseable =
+				CTCollectionThreadLocal.setCTCollectionIdWithSafeCloseable(
+					_ctCollection.getCtCollectionId())) {
+
+			Assert.assertNotNull(
+				_amImageEntryLocalService.fetchAMImageEntry(
+					_configurationUuid, fileVersion.getFileVersionId()));
+		}
+	}
+
 	@Inject
 	private AMImageConfigurationHelper _amImageConfigurationHelper;
 
@@ -216,6 +264,12 @@ public class AMImageAMProcessorTest {
 	private AMProcessor<FileVersion> _amProcessor;
 
 	private String _configurationUuid;
+
+	@DeleteAfterTestRun
+	private CTCollection _ctCollection;
+
+	@Inject
+	private CTCollectionLocalService _ctCollectionLocalService;
 
 	@Inject
 	private DLAppLocalService _dlAppLocalService;
