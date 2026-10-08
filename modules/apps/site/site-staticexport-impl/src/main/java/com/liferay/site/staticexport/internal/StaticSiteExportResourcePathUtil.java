@@ -27,7 +27,8 @@ public class StaticSiteExportResourcePathUtil {
 			queryString = url.substring(index + 1);
 		}
 
-		path = _addExtension(StringUtil.removeFirst(path, StringPool.SLASH));
+		path = _addExtension(
+			StringUtil.removeFirst(path, StringPool.SLASH), queryString);
 
 		if (Validator.isNull(queryString)) {
 			return path;
@@ -46,15 +47,27 @@ public class StaticSiteExportResourcePathUtil {
 			path.substring(extensionIndex));
 	}
 
-	private static String _addExtension(String path) {
+	private static String _addExtension(String path, String queryString) {
 		int slashIndex = path.lastIndexOf(CharPool.SLASH);
 
 		if (path.indexOf(CharPool.PERIOD, slashIndex + 1) != -1) {
 			return path;
 		}
 
-		String extension = null;
+		String extension = _getPathExtension(path, slashIndex);
 
+		if (extension == null) {
+			extension = _getQueryStringExtension(queryString);
+		}
+
+		if (extension == null) {
+			return path;
+		}
+
+		return path + StringPool.PERIOD + extension;
+	}
+
+	private static String _getPathExtension(String path, int slashIndex) {
 		int end = slashIndex;
 
 		while (end > 0) {
@@ -65,19 +78,47 @@ public class StaticSiteExportResourcePathUtil {
 			int periodIndex = segment.lastIndexOf(CharPool.PERIOD);
 
 			if (periodIndex != -1) {
-				extension = segment.substring(periodIndex + 1);
+				String extension = segment.substring(periodIndex + 1);
 
-				break;
+				if (!_isExtension(extension)) {
+					return null;
+				}
+
+				return extension;
 			}
 
 			end = begin;
 		}
 
-		if (!_isExtension(extension)) {
-			return path;
+		return null;
+	}
+
+	private static String _getQueryStringExtension(String queryString) {
+		if (Validator.isNull(queryString)) {
+			return null;
 		}
 
-		return path + StringPool.PERIOD + extension;
+		String extension = null;
+
+		for (String parameter :
+				StringUtil.split(queryString, CharPool.AMPERSAND)) {
+
+			if (!parameter.startsWith(StringPool.SLASH)) {
+				continue;
+			}
+
+			int index = parameter.lastIndexOf(CharPool.PERIOD);
+
+			if (index != -1) {
+				extension = parameter.substring(index + 1);
+			}
+		}
+
+		if (!_isExtension(extension)) {
+			return null;
+		}
+
+		return extension;
 	}
 
 	private static boolean _isExtension(String extension) {

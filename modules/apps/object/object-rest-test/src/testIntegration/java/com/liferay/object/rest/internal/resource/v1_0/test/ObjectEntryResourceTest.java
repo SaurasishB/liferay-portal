@@ -24,6 +24,7 @@ import com.liferay.depot.model.DepotEntry;
 import com.liferay.depot.model.DepotEntryGroupRel;
 import com.liferay.depot.service.DepotEntryGroupRelLocalService;
 import com.liferay.depot.service.DepotEntryLocalService;
+import com.liferay.document.library.helper.DLURLHelper;
 import com.liferay.document.library.kernel.model.DLFileEntry;
 import com.liferay.document.library.kernel.model.DLFileVersion;
 import com.liferay.document.library.kernel.model.DLFolder;
@@ -33,7 +34,6 @@ import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.document.library.kernel.service.DLFileEntryLocalService;
 import com.liferay.document.library.kernel.service.DLFolderLocalService;
 import com.liferay.document.library.test.util.DLTestUtil;
-import com.liferay.document.library.util.DLURLHelper;
 import com.liferay.expando.kernel.model.ExpandoColumn;
 import com.liferay.expando.kernel.model.ExpandoColumnConstants;
 import com.liferay.expando.kernel.model.ExpandoTableConstants;
@@ -49,6 +49,8 @@ import com.liferay.list.type.model.ListTypeDefinition;
 import com.liferay.list.type.model.ListTypeEntry;
 import com.liferay.list.type.service.ListTypeDefinitionLocalService;
 import com.liferay.list.type.service.ListTypeEntryLocalService;
+import com.liferay.map.geocoder.GeocoderResult;
+import com.liferay.map.test.util.GeocoderTestUtil;
 import com.liferay.object.constants.ObjectActionExecutorConstants;
 import com.liferay.object.constants.ObjectActionKeys;
 import com.liferay.object.constants.ObjectActionTriggerConstants;
@@ -64,9 +66,11 @@ import com.liferay.object.constants.ObjectValidationRuleSettingConstants;
 import com.liferay.object.exception.NoSuchObjectEntryException;
 import com.liferay.object.field.builder.AssigneeObjectFieldBuilder;
 import com.liferay.object.field.builder.AttachmentObjectFieldBuilder;
+import com.liferay.object.field.builder.LocationObjectFieldBuilder;
 import com.liferay.object.field.builder.LongTextObjectFieldBuilder;
 import com.liferay.object.field.builder.RichTextObjectFieldBuilder;
 import com.liferay.object.field.builder.TextObjectFieldBuilder;
+import com.liferay.object.field.business.type.ObjectFieldBusinessTypeRegistry;
 import com.liferay.object.field.setting.builder.ObjectFieldSettingBuilder;
 import com.liferay.object.field.setting.util.ObjectFieldSettingUtil;
 import com.liferay.object.field.util.ObjectFieldUtil;
@@ -6065,6 +6069,63 @@ public class ObjectEntryResourceTest {
 				(JSONArray)_userAccountJSONObject.get("permissions")
 			},
 			Type.MANY_TO_MANY);
+
+		// Without fields, many to one relationship
+
+		String relationshipFieldName = String.format(
+			"r_%s_%s", _objectRelationship5.getName(),
+			_userSystemObjectDefinition.getPKObjectFieldName());
+
+		String relationshipFieldNameNestedFieldName = StringUtil.removeLast(
+			relationshipFieldName, "Id");
+
+		_assertNestedFieldsInRelationships(
+			0, 1,
+			HTTPTestUtil.invokeToJSONObject(
+				null,
+				StringBundler.concat(
+					_objectDefinition4.getRESTContextPath(), "/",
+					_objectEntry4.getObjectEntryId(), "?nestedFields=",
+					relationshipFieldName),
+				Http.Method.GET),
+			relationshipFieldNameNestedFieldName,
+			new String[][] {
+				{
+					_OBJECT_FIELD_NAME_TEXT,
+					String.valueOf(_OBJECT_FIELD_VALUE_4)
+				},
+				{_OBJECT_FIELD_NAME_2, String.valueOf(_OBJECT_FIELD_VALUE_2)}
+			},
+			null, Type.MANY_TO_ONE);
+
+		jsonObject = HTTPTestUtil.invokeToJSONObject(
+			null,
+			StringBundler.concat(
+				_objectDefinition4.getRESTContextPath(), "/",
+				_objectEntry4.getObjectEntryId(), "?nestedFields=",
+				_objectRelationship5.getName()),
+			Http.Method.GET);
+
+		_assertNestedFieldsInRelationships(
+			0, 1, jsonObject, relationshipFieldNameNestedFieldName,
+			new String[][] {
+				{
+					_OBJECT_FIELD_NAME_TEXT,
+					String.valueOf(_OBJECT_FIELD_VALUE_4)
+				},
+				{_OBJECT_FIELD_NAME_2, String.valueOf(_OBJECT_FIELD_VALUE_2)}
+			},
+			null, Type.MANY_TO_ONE);
+		_assertNestedFieldsInRelationships(
+			0, 1, jsonObject, _objectRelationship5.getName(),
+			new String[][] {
+				{
+					_OBJECT_FIELD_NAME_TEXT,
+					String.valueOf(_OBJECT_FIELD_VALUE_4)
+				},
+				{_OBJECT_FIELD_NAME_2, String.valueOf(_OBJECT_FIELD_VALUE_2)}
+			},
+			null, Type.MANY_TO_ONE);
 	}
 
 	@Test
@@ -10873,6 +10934,147 @@ public class ObjectEntryResourceTest {
 			defaultLanguageJSONObject.getString("fileBase64"));
 
 		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
+	}
+
+	@FeatureFlag("LPD-11388")
+	@Test
+	public void testPostCustomObjectEntryWithLocalizedLocationObjectField()
+		throws Exception {
+
+		GeocoderResult geocoderResult = new GeocoderResult(
+			RandomTestUtil.randomString(), RandomTestUtil.randomDouble(),
+			RandomTestUtil.randomDouble());
+
+		try (SafeCloseable safeCloseable =
+				GeocoderTestUtil.swapWithSafeCloseable(
+					geocoderResult,
+					_objectFieldBusinessTypeRegistry.getObjectFieldBusinessType(
+						ObjectFieldConstants.BUSINESS_TYPE_LOCATION))) {
+
+			ObjectDefinition objectDefinition =
+				ObjectDefinitionTestUtil.publishObjectDefinition(
+					Collections.singletonList(
+						new LocationObjectFieldBuilder(
+						).labelMap(
+							RandomTestUtil.randomLocaleStringMap()
+						).localized(
+							true
+						).name(
+							"location"
+						).build()));
+
+			String address = RandomTestUtil.randomString();
+			double latitude = RandomTestUtil.randomDouble();
+			double longitude = RandomTestUtil.randomDouble();
+
+			JSONObject jsonObject = HTTPTestUtil.invokeToJSONObject(
+				JSONUtil.put(
+					"location_i18n",
+					JSONUtil.put(
+						"en_US", JSONUtil.put("address", address)
+					).put(
+						"pt_BR",
+						JSONUtil.put(
+							"coordinates",
+							JSONUtil.put(
+								"latitude", latitude
+							).put(
+								"longitude", longitude
+							))
+					)
+				).toString(),
+				objectDefinition.getRESTContextPath(), Http.Method.POST);
+
+			JSONObject i18nJSONObject = jsonObject.getJSONObject(
+				"location_i18n");
+
+			_assertLocationJSONObject(
+				address, geocoderResult.getLatitude(),
+				geocoderResult.getLongitude(),
+				i18nJSONObject.getJSONObject("en_US"));
+			_assertLocationJSONObject(
+				geocoderResult.getAddress(), latitude, longitude,
+				i18nJSONObject.getJSONObject("pt_BR"));
+		}
+	}
+
+	@FeatureFlag("LPD-11388")
+	@Test
+	public void testPostCustomObjectEntryWithLocationObjectField()
+		throws Exception {
+
+		GeocoderResult geocoderResult = new GeocoderResult(
+			RandomTestUtil.randomString(), RandomTestUtil.randomDouble(),
+			RandomTestUtil.randomDouble());
+
+		try (SafeCloseable safeCloseable =
+				GeocoderTestUtil.swapWithSafeCloseable(
+					geocoderResult,
+					_objectFieldBusinessTypeRegistry.getObjectFieldBusinessType(
+						ObjectFieldConstants.BUSINESS_TYPE_LOCATION))) {
+
+			String defaultValue = RandomTestUtil.randomString();
+
+			ObjectDefinition objectDefinition =
+				ObjectDefinitionTestUtil.publishObjectDefinition(
+					Collections.singletonList(
+						new LocationObjectFieldBuilder(
+						).labelMap(
+							RandomTestUtil.randomLocaleStringMap()
+						).name(
+							"location"
+						).objectFieldSettings(
+							Arrays.asList(
+								new ObjectFieldSettingBuilder(
+								).name(
+									ObjectFieldSettingConstants.
+										NAME_DEFAULT_VALUE
+								).value(
+									JSONUtil.put(
+										"address", defaultValue
+									).toString()
+								).build(),
+								new ObjectFieldSettingBuilder(
+								).name(
+									ObjectFieldSettingConstants.
+										NAME_DEFAULT_VALUE_TYPE
+								).value(
+									ObjectFieldSettingConstants.
+										VALUE_INPUT_AS_VALUE
+								).build())
+						).build()));
+
+			String address = RandomTestUtil.randomString();
+
+			JSONObject jsonObject = HTTPTestUtil.invokeToJSONObject(
+				JSONUtil.put(
+					"location", JSONUtil.put("address", address)
+				).toString(),
+				objectDefinition.getRESTContextPath(), Http.Method.POST);
+
+			_assertLocationJSONObject(
+				address, geocoderResult.getLatitude(),
+				geocoderResult.getLongitude(),
+				jsonObject.getJSONObject("location"));
+
+			_objectValidationRuleLocalService.addObjectValidationRule(
+				StringUtil.randomString(), TestPropsValues.getUserId(),
+				objectDefinition.getObjectDefinitionId(), true,
+				ObjectValidationRuleConstants.ENGINE_TYPE_DDM,
+				LocalizedMapUtil.getLocalizedMap("Field must not be empty"),
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
+				ObjectValidationRuleConstants.OUTPUT_TYPE_FULL_VALIDATION,
+				"not(isEmpty(location))", false, Collections.emptyList());
+
+			jsonObject = HTTPTestUtil.invokeToJSONObject(
+				String.valueOf(_jsonFactory.createJSONObject()),
+				objectDefinition.getRESTContextPath(), Http.Method.POST);
+
+			_assertLocationJSONObject(
+				defaultValue, geocoderResult.getLatitude(),
+				geocoderResult.getLongitude(),
+				jsonObject.getJSONObject("location"));
+		}
 	}
 
 	@Test
@@ -16449,6 +16651,24 @@ public class ObjectEntryResourceTest {
 		}
 	}
 
+	private void _assertLocationJSONObject(
+		String expectedAddress, double expectedLatitude,
+		double expectedLongitude, JSONObject locationJSONObject) {
+
+		Assert.assertEquals(
+			expectedAddress, locationJSONObject.getString("address"));
+
+		JSONObject coordinatesJSONObject = locationJSONObject.getJSONObject(
+			"coordinates");
+
+		Assert.assertEquals(
+			expectedLatitude, coordinatesJSONObject.getDouble("latitude"),
+			0.0001);
+		Assert.assertEquals(
+			expectedLongitude, coordinatesJSONObject.getDouble("longitude"),
+			0.0001);
+	}
+
 	private void _assertNestedFieldsFieldsInRelationships(
 		int currentDepth, int depth, JSONObject jsonObject,
 		String[] nestedFieldNames,
@@ -17328,12 +17548,7 @@ public class ObjectEntryResourceTest {
 					objectDefinition.getCompanyId()));
 			objectEntryResource.setContextUser(user);
 
-			Class<?> clazz = objectEntryResource.getClass();
-
-			Method method = clazz.getMethod(
-				"setObjectDefinition", ObjectDefinition.class);
-
-			method.invoke(objectEntryResource, objectDefinition);
+			_setObjectDefinition(objectDefinition, objectEntryResource);
 
 			return objectEntryResource;
 		}
@@ -17781,6 +17996,19 @@ public class ObjectEntryResourceTest {
 			});
 
 		objectEntry.setProperties(properties);
+	}
+
+	private void _setObjectDefinition(
+			ObjectDefinition objectDefinition,
+			ObjectEntryResource objectEntryResource)
+		throws Exception {
+
+		Class<?> clazz = objectEntryResource.getClass();
+
+		Method method = clazz.getMethod(
+			"setObjectDefinition", ObjectDefinition.class);
+
+		method.invoke(objectEntryResource, objectDefinition);
 	}
 
 	private void _setUpPermissionThreadLocal(User user) {
@@ -21613,6 +21841,11 @@ public class ObjectEntryResourceTest {
 							"true"
 						).build()));
 
+			_setObjectDefinition(
+				_objectDefinitionLocalService.getObjectDefinition(
+					objectDefinition.getObjectDefinitionId()),
+				objectEntryResource);
+
 			validationResponse = _validate(
 				scopeKey, objectEntryResource,
 				_getValidationRequest(Collections.emptyMap()));
@@ -21665,6 +21898,11 @@ public class ObjectEntryResourceTest {
 
 			_objectFieldLocalService.deleteObjectField(
 				objectField2.getObjectFieldId());
+
+			_setObjectDefinition(
+				_objectDefinitionLocalService.getObjectDefinition(
+					objectDefinition.getObjectDefinitionId()),
+				objectEntryResource);
 
 			FileEntry fileEntry = TempFileEntryUtil.addTempFileEntry(
 				_testGroupId, TestPropsValues.getUserId(),
@@ -22899,6 +23137,9 @@ public class ObjectEntryResourceTest {
 
 	@Inject
 	private ObjectEntryService _objectEntryService;
+
+	@Inject
+	private ObjectFieldBusinessTypeRegistry _objectFieldBusinessTypeRegistry;
 
 	@Inject
 	private ObjectFieldLocalService _objectFieldLocalService;

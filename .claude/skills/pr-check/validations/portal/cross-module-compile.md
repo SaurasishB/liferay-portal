@@ -1,14 +1,6 @@
 # Cross-Module Compile
 
-## Trigger
-
-A `*-api`, `portal-impl`, or `portal-kernel` signature changed (or a `*Constants`, `*Service`, or `*Util` class). Two kinds of consumer are not compiled by any other validation:
-
-- Modules carrying `.lfrbuild-portal-deprecated`, which the default `portal`/`dxp` profile excludes.
-
-- `testIntegration` sources in `-test` modules a producer did not change. Per-Module Compile skips `-test` modules; Integration Test Compile runs only for a module whose own `testIntegration` changed.
-
-Both depend on the kernel as a binary, not a `project(...)` edge, so Per-Module Compile's expansion cannot reach them. Find them by source symbol.
+Compiles the two kinds of consumer of a changed API that no other validation compiles. The first is a module carrying `.lfrbuild-portal-deprecated`, which the default profile leaves out. The second is the `testIntegration` source of a `-test` module the branch did not change. Both depend on the kernel as a binary rather than through `project(...)`, so they are found by searching for the changed type.
 
 ## Match
 
@@ -16,37 +8,38 @@ Both depend on the kernel as a binary, not a `project(...)` edge, so Per-Module 
 
 ## Command
 
-Take the changed files from the diff:
+Take the changed files:
 
 ```bash
-MERGE_BASE=$(git merge-base HEAD master)
-
-git diff --name-only "${MERGE_BASE}...HEAD" -- '*.java'
+bash "${SKILL_DIR}/select_paths.sh" "${MERGE_BASE}" "${VALIDATION_FILE}"
 ```
 
 For each changed `.java` file, take its simple type name and search the two surfaces no other validation compiles, modules carrying `.lfrbuild-portal-deprecated` and `testIntegration` sources in `-test` modules:
 
 ```bash
-find "${REPO_ROOT}/modules" -name .lfrbuild-portal-deprecated | while read -r marker; do
-	command grep --files-with-matches --include='*.java' --recursive --word-regexp "<TypeName>" "$(dirname "${marker}")/src/main" | sed "s#/src/main/.*##"
-done | sort --unique
+(cd "${REPO_ROOT}" && find modules -name .lfrbuild-portal-deprecated | while read -r marker
+do
+	command grep --files-with-matches --include='*.java' --recursive --word-regexp "<TypeName>" "$(dirname "${marker}")/src/main"
+done) \
+	| bash "${SKILL_DIR}/find_modules.sh" "${MERGE_BASE}" \
+	| cut -d " " -f1 \
+	| sed "s#^modules/##; s#/#:#g" \
+	| sort --unique
 ```
 
 Pipe `find` into `while read -r` rather than looping over `$(find ...)`, which zsh does not word split, so that loop runs once over one joined string, greps a path that does not exist, and returns the same empty exit 1 as a clean scan.
 
 ```bash
-command grep --files-with-matches --include='*.java' --recursive --word-regexp "<TypeName>" "${REPO_ROOT}/modules" \
-	| command grep "/src/testIntegration/" | sed "s#/src/testIntegration/.*##" \
-	| command grep --regexp='-test$' | sort --unique
+(cd "${REPO_ROOT}" && command grep --files-with-matches --include='*.java' --recursive --word-regexp "<TypeName>" modules) \
+	| command grep "/src/testIntegration/" \
+	| bash "${SKILL_DIR}/find_modules.sh" "${MERGE_BASE}" \
+	| cut -d " " -f1 \
+	| command grep --regexp='-test$' \
+	| sed "s#^modules/##; s#/#:#g" \
+	| sort --unique
 ```
 
-Convert each module root to a Gradle project path by dropping everything up to and including the last `modules/`, then replacing `/` with `:`:
-
-```bash
-printf '%s\n' "${module_root#*"${REPO_ROOT}/modules/"}" | tr '/' ':'
-```
-
-The scans emit absolute paths, and a workspace directory can itself contain `modules`, so anchor the strip to `${REPO_ROOT}` rather than removing the bare substring.
+Both scans print Gradle project paths, written `<path>` below.
 
 Cap the combined set at 8. When it exceeds the cap, skip the expansion for **every** symbol rather than part of it, and recommend Full Portal Build plus Integration Test Compile instead, since a partial expansion reports on an arbitrary subset while reading as a whole result.
 

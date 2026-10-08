@@ -1,8 +1,6 @@
 # Structural Smoke
 
-## Trigger
-
-Runs when the diff touches a file that one of the three scanners reads; see **Selection** for the path-to-scanner mapping.
+Runs the structural tests that read the files the branch changed. **Selection** below maps each path to its test.
 
 ## Match
 

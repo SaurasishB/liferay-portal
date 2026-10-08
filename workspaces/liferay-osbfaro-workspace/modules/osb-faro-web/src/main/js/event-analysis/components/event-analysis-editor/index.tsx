@@ -2,19 +2,16 @@ import BreakdownTable from './event-analysis-breakdown';
 import Card from 'shared/components/Card';
 import CardTabs, {CardTabSizes} from 'shared/components/CardTabs';
 import Checkbox from 'shared/components/Checkbox';
-import EventAnalysisBuilder from './event-analysis-builder';
 import React from 'react';
 import {CalculationTypes, Event} from 'event-analysis/utils/types';
 import {DropdownRangeKey} from 'shared/components/dropdown-range-key/DropdownRangeKey';
 import {RangeSelectors} from 'shared/types';
-import {ReportContainer} from 'shared/components/download-report/DownloadPDFReport';
 
 interface IEventAnalysisEditorProps extends React.HTMLAttributes<HTMLElement> {
 	channelId: string;
 	compareToPrevious: boolean;
 	event: Event;
 	onCompareToPreviousChange: (compareToPrevious: boolean) => void;
-	onEventChange: (event: Event | null) => void;
 	onRangeSelectorsChange: (rangeSelectors: RangeSelectors) => void;
 	onTypeChange: (type: CalculationTypes) => void;
 	type: CalculationTypes;
@@ -26,19 +23,13 @@ const EventAnalysisEditor: React.FC<IEventAnalysisEditorProps> = ({
 	compareToPrevious,
 	event,
 	onCompareToPreviousChange,
-	onEventChange,
 	onRangeSelectorsChange,
 	onTypeChange,
 	rangeSelectors,
 	type,
 }) => (
-	<Card
-		className="event-analysis-editor-root"
-		reportContainer={ReportContainer.EventAnalysisPage}
-	>
-		<EventAnalysisBuilder event={event} onEventChange={onEventChange} />
-
-		<div className="options-container d-flex flex-column-reverse flex-md-row justify-content-between">
+	<Card className="event-analysis-editor-root">
+		<div className="d-flex flex-column-reverse flex-md-row justify-content-between mx-3 my-4">
 			<CardTabs
 				activeTabId={type}
 				className="type-selector"

@@ -16,7 +16,7 @@
 		"moment": "2.29.4",
 		"numeral": "2.0.6",
 		"object-hash": "2.2.0",
-		"qrcode": "1.4.4",
+		"qrcode": "1.5.4",
 		"qs": "6.9.6",
 		"react-dropzone": "11.4.2",
 		"react-flow-renderer": "9.7.0",
@@ -26,8 +26,7 @@
 		"react-transition-group": "4.4.5",
 		"text-mask-addons": "3.8.0",
 		"text-mask-core": "5.1.2",
-		"ua-parser-js": "2.0.9",
-		"uuid": "9.0.0"
+		"ua-parser-js": "2.0.9"
 	},
 	"name": "@liferay/frontend-js-dependencies-web",
 	"private": true,

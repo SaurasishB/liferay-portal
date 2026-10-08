@@ -4,68 +4,9 @@ exports[`Event Analysis Editor render 1`] = `
 <div>
   <div
     class="card card-root event-analysis-editor-root"
-    id="container.report.eventAnalysisPage"
   >
     <div
-      class="event-analysis-builder-root d-flex flex-column"
-    >
-      <div
-        class="event-section-root d-flex align-items-center"
-      >
-        <div
-          class="section-header"
-        >
-          Analyze
-        </div>
-        <div
-          class="event-container d-flex justify-content-between"
-        >
-          <div
-            class="event-list"
-          />
-          <div
-            class="dropdown"
-          >
-            <button
-              aria-expanded="false"
-              aria-haspopup="true"
-              aria-label="Add"
-              class="dropdown-toggle button-root add-event-button btn btn-sm btn-primary"
-              type="button"
-            >
-              <svg
-                class="lexicon-icon lexicon-icon-plus icon-root"
-                role="presentation"
-              >
-                <use
-                  href="#plus"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-      <div
-        class="attribute-breakdown-section-root d-flex align-items-center"
-      >
-        <div
-          class="section-header"
-        >
-          Breakdown
-        </div>
-      </div>
-      <div
-        class="attribute-filter-section-root d-flex align-items-center"
-      >
-        <div
-          class="section-header"
-        >
-          Filter
-        </div>
-      </div>
-    </div>
-    <div
-      class="options-container d-flex flex-column-reverse flex-md-row justify-content-between"
+      class="d-flex flex-column-reverse flex-md-row justify-content-between mx-3 my-4"
     >
       <ul
         class="card-tabs-root type-selector small"

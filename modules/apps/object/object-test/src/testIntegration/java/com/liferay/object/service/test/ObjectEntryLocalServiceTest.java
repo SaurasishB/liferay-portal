@@ -92,6 +92,7 @@ import com.liferay.object.field.builder.EmailAddressObjectFieldBuilder;
 import com.liferay.object.field.builder.EncryptedObjectFieldBuilder;
 import com.liferay.object.field.builder.FormulaObjectFieldBuilder;
 import com.liferay.object.field.builder.IntegerObjectFieldBuilder;
+import com.liferay.object.field.builder.LocationObjectFieldBuilder;
 import com.liferay.object.field.builder.LongIntegerObjectFieldBuilder;
 import com.liferay.object.field.builder.LongTextObjectFieldBuilder;
 import com.liferay.object.field.builder.MultiselectPicklistObjectFieldBuilder;
@@ -3116,6 +3117,58 @@ public class ObjectEntryLocalServiceTest {
 		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
 	}
 
+	@FeatureFlag("LPD-11388")
+	@Test
+	public void testAddObjectEntryWithLocalizedLocationObjectField()
+		throws Exception {
+
+		ObjectDefinition objectDefinition =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				Collections.singletonList(
+					new LocationObjectFieldBuilder(
+					).labelMap(
+						RandomTestUtil.randomLocaleStringMap()
+					).localized(
+						true
+					).name(
+						"location"
+					).build()));
+
+		Map<String, Serializable> localizedValues =
+			HashMapBuilder.<String, Serializable>put(
+				"en_US",
+				HashMapBuilder.<String, Serializable>put(
+					"address", RandomTestUtil.randomString()
+				).put(
+					"latitude", RandomTestUtil.randomDouble()
+				).put(
+					"longitude", RandomTestUtil.randomDouble()
+				).build()
+			).put(
+				"pt_BR",
+				HashMapBuilder.<String, Serializable>put(
+					"address", RandomTestUtil.randomString()
+				).put(
+					"latitude", RandomTestUtil.randomDouble()
+				).put(
+					"longitude", RandomTestUtil.randomDouble()
+				).build()
+			).build();
+
+		ObjectEntry objectEntry = _addObjectEntry(
+			objectDefinition,
+			HashMapBuilder.put(
+				"location_i18n", (Serializable)localizedValues
+			).build(),
+			ServiceContextTestUtil.getServiceContext());
+
+		Map<String, Serializable> objectEntryValues = objectEntry.getValues();
+
+		AssertUtils.assertEquals(
+			(Map<String, Serializable>)objectEntryValues.get("location_i18n"),
+			localizedValues);
+	}
+
 	@Test
 	public void testAddObjectEntryWithLocalizedPhoneNumberObjectField()
 		throws Exception {
@@ -3179,6 +3232,42 @@ public class ObjectEntryLocalServiceTest {
 			objectEntry, objectField);
 
 		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
+	}
+
+	@FeatureFlag("LPD-11388")
+	@Test
+	public void testAddObjectEntryWithLocationObjectField() throws Exception {
+		ObjectDefinition objectDefinition =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				Collections.singletonList(
+					new LocationObjectFieldBuilder(
+					).labelMap(
+						RandomTestUtil.randomLocaleStringMap()
+					).name(
+						"location"
+					).build()));
+
+		Map<String, Serializable> values =
+			HashMapBuilder.<String, Serializable>put(
+				"address", RandomTestUtil.randomString()
+			).put(
+				"latitude", RandomTestUtil.randomDouble()
+			).put(
+				"longitude", RandomTestUtil.randomDouble()
+			).build();
+
+		ObjectEntry objectEntry = _addObjectEntry(
+			objectDefinition,
+			HashMapBuilder.put(
+				"location", (Serializable)values
+			).build(),
+			ServiceContextTestUtil.getServiceContext());
+
+		Map<String, Serializable> objectEntryValues = objectEntry.getValues();
+
+		AssertUtils.assertEquals(
+			(Map<String, Serializable>)objectEntryValues.get("location"),
+			values);
 	}
 
 	@Test
@@ -7739,6 +7828,7 @@ public class ObjectEntryLocalServiceTest {
 
 		_testPartialUpdateObjectEntryExternalReferenceCode();
 		_testPartialUpdateObjectEntryObjectStateTransitions();
+		_testPartialUpdateObjectEntryWithAssetCategory();
 		_testPartialUpdateObjectEntryWithObjectRelationship();
 	}
 
@@ -12023,6 +12113,44 @@ public class ObjectEntryLocalServiceTest {
 
 		_objectEntryLocalService.deleteObjectEntry(
 			objectEntry.getObjectEntryId());
+	}
+
+	private void _testPartialUpdateObjectEntryWithAssetCategory()
+		throws Exception {
+
+		AssetCategory assetCategory = _addAssetCategory(
+			_groupLocalService.fetchGroup(TestPropsValues.getGroupId()));
+
+		ObjectEntry objectEntry = _addObjectEntry(
+			TestPropsValues.getGroupId(),
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				Collections.singletonList(
+					new TextObjectFieldBuilder(
+					).labelMap(
+						RandomTestUtil.randomLocaleStringMap()
+					).name(
+						"a" + RandomTestUtil.randomString()
+					).build()),
+				ObjectDefinitionConstants.SCOPE_SITE),
+			Collections.emptyMap(),
+			new ServiceContext() {
+				{
+					setAssetCategoryIds(
+						new long[] {assetCategory.getCategoryId()});
+				}
+			});
+
+		objectEntry = _objectEntryLocalService.partialUpdateObjectEntry(
+			TestPropsValues.getUserId(), objectEntry.getObjectEntryId(),
+			objectEntry.getObjectEntryFolderId(), Collections.emptyMap(),
+			new ServiceContext());
+
+		AssetEntry assetEntry = _assetEntryLocalService.getEntry(
+			objectEntry.getModelClassName(), objectEntry.getObjectEntryId());
+
+		Assert.assertArrayEquals(
+			new long[] {assetCategory.getCategoryId()},
+			assetEntry.getCategoryIds());
 	}
 
 	private void _testPartialUpdateObjectEntryWithObjectRelationship()

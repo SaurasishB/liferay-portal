@@ -96,7 +96,7 @@ public class MasterResourceReaderTest
 		try {
 			jobJSONObjects.put(RandomTestUtil.randomString(), new JSONObject());
 
-			Assert.fail("Expected UnsupportedOperationException");
+			Assert.fail();
 		}
 		catch (UnsupportedOperationException unsupportedOperationException) {
 		}
@@ -117,7 +117,7 @@ public class MasterResourceReaderTest
 		try {
 			masterResourceReader.getJobJSONObjects(_MILLIS_TIMEOUT);
 
-			Assert.fail("Expected the read to fail");
+			Assert.fail();
 		}
 		catch (Exception exception) {
 		}
@@ -252,7 +252,7 @@ public class MasterResourceReaderTest
 		try {
 			masterResourceReader.getPrometheusScrape(_MILLIS_TIMEOUT);
 
-			Assert.fail("Expected IOException");
+			Assert.fail();
 		}
 		catch (IOException ioException) {
 		}

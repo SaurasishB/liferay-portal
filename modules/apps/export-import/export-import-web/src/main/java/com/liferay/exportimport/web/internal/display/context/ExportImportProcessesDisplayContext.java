@@ -12,6 +12,7 @@ import com.liferay.frontend.taglib.clay.servlet.taglib.util.CreationMenu;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.CreationMenuBuilder;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.backgroundtask.constants.BackgroundTaskConstants;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
@@ -35,6 +36,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * @author Daniel Raposo
@@ -207,6 +209,25 @@ public class ExportImportProcessesDisplayContext {
 					_getPortletId(), "backURL", _themeDisplay.getURLCurrent());
 				dropdownItem.setLabel(
 					LanguageUtil.get(_httpServletRequest, "new"));
+			}
+		).addPrimaryDropdownItem(
+			() ->
+				Objects.equals(cmd, Constants.EXPORT) &&
+				FeatureFlagManagerUtil.isEnabled(
+					_themeDisplay.getCompanyId(), "LPD-107410"),
+			dropdownItem -> {
+				dropdownItem.setHref(
+					_liferayPortletResponse.createRenderURL(),
+					"mvcRenderCommandName", "/export_import/view_new_export",
+					Constants.CMD, Constants.EXPORT, "groupId",
+					String.valueOf(_groupId), "liveGroupId",
+					String.valueOf(_groupId), "privateLayout",
+					String.valueOf(_privateLayout), "plid",
+					String.valueOf(_themeDisplay.getPlid()), "portletId",
+					_getPortletId(), "staticSite", Boolean.TRUE.toString(),
+					"backURL", _themeDisplay.getURLCurrent());
+				dropdownItem.setLabel(
+					LanguageUtil.get(_httpServletRequest, "static-site"));
 			}
 		).build();
 	}

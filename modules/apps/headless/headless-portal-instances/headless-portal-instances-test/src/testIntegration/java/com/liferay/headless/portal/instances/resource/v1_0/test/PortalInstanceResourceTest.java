@@ -19,6 +19,7 @@ import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.portal.kernel.instance.PortalInstancePool;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
+import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.User;
@@ -158,6 +159,7 @@ public class PortalInstanceResourceTest
 		_testPostPortalInstanceWithAdmin();
 		_testPostPortalInstanceWithAdminAndCompanyStrangers();
 		_testPostPortalInstanceWithAdminCredentials();
+		_testPostPortalInstanceWithAdminWithoutRequiredFields();
 		_testPostPortalInstanceWithoutOmniadminPermission();
 	}
 
@@ -317,6 +319,27 @@ public class PortalInstanceResourceTest
 				setVirtualHost(company::getVirtualHostname);
 			}
 		};
+	}
+
+	private void _assertPostPortalInstanceProblemTitle(
+			JSONObject adminJSONObject, String title)
+		throws Exception {
+
+		PortalInstance randomPortalInstance = randomPortalInstance();
+
+		randomPortalInstance.setAdmin(Admin.toDTO(adminJSONObject.toString()));
+
+		try {
+			portalInstanceResource.postPortalInstance(randomPortalInstance);
+
+			Assert.fail();
+		}
+		catch (Problem.ProblemException problemException) {
+			Problem problem = problemException.getProblem();
+
+			Assert.assertEquals("BAD_REQUEST", problem.getStatus());
+			Assert.assertEquals(title, problem.getTitle());
+		}
 	}
 
 	private void _assertProblemExceptionProblemStatus(
@@ -740,6 +763,32 @@ public class PortalInstanceResourceTest
 		finally {
 			_deletePortalInstance(postPortalInstance);
 		}
+	}
+
+	private void _testPostPortalInstanceWithAdminWithoutRequiredFields()
+		throws Exception {
+
+		_assertPostPortalInstanceProblemTitle(
+			JSONUtil.put(
+				"emailAddress", RandomTestUtil.randomString() + "@liferay.com"
+			).put(
+				"familyName", RandomTestUtil.randomString()
+			),
+			"Contact must have a first name");
+		_assertPostPortalInstanceProblemTitle(
+			JSONUtil.put(
+				"emailAddress", RandomTestUtil.randomString() + "@liferay.com"
+			).put(
+				"givenName", RandomTestUtil.randomString()
+			),
+			"Contact must have a last name");
+		_assertPostPortalInstanceProblemTitle(
+			JSONUtil.put(
+				"familyName", RandomTestUtil.randomString()
+			).put(
+				"givenName", RandomTestUtil.randomString()
+			),
+			"Email address must not be null");
 	}
 
 	private void _testPostPortalInstanceWithoutAdmin() throws Exception {

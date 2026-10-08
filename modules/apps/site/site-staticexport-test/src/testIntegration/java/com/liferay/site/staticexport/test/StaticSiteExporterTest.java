@@ -6,8 +6,10 @@
 package com.liferay.site.staticexport.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
+import com.liferay.fragment.constants.FragmentConstants;
 import com.liferay.layout.test.util.ContentLayoutTestUtil;
 import com.liferay.layout.test.util.LayoutTestUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
@@ -17,10 +19,12 @@ import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
+import com.liferay.segments.service.SegmentsExperienceLocalService;
 import com.liferay.site.initializer.SiteInitializer;
 import com.liferay.site.initializer.SiteInitializerRegistry;
 import com.liferay.site.staticexport.StaticSiteExport;
@@ -149,6 +153,43 @@ public class StaticSiteExporterTest {
 		}
 	}
 
+	@Test
+	public void testExportWithURIFragment() throws Exception {
+		Layout layout = LayoutTestUtil.addTypeContentLayout(_group);
+
+		Layout draftLayout = layout.fetchDraftLayout();
+
+		ContentLayoutTestUtil.addFragmentEntryLinkToLayout(
+			StringPool.BLANK, StringPool.BLANK, StringPool.BLANK, null, null,
+			StringBundler.concat(
+				"<a href=\"", PortalUtil.getPathFriendlyURLPublic(),
+				_group.getFriendlyURL(), layout.getFriendlyURL(),
+				"#section\">Section</a>"),
+			StringPool.BLANK, draftLayout, null,
+			_segmentsExperienceLocalService.fetchDefaultSegmentsExperienceId(
+				draftLayout.getPlid()),
+			FragmentConstants.TYPE_COMPONENT);
+
+		ContentLayoutTestUtil.publishLayout(draftLayout, layout);
+
+		try (StaticSiteExport staticSiteExport = _staticSiteExporter.export(
+				_group.getGroupId(), Set.of(LocaleUtil.US))) {
+
+			List<StaticSiteExportLayout> staticSiteExportLayouts =
+				staticSiteExport.getStaticSiteExportLayouts();
+
+			StaticSiteExportLayout staticSiteExportLayout =
+				staticSiteExportLayouts.get(0);
+
+			Assert.assertThat(
+				staticSiteExportLayout.getHTML(),
+				CoreMatchers.containsString(
+					StringBundler.concat(
+						"href=\"/", staticSiteExportLayout.getPath(),
+						"#section\"")));
+		}
+	}
+
 	private void _assertStaticSiteExport(
 		Layout layout, StaticSiteExport staticSiteExport) {
 
@@ -205,12 +246,13 @@ public class StaticSiteExporterTest {
 				generatedResource = true;
 			}
 
-			if (url.contains(".css")) {
+			String html = staticSiteExportLayout.getHTML();
+
+			if (url.contains(".css") && html.contains(url)) {
 				stylesheet = true;
 
 				Assert.assertThat(
-					staticSiteExportLayout.getHTML(),
-					CoreMatchers.containsString(StringPool.SLASH + path));
+					html, CoreMatchers.containsString(StringPool.SLASH + path));
 			}
 		}
 
@@ -238,6 +280,9 @@ public class StaticSiteExporterTest {
 
 	@Inject
 	private LayoutLocalService _layoutLocalService;
+
+	@Inject
+	private SegmentsExperienceLocalService _segmentsExperienceLocalService;
 
 	@Inject
 	private SiteInitializerRegistry _siteInitializerRegistry;

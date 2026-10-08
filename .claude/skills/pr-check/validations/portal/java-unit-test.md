@@ -1,10 +1,6 @@
 # Java Unit Tests
 
-## Trigger
-
-A Java source file changed with behavior intent — logic added, removed, or modified. Surface only edits (renames, formatting, comments, javadoc) do not fire this validation — the build's compile step plus **Structural Smoke** are enough.
-
-Test code (`**/src/test/**`) is in scope: when a test class itself changed, run it. Integration test sources (`**/src/testIntegration/**`) are not in scope here — IT execution is out of scope; signature breaks in IT are caught by **Integration Test Compile**.
+Runs the unit tests that exercise a changed class.
 
 ## Match
 
@@ -12,12 +8,12 @@ Test code (`**/src/test/**`) is in scope: when a test class itself changed, run 
 
 ## Command
 
-Take the changed Java files from the diff:
+A change with no behavior intent, such as a rename, formatting, a comment, or Javadoc, needs no unit test, since the compile step and Structural Smoke cover it. When every changed Java file is such a change, run nothing and report **NOT VERIFIED**, naming the change as surface only.
+
+Take the changed Java files:
 
 ```bash
-MERGE_BASE=$(git merge-base HEAD master)
-
-git diff --name-only "${MERGE_BASE}...HEAD" -- ':/*.java'
+bash "${SKILL_DIR}/select_paths.sh" "${MERGE_BASE}" "${VALIDATION_FILE}"
 ```
 
 Locate the counterpart test by parallel name: `Foo.java` → `FooTest.java` in the same module's `src/test/java/**` (for OSGi modules) or `portal-impl/test/unit/**` / `portal-kernel/test/unit/**` (for portal-core).
@@ -36,7 +32,18 @@ Install the portal snapshot before running any module test, since the module com
 (cd "${REPO_ROOT}" && ant compile install-portal-snapshots)
 ```
 
-For OSGi modules — run only the specific test class, batching counterparts within the same module. Convert the module directory to a Gradle project path by stripping `modules/` and replacing `/` with `:`:
+For OSGi modules, run only the specific test class, batching counterparts within the same module. Take the Gradle project path of each changed module:
+
+```bash
+bash "${SKILL_DIR}/select_paths.sh" "${MERGE_BASE}" "${VALIDATION_FILE}" \
+	| bash "${SKILL_DIR}/find_modules.sh" "${MERGE_BASE}" \
+	| cut -d " " -f1 \
+	| command grep '^modules/' \
+	| sort --unique \
+	| sed "s#^modules/##; s#/#:#g"
+```
+
+Run each module's counterparts together:
 
 ```bash
 "${REPO_ROOT}/gradlew" \

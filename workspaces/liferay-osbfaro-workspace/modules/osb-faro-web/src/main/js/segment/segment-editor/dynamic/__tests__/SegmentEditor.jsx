@@ -8,7 +8,8 @@ import {
 	fireEvent,
 	render,
 	screen,
-	waitFor
+	waitFor,
+	within
 } from '@testing-library/react';
 import {DndProvider} from 'react-dnd';
 import {HTML5Backend} from 'react-dnd-html5-backend';
@@ -121,7 +122,7 @@ describe('SegmentEditor', () => {
 
 		expect(
 			screen.getByText(
-				'Drag and drop criterion from the right to add rules.'
+				'Drag and drop criterion from the left to add rules.'
 			)
 		).toBeInTheDocument();
 		expect(
@@ -160,7 +161,7 @@ describe('SegmentEditor', () => {
 		await waitFor(() => {
 			expect(
 				screen.queryByText(
-					'Drag and drop criterion from the right to add rules.'
+					'Drag and drop criterion from the left to add rules.'
 				)
 			).toBeInTheDocument();
 
@@ -185,6 +186,12 @@ describe('SegmentEditor', () => {
 					</DndProvider>
 				</BrowserRouter>
 			</Provider>
+		);
+
+		fireEvent.click(
+			within(
+				screen.getByLabelText(/segment erc/i).closest('.form-group')
+			).getByRole('button', {name: /help/i})
 		);
 
 		expect(
@@ -238,7 +245,7 @@ describe('SegmentEditor', () => {
 			</Provider>
 		);
 
-		fireEvent.change(screen.getByPlaceholderText('Unnamed Segment'), {
+		fireEvent.change(screen.getByPlaceholderText('New Segment'), {
 			target: {value: 'Engaged Accounts'}
 		});
 

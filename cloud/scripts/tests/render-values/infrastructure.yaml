@@ -20,4 +20,3 @@ license:
 overlayBucket:
     enabled: true
 projectId: liferay-example
-region: eastus

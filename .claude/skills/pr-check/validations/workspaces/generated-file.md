@@ -1,10 +1,6 @@
 # Generated Workspace File
 
-## Trigger
-
-The branch changed a file that `workspaces/refresh_other_workspaces.sh` regenerates from `liferay-sample-workspace`, in a workspace other than the sample itself.
-
-That script copies the sample workspace over every other workspace with `rsync --archive --delete`, in `liferay-portal` and in the private repository alike. Its `--exclude` patterns name what each workspace owns, and everything else is overwritten or deleted on the next refresh. A change to such a file outside the sample is therefore reverted without a build failure or a warning. A regenerated file may change only through a refresh, and an edit to it belongs in `liferay-sample-workspace`.
+`workspaces/refresh_other_workspaces.sh` copies `liferay-sample-workspace` over every other workspace, so a change to a copied file outside the sample is silently reverted on the next refresh. Such a file may change only through a refresh, and an edit to it belongs in the sample workspace.
 
 ## Match
 

@@ -68,13 +68,16 @@ export const renderProperties = (
 	return (
 		<ul className="property-subgroups-list active">
 			<li>
-				<ul className="properties-list">
+				<ul
+					aria-label={Liferay.Language.get('conditions-library')}
+					className="properties-list"
+					role="menu"
+				>
 					{properties.toArray().map((property, i) => {
 						const {label, name, propertyKey, type} = property;
 
 						return (
 							<CriteriaSidebarItem
-								className={`color--${propertyKey}`}
 								defaultValue={getDefaultValue(property)}
 								key={`${name}-${i}`}
 								label={label}

@@ -160,16 +160,12 @@ public class StyleBookEntryUtil {
 
 		JSONObject valueJSONObject =
 			frontendTokenValuesJSONObject.getJSONObject(
-				StyleBookConstants.CUSTOM_FRONTEND_TOKEN_DEFINITION_ID +
+				StyleBookConstants.FRONTEND_TOKEN_DEFINITION_ID_CUSTOM +
 					StringPool.COLON + name);
 
 		if ((valueJSONObject == null) && Validator.isNotNull(themeId)) {
 			valueJSONObject = frontendTokenValuesJSONObject.getJSONObject(
 				themeId + StringPool.COLON + name);
-		}
-
-		if (valueJSONObject == null) {
-			valueJSONObject = frontendTokenValuesJSONObject.getJSONObject(name);
 		}
 
 		String value = StringPool.BLANK;

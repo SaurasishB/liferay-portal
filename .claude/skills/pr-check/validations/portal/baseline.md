@@ -1,10 +1,8 @@
 # Baseline
 
-## Trigger
+Compares each exported API against its last release and fails on a missing, excessive, or insufficient `Bundle-Version` or `packageinfo` bump.
 
-Always, apart from a diff confined to the trees **Match** excludes. None of those trees can require a version bump. The bnd baseline task diffs each exported API against the last release and fails on a missing, excessive, or insufficient `Bundle-Version` or `packageinfo` bump. `maven-executor` is the one module under `modules/test` the baseline task actually runs, so it stays selected.
-
-Do not narrow the run to the branch diff. The comparison target is resolved from Nexus on every run, so a module the branch never touched can start failing between one run and the next. Narrow the verdict instead, as **Command** sets out: only a module the branch changed can fail it. Otherwise one stale version on master fails every pull request at once, stopping the developer least able to judge whether the bump is right.
+The comparison covers the whole repository because the release it compares against comes from Nexus and can change between runs. Only a module the branch changed can fail it, so one stale version on master does not fail every pull request. It runs on every diff apart from one confined to `.claude`, `portal-web/test`, or the `jenkins-results-parser`, `playwright`, and `poshi` trees under `modules/test`, none of which can require a version bump.
 
 ## Match
 
@@ -44,12 +42,22 @@ Confirm each Ant project actually baselined by running it alone, where nothing i
 
 Keep `--rerun`. Without it the task reports `UP-TO-DATE` and exits 0 in half a second, a cached verdict rather than a comparison. A genuine run prints `1 executed`. Fail when one of the seven is missing its jar, reports `Could not resolve`, or never prints `1 executed` — a baseline that did not run is not one that passed. A nonzero exit is not itself the verdict, since a project that ran and found something exits nonzero too.
 
-Confirm the branch's own modules the same way, keeping `--rerun`, and passing each changed module whose `bnd.bnd` carries `Export-Package:` as the project directory. Take those modules from the diff, walking each changed file up to its nearest ancestor holding a `bnd.bnd`:
+Confirm the branch's own modules the same way, keeping `--rerun` and passing each as the project directory. Take the changed modules under `modules`, and keep those whose `bnd.bnd` carries `Export-Package` on the branch or on the merge base, since a module that exports nothing has no API to compare:
 
 ```bash
-MERGE_BASE=$(git merge-base HEAD master)
-
-git diff --name-only "${MERGE_BASE}...HEAD"
+bash "${SKILL_DIR}/select_paths.sh" "${MERGE_BASE}" "${VALIDATION_FILE}" \
+	| bash "${SKILL_DIR}/find_modules.sh" "${MERGE_BASE}" \
+	| cut -d " " -f1 \
+	| command grep '^modules/' \
+	| sort --unique \
+	| while IFS= read -r module
+do
+	if command grep --quiet '^Export-Package' "${REPO_ROOT}/${module}/bnd.bnd" 2>/dev/null ||
+	   git show "${MERGE_BASE}:${module}/bnd.bnd" 2>/dev/null | command grep '^Export-Package' > /dev/null
+	then
+		echo "${module}"
+	fi
+done
 ```
 
 `baseline-all` compares those too, and they are where a branch's changes land, so confirming only the seven leaves the half that matters unevidenced. A module builds its dependencies first and so reports an aggregate count rather than `1 executed`. Judge it by the `> Task :<path>:baseline` line, which a run that never compared anything does not print.

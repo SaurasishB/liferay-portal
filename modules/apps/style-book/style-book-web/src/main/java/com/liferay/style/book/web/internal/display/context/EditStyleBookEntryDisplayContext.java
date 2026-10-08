@@ -121,7 +121,7 @@ public class EditStyleBookEntryDisplayContext {
 					_themeDisplay.getLocale(), _getStyleBookEntry())
 		).put(
 			"customTokenDefinitionId",
-			StyleBookConstants.CUSTOM_FRONTEND_TOKEN_DEFINITION_ID
+			StyleBookConstants.FRONTEND_TOKEN_DEFINITION_ID_CUSTOM
 		).put(
 			"customTokenDefinitionPriority",
 			FrontendTokenDefinitionConstants.PRIORITY_CUSTOM
@@ -376,7 +376,8 @@ public class EditStyleBookEntryDisplayContext {
 
 		FrontendTokenDefinition globalFrontendTokenDefinition =
 			_frontendTokenDefinitionRegistry.getFrontendTokenDefinition(
-				styleBookEntry.getCompanyId(), _THEME_ID_GLOBAL);
+				styleBookEntry.getCompanyId(),
+				StyleBookConstants.FRONTEND_TOKEN_DEFINITION_ID_GLOBAL);
 
 		if (globalFrontendTokenDefinition != null) {
 			jsonArray.put(
@@ -713,9 +714,6 @@ public class EditStyleBookEntryDisplayContext {
 
 		_renderResponse.setTitle(_getStyleBookEntryTitle());
 	}
-
-	private static final String _THEME_ID_GLOBAL =
-		"com.liferay.frontend.js.clay.web";
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		EditStyleBookEntryDisplayContext.class.getName());

@@ -1,0 +1,464 @@
+/**
+ * SPDX-FileCopyrightText: (c) 2026 Liferay, Inc. https://liferay.com
+ * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
+ */
+
+package com.liferay.jenkins.results.parser.test.clazz.group;
+
+import com.liferay.jenkins.results.parser.AntUtil;
+import com.liferay.jenkins.results.parser.JenkinsResultsParserUtil;
+import com.liferay.jenkins.results.parser.NotificationUtil;
+import com.liferay.jenkins.results.parser.PortalGitWorkingDirectory;
+import com.liferay.jenkins.results.parser.RandomTestUtil;
+import com.liferay.jenkins.results.parser.ReflectionTestUtil;
+import com.liferay.jenkins.results.parser.Shell;
+import com.liferay.jenkins.results.parser.test.clazz.PlaywrightTestClassMethod;
+import com.liferay.jenkins.results.parser.test.clazz.TestClass;
+import com.liferay.jenkins.results.parser.test.clazz.TestClassMethod;
+
+import java.io.File;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+
+/**
+ * @author Calum Ragan
+ */
+public class PlaywrightBatchTestClassGroupTest
+	extends com.liferay.jenkins.results.parser.Test {
+
+	@Test
+	public void testLoadPlaywrightJSONObjects() throws Exception {
+		JSONObject reportJSONObject = new JSONObject(
+		).put(
+			"config",
+			new JSONObject(
+			).put(
+				"rootDir", RandomTestUtil.randomString()
+			)
+		);
+
+		String reportJSON = reportJSONObject.toString();
+
+		_testLoadPlaywrightJSONObjects(1, false, reportJSONObject, reportJSON);
+		_testLoadPlaywrightJSONObjects(
+			2, false, reportJSONObject, "", reportJSON);
+		_testLoadPlaywrightJSONObjects(
+			2, false, reportJSONObject, RandomTestUtil.randomString(),
+			reportJSON);
+		_testLoadPlaywrightJSONObjects(
+			2, false, reportJSONObject, null, reportJSON);
+
+		_testLoadPlaywrightJSONObjects(2, true, new JSONObject(), null, null);
+	}
+
+	@Test
+	public void testParsePlaywrightJSONObjectsDescribeBlocks() {
+		String projectName = RandomTestUtil.randomString();
+		File rootDir = new File(RandomTestUtil.randomString());
+		String specFilePath = RandomTestUtil.randomString();
+		String specTitle = RandomTestUtil.randomString();
+		String suiteTitle1 = RandomTestUtil.randomString();
+		String suiteTitle2 = RandomTestUtil.randomString();
+
+		Map<String, Map<File, TestClass>> testClassesMaps =
+			_parsePlaywrightJSONObjects(
+				rootDir,
+				new JSONArray(
+				).put(
+					new JSONObject(
+					).put(
+						"suites",
+						new JSONArray(
+						).put(
+							_newSuiteJSONObject(
+								specFilePath,
+								new JSONArray(
+								).put(
+									_newSpecJSONObject(
+										RandomTestUtil.randomString(),
+										projectName, specFilePath, specTitle)
+								),
+								suiteTitle1)
+						).put(
+							_newSuiteJSONObject(
+								specFilePath,
+								new JSONArray(
+								).put(
+									_newSpecJSONObject(
+										RandomTestUtil.randomString(),
+										projectName, specFilePath, specTitle)
+								),
+								suiteTitle2)
+						)
+					)
+				));
+
+		Map<File, TestClass> testClassesMap = testClassesMaps.get(projectName);
+
+		Assert.assertEquals(
+			Arrays.asList(
+				suiteTitle1 + " › " + specTitle,
+				suiteTitle2 + " › " + specTitle),
+			_getTestNames(testClassesMap.get(new File(rootDir, specFilePath))));
+	}
+
+	@Test
+	public void testParsePlaywrightJSONObjectsRepeated() {
+		String projectName = RandomTestUtil.randomString();
+		String specFilePath = RandomTestUtil.randomString();
+		String specTitle1 = RandomTestUtil.randomString();
+		String specTitle2 = RandomTestUtil.randomString();
+
+		JSONArray suitesJSONArray = new JSONArray(
+		).put(
+			_newSuiteJSONObject(
+				specFilePath,
+				new JSONArray(
+				).put(
+					_newSpecJSONObject(
+						RandomTestUtil.randomString(), projectName,
+						specFilePath, specTitle1)
+				).put(
+					_newSpecJSONObject(
+						RandomTestUtil.randomString(), projectName,
+						specFilePath, specTitle2)
+				),
+				specFilePath)
+		);
+
+		File rootDir = new File(RandomTestUtil.randomString());
+
+		_parsePlaywrightJSONObjects(rootDir, suitesJSONArray);
+
+		Map<String, Map<File, TestClass>> testClassesMaps =
+			_parsePlaywrightJSONObjects(rootDir, suitesJSONArray);
+
+		Map<File, TestClass> testClassesMap = testClassesMaps.get(projectName);
+
+		Assert.assertEquals(
+			Arrays.asList(specTitle1, specTitle2),
+			_getTestNames(testClassesMap.get(new File(rootDir, specFilePath))));
+	}
+
+	@Test
+	public void testParsePlaywrightJSONObjectsSharedSpec() {
+		String projectName1 = RandomTestUtil.randomString();
+		String projectName2 = RandomTestUtil.randomString();
+		File rootDir = new File(RandomTestUtil.randomString());
+		String specFilePath = RandomTestUtil.randomString();
+		String specTitle1 = RandomTestUtil.randomString();
+		String specTitle2 = RandomTestUtil.randomString();
+
+		Map<String, Map<File, TestClass>> testClassesMaps =
+			_parsePlaywrightJSONObjects(
+				rootDir,
+				new JSONArray(
+				).put(
+					_newSuiteJSONObject(
+						specFilePath,
+						new JSONArray(
+						).put(
+							_newSpecJSONObject(
+								"skip", projectName1, specFilePath, specTitle1)
+						).put(
+							_newSpecJSONObject(
+								RandomTestUtil.randomString(), projectName1,
+								specFilePath, specTitle2)
+						).put(
+							_newSpecJSONObject(
+								RandomTestUtil.randomString(), projectName2,
+								specFilePath, specTitle1)
+						),
+						specFilePath)
+				));
+
+		Map<File, TestClass> testClassesMap1 = testClassesMaps.get(
+			projectName1);
+
+		File specFile = new File(rootDir, specFilePath);
+
+		TestClass testClass = testClassesMap1.get(specFile);
+
+		Assert.assertEquals(
+			Arrays.asList(specTitle1, specTitle2), _getTestNames(testClass));
+
+		Map<File, TestClass> testClassesMap2 = testClassesMaps.get(
+			projectName2);
+
+		Assert.assertSame(testClass, testClassesMap2.get(specFile));
+
+		List<TestClassMethod> testClassMethods =
+			testClass.getTestClassMethods();
+
+		TestClassMethod testClassMethod = testClassMethods.get(0);
+
+		Assert.assertTrue(testClassMethod.isIgnored());
+	}
+
+	@Rule
+	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	private List<String> _getTestNames(TestClass testClass) {
+		List<String> testNames = new ArrayList<>();
+
+		for (TestClassMethod testClassMethod :
+				testClass.getTestClassMethods()) {
+
+			PlaywrightTestClassMethod playwrightTestClassMethod =
+				(PlaywrightTestClassMethod)testClassMethod;
+
+			testNames.add(playwrightTestClassMethod.getTestName());
+		}
+
+		return testNames;
+	}
+
+	private JSONObject _newSpecJSONObject(
+		String annotationType, String projectName, String specFilePath,
+		String title) {
+
+		return new JSONObject(
+		).put(
+			"file", specFilePath
+		).put(
+			"tests",
+			new JSONArray(
+			).put(
+				new JSONObject(
+				).put(
+					"annotations",
+					new JSONArray(
+					).put(
+						new JSONObject(
+						).put(
+							"type", annotationType
+						)
+					)
+				).put(
+					"projectName", projectName
+				)
+			)
+		).put(
+			"title", title
+		);
+	}
+
+	private JSONObject _newSuiteJSONObject(
+		String specFilePath, JSONArray specsJSONArray, String title) {
+
+		return new JSONObject(
+		).put(
+			"file", specFilePath
+		).put(
+			"specs", specsJSONArray
+		).put(
+			"title", title
+		);
+	}
+
+	private Map<String, Map<File, TestClass>> _parsePlaywrightJSONObjects(
+		File rootDir, JSONArray suitesJSONArray) {
+
+		Map<String, Map<File, TestClass>> testClassesMaps = new HashMap<>();
+
+		PlaywrightBatchTestClassGroup playwrightBatchTestClassGroup =
+			Mockito.mock(PlaywrightBatchTestClassGroup.class);
+
+		Mockito.doReturn(
+			Mockito.mock(PortalGitWorkingDirectory.class)
+		).when(
+			playwrightBatchTestClassGroup
+		).getPortalGitWorkingDirectory();
+
+		ReflectionTestUtil.invoke(
+			playwrightBatchTestClassGroup, "_parsePlaywrightJSONObjects",
+			new Class<?>[] {File.class, JSONArray.class, Map.class}, rootDir,
+			suitesJSONArray, testClassesMaps);
+
+		return testClassesMaps;
+	}
+
+	private void _testLoadPlaywrightJSONObjects(
+			int expectedExecutionRequestsCount, boolean expectedNotified,
+			JSONObject expectedPlaywrightJSONObject, String... reports)
+		throws Exception {
+
+		AtomicBoolean playwrightJSONObjectsLoaded =
+			ReflectionTestUtil.getFieldValue(
+				PlaywrightBatchTestClassGroup.class,
+				"_playwrightJSONObjectsLoaded");
+
+		playwrightJSONObjectsLoaded.set(false);
+
+		File portalWorkingDirectory = temporaryFolder.newFolder();
+
+		PortalGitWorkingDirectory portalGitWorkingDirectory = Mockito.mock(
+			PortalGitWorkingDirectory.class);
+
+		Mockito.doReturn(
+			portalWorkingDirectory
+		).when(
+			portalGitWorkingDirectory
+		).getWorkingDirectory();
+
+		List<PlaywrightBatchTestClassGroup> playwrightBatchTestClassGroups =
+			new ArrayList<>();
+
+		for (int i = 0; i < 2; i++) {
+			PlaywrightBatchTestClassGroup playwrightBatchTestClassGroup =
+				Mockito.mock(PlaywrightBatchTestClassGroup.class);
+
+			Mockito.doCallRealMethod(
+			).when(
+				playwrightBatchTestClassGroup
+			).getPlaywrightBaseDir();
+
+			ReflectionTestUtil.setFieldValue(
+				playwrightBatchTestClassGroup, "portalGitWorkingDirectory",
+				portalGitWorkingDirectory);
+
+			playwrightBatchTestClassGroups.add(playwrightBatchTestClassGroup);
+		}
+
+		PlaywrightBatchTestClassGroup firstPlaywrightBatchTestClassGroup =
+			playwrightBatchTestClassGroups.get(0);
+
+		JenkinsResultsParserUtil.write(
+			new File(
+				firstPlaywrightBatchTestClassGroup.getPlaywrightBaseDir(),
+				"build.gradle"),
+			"task runPlaywright");
+
+		List<Shell.ExecutionRequest> executionRequests = new ArrayList<>();
+		Set<File> reportFiles = new HashSet<>();
+
+		Shell.setInstance(
+			Mockito.mock(
+				Shell.class,
+				invocation -> {
+					Shell.ExecutionRequest executionRequest =
+						invocation.getArgument(0);
+
+					executionRequests.add(executionRequest);
+
+					String[] commands = executionRequest.getCommands();
+
+					Matcher matcher = _playwrightJSONOutputNamePattern.matcher(
+						commands[0]);
+
+					Assert.assertTrue(commands[0], matcher.find());
+
+					File reportFile = new File(matcher.group(1));
+
+					reportFiles.add(reportFile);
+
+					String report = reports[executionRequests.size() - 1];
+
+					if (report == null) {
+						throw new TimeoutException();
+					}
+
+					if (!report.isEmpty()) {
+						JenkinsResultsParserUtil.write(reportFile, report);
+					}
+
+					return new Shell.ExecutionResult(0, "", "");
+				}));
+
+		mockEnvironment(
+			Collections.singletonMap(
+				"TOP_LEVEL_BUILD_URL",
+				JenkinsResultsParserUtil.combine(
+					"https://", RandomTestUtil.randomString(), "/job/",
+					RandomTestUtil.randomString(), "(release)/",
+					String.valueOf(RandomTestUtil.randomInt()))));
+
+		try (MockedStatic<AntUtil> antUtilMockedStatic = Mockito.mockStatic(
+				AntUtil.class);
+			MockedStatic<JenkinsResultsParserUtil>
+				jenkinsResultsParserUtilMockedStatic = Mockito.mockStatic(
+					JenkinsResultsParserUtil.class, Mockito.CALLS_REAL_METHODS);
+			MockedStatic<NotificationUtil> notificationUtilMockedStatic =
+				Mockito.mockStatic(NotificationUtil.class)) {
+
+			jenkinsResultsParserUtilMockedStatic.when(
+				() -> JenkinsResultsParserUtil.sleep(Mockito.anyLong())
+			).thenAnswer(
+				invocation -> null
+			);
+
+			for (PlaywrightBatchTestClassGroup playwrightBatchTestClassGroup :
+					playwrightBatchTestClassGroups) {
+
+				ReflectionTestUtil.invoke(
+					playwrightBatchTestClassGroup, "_loadPlaywrightJSONObjects",
+					new Class<?>[0]);
+			}
+
+			notificationUtilMockedStatic.verify(
+				() -> NotificationUtil.sendSlackNotification(
+					Mockito.anyString(), Mockito.anyString(),
+					Mockito.anyString(), Mockito.anyString(),
+					Mockito.anyString()),
+				getVerificationMode(expectedNotified));
+		}
+
+		Assert.assertEquals(
+			executionRequests.toString(), expectedExecutionRequestsCount,
+			executionRequests.size());
+
+		for (Shell.ExecutionRequest executionRequest : executionRequests) {
+			Assert.assertEquals(1000 * 60 * 30, executionRequest.getTimeout());
+		}
+
+		Assert.assertEquals(
+			reportFiles.toString(), executionRequests.size(),
+			reportFiles.size());
+
+		String portalWorkingDirectoryPath =
+			JenkinsResultsParserUtil.getCanonicalPath(portalWorkingDirectory);
+
+		for (File reportFile : reportFiles) {
+			String reportFilePath = JenkinsResultsParserUtil.getCanonicalPath(
+				reportFile);
+
+			Assert.assertFalse(reportFilePath, reportFile.exists());
+			Assert.assertFalse(
+				reportFilePath,
+				reportFilePath.startsWith(portalWorkingDirectoryPath));
+		}
+
+		JSONObject playwrightJSONObject = ReflectionTestUtil.getFieldValue(
+			PlaywrightBatchTestClassGroup.class, "_playwrightJSONObject");
+
+		Assert.assertTrue(
+			playwrightJSONObject.toString(),
+			expectedPlaywrightJSONObject.similar(playwrightJSONObject));
+	}
+
+	private static final Pattern _playwrightJSONOutputNamePattern =
+		Pattern.compile("export PLAYWRIGHT_JSON_OUTPUT_NAME=(.+)");
+
+}

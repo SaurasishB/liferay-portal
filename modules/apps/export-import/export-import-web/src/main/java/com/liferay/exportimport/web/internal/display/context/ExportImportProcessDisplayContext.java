@@ -20,6 +20,7 @@ import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
+import com.liferay.portal.kernel.portlet.url.builder.ResourceURLBuilder;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
@@ -43,7 +44,7 @@ public class ExportImportProcessDisplayContext {
 		ExportPreviewResource.Factory exportPreviewResourceFactory, Group group,
 		long groupId, HttpServletRequest httpServletRequest,
 		LiferayPortletResponse liferayPortletResponse, long liveGroupId,
-		boolean privateLayout) {
+		boolean privateLayout, boolean staticSite) {
 
 		_backMVCRenderCommandName = backMVCRenderCommandName;
 		_exportPreviewResourceFactory = exportPreviewResourceFactory;
@@ -53,6 +54,7 @@ public class ExportImportProcessDisplayContext {
 		_liferayPortletResponse = liferayPortletResponse;
 		_liveGroupId = liveGroupId;
 		_privateLayout = privateLayout;
+		_staticSite = staticSite;
 	}
 
 	public ExportImportProcessDisplayContext(
@@ -63,7 +65,7 @@ public class ExportImportProcessDisplayContext {
 
 		this(
 			backMVCRenderCommandName, null, group, groupId, httpServletRequest,
-			liferayPortletResponse, liveGroupId, privateLayout);
+			liferayPortletResponse, liveGroupId, privateLayout, false);
 	}
 
 	public String getBackURL() {
@@ -147,7 +149,18 @@ public class ExportImportProcessDisplayContext {
 			return _exportProcessAPIURL;
 		}
 
-		_exportProcessAPIURL = _getResourceAPIURL("/export-processes");
+		if (_staticSite) {
+			_exportProcessAPIURL = ResourceURLBuilder.createResourceURL(
+				_liferayPortletResponse
+			).setParameter(
+				"groupId", _groupId
+			).setResourceID(
+				"/export_import/export_static_site"
+			).buildString();
+		}
+		else {
+			_exportProcessAPIURL = _getResourceAPIURL("/export-processes");
+		}
 
 		return _exportProcessAPIURL;
 	}
@@ -219,6 +232,10 @@ public class ExportImportProcessDisplayContext {
 		}
 
 		return false;
+	}
+
+	public boolean isStaticSite() {
+		return _staticSite;
 	}
 
 	private String _encode(String value) {
@@ -326,5 +343,6 @@ public class ExportImportProcessDisplayContext {
 	private final LiferayPortletResponse _liferayPortletResponse;
 	private final long _liveGroupId;
 	private final boolean _privateLayout;
+	private final boolean _staticSite;
 
 }

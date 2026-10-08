@@ -1,10 +1,6 @@
 # Integration Test Compile
 
-## Trigger
-
-A Java file changed in an OSGi module (excluding `modules/dxp/apps/saml/saml-admin-rest-test/**` and `modules/sdk/**`) AND **Full Portal Build** did not fire.
-
-This catches IT compile breaks without running ITs — IT execution is out of scope; use `test-plan` for that.
+Compiles the integration tests that consume a changed module, without running them. Liferay keeps those tests in a sibling `-test` module, so the module compiled is rarely the one the branch changed.
 
 ## Match
 
@@ -12,26 +8,37 @@ This catches IT compile breaks without running ITs — IT execution is out of sc
 
 ## Command
 
-Take the changed Java files from the diff:
+Take the changed modules:
 
 ```bash
-REPO_ROOT=$(git rev-parse --show-toplevel)
-MERGE_BASE=$(git merge-base HEAD master)
-
-git diff --name-only "${MERGE_BASE}...HEAD" -- ':/modules/**/*.java'
+bash "${SKILL_DIR}/select_paths.sh" "${MERGE_BASE}" "${VALIDATION_FILE}" \
+	| bash "${SKILL_DIR}/find_modules.sh" "${MERGE_BASE}" \
+	| cut -d " " -f1 \
+	| command grep --invert-match '^-$' \
+	| sort --unique
 ```
+
+Leave out `modules/dxp/apps/saml/saml-admin-rest-test` and every module under `modules/sdk`. When the runner says Full Portal Build is in the run, compile nothing and report **NOT VERIFIED**, naming Full Portal Build as the validation this one defers to.
 
 An affected module is one that holds `testIntegration` sources compiled against the change, which is almost never the module the diff changed. Liferay keeps integration tests in a sibling `-test` module, so `apps:blogs:blogs-api` is covered by `apps:blogs:blogs-test` rather than by itself. Scoping this to changed directories compiles `NO-SOURCE` and establishes nothing.
 
-For each changed file, take its module (the nearest ancestor directory holding a `bnd.bnd`), then take every module under the same parent directory whose name ends in `-test` and which has a `src/testIntegration` tree. Add any `-test` module whose `build.gradle` declares the changed module with `project(":<path>")`, found by reading the index:
+For each changed module, take every module under the same parent directory whose name ends in `-test` and which has a `src/testIntegration` tree. Add any `-test` module whose `build.gradle` declares the changed module with `project(":<path>")`, where `<path>` is the changed module's Gradle project path. Find those modules by reading the index:
 
 ```bash
-git grep --cached --files-with-matches --fixed-strings 'project(":<path>")' -- '*.gradle'
+(cd "${REPO_ROOT}" && git grep --cached --files-with-matches --fixed-strings 'project(":<path>")' -- '*.gradle') \
+	| bash "${SKILL_DIR}/find_modules.sh" "${MERGE_BASE}" \
+	| cut -d " " -f1
 ```
 
 Cap the set at 8 and name the full count when the cap binds.
 
-Convert each module directory to a Gradle project path by stripping `modules/` and replacing `/` with `:`, then compile it:
+Take the Gradle project path of each module in the set:
+
+```bash
+printf '%s\n' <module directory>... | sed "s#^modules/##; s#/#:#g"
+```
+
+Then compile it:
 
 ```bash
 ("${REPO_ROOT}/gradlew" \

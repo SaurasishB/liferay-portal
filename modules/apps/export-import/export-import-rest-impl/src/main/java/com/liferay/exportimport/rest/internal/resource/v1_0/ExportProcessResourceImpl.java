@@ -46,6 +46,7 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
+import com.liferay.site.staticexport.background.task.StaticSiteExportBackgroundTaskExecutorNames;
 
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
@@ -320,10 +321,14 @@ public class ExportProcessResourceImpl extends BaseExportProcessResourceImpl {
 
 		if (Validator.isBlank(portletId)) {
 			dynamicQuery.add(
-				RestrictionsFactoryUtil.eq(
+				RestrictionsFactoryUtil.in(
 					"taskExecutorClassName",
-					BackgroundTaskExecutorNames.
-						LAYOUT_EXPORT_BACKGROUND_TASK_EXECUTOR));
+					new String[] {
+						BackgroundTaskExecutorNames.
+							LAYOUT_EXPORT_BACKGROUND_TASK_EXECUTOR,
+						StaticSiteExportBackgroundTaskExecutorNames.
+							STATIC_SITE_EXPORT_BACKGROUND_TASK_EXECUTOR
+					}));
 		}
 		else {
 			dynamicQuery.add(RestrictionsFactoryUtil.eq("name", portletId));
@@ -538,7 +543,9 @@ public class ExportProcessResourceImpl extends BaseExportProcessResourceImpl {
 
 	private static final String[] _CLASS_NAMES_TASK_EXECUTOR = {
 		BackgroundTaskExecutorNames.LAYOUT_EXPORT_BACKGROUND_TASK_EXECUTOR,
-		BackgroundTaskExecutorNames.PORTLET_EXPORT_BACKGROUND_TASK_EXECUTOR
+		BackgroundTaskExecutorNames.PORTLET_EXPORT_BACKGROUND_TASK_EXECUTOR,
+		StaticSiteExportBackgroundTaskExecutorNames.
+			STATIC_SITE_EXPORT_BACKGROUND_TASK_EXECUTOR
 	};
 
 	@Reference

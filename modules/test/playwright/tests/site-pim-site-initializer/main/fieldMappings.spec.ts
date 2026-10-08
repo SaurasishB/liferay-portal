@@ -29,7 +29,7 @@ test(
 
 				await expect(
 					fieldMappingsPage.dataSetFragmentPage.table.bodyRows
-				).toHaveCount(5);
+				).toHaveCount(15);
 			});
 
 			await test.step('Every channel field of a new connector is unmapped', async () => {
@@ -42,12 +42,21 @@ test(
 				await expect(fieldMappingsPage.status('Name')).toHaveText(
 					'Required - Not Mapped'
 				);
+				await expect(
+					fieldMappingsPage.status('Product Options[]')
+				).toHaveText('Not Mapped');
+				await expect(
+					fieldMappingsPage.status('Product Type')
+				).toHaveText('Required - Not Mapped');
 				await expect(fieldMappingsPage.status('SKU')).toHaveText(
 					'Required - Not Mapped'
 				);
 				await expect(fieldMappingsPage.status('Tags[]')).toHaveText(
 					'Not Mapped'
 				);
+				await expect(
+					fieldMappingsPage.status('Unit of Measure Name')
+				).toHaveText('Not Mapped');
 			});
 
 			await test.step('Search the channel fields', async () => {
@@ -174,6 +183,53 @@ test(
 			await connectorsPage.goto();
 
 			await connectorsPage.deleteConnector(connectorName);
+		}
+	}
+);
+
+test(
+	'Map a channel field to two fixed values at once',
+	{tag: ['@LPD-107968']},
+	async ({
+		connectorsPage,
+		editFieldMappingsPage,
+		fieldMappingsPage,
+		page,
+	}) => {
+		const connectorName = getRandomString();
+
+		try {
+			await connectorsPage.createConnector({
+				connector: 'Liferay Commerce',
+				name: connectorName,
+			});
+
+			await connectorsPage.getConnector(connectorName).click();
+
+			await fieldMappingsPage.channelField('SKU').click();
+
+			await expect(
+				editFieldMappingsPage.destinationHeading
+			).toBeVisible();
+
+			await editFieldMappingsPage.mapToValue('ABC-1');
+
+			await editFieldMappingsPage.addRowButton.click();
+
+			await editFieldMappingsPage.mapToValue('ABC-2', 1);
+
+			await editFieldMappingsPage.saveButton.click();
+
+			await expect(page).toHaveURL(/\/field-mappings\?/);
+			await expect(fieldMappingsPage.status('SKU')).toHaveText('Mapped');
+			await expect(fieldMappingsPage.sourceAttributes('SKU')).toHaveText(
+				'ABC-1ABC-2'
+			);
+		}
+		finally {
+			await connectorsPage.goto();
+
+			await connectorsPage.deleteConnectorIfPresent(connectorName);
 		}
 	}
 );

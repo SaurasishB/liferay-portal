@@ -40,7 +40,6 @@ overlayBucket:
 persistence:
     storageClassName: ""
 projectId: ""
-region: ""
 search:
     elasticsearch:
         env:
@@ -56,6 +55,7 @@ search:
         version: 8.19.11
         volumeSize: 10Gi
     engine: elasticsearch
+    opensearch: {}
 storage:
     enableVersioning: true
     tags: {}

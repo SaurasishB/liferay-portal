@@ -10,7 +10,7 @@
 {{- $namespace := $xr.metadata.namespace -}}
 {{- $overlayAccess := $xr.spec.overlayAccess | default dict -}}
 {{- $projectId := $xr.spec.projectId -}}
-{{- $region := $xr.spec.region -}}
+{{- $region := $env.region -}}
 {{- $restoreGeneration := $xr.spec.restoreGeneration | default "" -}}
 {{- $restorePhase := $xr.spec.restorePhase | default "none" -}}
 {{- $retainedDataPlanes := $xr.spec.retainedDataPlanes | default dict -}}

@@ -62,7 +62,6 @@ public class OpenSearchIndexWriterLogExceptionsOnlyTest
 		super.setUp();
 
 		String indexName = String.valueOf(_COMPANY_ID);
-
 		SearchEngineAdapter searchEngineAdapter = getSearchEngineAdapter();
 
 		IndicesExistsIndexResponse indicesExistsIndexResponse =

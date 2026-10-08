@@ -5,6 +5,9 @@
 
 package com.liferay.oauth.client.persistence.service.impl;
 
+import com.liferay.oauth.client.persistence.exception.OAuthClientEntryAuthRequestParametersJSONException;
+import com.liferay.oauth.client.persistence.exception.OAuthClientEntryTokenRequestParametersJSONException;
+import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.util.Http;
@@ -29,6 +32,18 @@ public class OAuthClientEntryLocalServiceImplTest {
 	@Rule
 	public static final LiferayUnitTestRule liferayUnitTestRule =
 		LiferayUnitTestRule.INSTANCE;
+
+	@Test
+	public void testValidateAuthRequestParametersJSON() throws Exception {
+		_validateAuthRequestParametersJSON("{}");
+
+		Assert.assertThrows(
+			OAuthClientEntryAuthRequestParametersJSONException.class,
+			() -> _validateAuthRequestParametersJSON(
+				JSONUtil.put(
+					"allow_upstream_token_forwarding", true
+				).toString()));
+	}
 
 	@Test
 	public void testValidateAuthServerWellKnownURI() throws Exception {
@@ -76,6 +91,47 @@ public class OAuthClientEntryLocalServiceImplTest {
 
 		Assert.assertEquals(
 			Http.CookieSpec.STANDARD, httpOptions.getCookieSpec());
+	}
+
+	@Test
+	public void testValidateTokenRequestParametersJSON() throws Exception {
+		_validateTokenRequestParametersJSON(
+			JSONUtil.put(
+				"allow_upstream_token_forwarding", false
+			).toString());
+		_validateTokenRequestParametersJSON(
+			JSONUtil.put(
+				"allow_upstream_token_forwarding", true
+			).toString());
+		_validateTokenRequestParametersJSON("{}");
+
+		Assert.assertThrows(
+			OAuthClientEntryTokenRequestParametersJSONException.class,
+			() -> _validateTokenRequestParametersJSON(
+				JSONUtil.put(
+					"allow_upstream_token_forwarding",
+					RandomTestUtil.randomString()
+				).toString()));
+	}
+
+	private void _validateAuthRequestParametersJSON(
+			String authRequestParametersJSON)
+		throws Exception {
+
+		ReflectionTestUtil.invoke(
+			new OAuthClientEntryLocalServiceImpl(),
+			"_validateAuthRequestParametersJSON", new Class<?>[] {String.class},
+			authRequestParametersJSON);
+	}
+
+	private void _validateTokenRequestParametersJSON(
+			String tokenRequestParametersJSON)
+		throws Exception {
+
+		ReflectionTestUtil.invoke(
+			new OAuthClientEntryLocalServiceImpl(),
+			"_validateTokenRequestParametersJSON",
+			new Class<?>[] {String.class}, tokenRequestParametersJSON);
 	}
 
 }

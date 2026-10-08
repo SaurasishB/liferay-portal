@@ -1,12 +1,6 @@
 # Helm Unit Test Order
 
-## Trigger
-
-A `helm unittest` suite changed: a `*_test.yaml` file under a chart's `tests` directory in `cloud/helm`.
-
-Cases under `tests` sort alphabetically by their `it` description in case sensitive ASCII order, which is Rule 48 in the `format-source` skill and rule 202 in `pr-reviewer/rules`. Nothing enforces it: `helm unittest` runs the cases in whatever order it finds them, and the source formatter has no check for this shape, so an unsorted suite passes every other gate.
-
-The suites themselves are not run here. `ci-test-cloud-helm-chart.yaml` already runs `cloud/scripts/tests/run_helm_tests.sh` on every push touching `cloud/helm/**` or `cloud/scripts/tests/**`, and that coverage is enough — this validation reads the files and runs no chart.
+Checks that the cases in a `helm unittest` suite sort alphabetically by their `it` description, as Rule 48 of the `format-source` skill requires. Nothing else enforces that order. The suites themselves run in `ci-test-cloud-helm-chart.yaml`, so this validation only reads the files.
 
 ## Match
 
@@ -17,8 +11,10 @@ The suites themselves are not run here. `ci-test-cloud-helm-chart.yaml` already 
 Check every changed suite:
 
 ```bash
-(cd "${REPO_ROOT}" && for file in $(git diff --name-only "$(git merge-base HEAD master)...HEAD" -- 'cloud/helm/*/tests/*_test.yaml')
+(cd "${REPO_ROOT}" && bash "${SKILL_DIR}/select_paths.sh" "${MERGE_BASE}" "${VALIDATION_FILE}" | while IFS= read -r file
 do
+	[[ -f ${file} ]] || continue
+
 	descriptions=$(command grep '^        it: ' "${file}" | sed 's/^        it: //')
 
 	if [[ ${descriptions} != "$(echo "${descriptions}" | LC_ALL=C sort)" ]]

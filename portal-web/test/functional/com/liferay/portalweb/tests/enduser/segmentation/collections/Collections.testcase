@@ -911,13 +911,9 @@ definition {
 		}
 
 		task ("Assert the 2 vocabularies in Collection Category Filter") {
-			Panel.expandPanel(panel = "Filter");
+			AssetListsAdmin.selectFilterCondition(field = "Categories");
 
-			Select(
-				locator1 = "APConfiguration#FILTER_CATEGORIZATION_SELECT",
-				value1 = "Categories");
-
-			Click(locator1 = "Button#SELECT_CATEGORIES");
+			Click(locator1 = "AssetLists#FILTER_CONDITION_SELECT_BUTTON");
 
 			AssetCategorization.gotoSelectCategory();
 

@@ -14,7 +14,6 @@ import {
 import {expect, mergeTests} from '@playwright/test';
 
 import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
-import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {objectPagesTest} from '../../../fixtures/objectPagesTest';
 import {ObjectRelationshipFormPage} from '../../../pages/object-web/object-relationship/ObjectRelationshipFormPage';
@@ -29,13 +28,6 @@ export const test = mergeTests(
 	dataApiHelpersTest,
 	loginTest(),
 	objectPagesTest
-);
-
-const descriptionTest = mergeTests(
-	test,
-	featureFlagsTest({
-		'LPD-80279': {enabled: true},
-	})
 );
 
 test.beforeEach(({page}) => {
@@ -2140,7 +2132,7 @@ test.describe('Manage object relationships through Objects Admin UI', () => {
 			await page.getByRole('link', {name: entryA.id.toString()}).click();
 
 			await page
-				.locator('#editObjectEntry')
+				.locator('[id$="editObjectEntry"]')
 				.getByPlaceholder('Search')
 				.fill('!@#$%');
 
@@ -2572,7 +2564,7 @@ test.describe('Manage object relationships through Objects Admin UI', () => {
 			await page.getByRole('link', {name: entryB.id.toString()}).click();
 
 			await page
-				.locator('#editObjectEntry')
+				.locator('[id$="editObjectEntry"]')
 				.getByPlaceholder('Search')
 				.click();
 
@@ -2950,24 +2942,24 @@ test.describe('Manage object relationships with system objects', () => {
 
 				await page.getByText('Relationship Tab', {exact: true}).click();
 
-				await page.getByLabel('Select Existing One').first().click();
-				await page
-					.frameLocator('iframe[title="Select"]')
-					.getByText(String(userAccount1.id), {exact: true})
-					.first()
-					.click();
+				for (const userAccount of [userAccount1, userAccount2]) {
+					await page
+						.getByLabel('Select Existing One')
+						.first()
+						.click();
+					await page
+						.frameLocator('iframe[title="Select"]')
+						.getByText(String(userAccount.id), {exact: true})
+						.first()
+						.click();
 
-				await page.reload();
-
-				await page
-					.getByRole('link', {exact: true, name: 'Relationship Tab'})
-					.click();
-
-				await page.getByLabel('Select Existing One').first().click();
-				await page
-					.frameLocator('iframe[title="Select"]')
-					.getByText(String(userAccount2.id), {exact: true})
-					.click();
+					await expect(
+						page.getByRole('cell', {
+							exact: true,
+							name: String(userAccount.id),
+						})
+					).toBeVisible();
+				}
 			};
 
 			const deleteAllRelationsFromEntry = async (entryLabel: string) => {
@@ -2981,17 +2973,22 @@ test.describe('Manage object relationships with system objects', () => {
 
 				await page.getByText('Relationship Tab', {exact: true}).click();
 
-				const rowActions = page.getByRole('button', {name: 'Actions'});
+				const deleteLinks = page.getByRole('link', {
+					exact: true,
+					name: 'Delete',
+				});
 
-				const initialCount = await rowActions.count();
+				await expect(deleteLinks).toHaveCount(2);
 
-				for (let i = 0; i < initialCount; i++) {
-					await rowActions.first().click();
-					await page.getByRole('menuitem', {name: 'Delete'}).click();
-					await page.getByRole('button', {name: 'Delete'}).click();
+				await deleteLinks.first().click();
 
-					await expect(rowActions).toHaveCount(initialCount - i - 1);
-				}
+				await expect(deleteLinks).toHaveCount(1);
+
+				await deleteLinks.first().click();
+
+				await expect(
+					page.getByText('No Results Found', {exact: true})
+				).toBeVisible();
 			};
 
 			await test.step('relate Entry A to both users', () =>
@@ -5502,8 +5499,8 @@ test.describe('View relationship hierarchy labels', () => {
 	);
 });
 
-descriptionTest.describe('Manage object relationship descriptions', () => {
-	descriptionTest(
+test.describe('Manage object relationship descriptions', () => {
+	test(
 		'can add description through Model Builder',
 		{tag: '@LPD-103748'},
 		async ({
@@ -5607,7 +5604,7 @@ descriptionTest.describe('Manage object relationship descriptions', () => {
 		}
 	);
 
-	descriptionTest(
+	test(
 		'can manage description through Objects Admin',
 		{tag: '@LPD-103748'},
 		async ({apiHelpers, objectRelationshipsPage, page}) => {
@@ -5703,7 +5700,7 @@ descriptionTest.describe('Manage object relationship descriptions', () => {
 		}
 	);
 
-	descriptionTest(
+	test(
 		'mirrors the description to the reverse self relationship',
 		{tag: '@LPD-103748'},
 		async ({apiHelpers, objectRelationshipsPage, page}) => {

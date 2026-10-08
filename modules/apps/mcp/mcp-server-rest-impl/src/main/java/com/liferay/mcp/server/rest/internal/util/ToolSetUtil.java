@@ -14,6 +14,7 @@ import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.json.JSONException;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.log.Log;
@@ -56,7 +57,7 @@ public class ToolSetUtil {
 	}
 
 	public static Tool getTool(
-		HttpServletRequest httpServletRequest,
+		HttpServletRequest httpServletRequest, boolean requiredInputSchemaOnly,
 		Map<String, String> restrictFieldsMap, String toolName,
 		String toolSetName) {
 
@@ -65,6 +66,7 @@ public class ToolSetUtil {
 			_getOpenAPIJSONObject(
 				httpServletRequest, _getOpenAPIDocument(toolSetName),
 				toolSetName),
+			requiredInputSchemaOnly,
 			_getRestrictFields(restrictFieldsMap, toolName, toolSetName),
 			toolName);
 	}
@@ -140,7 +142,9 @@ public class ToolSetUtil {
 			if (Objects.equals(toolName, "getToolSetToolSetNameTool")) {
 				return _getResponse(
 					getTool(
-						httpServletRequest, restrictFieldsMap,
+						httpServletRequest,
+						inputJSONObject.getBoolean("requiredInputSchemaOnly"),
+						restrictFieldsMap,
 						inputJSONObject.getString("toolName"),
 						inputJSONObject.getString("toolSetName")));
 			}
@@ -316,8 +320,12 @@ public class ToolSetUtil {
 				try {
 					return JSONFactoryUtil.createJSONObject(content);
 				}
-				catch (Exception exception) {
-					throw new RuntimeException(exception);
+				catch (JSONException jsonException) {
+					throw new IllegalStateException(
+						StringBundler.concat(
+							"Unable to parse the OpenAPI document of the \"",
+							toolSetName, "\" tool set"),
+						jsonException);
 				}
 			});
 	}

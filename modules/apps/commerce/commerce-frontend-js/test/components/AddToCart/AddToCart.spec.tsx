@@ -25,6 +25,7 @@ import React from 'react';
 import AddToCart from '../../../src/main/resources/META-INF/resources/components/add_to_cart/AddToCart';
 import {
 	CART_PRODUCT_QUANTITY_CHANGED,
+	CP_INSTANCE_CHANGED,
 	CURRENT_ACCOUNT_UPDATED,
 
 	// eslint-disable-next-line lines-around-comment
@@ -91,6 +92,8 @@ describe('Add to Cart', () => {
 	const {Liferay: originalLiferayObject} = global.window;
 
 	beforeEach(() => {
+		fetchMock.mockGlobal();
+
 		fetchMock.get(
 			/headless-commerce-delivery-cart\/v1.0\/channels\/[0-9]+\/account\/[0-9]+\/carts/,
 			() => {
@@ -100,7 +103,7 @@ describe('Add to Cart', () => {
 
 		fetchMock.post(
 			/headless-commerce-delivery-cart\/v1.0\/carts\/[0-9]+\/items/,
-			(_: any, options: any) => {
+			({options}: any) => {
 				addProductToCartFn(JSON.parse(options.body || '{}'));
 
 				return {};
@@ -119,7 +122,7 @@ describe('Add to Cart', () => {
 	afterEach(() => {
 		cleanup();
 
-		fetchMock.restore();
+		fetchMock.hardReset();
 
 		addProductToCartFn.mockReset();
 	});
@@ -424,6 +427,78 @@ describe('Add to Cart', () => {
 
 			expect(button).toBeInTheDocument();
 			expect(button).toBeDisabled();
+		});
+	});
+
+	describe('Product availability', () => {
+		const namespace = 'productDetails_';
+
+		const renderWithCpInstance = (cpInstance: {
+			availability: {stockQuantity: number};
+			backOrderAllowed: boolean;
+		}) =>
+			render(
+				<AddToCart
+					{...props}
+					cpInstance={{...props.cpInstance, ...cpInstance}}
+				/>
+			);
+
+		it('Must enable add-to-cart when the stock is empty and back orders are allowed', () => {
+			const addToCart = renderWithCpInstance({
+				availability: {stockQuantity: 0},
+				backOrderAllowed: true,
+			});
+
+			const {button} = getLocators(addToCart);
+
+			expect(button).toBeEnabled();
+		});
+
+		it('Must disable add-to-cart when the stock is empty and back orders are not allowed', () => {
+			const addToCart = renderWithCpInstance({
+				availability: {stockQuantity: 0},
+				backOrderAllowed: false,
+			});
+
+			const {button} = getLocators(addToCart);
+
+			expect(button).toBeDisabled();
+		});
+
+		it('Must follow the availability of the sku resolved from the selected option values', () => {
+			const addToCart = render(
+				<AddToCart
+					{...props}
+					settings={{...props.settings, namespace}}
+				/>
+			);
+
+			const {button} = getLocators(addToCart);
+
+			expect(button).toBeEnabled();
+
+			(Liferay as any).fire(`${namespace}${CP_INSTANCE_CHANGED}`, {
+				cpInstance: {
+					availability: {stockQuantity: 0},
+					backOrderAllowed: false,
+					skuId: 42634,
+					skuOptions: [],
+				},
+			});
+
+			expect(button).toBeDisabled();
+
+			(Liferay as any).fire(`${namespace}${CP_INSTANCE_CHANGED}`, {
+				cpInstance: {
+					availability: {stockQuantity: 10},
+					backOrderAllowed: false,
+					skuId: 42635,
+					skuOptions: [],
+				},
+			});
+
+			expect(button).toBeEnabled();
 		});
 	});
 });

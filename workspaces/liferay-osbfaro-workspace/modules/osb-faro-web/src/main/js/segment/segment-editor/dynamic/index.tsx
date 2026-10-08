@@ -1,16 +1,25 @@
 import * as API from 'shared/api';
+import BaseEditPage from 'shared/components/base-edit-page';
+import ClayForm, {ClayInput} from '@clayui/form';
+import ClayIcon from '@clayui/icon';
+import ClayLabel from '@clayui/label';
+import ClayLayout from '@clayui/layout';
+import ClayPopover from '@clayui/popover';
 import CriteriaBuilder from './criteria-builder';
+import CriteriaDragPreview from './criteria-sidebar/CriteriaDragPreview';
 import CriteriaSidebar from './criteria-sidebar';
 import DndProvider from 'shared/components/DndProvider';
 import EmbeddedAlertList from 'shared/components/EmbeddedAlertList';
 import Form, {
 	validateExternalReferenceCode,
+	validateRequired,
 	withField,
 } from 'shared/components/form';
 import NavigationWarning from 'shared/components/NavigationWarning';
 import React from 'react';
 import Toolbar from './Toolbar';
 import {AlertTypes} from 'shared/components/Alert';
+import {ClayButtonWithIcon} from '@clayui/button';
 import {
 	buildQueryString,
 	translateQueryToCriteria,
@@ -24,6 +33,7 @@ import {
 	validateSegmentInputs,
 } from './utils/utils';
 import {HTML5Backend} from 'react-dnd-html5-backend';
+import {KeyboardMovementProvider} from './context/keyboardMovement';
 import {List} from 'immutable';
 import {NESTED_OR_LIMIT_ALERT, SEQUENTIAL_LIMIT_ALERT} from './utils/constants';
 import {PropertyGroup, Segment} from 'shared/util/records';
@@ -31,12 +41,17 @@ import {
 	ReferencedObjectsContext,
 	withReferencedObjectsProvider,
 } from './context/referencedObjects';
+import {
+	getSegmentCategoryLabel,
+	getSegmentTypeLabel,
+} from 'segment/utils/labels';
 import {SegmentEnabledSequentialCard} from 'segment/components/SegmentEnabledSequentialCard';
 import {
 	SegmentCategories,
 	SegmentStates,
 	SegmentTypes,
 } from 'shared/util/constants';
+import {useField} from 'formik';
 import {v4 as uuidv4} from 'uuid';
 
 /**
@@ -108,6 +123,143 @@ const CriteriaBuilderForm = withField(
 	}
 );
 
+const SegmentTitle: React.FC = () => {
+	const [{onBlur, onChange, value}, {error, touched}] = useField<string>({
+		name: 'name',
+		validate: validateRequired,
+	});
+
+	return (
+		<BaseEditPage.Title
+			errorMessage={touched ? error : undefined}
+			id="name"
+			label={Liferay.Language.get('title')}
+			name="name"
+			onBlur={onBlur}
+			onChange={onChange}
+			placeholder={Liferay.Language.get('new-segment')}
+			required
+			value={value ?? ''}
+		/>
+	);
+};
+
+const SegmentDetails: React.FC<{
+	segmentCategory: SegmentCategories;
+	type: SegmentTypes;
+}> = ({segmentCategory, type}) => {
+	const [{onBlur, onChange, value}, {error, touched}] = useField<string>({
+		name: 'externalReferenceCode',
+		validate: validateExternalReferenceCode,
+	});
+
+	return (
+		<div className="mb-4 mt-4">
+			<ClayLayout.Row className="align-items-center mb-3">
+				<ClayLayout.Col md={3} sm={12}>
+					<span className="align-items-center d-flex font-weight-semi-bold text-nowrap text-secondary">
+						<ClayIcon className="mr-2" symbol="categories" />
+
+						{Liferay.Language.get('segment-type')}
+					</span>
+				</ClayLayout.Col>
+
+				<ClayLayout.Col>
+					<ClayLabel displayType="secondary">
+						{getSegmentCategoryLabel(segmentCategory)}
+					</ClayLabel>
+
+					<ClayLabel displayType="info">
+						{getSegmentTypeLabel(type)}
+					</ClayLabel>
+				</ClayLayout.Col>
+			</ClayLayout.Row>
+
+			<ClayForm.Group
+				className={error && touched ? 'has-error mb-0' : 'mb-0'}
+			>
+				<ClayLayout.Row className="align-items-center">
+					<ClayLayout.Col
+						className="align-items-center d-flex"
+						md={3}
+						sm={12}
+					>
+						<label
+							className="align-items-center d-flex font-weight-semi-bold mb-0 text-nowrap text-secondary"
+							htmlFor="externalReferenceCode"
+						>
+							<ClayIcon className="mr-2" symbol="link" />
+
+							{Liferay.Language.get('segment-erc')}
+
+							<ClayIcon
+								className="reference-mark"
+								symbol="asterisk"
+							/>
+						</label>
+
+						<ClayPopover
+							alignPosition="top"
+							closeOnClickOutside
+							header={Liferay.Language.get('segment-erc')}
+							trigger={
+								<ClayButtonWithIcon
+									aria-label={Liferay.Language.get('help')}
+									borderless
+									className="rounded-lg"
+									displayType="secondary"
+									monospaced
+									size="xs"
+									symbol="question-circle-full"
+								/>
+							}
+						>
+							<span>
+								{Liferay.Language.get(
+									'unique-key-for-referencing-the-segment-definition'
+								)}
+							</span>
+
+							<br />
+							<br />
+
+							<span>
+								{Liferay.Language.get(
+									'erc-must-contain-only-lowercase-letters-numbers-hyphens-and-underscores'
+								)}
+							</span>
+						</ClayPopover>
+					</ClayLayout.Col>
+
+					<ClayLayout.Col>
+						<ClayInput
+							id="externalReferenceCode"
+							name="externalReferenceCode"
+							onBlur={onBlur}
+							onChange={onChange}
+							required
+							sizing="sm"
+							type="text"
+							value={value ?? ''}
+						/>
+					</ClayLayout.Col>
+				</ClayLayout.Row>
+
+				{error && touched && (
+					<p
+						className="font-weight-semi-bold mb-0 mt-1 text-danger"
+						role="alert"
+					>
+						<ClayIcon className="mr-1" symbol="info-circle" />
+
+						{error}
+					</p>
+				)}
+			</ClayForm.Group>
+		</div>
+	);
+};
+
 type FormValues = {
 	criteria: CriterionGroup;
 	externalReferenceCode: string;
@@ -121,6 +273,7 @@ interface ISegmentEditorProps {
 	groupId: string;
 	id?: string;
 	onDelete: boolean;
+	onDeleteSegment?: () => void;
 	onSubmit: (
 		form: FormValues,
 		ref: React.RefObject<any>,
@@ -239,6 +392,7 @@ class SegmentEditor extends React.Component<ISegmentEditorProps> {
 				groupId,
 				id,
 				onDelete,
+				onDeleteSegment,
 				propertyGroupsIList,
 				segment: {
 					criteriaString,
@@ -255,6 +409,8 @@ class SegmentEditor extends React.Component<ISegmentEditorProps> {
 
 		return (
 			<DndProvider backend={HTML5Backend}>
+				<CriteriaDragPreview />
+
 				<div className="segment-edit-page-root">
 					<Form
 						initialValues={{
@@ -290,6 +446,7 @@ class SegmentEditor extends React.Component<ISegmentEditorProps> {
 							handleSubmit,
 							isSubmitting,
 							isValid,
+							setFieldValue,
 							values: {
 								criteria,
 								externalReferenceCode,
@@ -311,7 +468,7 @@ class SegmentEditor extends React.Component<ISegmentEditorProps> {
 
 							return (
 								<Form.Form
-									className="contributor-builder-root editing"
+									className="contributor-builder-root d-flex editing flex-column"
 									onSubmit={handleSubmit}
 								>
 									<NavigationWarning
@@ -331,126 +488,101 @@ class SegmentEditor extends React.Component<ISegmentEditorProps> {
 										includeAnonymousUsers={
 											includeAnonymousUsers
 										}
+										onDeleteSegment={onDeleteSegment}
 										segmentCategory={segmentCategory}
 										segmentType={type}
 										valid={isValid && hasChanges}
 									/>
 
-									<div className="form-body">
-										<div className="criteria-builder-section-sidebar">
-											<CriteriaSidebar
-												channelId={channelId}
-												criteriaString={
-													criteriaString ?? undefined
-												}
-												groupId={groupId}
-												propertyGroupsIList={
-													propertyGroupsIList
-												}
-												type={type}
-											/>
-										</div>
+									<KeyboardMovementProvider
+										criteria={criteria}
+										onChange={(newCriteria) =>
+											setFieldValue(
+												'criteria',
+												newCriteria
+											)
+										}
+										sequential={!!sequential}
+									>
+										<div className="form-body">
+											<div className="criteria-builder-section-sidebar">
+												<CriteriaSidebar
+													channelId={channelId}
+													criteriaString={
+														criteriaString ??
+														undefined
+													}
+													groupId={groupId}
+													propertyGroupsIList={
+														propertyGroupsIList
+													}
+													type={type}
+												/>
+											</div>
 
-										<div className="criteria-builder-section-main">
-											<div className="contributor-container">
-												<div className="container-fluid container-fluid-max-xl">
-													<div className="content-wrapper">
-														<div className="segment-erc">
-															<Form.Group autoFit>
-																<Form.GroupItem
-																	label
-																	shrink
-																>
-																	<Form.Label
-																		htmlFor="externalReferenceCode"
-																		popover={{
-																			content:
-																				(
-																					<>
-																						<span>
-																							{Liferay.Language.get(
-																								'unique-key-for-referencing-the-segment-definition'
-																							)}
-																						</span>
+											<div className="criteria-builder-section-main">
+												<div className="contributor-container">
+													<div className="container-fluid container-fluid-max-xl">
+														<div className="content-wrapper">
+															<SegmentTitle />
 
-																						<br />
-																						<br />
+															<SegmentDetails
+																segmentCategory={
+																	segmentCategory
+																}
+																type={type}
+															/>
 
-																						<span>
-																							{Liferay.Language.get(
-																								'erc-must-contain-only-lowercase-letters-numbers-hyphens-and-underscores'
-																							)}
-																						</span>
-																					</>
+															{type ===
+																SegmentTypes.RealTime && (
+																<SegmentEnabledSequentialCard />
+															)}
+
+															{segmentState ===
+																SegmentStates.Disabled && (
+																<EmbeddedAlertList
+																	alerts={[
+																		{
+																			iconSymbol:
+																				'exclamation-full',
+																			message:
+																				Liferay.Language.get(
+																					'some-criteria-are-empty-please-update-to-continue-using-this-segment'
 																				),
 																			title: Liferay.Language.get(
-																				'segment-erc'
+																				'error'
 																			),
-																		}}
-																		required
-																	>
-																		{Liferay.Language.get(
-																			'segment-erc'
-																		)}
-																	</Form.Label>
-																</Form.GroupItem>
+																			type: AlertTypes.Danger,
+																		},
+																	]}
+																/>
+															)}
 
-																<Form.GroupItem>
-																	<Form.Input
-																		name="externalReferenceCode"
-																		validate={
-																			validateExternalReferenceCode
-																		}
-																	/>
-																</Form.GroupItem>
-															</Form.Group>
-														</div>
-
-														{type ===
-															SegmentTypes.RealTime && (
-															<SegmentEnabledSequentialCard />
-														)}
-
-														{segmentState ===
-															SegmentStates.Disabled && (
-															<EmbeddedAlertList
-																alerts={[
-																	{
-																		iconSymbol:
-																			'exclamation-full',
-																		message:
-																			Liferay.Language.get(
-																				'some-criteria-are-empty-please-update-to-continue-using-this-segment'
-																			),
-																		title: Liferay.Language.get(
-																			'error'
-																		),
-																		type: AlertTypes.Danger,
-																	},
-																]}
+															<CriteriaBuilderForm
+																channelId={
+																	channelId
+																}
+																groupId={
+																	groupId
+																}
+																id={id}
+																name="criteria"
+																segmentCategory={
+																	segmentCategory
+																}
+																segmentType={
+																	type
+																}
+																sequential={
+																	sequential
+																}
 															/>
-														)}
-
-														<CriteriaBuilderForm
-															channelId={
-																channelId
-															}
-															groupId={groupId}
-															id={id}
-															name="criteria"
-															segmentCategory={
-																segmentCategory
-															}
-															segmentType={type}
-															sequential={
-																sequential
-															}
-														/>
+														</div>
 													</div>
 												</div>
 											</div>
 										</div>
-									</div>
+									</KeyboardMovementProvider>
 								</Form.Form>
 							);
 						}}

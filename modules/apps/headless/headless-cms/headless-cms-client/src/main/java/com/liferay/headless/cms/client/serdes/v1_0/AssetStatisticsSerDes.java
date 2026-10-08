@@ -97,6 +97,26 @@ public class AssetStatisticsSerDes {
 			sb.append(assetStatistics.getInDraftCount());
 		}
 
+		if (assetStatistics.getLongStandingDraftsCount() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"longStandingDraftsCount\": ");
+
+			sb.append(assetStatistics.getLongStandingDraftsCount());
+		}
+
+		if (assetStatistics.getOverdueWorkflowTasksCount() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"overdueWorkflowTasksCount\": ");
+
+			sb.append(assetStatistics.getOverdueWorkflowTasksCount());
+		}
+
 		if (assetStatistics.getPendingCount() != null) {
 			if (sb.length() > 1) {
 				sb.append(", ");
@@ -145,6 +165,16 @@ public class AssetStatisticsSerDes {
 			sb.append("\"upcomingReviewCount\": ");
 
 			sb.append(assetStatistics.getUpcomingReviewCount());
+		}
+
+		if (assetStatistics.getWorkflowTasksCount() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"workflowTasksCount\": ");
+
+			sb.append(assetStatistics.getWorkflowTasksCount());
 		}
 
 		sb.append("}");
@@ -211,6 +241,24 @@ public class AssetStatisticsSerDes {
 				String.valueOf(assetStatistics.getInDraftCount()));
 		}
 
+		if (assetStatistics.getLongStandingDraftsCount() == null) {
+			map.put("longStandingDraftsCount", null);
+		}
+		else {
+			map.put(
+				"longStandingDraftsCount",
+				String.valueOf(assetStatistics.getLongStandingDraftsCount()));
+		}
+
+		if (assetStatistics.getOverdueWorkflowTasksCount() == null) {
+			map.put("overdueWorkflowTasksCount", null);
+		}
+		else {
+			map.put(
+				"overdueWorkflowTasksCount",
+				String.valueOf(assetStatistics.getOverdueWorkflowTasksCount()));
+		}
+
 		if (assetStatistics.getPendingCount() == null) {
 			map.put("pendingCount", null);
 		}
@@ -255,6 +303,15 @@ public class AssetStatisticsSerDes {
 				String.valueOf(assetStatistics.getUpcomingReviewCount()));
 		}
 
+		if (assetStatistics.getWorkflowTasksCount() == null) {
+			map.put("workflowTasksCount", null);
+		}
+		else {
+			map.put(
+				"workflowTasksCount",
+				String.valueOf(assetStatistics.getWorkflowTasksCount()));
+		}
+
 		return map;
 	}
 
@@ -288,6 +345,16 @@ public class AssetStatisticsSerDes {
 			else if (Objects.equals(jsonParserFieldName, "inDraftCount")) {
 				return false;
 			}
+			else if (Objects.equals(
+						jsonParserFieldName, "longStandingDraftsCount")) {
+
+				return false;
+			}
+			else if (Objects.equals(
+						jsonParserFieldName, "overdueWorkflowTasksCount")) {
+
+				return false;
+			}
 			else if (Objects.equals(jsonParserFieldName, "pendingCount")) {
 				return false;
 			}
@@ -304,6 +371,11 @@ public class AssetStatisticsSerDes {
 			}
 			else if (Objects.equals(
 						jsonParserFieldName, "upcomingReviewCount")) {
+
+				return false;
+			}
+			else if (Objects.equals(
+						jsonParserFieldName, "workflowTasksCount")) {
 
 				return false;
 			}
@@ -346,6 +418,22 @@ public class AssetStatisticsSerDes {
 						Long.valueOf((String)jsonParserFieldValue));
 				}
 			}
+			else if (Objects.equals(
+						jsonParserFieldName, "longStandingDraftsCount")) {
+
+				if (jsonParserFieldValue != null) {
+					assetStatistics.setLongStandingDraftsCount(
+						Long.valueOf((String)jsonParserFieldValue));
+				}
+			}
+			else if (Objects.equals(
+						jsonParserFieldName, "overdueWorkflowTasksCount")) {
+
+				if (jsonParserFieldValue != null) {
+					assetStatistics.setOverdueWorkflowTasksCount(
+						Long.valueOf((String)jsonParserFieldValue));
+				}
+			}
 			else if (Objects.equals(jsonParserFieldName, "pendingCount")) {
 				if (jsonParserFieldValue != null) {
 					assetStatistics.setPendingCount(
@@ -377,6 +465,14 @@ public class AssetStatisticsSerDes {
 
 				if (jsonParserFieldValue != null) {
 					assetStatistics.setUpcomingReviewCount(
+						Long.valueOf((String)jsonParserFieldValue));
+				}
+			}
+			else if (Objects.equals(
+						jsonParserFieldName, "workflowTasksCount")) {
+
+				if (jsonParserFieldValue != null) {
+					assetStatistics.setWorkflowTasksCount(
 						Long.valueOf((String)jsonParserFieldValue));
 				}
 			}
@@ -467,4 +563,4 @@ public class AssetStatisticsSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:-92025014
+// LIFERAY-REST-BUILDER-HASH:-1791730640

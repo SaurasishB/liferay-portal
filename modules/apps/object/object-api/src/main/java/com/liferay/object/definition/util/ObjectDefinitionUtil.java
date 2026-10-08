@@ -169,24 +169,6 @@ public class ObjectDefinitionUtil {
 		_allowedModifiableSystemObjectDefinitionNames = HashMapBuilder.put(
 			"AccountValidatorResult", "/account/validator-results"
 		).put(
-			"AIHubAgentDefinition", "/ai-hub/agent-definitions"
-		).put(
-			"AIHubChatbot", "/ai-hub/chatbots"
-		).put(
-			"AIHubConfiguration", "/ai-hub/configurations"
-		).put(
-			"AIHubContentRetriever", "/ai-hub/content-retrievers"
-		).put(
-			"AIHubCrawlerJob", "/ai-hub/crawler-jobs"
-		).put(
-			"AIHubGuardrail", "/ai-hub/guardrails"
-		).put(
-			"AIHubInstructionDefinition", "/ai-hub/instruction-definitions"
-		).put(
-			"AIHubMCPServer", "/ai-hub/mcp-servers"
-		).put(
-			"AIHubReport", "/ai-hub/reports"
-		).put(
 			"APIApplication", "/headless-builder/applications"
 		).put(
 			"APIEndpoint", "/headless-builder/endpoints"

@@ -1294,16 +1294,18 @@ public class AssetPublisherDisplayContext {
 			return _searchContainer;
 		}
 
-		SearchContainer<AssetEntry> searchContainer = new SearchContainer(
-			_portletRequest, null, null, SearchContainer.DEFAULT_CUR_PARAM,
-			getDelta(), getPortletURL(), null, null);
+		if (isPaginationTypeNone()) {
+			_searchContainer = new SearchContainer<>();
+		}
+		else {
+			_searchContainer = new SearchContainer<>(
+				_portletRequest, null, null, SearchContainer.DEFAULT_CUR_PARAM,
+				getDelta(), getPortletURL(), null, null);
 
-		if (!isPaginationTypeNone()) {
-			searchContainer.setDelta(getDelta());
-			searchContainer.setDeltaConfigurable(false);
+			_searchContainer.setDeltaConfigurable(false);
 		}
 
-		_searchContainer = searchContainer;
+		_searchContainer.setDelta(getDelta());
 
 		return _searchContainer;
 	}

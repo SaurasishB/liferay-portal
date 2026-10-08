@@ -47,6 +47,7 @@ import com.liferay.layout.util.structure.RowStyledLayoutStructureItem;
 import com.liferay.object.constants.ObjectDefinitionSettingConstants;
 import com.liferay.object.constants.ObjectEntryFolderConstants;
 import com.liferay.object.constants.ObjectFolderConstants;
+import com.liferay.object.field.attachment.AttachmentManager;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectDefinitionSetting;
 import com.liferay.object.model.ObjectEntryFolder;
@@ -79,6 +80,7 @@ import com.liferay.portal.kernel.model.ClassName;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.model.Layout;
+import com.liferay.portal.kernel.module.service.Snapshot;
 import com.liferay.portal.kernel.portlet.FriendlyURLResolver;
 import com.liferay.portal.kernel.portlet.FriendlyURLResolverRegistryUtil;
 import com.liferay.portal.kernel.portlet.constants.FriendlyURLResolverConstants;
@@ -95,6 +97,7 @@ import com.liferay.portal.kernel.util.HttpComponentsUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.ScopeUtil;
 import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
@@ -125,6 +128,22 @@ import org.osgi.framework.FrameworkUtil;
  * @author Eudaldo Alonso
  */
 public class ActionUtil {
+
+	public static void addFriendlyURLHelpLayoutStructureItem(
+		long fragmentEntryLinkId, LayoutStructure layoutStructure,
+		String parentItemId, int position) {
+
+		LayoutStructureItem layoutStructureItem =
+			layoutStructure.addFragmentStyledLayoutStructureItem(
+				fragmentEntryLinkId, parentItemId, position);
+
+		layoutStructureItem.updateItemConfig(
+			JSONUtil.put(
+				"cssClasses", JSONUtil.put("text-secondary")
+			).put(
+				"styles", JSONUtil.put("marginBottom", "5")
+			));
+	}
 
 	public static void deleteCompareContentLayoutPageTemplateEntry(
 			long classNameId, long groupId)
@@ -294,6 +313,14 @@ public class ActionUtil {
 		ObjectDefinition objectDefinition =
 			ObjectDefinitionLocalServiceUtil.fetchObjectDefinitionByClassName(
 				layout.getCompanyId(), layoutPageTemplateEntry.getClassName());
+
+		if (CMSFileTypeUtil.hasFileObjectField(objectDefinition)) {
+			_addFriendlyURLHelpFragmentEntryLink(
+				addedFragmentEntryLinks, fragmentEntryLinkService,
+				fragmentRendererRegistry, layout, layoutStructure,
+				formStyledLayoutStructureItem, segmentsExperienceId,
+				serviceContext);
+		}
 
 		InfoFieldSet infoFieldSet = (InfoFieldSet)infoForm.getInfoFieldSetEntry(
 			objectDefinition.getName());
@@ -1065,6 +1092,27 @@ public class ActionUtil {
 		return dropdownItems;
 	}
 
+	public static String getFriendlyURLHelpEditableValues(long companyId) {
+		JSONObject elementTextJSONObject = JSONFactoryUtil.createJSONObject();
+
+		for (Locale locale :
+				LanguageUtil.getCompanyAvailableLocales(companyId)) {
+
+			elementTextJSONObject.put(
+				LocaleUtil.toLanguageId(locale),
+				LanguageUtil.get(
+					locale,
+					"for-now-the-file-is-only-reachable-through-the-friendly-" +
+						"url-of-the-default-language"));
+		}
+
+		return JSONUtil.toString(
+			JSONUtil.put(
+				FragmentEntryProcessorConstants.
+					KEY_EDITABLE_FRAGMENT_ENTRY_PROCESSOR,
+				JSONUtil.put("element-text", elementTextJSONObject)));
+	}
+
 	public static DropdownItem getGenerateContentWithAIDropdownItem(
 		HttpServletRequest httpServletRequest) {
 
@@ -1318,17 +1366,48 @@ public class ActionUtil {
 		return StringPool.BLANK;
 	}
 
+	public static long getUploadMaximumFileSize(ThemeDisplay themeDisplay) {
+		long maximumFileSize = PropsValues.JSON_STRING_MAX_LENGTH / 4 * 3;
+
+		ObjectDefinition objectDefinition =
+			ObjectDefinitionLocalServiceUtil.
+				fetchObjectDefinitionByExternalReferenceCode(
+					"L_CMS_BASIC_DOCUMENT", themeDisplay.getCompanyId());
+
+		if (objectDefinition == null) {
+			return maximumFileSize;
+		}
+
+		ObjectField objectField = ObjectFieldLocalServiceUtil.fetchObjectField(
+			objectDefinition.getObjectDefinitionId(), "file");
+
+		if (objectField == null) {
+			return maximumFileSize;
+		}
+
+		AttachmentManager attachmentManager = _attachmentManagerSnapshot.get();
+
+		return Math.min(
+			attachmentManager.getMaximumFileSize(
+				objectField.getObjectFieldId(), themeDisplay.isSignedIn()),
+			maximumFileSize);
+	}
+
 	public static DropdownItem getUploadMultipleFilesDropdownItem(
 		HttpServletRequest httpServletRequest,
 		String parentObjectEntryFolderExternalReferenceCode) {
 
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
+
 		return DropdownItemBuilder.putData(
 			"action", "uploadMultipleFiles"
 		).putData(
-			"baseAssetLibraryViewURL",
-			getBaseSpaceURL(
-				(ThemeDisplay)httpServletRequest.getAttribute(
-					WebKeys.THEME_DISPLAY))
+			"baseAssetLibraryViewURL", getBaseSpaceURL(themeDisplay)
+		).putData(
+			"maxFileSize",
+			String.valueOf(getUploadMaximumFileSize(themeDisplay))
 		).putData(
 			"parentObjectEntryFolderExternalReferenceCode",
 			parentObjectEntryFolderExternalReferenceCode
@@ -1550,6 +1629,32 @@ public class ActionUtil {
 			fragmentEntry.getHtml(), fragmentEntry.getJs(),
 			fragmentEntry.getConfiguration(), editableValues, StringPool.BLANK,
 			0, contributedRendererKey, fragmentEntry.getType(), serviceContext);
+	}
+
+	private static void _addFriendlyURLHelpFragmentEntryLink(
+			List<FragmentEntryLink> addedFragmentEntryLinks,
+			FragmentEntryLinkService fragmentEntryLinkService,
+			FragmentRendererRegistry fragmentRendererRegistry, Layout layout,
+			LayoutStructure layoutStructure,
+			LayoutStructureItem parentLayoutStructureItem,
+			long segmentsExperienceId, ServiceContext serviceContext)
+		throws Exception {
+
+		FragmentEntryLink fragmentEntryLink = _addFragmentEntryLink(
+			getFriendlyURLHelpEditableValues(layout.getCompanyId()),
+			"BASIC_COMPONENT-paragraph", fragmentEntryLinkService,
+			fragmentRendererRegistry, layout, segmentsExperienceId,
+			serviceContext);
+
+		if (fragmentEntryLink == null) {
+			return;
+		}
+
+		addFriendlyURLHelpLayoutStructureItem(
+			fragmentEntryLink.getFragmentEntryLinkId(), layoutStructure,
+			parentLayoutStructureItem.getItemId(), -1);
+
+		addedFragmentEntryLinks.add(fragmentEntryLink);
 	}
 
 	private static void _addInfoFieldFragmentEntryLink(
@@ -2387,6 +2492,9 @@ public class ActionUtil {
 
 	private static final Log _log = LogFactoryUtil.getLog(ActionUtil.class);
 
+	private static final Snapshot<AttachmentManager>
+		_attachmentManagerSnapshot = new Snapshot<>(
+			ActionUtil.class, AttachmentManager.class);
 	private static final ServiceTrackerList<CMSObjectEntryFormContributor>
 		_cmsObjectEntryFormContributors;
 	private static final Object _compareContentLayoutLock = new Object();

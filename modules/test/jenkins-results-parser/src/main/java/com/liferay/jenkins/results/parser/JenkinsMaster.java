@@ -9,6 +9,7 @@ import com.liferay.jenkins.results.parser.aws.AWSFactory;
 import com.liferay.jenkins.results.parser.aws.AWSFleetCloud;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import java.util.ArrayList;
@@ -220,6 +221,36 @@ public class JenkinsMaster implements JenkinsNode<JenkinsMaster> {
 
 		return _executeBashCommand(
 			command, timeout, _getSSHOptions(timeout / 2000));
+	}
+
+	public QueueItem fetchQueueItem(long queueId) throws IOException {
+		String response;
+
+		String queueItemAPIURL = JenkinsResultsParserUtil.combine(
+			getURL(), "/queue/item/", String.valueOf(queueId),
+			"/api/json?tree=actions[parameters[name,value]],cancelled,",
+			"executable[url],id,inQueueSince,task[name,url],url,why");
+
+		try {
+			response = JenkinsResultsParserUtil.toString(
+				queueItemAPIURL, false, 0, 0, 5000);
+		}
+		catch (FileNotFoundException fileNotFoundException) {
+			return null;
+		}
+
+		if (JenkinsResultsParserUtil.isNullOrEmpty(response)) {
+			return null;
+		}
+
+		JSONObject queueItemJSONObject =
+			JenkinsResultsParserUtil.createJSONObject(response);
+
+		if (!queueItemJSONObject.has("id")) {
+			return null;
+		}
+
+		return new QueueItem(this, queueItemJSONObject);
 	}
 
 	public List<JenkinsUser.APIToken> getAPITokens(String jenkinsUserName) {
@@ -634,27 +665,8 @@ public class JenkinsMaster implements JenkinsNode<JenkinsMaster> {
 	}
 
 	public QueueItem getQueueItem(long queueId) {
-		String queueItemAPIURL = JenkinsResultsParserUtil.combine(
-			getURL(), "/queue/item/", String.valueOf(queueId),
-			"/api/json?tree=actions[parameters[name,value]],",
-			"id,inQueueSince,task[name,url],url,why");
-
 		try {
-			String response = JenkinsResultsParserUtil.toString(
-				queueItemAPIURL, false, 0, 0, 5000);
-
-			if (JenkinsResultsParserUtil.isNullOrEmpty(response)) {
-				return null;
-			}
-
-			JSONObject queueItemJSONObject =
-				JenkinsResultsParserUtil.createJSONObject(response);
-
-			if (!queueItemJSONObject.has("id")) {
-				return null;
-			}
-
-			return new QueueItem(this, queueItemJSONObject);
+			return fetchQueueItem(queueId);
 		}
 		catch (IOException ioException) {
 			return null;
@@ -684,7 +696,7 @@ public class JenkinsMaster implements JenkinsNode<JenkinsMaster> {
 			long queueUpdateDuration = currentTime - _queueUpdateTime;
 
 			if (queueUpdateDuration <= _MAXIMUM_QUEUE_UPDATE_DURATION) {
-				return _queueItems;
+				return new ArrayList<>(_queueItems);
 			}
 		}
 
@@ -703,7 +715,7 @@ public class JenkinsMaster implements JenkinsNode<JenkinsMaster> {
 				_queueUpdateTime =
 					JenkinsResultsParserUtil.getCurrentTimeMillis();
 
-				return _queueItems;
+				return new ArrayList<>(_queueItems);
 			}
 
 			JSONArray itemsJSONArray = queueAPIJSONObject.getJSONArray("items");
@@ -715,7 +727,7 @@ public class JenkinsMaster implements JenkinsNode<JenkinsMaster> {
 
 			_queueUpdateTime = JenkinsResultsParserUtil.getCurrentTimeMillis();
 
-			return _queueItems;
+			return new ArrayList<>(_queueItems);
 		}
 		catch (IOException ioException) {
 			throw new RuntimeException(ioException);
@@ -1217,6 +1229,17 @@ public class JenkinsMaster implements JenkinsNode<JenkinsMaster> {
 			return null;
 		}
 
+		public String getExecutableURL() {
+			JSONObject executableJSONObject = _jsonObject.optJSONObject(
+				"executable");
+
+			if (executableJSONObject == null) {
+				return null;
+			}
+
+			return executableJSONObject.optString("url", null);
+		}
+
 		public long getId() {
 			return _jsonObject.getLong("id");
 		}
@@ -1299,6 +1322,10 @@ public class JenkinsMaster implements JenkinsNode<JenkinsMaster> {
 
 		public String getWhy() {
 			return _jsonObject.optString("why");
+		}
+
+		public boolean isCancelled() {
+			return _jsonObject.optBoolean("cancelled");
 		}
 
 		public boolean isValidQueueItem() {

@@ -33,7 +33,6 @@ export class VirtualInstancesPage {
 	readonly copyInstanceVirtualHostField: Locator;
 	readonly copyInstanceWebIdField: Locator;
 	readonly exportInstanceConfirmButton: Locator;
-	readonly exportInstanceSuccessMessage: Locator;
 	readonly importInstanceErrorMessage: Locator;
 	readonly importInstanceNameField: Locator;
 	readonly importInstanceSchemaNameField: Locator;
@@ -97,9 +96,6 @@ export class VirtualInstancesPage {
 		this.exportInstanceConfirmButton = page
 			.getByRole('dialog', {name: 'Export Instance'})
 			.getByRole('button', {exact: true, name: 'Export'});
-		this.exportInstanceSuccessMessage = page.getByText(
-			'The instance was exported to the schema'
-		);
 		this.importInstanceErrorMessage = this.importInstanceFrame.getByText(
 			'Please enter a valid schema name'
 		);
@@ -229,8 +225,10 @@ export class VirtualInstancesPage {
 		}
 	}
 
-	copyInstanceSuccessMessage(webId: string) {
-		return this.page.getByText(`The instance was copied to ${webId}.`);
+	copyStartedMessage(webId: string) {
+		return this.page.getByText(
+			`The instance is being copied to ${webId}. You will be notified when it finishes.`
+		);
 	}
 
 	creationStartedMessage(name: string) {
@@ -242,6 +240,18 @@ export class VirtualInstancesPage {
 	deletionStartedMessage(name: string) {
 		return this.page.getByText(
 			`The instance ${name} is being deleted. You will be notified when it finishes.`
+		);
+	}
+
+	exportStartedMessage(name: string) {
+		return this.page.getByText(
+			`The instance ${name} is being exported. You will be notified when it finishes.`
+		);
+	}
+
+	importStartedMessage(schemaName: string) {
+		return this.page.getByText(
+			`The instance is being imported from the schema ${schemaName}. You will be notified when it finishes.`
 		);
 	}
 
@@ -284,6 +294,20 @@ export class VirtualInstancesPage {
 		await this.page.waitForTimeout(1000);
 	}
 
+	async waitForCopyNotification(sourceName: string, webId: string) {
+		const notificationsPage = new NotificationsPage(this.page);
+
+		await expect(async () => {
+			await notificationsPage.goto();
+
+			await expect(
+				notificationsPage.getNotificationByTitle(
+					`The instance ${sourceName} was copied to ${webId}.`
+				)
+			).toBeVisible({timeout: 10 * 1000});
+		}).toPass({timeout: 300 * 1000});
+	}
+
 	async waitForCreationNotification(name: string) {
 		const notificationsPage = new NotificationsPage(this.page);
 
@@ -293,6 +317,47 @@ export class VirtualInstancesPage {
 			await expect(
 				notificationsPage.getNotificationByTitle(
 					`The instance ${name} was created.`
+				)
+			).toBeVisible({timeout: 10 * 1000});
+		}).toPass({timeout: 300 * 1000});
+	}
+
+	async waitForExportNotification(name: string) {
+		const notificationsPage = new NotificationsPage(this.page);
+
+		let schemaName = '';
+
+		await expect(async () => {
+			await notificationsPage.goto();
+
+			const notification = notificationsPage.getNotificationByTitle(
+				`The instance ${name} was exported.`
+			);
+
+			await expect(notification).toBeVisible({timeout: 10 * 1000});
+
+			const body = await notification.innerText();
+
+			const [, matchedSchemaName] =
+				body.match(/schema\s+(lexported_\d+)/) || [];
+
+			expect(matchedSchemaName).toBeTruthy();
+
+			schemaName = matchedSchemaName;
+		}).toPass({timeout: 300 * 1000});
+
+		return schemaName;
+	}
+
+	async waitForImportNotification(name: string) {
+		const notificationsPage = new NotificationsPage(this.page);
+
+		await expect(async () => {
+			await notificationsPage.goto();
+
+			await expect(
+				notificationsPage.getNotificationByTitle(
+					`The instance ${name} was imported.`
 				)
 			).toBeVisible({timeout: 10 * 1000});
 		}).toPass({timeout: 300 * 1000});
@@ -319,7 +384,7 @@ export class VirtualInstancesPage {
 			.toBe(exists);
 	}
 
-	async exportVirtualInstance(name: string) {
+	async startVirtualInstanceExport(name: string) {
 		await this.goto();
 
 		const row = this.page.getByRole('row').filter({hasText: name});
@@ -335,29 +400,17 @@ export class VirtualInstancesPage {
 
 		await this.exportInstanceConfirmButton.click();
 
-		let schemaName = '';
+		await expect(this.exportStartedMessage(name)).toBeVisible();
+	}
 
-		await expect(async () => {
-			const successMessage =
-				await this.exportInstanceSuccessMessage.innerText();
+	async exportVirtualInstance(name: string) {
+		await this.startVirtualInstanceExport(name);
 
-			const [, matchedSchemaName] =
-				successMessage.match(/schema\s+(lexported_\d+)/) || [];
-
-			expect(matchedSchemaName).toBeTruthy();
-
-			schemaName = matchedSchemaName;
-		}).toPass({timeout: 180 * 1000});
-
-		return schemaName;
+		return this.waitForExportNotification(name);
 	}
 
 	async goto() {
 		await this.globalMenuPage.goToControlPanel('Virtual Instances');
-	}
-
-	importInstanceSuccessMessage(webId: string) {
-		return this.page.getByText(`The instance was imported to ${webId}.`);
 	}
 
 	async openCopyVirtualInstanceModal(name: string) {
