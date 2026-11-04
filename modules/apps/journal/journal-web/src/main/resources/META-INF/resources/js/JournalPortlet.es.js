@@ -7,6 +7,7 @@ import {openConfirmModal} from 'frontend-js-components-web';
 import {debounce, fetch, navigate, sub} from 'frontend-js-web';
 
 import {LocaleChangedHandler} from './LocaleChangedHandler.es';
+import {getFormSnapshot, isFormSnapshotDifferent} from './formSnapshot';
 import removeAlert from './removeAlert';
 import showAlert from './showAlert';
 
@@ -569,47 +570,14 @@ function attachFormChangeListener({
 	form,
 	namespace,
 }) {
-	const excludedSnapshotNames = new Set([
-		`${namespace}formDate`,
-		`${namespace}languageId`,
-	]);
-
-	const snapshotFormValues = () => {
-		const values = new Map();
-
-		for (const element of form.elements) {
-			if (
-				element.name &&
-				element.name.startsWith(namespace) &&
-				!excludedSnapshotNames.has(element.name)
-			) {
-				values.set(element.name, (element.value ?? '').trim());
-			}
-		}
-
-		return values;
-	};
-
-	const snapshotsDiffer = (a, b) => {
-		if (a.size !== b.size) {
-			return true;
-		}
-
-		for (const [name, value] of a) {
-			if (b.get(name) !== value) {
-				return true;
-			}
-		}
-
-		return false;
-	};
+	const snapshotFormValues = () => getFormSnapshot(form, namespace);
 
 	let lastKnownSnapshot = new Map();
 
 	const handleChange = debounce(() => {
 		const current = snapshotFormValues();
 
-		if (!snapshotsDiffer(current, lastKnownSnapshot)) {
+		if (!isFormSnapshotDifferent(current, lastKnownSnapshot)) {
 			return;
 		}
 
