@@ -570,12 +570,10 @@ function attachFormChangeListener({
 	form,
 	namespace,
 }) {
-	const snapshotFormValues = () => getFormSnapshot(form, namespace);
-
 	let lastKnownSnapshot = new Map();
 
 	const handleChange = debounce(() => {
-		const current = snapshotFormValues();
+		const current = getFormSnapshot(form, namespace);
 
 		if (!isFormSnapshotDifferent(current, lastKnownSnapshot)) {
 			return;
@@ -614,7 +612,7 @@ function attachFormChangeListener({
 	});
 
 	Liferay.componentReady(`${namespace}SelectAssetDisplayPage`).then(() => {
-		lastKnownSnapshot = snapshotFormValues();
+		lastKnownSnapshot = getFormSnapshot(form, namespace);
 
 		mutationObserver.observe(form, {
 			attributeFilter: ['value'],
@@ -633,7 +631,7 @@ function attachFormChangeListener({
 			form.removeEventListener('change', handleChange);
 		},
 		refreshSnapshot() {
-			lastKnownSnapshot = snapshotFormValues();
+			lastKnownSnapshot = getFormSnapshot(form, namespace);
 		},
 	};
 }

@@ -29,45 +29,6 @@ export function getFormSnapshot(form, namespace, ignoredNames = []) {
 	return values;
 }
 
-function trackFormChanges(form, namespace, ignoredNames) {
-	let savedSnapshot = getFormSnapshot(form, namespace, ignoredNames);
-
-	const addRenderedFields = () => {
-		for (const [name, value] of getFormSnapshot(
-			form,
-			namespace,
-			ignoredNames
-		)) {
-			if (!savedSnapshot.has(name)) {
-				savedSnapshot.set(name, value);
-			}
-		}
-	};
-
-	const mutationObserver = new MutationObserver(addRenderedFields);
-
-	mutationObserver.observe(form, {childList: true, subtree: true});
-
-	return {
-		detach() {
-			mutationObserver.disconnect();
-		},
-		hasChanges() {
-			if (mutationObserver.takeRecords().length) {
-				addRenderedFields();
-			}
-
-			return isFormSnapshotDifferent(
-				getFormSnapshot(form, namespace, ignoredNames),
-				savedSnapshot
-			);
-		},
-		markSaved() {
-			savedSnapshot = getFormSnapshot(form, namespace, ignoredNames);
-		},
-	};
-}
-
 export function isFormSnapshotDifferent(snapshot1, snapshot2) {
 	if (snapshot1.size !== snapshot2.size) {
 		return true;
@@ -113,4 +74,43 @@ export function useFormChanges(namespace, ignoredNames = NO_IGNORED_NAMES) {
 	}, []);
 
 	return {hasFormChanges, markFormSaved};
+}
+
+function trackFormChanges(form, namespace, ignoredNames) {
+	let savedSnapshot = getFormSnapshot(form, namespace, ignoredNames);
+
+	const addRenderedFields = () => {
+		for (const [name, value] of getFormSnapshot(
+			form,
+			namespace,
+			ignoredNames
+		)) {
+			if (!savedSnapshot.has(name)) {
+				savedSnapshot.set(name, value);
+			}
+		}
+	};
+
+	const mutationObserver = new MutationObserver(addRenderedFields);
+
+	mutationObserver.observe(form, {childList: true, subtree: true});
+
+	return {
+		detach() {
+			mutationObserver.disconnect();
+		},
+		hasChanges() {
+			if (mutationObserver.takeRecords().length) {
+				addRenderedFields();
+			}
+
+			return isFormSnapshotDifferent(
+				getFormSnapshot(form, namespace, ignoredNames),
+				savedSnapshot
+			);
+		},
+		markSaved() {
+			savedSnapshot = getFormSnapshot(form, namespace, ignoredNames);
+		},
+	};
 }

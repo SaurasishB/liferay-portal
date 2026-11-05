@@ -61,7 +61,9 @@ public class SaveAsDraftArticleMVCActionCommand extends BaseMVCActionCommand {
 		throws Exception {
 
 		try {
-			JournalArticle article = _processAction(actionRequest);
+			String cmd = ParamUtil.getString(actionRequest, Constants.CMD);
+
+			JournalArticle article = _processAction(actionRequest, cmd);
 
 			JSONPortletResponseUtil.writeJSON(
 				actionRequest, actionResponse,
@@ -74,11 +76,13 @@ public class SaveAsDraftArticleMVCActionCommand extends BaseMVCActionCommand {
 				).put(
 					"previewURL",
 					() -> {
-						String pagePreviewURL = _getPagePreviewURL(
-							actionRequest, article);
+						if (cmd.equals(Constants.PREVIEW)) {
+							String pagePreviewURL = _getPagePreviewURL(
+								actionRequest, article);
 
-						if (Validator.isNotNull(pagePreviewURL)) {
-							return pagePreviewURL;
+							if (Validator.isNotNull(pagePreviewURL)) {
+								return pagePreviewURL;
+							}
 						}
 
 						AssetRendererFactory<JournalArticle>
@@ -123,16 +127,9 @@ public class SaveAsDraftArticleMVCActionCommand extends BaseMVCActionCommand {
 	private String _getPagePreviewURL(
 		ActionRequest actionRequest, JournalArticle article) {
 
-		String cmd = ParamUtil.getString(actionRequest, Constants.CMD);
-
-		if (!cmd.equals(Constants.PREVIEW)) {
-			return null;
-		}
-
-		LayoutPageTemplateEntry layoutPageTemplateEntry = null;
-
 		int displayPageType = ParamUtil.getInteger(
 			actionRequest, "displayPageType");
+		LayoutPageTemplateEntry layoutPageTemplateEntry = null;
 
 		if (displayPageType == AssetDisplayPageConstants.TYPE_DEFAULT) {
 			layoutPageTemplateEntry =
@@ -197,12 +194,11 @@ public class SaveAsDraftArticleMVCActionCommand extends BaseMVCActionCommand {
 		return false;
 	}
 
-	private JournalArticle _processAction(ActionRequest actionRequest)
+	private JournalArticle _processAction(
+			ActionRequest actionRequest, String cmd)
 		throws Exception {
 
 		String actionName = StringPool.BLANK;
-
-		String cmd = ParamUtil.getString(actionRequest, Constants.CMD);
 
 		if (cmd.equals(Constants.ADD)) {
 			actionName = "/journal/add_article";

@@ -185,31 +185,28 @@ public class SaveAsDraftArticleMVCActionCommandTest {
 			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
 
 		_assertPreviewURL(
-			journalArticle,
+			AssetDisplayPageConstants.TYPE_DEFAULT, journalArticle,
 			DisplayPageTemplateTestUtil.addDisplayPageTemplate(
 				_group.getGroupId(),
 				_portal.getClassNameId(JournalArticle.class.getName()),
 				journalArticle.getDDMStructureKey(), true,
-				WorkflowConstants.STATUS_APPROVED),
-			AssetDisplayPageConstants.TYPE_DEFAULT);
+				WorkflowConstants.STATUS_APPROVED));
 	}
 
 	@Test
 	public void testProcessActionPreviewWithDoAsUserId() throws Exception {
+		String doAsUserId = RandomTestUtil.randomString();
 		JournalArticle journalArticle = JournalTestUtil.addArticle(
 			_group.getGroupId(),
 			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
 
-		String doAsUserId = RandomTestUtil.randomString();
-
 		String previewURL = _getPreviewURL(
-			journalArticle,
+			AssetDisplayPageConstants.TYPE_SPECIFIC, doAsUserId, journalArticle,
 			DisplayPageTemplateTestUtil.addDisplayPageTemplate(
 				_group.getGroupId(),
 				_portal.getClassNameId(JournalArticle.class.getName()),
 				journalArticle.getDDMStructureKey(), false,
-				WorkflowConstants.STATUS_APPROVED),
-			AssetDisplayPageConstants.TYPE_SPECIFIC, doAsUserId);
+				WorkflowConstants.STATUS_APPROVED));
 
 		Assert.assertTrue(
 			previewURL, previewURL.contains("doAsUserId=" + doAsUserId));
@@ -224,32 +221,30 @@ public class SaveAsDraftArticleMVCActionCommandTest {
 			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
 
 		_assertPreviewURL(
-			journalArticle,
+			AssetDisplayPageConstants.TYPE_SPECIFIC, journalArticle,
 			DisplayPageTemplateTestUtil.addDisplayPageTemplate(
 				_group.getGroupId(),
 				_portal.getClassNameId(JournalArticle.class.getName()),
 				journalArticle.getDDMStructureKey(), false,
-				WorkflowConstants.STATUS_APPROVED),
-			AssetDisplayPageConstants.TYPE_SPECIFIC);
+				WorkflowConstants.STATUS_APPROVED));
 	}
 
 	@Test
 	public void testProcessActionPreviewWithSpecificDisplayPageFromAnotherGroup()
 		throws Exception {
 
+		_otherGroup = GroupTestUtil.addGroup();
+
 		JournalArticle journalArticle = JournalTestUtil.addArticle(
 			_group.getGroupId(),
 			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
-
-		_otherGroup = GroupTestUtil.addGroup();
-
 		LayoutPageTemplateEntry layoutPageTemplateEntry =
 			DisplayPageTemplateTestUtil.addDisplayPageTemplate(
 				_otherGroup.getGroupId());
 
 		String previewURL = _getPreviewURL(
-			journalArticle, layoutPageTemplateEntry,
-			AssetDisplayPageConstants.TYPE_SPECIFIC, null);
+			AssetDisplayPageConstants.TYPE_SPECIFIC, null, journalArticle,
+			layoutPageTemplateEntry);
 
 		Assert.assertFalse(
 			previewURL,
@@ -258,13 +253,12 @@ public class SaveAsDraftArticleMVCActionCommandTest {
 	}
 
 	private void _assertPreviewURL(
-			JournalArticle journalArticle,
-			LayoutPageTemplateEntry layoutPageTemplateEntry,
-			int displayPageType)
+			int displayPageType, JournalArticle journalArticle,
+			LayoutPageTemplateEntry layoutPageTemplateEntry)
 		throws Exception {
 
 		String previewURL = _getPreviewURL(
-			journalArticle, layoutPageTemplateEntry, displayPageType, null);
+			displayPageType, null, journalArticle, layoutPageTemplateEntry);
 
 		Assert.assertTrue(
 			previewURL, previewURL.contains("/portal/get_page_preview"));
@@ -324,9 +318,9 @@ public class SaveAsDraftArticleMVCActionCommandTest {
 	}
 
 	private String _getPreviewURL(
+			int displayPageType, String doAsUserId,
 			JournalArticle journalArticle,
-			LayoutPageTemplateEntry layoutPageTemplateEntry,
-			int displayPageType, String doAsUserId)
+			LayoutPageTemplateEntry layoutPageTemplateEntry)
 		throws Exception {
 
 		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
@@ -337,9 +331,9 @@ public class SaveAsDraftArticleMVCActionCommandTest {
 			String.valueOf(
 				layoutPageTemplateEntry.getLayoutPageTemplateEntryId()));
 		mockLiferayPortletActionRequest.addParameter(
-			Constants.CMD, Constants.PREVIEW);
-		mockLiferayPortletActionRequest.addParameter(
 			"displayPageType", String.valueOf(displayPageType));
+		mockLiferayPortletActionRequest.addParameter(
+			Constants.CMD, Constants.PREVIEW);
 
 		if (doAsUserId != null) {
 			ThemeDisplay themeDisplay =
