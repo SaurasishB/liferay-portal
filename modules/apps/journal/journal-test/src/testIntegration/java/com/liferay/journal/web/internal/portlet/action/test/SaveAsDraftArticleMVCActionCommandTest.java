@@ -195,6 +195,27 @@ public class SaveAsDraftArticleMVCActionCommandTest {
 	}
 
 	@Test
+	public void testProcessActionPreviewWithDoAsUserId() throws Exception {
+		JournalArticle journalArticle = JournalTestUtil.addArticle(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		String doAsUserId = RandomTestUtil.randomString();
+
+		String previewURL = _getPreviewURL(
+			journalArticle,
+			DisplayPageTemplateTestUtil.addDisplayPageTemplate(
+				_group.getGroupId(),
+				_portal.getClassNameId(JournalArticle.class.getName()),
+				journalArticle.getDDMStructureKey(), false,
+				WorkflowConstants.STATUS_APPROVED),
+			AssetDisplayPageConstants.TYPE_SPECIFIC, doAsUserId);
+
+		Assert.assertTrue(
+			previewURL, previewURL.contains("doAsUserId=" + doAsUserId));
+	}
+
+	@Test
 	public void testProcessActionPreviewWithSpecificDisplayPage()
 		throws Exception {
 
@@ -212,38 +233,38 @@ public class SaveAsDraftArticleMVCActionCommandTest {
 			AssetDisplayPageConstants.TYPE_SPECIFIC);
 	}
 
+	@Test
+	public void testProcessActionPreviewWithSpecificDisplayPageFromAnotherGroup()
+		throws Exception {
+
+		JournalArticle journalArticle = JournalTestUtil.addArticle(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		_otherGroup = GroupTestUtil.addGroup();
+
+		LayoutPageTemplateEntry layoutPageTemplateEntry =
+			DisplayPageTemplateTestUtil.addDisplayPageTemplate(
+				_otherGroup.getGroupId());
+
+		String previewURL = _getPreviewURL(
+			journalArticle, layoutPageTemplateEntry,
+			AssetDisplayPageConstants.TYPE_SPECIFIC, null);
+
+		Assert.assertFalse(
+			previewURL,
+			previewURL.contains(
+				"selPlid=" + layoutPageTemplateEntry.getPlid()));
+	}
+
 	private void _assertPreviewURL(
 			JournalArticle journalArticle,
 			LayoutPageTemplateEntry layoutPageTemplateEntry,
 			int displayPageType)
 		throws Exception {
 
-		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
-			_getMockLiferayPortletActionRequest(journalArticle);
-
-		mockLiferayPortletActionRequest.addParameter(
-			"assetDisplayPageId",
-			String.valueOf(
-				layoutPageTemplateEntry.getLayoutPageTemplateEntryId()));
-		mockLiferayPortletActionRequest.addParameter(
-			Constants.CMD, Constants.PREVIEW);
-		mockLiferayPortletActionRequest.addParameter(
-			"displayPageType", String.valueOf(displayPageType));
-
-		MockLiferayPortletActionResponse mockLiferayPortletActionResponse =
-			new MockLiferayPortletActionResponse();
-
-		_mvcActionCommand.processAction(
-			mockLiferayPortletActionRequest, mockLiferayPortletActionResponse);
-
-		MockHttpServletResponse mockHttpServletResponse =
-			(MockHttpServletResponse)
-				mockLiferayPortletActionResponse.getHttpServletResponse();
-
-		JSONObject jsonObject = JSONFactoryUtil.createJSONObject(
-			mockHttpServletResponse.getContentAsString());
-
-		String previewURL = jsonObject.getString("previewURL");
+		String previewURL = _getPreviewURL(
+			journalArticle, layoutPageTemplateEntry, displayPageType, null);
 
 		Assert.assertTrue(
 			previewURL, previewURL.contains("/portal/get_page_preview"));
@@ -300,6 +321,48 @@ public class SaveAsDraftArticleMVCActionCommandTest {
 			WebKeys.THEME_DISPLAY, _getThemeDisplay());
 
 		return mockLiferayPortletActionRequest;
+	}
+
+	private String _getPreviewURL(
+			JournalArticle journalArticle,
+			LayoutPageTemplateEntry layoutPageTemplateEntry,
+			int displayPageType, String doAsUserId)
+		throws Exception {
+
+		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
+			_getMockLiferayPortletActionRequest(journalArticle);
+
+		mockLiferayPortletActionRequest.addParameter(
+			"assetDisplayPageId",
+			String.valueOf(
+				layoutPageTemplateEntry.getLayoutPageTemplateEntryId()));
+		mockLiferayPortletActionRequest.addParameter(
+			Constants.CMD, Constants.PREVIEW);
+		mockLiferayPortletActionRequest.addParameter(
+			"displayPageType", String.valueOf(displayPageType));
+
+		if (doAsUserId != null) {
+			ThemeDisplay themeDisplay =
+				(ThemeDisplay)mockLiferayPortletActionRequest.getAttribute(
+					WebKeys.THEME_DISPLAY);
+
+			themeDisplay.setDoAsUserId(doAsUserId);
+		}
+
+		MockLiferayPortletActionResponse mockLiferayPortletActionResponse =
+			new MockLiferayPortletActionResponse();
+
+		_mvcActionCommand.processAction(
+			mockLiferayPortletActionRequest, mockLiferayPortletActionResponse);
+
+		MockHttpServletResponse mockHttpServletResponse =
+			(MockHttpServletResponse)
+				mockLiferayPortletActionResponse.getHttpServletResponse();
+
+		JSONObject jsonObject = JSONFactoryUtil.createJSONObject(
+			mockHttpServletResponse.getContentAsString());
+
+		return jsonObject.getString("previewURL");
 	}
 
 	private ThemeDisplay _getThemeDisplay() throws Exception {
@@ -367,6 +430,9 @@ public class SaveAsDraftArticleMVCActionCommandTest {
 
 	@Inject(filter = "mvc.command.name=/journal/save_as_draft_article")
 	private MVCActionCommand _mvcActionCommand;
+
+	@DeleteAfterTestRun
+	private Group _otherGroup;
 
 	@Inject
 	private Portal _portal;
