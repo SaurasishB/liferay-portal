@@ -176,6 +176,91 @@ public class SaveAsDraftArticleMVCActionCommandTest {
 				_group.getGroupId(), journalArticle.getArticleId()));
 	}
 
+	@Test
+	public void testProcessActionPreviewWithDefaultDisplayPage()
+		throws Exception {
+
+		JournalArticle journalArticle = JournalTestUtil.addArticle(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		_assertPreviewURL(
+			journalArticle,
+			DisplayPageTemplateTestUtil.addDisplayPageTemplate(
+				_group.getGroupId(),
+				_portal.getClassNameId(JournalArticle.class.getName()),
+				journalArticle.getDDMStructureKey(), true,
+				WorkflowConstants.STATUS_APPROVED),
+			AssetDisplayPageConstants.TYPE_DEFAULT);
+	}
+
+	@Test
+	public void testProcessActionPreviewWithSpecificDisplayPage()
+		throws Exception {
+
+		JournalArticle journalArticle = JournalTestUtil.addArticle(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		_assertPreviewURL(
+			journalArticle,
+			DisplayPageTemplateTestUtil.addDisplayPageTemplate(
+				_group.getGroupId(),
+				_portal.getClassNameId(JournalArticle.class.getName()),
+				journalArticle.getDDMStructureKey(), false,
+				WorkflowConstants.STATUS_APPROVED),
+			AssetDisplayPageConstants.TYPE_SPECIFIC);
+	}
+
+	private void _assertPreviewURL(
+			JournalArticle journalArticle,
+			LayoutPageTemplateEntry layoutPageTemplateEntry,
+			int displayPageType)
+		throws Exception {
+
+		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
+			_getMockLiferayPortletActionRequest(journalArticle);
+
+		mockLiferayPortletActionRequest.addParameter(
+			"assetDisplayPageId",
+			String.valueOf(
+				layoutPageTemplateEntry.getLayoutPageTemplateEntryId()));
+		mockLiferayPortletActionRequest.addParameter(
+			Constants.CMD, Constants.PREVIEW);
+		mockLiferayPortletActionRequest.addParameter(
+			"displayPageType", String.valueOf(displayPageType));
+
+		MockLiferayPortletActionResponse mockLiferayPortletActionResponse =
+			new MockLiferayPortletActionResponse();
+
+		_mvcActionCommand.processAction(
+			mockLiferayPortletActionRequest, mockLiferayPortletActionResponse);
+
+		MockHttpServletResponse mockHttpServletResponse =
+			(MockHttpServletResponse)
+				mockLiferayPortletActionResponse.getHttpServletResponse();
+
+		JSONObject jsonObject = JSONFactoryUtil.createJSONObject(
+			mockHttpServletResponse.getContentAsString());
+
+		String previewURL = jsonObject.getString("previewURL");
+
+		Assert.assertTrue(
+			previewURL, previewURL.contains("/portal/get_page_preview"));
+		Assert.assertTrue(
+			previewURL,
+			previewURL.contains(
+				"selPlid=" + layoutPageTemplateEntry.getPlid()));
+		Assert.assertTrue(
+			previewURL,
+			previewURL.contains("version=" + journalArticle.getVersion()));
+
+		Assert.assertEquals(
+			1,
+			JournalArticleLocalServiceUtil.getArticlesCount(
+				_group.getGroupId(), journalArticle.getArticleId()));
+	}
+
 	private MockMultipartHttpServletRequest
 		_createMockMultipartHttpServletRequest() {
 

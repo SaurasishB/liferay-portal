@@ -23,6 +23,8 @@ const DISPLAY_PAGE_TYPE_DEFAULT = 1;
 
 const DISPLAY_PAGE_TYPE_NONE = 0;
 
+const DISPLAY_PAGE_TYPE_SPECIFIC = 2;
+
 const DEFAULT_PROPS = {
 	assetDisplayPageId: '',
 	assetDisplayPageType: DISPLAY_PAGE_TYPE_NONE,
@@ -39,7 +41,7 @@ const DEFAULT_PROPS = {
 const renderComponent = () =>
 	render(<SelectAssetDisplayPage {...DEFAULT_PROPS} />);
 
-const renderComponentInForm = async () => {
+const renderComponentInForm = async (props) => {
 	const form = document.createElement('form');
 
 	form.id = `${DEFAULT_PROPS.portletNamespace}fm1`;
@@ -59,6 +61,7 @@ const renderComponentInForm = async () => {
 			assetDisplayPageType={DISPLAY_PAGE_TYPE_DEFAULT}
 			defaultDisplayPageName="Display Page"
 			newArticle={false}
+			{...props}
 		/>,
 		{container: form.appendChild(document.createElement('div'))}
 	);
@@ -140,6 +143,27 @@ describe('SelectAssetDisplayPage', () => {
 			document
 				.getElementById(`${DEFAULT_PROPS.portletNamespace}fm1`)
 				.appendChild(input);
+
+			await userEvent.click(
+				screen.getByRole('button', {name: /preview/})
+			);
+
+			await waitFor(() => expect(openModal).toHaveBeenCalled());
+
+			expect(getCmd()).toBe('preview');
+		});
+
+		it('previews the saved version when only the display page changes', async () => {
+			await renderComponentInForm({
+				assetDisplayPageId: '1',
+				assetDisplayPageType: DISPLAY_PAGE_TYPE_SPECIFIC,
+				specificAssetDisplayPageName: 'Specific Display Page',
+			});
+
+			fireEvent.change(
+				screen.getByLabelText('select-display-page-type'),
+				{target: {value: String(DISPLAY_PAGE_TYPE_DEFAULT)}}
+			);
 
 			await userEvent.click(
 				screen.getByRole('button', {name: /preview/})
