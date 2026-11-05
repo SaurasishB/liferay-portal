@@ -18,6 +18,7 @@ import com.liferay.journal.service.JournalArticleService;
 import com.liferay.journal.util.JournalConverter;
 import com.liferay.journal.util.JournalHelper;
 import com.liferay.journal.web.internal.util.JournalArticleUtil;
+import com.liferay.layout.page.template.constants.LayoutPageTemplateEntryTypeConstants;
 import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
 import com.liferay.layout.page.template.service.LayoutPageTemplateEntryLocalService;
 import com.liferay.petra.string.StringPool;
@@ -146,6 +147,12 @@ public class SaveAsDraftArticleMVCActionCommand extends BaseMVCActionCommand {
 				_layoutPageTemplateEntryLocalService.
 					fetchLayoutPageTemplateEntry(
 						ParamUtil.getLong(actionRequest, "assetDisplayPageId"));
+
+			if ((layoutPageTemplateEntry != null) &&
+				!_isDisplayPageTemplate(article, layoutPageTemplateEntry)) {
+
+				layoutPageTemplateEntry = null;
+			}
 		}
 
 		if (layoutPageTemplateEntry == null) {
@@ -155,13 +162,39 @@ public class SaveAsDraftArticleMVCActionCommand extends BaseMVCActionCommand {
 		ThemeDisplay themeDisplay = (ThemeDisplay)actionRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
 
-		return HttpComponentsUtil.addParameters(
+		String pagePreviewURL = HttpComponentsUtil.addParameters(
 			themeDisplay.getPortalURL() + themeDisplay.getPathMain() +
 				"/portal/get_page_preview",
 			"className", JournalArticle.class.getName(), "classPK",
 			article.getResourcePrimKey(), "p_l_mode", Constants.PREVIEW,
 			"selPlid", layoutPageTemplateEntry.getPlid(), "version",
 			article.getVersion());
+
+		if (Validator.isNotNull(themeDisplay.getDoAsUserId())) {
+			pagePreviewURL = _portal.addPreservedParameters(
+				themeDisplay, pagePreviewURL, false, true);
+		}
+
+		return pagePreviewURL;
+	}
+
+	private boolean _isDisplayPageTemplate(
+		JournalArticle article,
+		LayoutPageTemplateEntry layoutPageTemplateEntry) {
+
+		if ((layoutPageTemplateEntry.getClassNameId() == _portal.getClassNameId(
+				JournalArticle.class)) &&
+			((layoutPageTemplateEntry.getClassTypeId() == 0) ||
+			 (layoutPageTemplateEntry.getClassTypeId() ==
+				 article.getDDMStructureId())) &&
+			(layoutPageTemplateEntry.getGroupId() == article.getGroupId()) &&
+			(layoutPageTemplateEntry.getType() ==
+				LayoutPageTemplateEntryTypeConstants.DISPLAY_PAGE)) {
+
+			return true;
+		}
+
+		return false;
 	}
 
 	private JournalArticle _processAction(ActionRequest actionRequest)
