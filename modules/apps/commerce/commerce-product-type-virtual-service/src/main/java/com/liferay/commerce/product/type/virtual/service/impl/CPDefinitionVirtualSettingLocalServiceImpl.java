@@ -195,9 +195,10 @@ public class CPDefinitionVirtualSettingLocalServiceImpl
 		long cpDefinitionId, long newCPDefinitionId) {
 
 		CPDefinitionVirtualSetting cpDefinitionVirtualSetting =
-			cpDefinitionVirtualSettingLocalService.
-				fetchCPDefinitionVirtualSetting(
-					CPDefinition.class.getName(), cpDefinitionId);
+			cpDefinitionVirtualSettingPersistence.fetchByC_C(
+				_classNameLocalService.getClassNameId(
+					CPDefinition.class.getName()),
+				cpDefinitionId);
 
 		if (cpDefinitionVirtualSetting != null) {
 			CPDefinitionVirtualSetting newCPDefinitionVirtualSetting =
@@ -502,9 +503,11 @@ public class CPDefinitionVirtualSettingLocalServiceImpl
 				for (Map.Entry<Locale, String> entry :
 						termsOfUseContentMap.entrySet()) {
 
-					if (Validator.isNotNull(entry.getValue())) {
-						empty = false;
+					if (Validator.isNull(entry.getValue())) {
+						continue;
 					}
+
+					empty = false;
 				}
 
 				if (empty) {

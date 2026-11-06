@@ -122,10 +122,11 @@ public class JavaSourceUtil extends SourceUtil {
 			JavaImportsFormatter.getImports(content));
 
 		for (String importLine : importLines) {
-			if (Validator.isNotNull(importLine)) {
-				importNames.add(
-					importLine.substring(7, importLine.length() - 1));
+			if (Validator.isNull(importLine)) {
+				continue;
 			}
+
+			importNames.add(importLine.substring(7, importLine.length() - 1));
 		}
 
 		return importNames;
@@ -360,19 +361,21 @@ public class JavaSourceUtil extends SourceUtil {
 			String linePart = StringUtil.replace(
 				parameters.substring(0, x), "->", _LAMBDA_SYMBOL_PLACEHOLDER);
 
-			if ((ToolsUtil.getLevel(linePart, "(", ")") == 0) &&
-				(ToolsUtil.getLevel(linePart, "<", ">") == 0) &&
-				(ToolsUtil.getLevel(linePart, "{", "}") == 0)) {
+			if ((ToolsUtil.getLevel(linePart, "(", ")") != 0) ||
+				(ToolsUtil.getLevel(linePart, "<", ">") != 0) ||
+				(ToolsUtil.getLevel(linePart, "{", "}") != 0)) {
 
-				linePart = StringUtil.replace(
-					linePart, _LAMBDA_SYMBOL_PLACEHOLDER, "->");
-
-				parametersList.add(StringUtil.trim(linePart));
-
-				parameters = parameters.substring(x + 1);
-
-				x = -1;
+				continue;
 			}
+
+			linePart = StringUtil.replace(
+				linePart, _LAMBDA_SYMBOL_PLACEHOLDER, "->");
+
+			parametersList.add(StringUtil.trim(linePart));
+
+			parameters = parameters.substring(x + 1);
+
+			x = -1;
 		}
 	}
 
@@ -394,7 +397,7 @@ public class JavaSourceUtil extends SourceUtil {
 
 			File file = new File(sb.toString());
 
-			if (file.exists()) {
+			if (file.isFile()) {
 				return file;
 			}
 		}
@@ -426,7 +429,7 @@ public class JavaSourceUtil extends SourceUtil {
 
 			File file = new File(sb.toString());
 
-			if (file.exists()) {
+			if (file.isFile()) {
 				return file;
 			}
 
@@ -439,7 +442,7 @@ public class JavaSourceUtil extends SourceUtil {
 
 			file = new File(sb.toString());
 
-			if (file.exists()) {
+			if (file.isFile()) {
 				return file;
 			}
 		}

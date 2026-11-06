@@ -7,7 +7,9 @@ package com.liferay.headless.portal.instances.internal.resource.v1_0;
 
 import com.liferay.headless.portal.instances.dto.v1_0.Admin;
 import com.liferay.headless.portal.instances.dto.v1_0.PortalInstance;
+import com.liferay.headless.portal.instances.internal.dto.v1_0.converter.constants.DTOConverterConstants;
 import com.liferay.headless.portal.instances.internal.notifications.PortalInstanceNotificationUtil;
+import com.liferay.headless.portal.instances.internal.security.permission.PortalInstancePermissionUtil;
 import com.liferay.headless.portal.instances.resource.v1_0.PortalInstanceResource;
 import com.liferay.portal.instances.constants.PortalInstancesNotificationConstants;
 import com.liferay.portal.kernel.exception.ContactNameException;
@@ -16,15 +18,15 @@ import com.liferay.portal.kernel.instance.PortalInstancePool;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.security.auth.EmailAddressValidator;
-import com.liferay.portal.kernel.security.auth.PrincipalException;
-import com.liferay.portal.kernel.security.permission.PermissionChecker;
-import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.service.CompanyService;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.security.auth.EmailAddressValidatorFactory;
 import com.liferay.portal.util.PortalInstances;
+import com.liferay.portal.vulcan.dto.converter.DTOConverter;
 import com.liferay.portal.vulcan.pagination.Page;
+import com.liferay.site.initializer.SiteInitializer;
+import com.liferay.site.initializer.SiteInitializerRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,24 +46,31 @@ public class PortalInstanceResourceImpl extends BasePortalInstanceResourceImpl {
 
 	@Override
 	public void deletePortalInstance(String portalInstanceId) throws Exception {
-		_checkPermission();
+		PortalInstancePermissionUtil.check();
 
 		Company company = _companyService.getCompanyByWebId(portalInstanceId);
 
 		_companyService.deleteCompany(company.getCompanyId());
 
-		_sendUserNotificationEvent(
-			PortalInstancesNotificationConstants.OPERATION_TYPE_DELETE,
-			portalInstanceId);
+		PortalInstanceNotificationUtil.sendUserNotificationEvent(
+			JSONUtil.put(
+				"operationType",
+				PortalInstancesNotificationConstants.OPERATION_TYPE_DELETE
+			).put(
+				"portalInstanceId", portalInstanceId
+			).put(
+				"status", PortalInstancesNotificationConstants.STATUS_SUCCESS
+			),
+			contextUser.getUserId());
 	}
 
 	@Override
 	public PortalInstance getPortalInstance(String portalInstanceId)
 		throws Exception {
 
-		_checkPermission();
+		PortalInstancePermissionUtil.check();
 
-		return _toPortalInstance(
+		return _portalInstanceDTOConverter.toDTO(
 			_companyService.getCompanyByWebId(portalInstanceId));
 	}
 
@@ -69,7 +78,7 @@ public class PortalInstanceResourceImpl extends BasePortalInstanceResourceImpl {
 	public Page<PortalInstance> getPortalInstancesPage(Boolean skipDefault)
 		throws Exception {
 
-		_checkPermission();
+		PortalInstancePermissionUtil.check();
 
 		boolean finalSkipDefault = GetterUtil.getBoolean(skipDefault);
 
@@ -81,7 +90,8 @@ public class PortalInstanceResourceImpl extends BasePortalInstanceResourceImpl {
 					(PortalInstancePool.getDefaultCompanyId() !=
 						company.getCompanyId())) {
 
-					portalInstances.add(_toPortalInstance(company));
+					portalInstances.add(
+						_portalInstanceDTOConverter.toDTO(company));
 				}
 			});
 
@@ -93,7 +103,7 @@ public class PortalInstanceResourceImpl extends BasePortalInstanceResourceImpl {
 			String portalInstanceId, PortalInstance portalInstance)
 		throws Exception {
 
-		_checkPermission();
+		PortalInstancePermissionUtil.check();
 
 		Company company = _companyService.getCompanyByWebId(portalInstanceId);
 
@@ -102,7 +112,7 @@ public class PortalInstanceResourceImpl extends BasePortalInstanceResourceImpl {
 		String domain = GetterUtil.getString(
 			portalInstance.getDomain(), company.getMx());
 
-		return _toPortalInstance(
+		return _portalInstanceDTOConverter.toDTO(
 			_companyService.updateCompany(
 				company.getCompanyId(), virtualHostname, domain,
 				company.getMaxUsers(), company.isActive()));
@@ -112,22 +122,16 @@ public class PortalInstanceResourceImpl extends BasePortalInstanceResourceImpl {
 	public PortalInstance postPortalInstance(PortalInstance portalInstance)
 		throws Exception {
 
-		_checkPermission();
+		PortalInstancePermissionUtil.check();
 
-		PortalInstance addedPortalInstance = _addPortalInstance(portalInstance);
-
-		_sendUserNotificationEvent(
-			PortalInstancesNotificationConstants.OPERATION_TYPE_ADD,
-			portalInstance.getPortalInstanceId());
-
-		return addedPortalInstance;
+		return _addPortalInstance(portalInstance);
 	}
 
 	@Override
 	public void putPortalInstanceActivate(String portalInstanceId)
 		throws Exception {
 
-		_checkPermission();
+		PortalInstancePermissionUtil.check();
 
 		Company company = _companyService.getCompanyByWebId(portalInstanceId);
 
@@ -140,7 +144,7 @@ public class PortalInstanceResourceImpl extends BasePortalInstanceResourceImpl {
 	public void putPortalInstanceDeactivate(String portalInstanceId)
 		throws Exception {
 
-		_checkPermission();
+		PortalInstancePermissionUtil.check();
 
 		Company company = _companyService.getCompanyByWebId(portalInstanceId);
 
@@ -151,6 +155,8 @@ public class PortalInstanceResourceImpl extends BasePortalInstanceResourceImpl {
 
 	private PortalInstance _addPortalInstance(PortalInstance portalInstance)
 		throws Exception {
+
+		_validateSiteInitializerKey(portalInstance.getSiteInitializerKey());
 
 		Admin admin = portalInstance.getAdmin();
 
@@ -169,7 +175,7 @@ public class PortalInstanceResourceImpl extends BasePortalInstanceResourceImpl {
 		if (admin != null) {
 			_validateAdmin(admin);
 
-			return _toPortalInstance(
+			return _portalInstanceDTOConverter.toDTO(
 				PortalInstances.addCompany(
 					portalInstance.getSiteInitializerKey(),
 					() -> _companyService.addCompany(
@@ -181,49 +187,13 @@ public class PortalInstanceResourceImpl extends BasePortalInstanceResourceImpl {
 						admin.getMiddleName(), admin.getFamilyName())));
 		}
 
-		return _toPortalInstance(
+		return _portalInstanceDTOConverter.toDTO(
 			PortalInstances.addCompany(
 				portalInstance.getSiteInitializerKey(),
 				() -> _companyService.addCompany(
 					finalCompanyId, portalInstance.getPortalInstanceId(),
 					portalInstance.getVirtualHost(), portalInstance.getDomain(),
 					maxUsers, active)));
-	}
-
-	private void _checkPermission() throws Exception {
-		PermissionChecker permissionChecker =
-			PermissionThreadLocal.getPermissionChecker();
-
-		if (!permissionChecker.isOmniadmin()) {
-			throw new PrincipalException.MustBeOmniadmin(permissionChecker);
-		}
-	}
-
-	private void _sendUserNotificationEvent(
-		String operationType, String portalInstanceId) {
-
-		PortalInstanceNotificationUtil.sendUserNotificationEvent(
-			contextUser.getUserId(),
-			JSONUtil.put(
-				"operationType", operationType
-			).put(
-				"portalInstanceId", portalInstanceId
-			).put(
-				"status", PortalInstancesNotificationConstants.STATUS_SUCCESS
-			));
-	}
-
-	private PortalInstance _toPortalInstance(Company company) {
-		return new PortalInstance() {
-			{
-				setActive(company::isActive);
-				setCompanyId(company::getCompanyId);
-				setDomain(company::getMx);
-				setMaxUsers(company::getMaxUsers);
-				setPortalInstanceId(company::getWebId);
-				setVirtualHost(company::getVirtualHostname);
-			}
-		};
 	}
 
 	private void _validateAdmin(Admin admin) throws Exception {
@@ -248,7 +218,32 @@ public class PortalInstanceResourceImpl extends BasePortalInstanceResourceImpl {
 		}
 	}
 
+	private void _validateSiteInitializerKey(String siteInitializerKey) {
+		if (Validator.isNull(siteInitializerKey)) {
+			return;
+		}
+
+		SiteInitializer siteInitializer =
+			_siteInitializerRegistry.getSiteInitializer(siteInitializerKey);
+
+		if (siteInitializer == null) {
+			throw new IllegalArgumentException(
+				"Site initializer " + siteInitializerKey + " does not exist");
+		}
+
+		if (!siteInitializer.isActive(contextCompany.getCompanyId())) {
+			throw new IllegalArgumentException(
+				"Site initializer " + siteInitializerKey + " is inactive");
+		}
+	}
+
 	@Reference
 	private CompanyService _companyService;
+
+	@Reference(target = DTOConverterConstants.PORTAL_INSTANCE_DTO_CONVERTER)
+	private DTOConverter<Company, PortalInstance> _portalInstanceDTOConverter;
+
+	@Reference
+	private SiteInitializerRegistry _siteInitializerRegistry;
 
 }

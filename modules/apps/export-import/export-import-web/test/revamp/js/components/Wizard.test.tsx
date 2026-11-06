@@ -6,8 +6,6 @@
 import React from 'react';
 
 import '@testing-library/jest-dom';
-import ClayButton from '@clayui/button';
-import ClayIcon from '@clayui/icon';
 import {render, screen} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -23,27 +21,15 @@ const renderWizard = (backURL = '/back', onSubmit: () => void = () => {}) => {
 
 	render(
 		<Wizard backURL={backURL}>
-			<WizardStep
-				description="This is step 1"
-				onSubmit={onSubmit}
-				title="Step 1"
-			>
+			<WizardStep onSubmit={onSubmit} title="Step 1">
 				<Step>
 					<h1>Step 1 Content</h1>
 				</Step>
 			</WizardStep>
 
 			<WizardStep
-				actionButton={
-					<ClayButton type="submit">
-						<span className="inline-item inline-item-before">
-							<ClayIcon className="mr-1" symbol="export" />
-						</span>
-
-						{Liferay.Language.get('export')}
-					</ClayButton>
-				}
-				description="This is step 2"
+				actionButtonLabel={Liferay.Language.get('export')}
+				actionButtonSymbol="export"
 				title="Step 2"
 			>
 				<Step>

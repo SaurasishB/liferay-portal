@@ -3,10 +3,12 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {Plugin} from '@ckeditor/ckeditor5-core/dist/index.js';
-import {Link, LinkUI} from '@ckeditor/ckeditor5-link/dist/index.js';
-import {ButtonView} from '@ckeditor/ckeditor5-ui/dist/index.js';
+import {Plugin} from '@ckeditor/ckeditor5-core';
+import {Link, LinkUI} from '@ckeditor/ckeditor5-link';
+import {ButtonView} from '@ckeditor/ckeditor5-ui';
 import {openCMSFileSelectorModal} from '@liferay/frontend-js-item-selector-web';
+
+import getItemSelectorGroupId from '../utils/getItemSelectorGroupId';
 
 class DocumentLinkSelector extends Plugin {
 	static get requires() {
@@ -23,10 +25,6 @@ class DocumentLinkSelector extends Plugin {
 
 		linkUI._documentLinkSelectorPatched = true;
 
-		const getGroupId = () =>
-			Number(editor.config.get('groupId')) ||
-			Liferay.ThemeDisplay.getScopeGroupId();
-
 		const originalCreateFormView = linkUI._createFormView.bind(linkUI);
 
 		linkUI._createFormView = (...args: unknown[]) => {
@@ -42,7 +40,7 @@ class DocumentLinkSelector extends Plugin {
 
 			selectDocumentButton.on('execute', () => {
 				openCMSFileSelectorModal({
-					groupId: getGroupId(),
+					groupId: getItemSelectorGroupId(editor),
 					itemTypeLabel: Liferay.Language.get('document'),
 					onSelect: (items) => {
 						const href = items[0]?.embedded?.file?.link?.href;

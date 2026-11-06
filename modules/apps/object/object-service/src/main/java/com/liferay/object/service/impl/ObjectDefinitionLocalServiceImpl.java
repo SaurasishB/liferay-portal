@@ -13,6 +13,7 @@ import com.liferay.depot.constants.DepotRolesConstants;
 import com.liferay.depot.service.DepotEntryGroupRelLocalService;
 import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.document.library.kernel.service.DLFileEntryLocalService;
+import com.liferay.document.library.text.DLFileEntryTextProvider;
 import com.liferay.exportimport.kernel.empty.model.EmptyModelManager;
 import com.liferay.exportimport.kernel.empty.model.EmptyModelManagerUtil;
 import com.liferay.fragment.cache.FragmentEntryLinkCache;
@@ -369,7 +370,6 @@ public class ObjectDefinitionLocalServiceImpl
 			systemObjectDefinitionManager.getLabelMap());
 		objectDefinition.setPluralLabelMap(
 			systemObjectDefinitionManager.getPluralLabelMap());
-		objectDefinition.setVersion(systemObjectDefinitionManager.getVersion());
 
 		objectDefinition = objectDefinitionPersistence.update(objectDefinition);
 
@@ -382,13 +382,17 @@ public class ObjectDefinitionLocalServiceImpl
 				objectDefinition.getDBTableName());
 
 		for (ObjectField oldObjectField : oldObjectFields) {
-			if (oldObjectField.isSystem() &&
-				!ObjectFieldUtil.isMetadata(oldObjectField.getName()) &&
-				!_hasObjectField(newObjectFields, oldObjectField)) {
+			if (!oldObjectField.isSystem() ||
+				ObjectFieldUtil.isMetadata(oldObjectField.getName()) ||
+				_hasObjectField(newObjectFields, oldObjectField)) {
 
-				_objectFieldPersistence.remove(oldObjectField);
+				continue;
 			}
+
+			_objectFieldPersistence.remove(oldObjectField);
 		}
+
+		boolean updateVersion = true;
 
 		for (ObjectField newObjectField : newObjectFields) {
 			ObjectField oldObjectField = _objectFieldPersistence.fetchByODI_N(
@@ -411,27 +415,43 @@ public class ObjectDefinitionLocalServiceImpl
 					newObjectField.isRequired(), newObjectField.isState(),
 					newObjectField.getObjectFieldSettings());
 			}
-			else {
-				if (!Objects.equals(
+			else if (!oldObjectField.isSystem()) {
+				_log.error(
+					StringBundler.concat(
+						"Unable to add system object field \"",
+						newObjectField.getName(), "\" to object definition \"",
+						objectDefinition.getName(),
+						"\" because a custom object field has the same name"));
+
+				updateVersion = false;
+			}
+			else if (!Objects.equals(
 						oldObjectField.getDBType(),
 						newObjectField.getDBType()) ||
-					!Objects.equals(
-						oldObjectField.isRequired(),
-						newObjectField.isRequired())) {
+					 !Objects.equals(
+						 oldObjectField.isRequired(),
+						 newObjectField.isRequired())) {
 
-					oldObjectField.setBusinessType(
-						newObjectField.getBusinessType());
-					oldObjectField.setDBType(newObjectField.getDBType());
-					oldObjectField.setRequired(newObjectField.isRequired());
+				oldObjectField.setBusinessType(
+					newObjectField.getBusinessType());
+				oldObjectField.setDBType(newObjectField.getDBType());
+				oldObjectField.setRequired(newObjectField.isRequired());
 
-					_objectFieldPersistence.update(oldObjectField);
-				}
+				_objectFieldPersistence.update(oldObjectField);
 			}
 		}
 
 		_addOrUpdateObjectActions(
 			userId, objectDefinition.getObjectDefinitionId(),
 			systemObjectDefinitionManager.getObjectActions());
+
+		if (updateVersion) {
+			objectDefinition.setVersion(
+				systemObjectDefinitionManager.getVersion());
+
+			objectDefinition = objectDefinitionPersistence.update(
+				objectDefinition);
+		}
 
 		return objectDefinition;
 	}
@@ -528,7 +548,8 @@ public class ObjectDefinitionLocalServiceImpl
 			throw new RequiredObjectDefinitionException();
 		}
 
-		if (ArrayUtil.isNotEmpty(
+		if (!PortalInstances.isCurrentCompanyInDeletionProcess() &&
+			ArrayUtil.isNotEmpty(
 				objectDefinition.getRootObjectDefinitionIds())) {
 
 			throw new ObjectRelationshipEdgeException(
@@ -1084,10 +1105,10 @@ public class ObjectDefinitionLocalServiceImpl
 			_accountEntryLocalService, _accountEntryOrganizationRelLocalService,
 			_assetEntryLocalService, _bundleContext,
 			_depotEntryGroupRelLocalService, _depotEntryLocalService,
-			_dlFileEntryLocalService, _groupLocalService,
-			_kaleoDefinitionLocalService, _listTypeLocalService,
-			_objectActionLocalService, objectDefinitionLocalService,
-			_objectDefinitionSettingLocalService,
+			_dlFileEntryLocalService, _dlFileEntryTextProvider,
+			_groupLocalService, _kaleoDefinitionLocalService,
+			_listTypeLocalService, _objectActionLocalService,
+			objectDefinitionLocalService, _objectDefinitionSettingLocalService,
 			_objectEntryFolderLocalService, _objectEntryLocalService,
 			_objectEntryService, _objectFieldBusinessTypeRegistry,
 			_objectFieldLocalService, _objectFolderLocalService,
@@ -1790,9 +1811,8 @@ public class ObjectDefinitionLocalServiceImpl
 		}
 
 		for (ObjectDefinitionSetting oldObjectDefinitionSetting :
-				_objectDefinitionSettingLocalService.
-					getObjectDefinitionSettings(
-						objectDefinition.getObjectDefinitionId())) {
+				_objectDefinitionSettingPersistence.findByObjectDefinitionId(
+					objectDefinition.getObjectDefinitionId())) {
 
 			if (oldObjectDefinitionSetting.isReadOnly()) {
 				continue;
@@ -2630,11 +2650,13 @@ public class ObjectDefinitionLocalServiceImpl
 		}
 
 		for (ValidationError validationError : validationErrors) {
-			if (entryClassName.equals(validationError.getEntryClassName()) &&
-				Validator.isNull(validationError.getEntryKey())) {
+			if (!entryClassName.equals(validationError.getEntryClassName()) ||
+				Validator.isNotNull(validationError.getEntryKey())) {
 
-				validationError.setEntryKey(entryKey);
+				continue;
 			}
+
+			validationError.setEntryKey(entryKey);
 		}
 	}
 
@@ -2772,6 +2794,8 @@ public class ObjectDefinitionLocalServiceImpl
 		String oldClassName = objectDefinition.getClassName();
 		boolean oldEnableObjectEntrySubscription =
 			objectDefinition.isEnableObjectEntrySubscription();
+		String oldFriendlyURLSeparator =
+			objectDefinition.getFriendlyURLSeparator();
 
 		boolean addSystemObjectFields = false;
 
@@ -2935,6 +2959,14 @@ public class ObjectDefinitionLocalServiceImpl
 
 				objectDefinitionLocalService.deployObjectDefinition(
 					objectDefinition);
+
+				if (!StringUtil.equals(
+						oldFriendlyURLSeparator,
+						objectDefinition.getFriendlyURLSeparator())) {
+
+					_registerTransactionCallbackForCluster(
+						_deployObjectDefinitionMethodKey, objectDefinition);
+				}
 			}
 
 			if (active != oldActive) {
@@ -3613,12 +3645,14 @@ public class ObjectDefinitionLocalServiceImpl
 
 			char c = nameCharArray[i];
 
-			if (!Validator.isChar(c) && !Validator.isDigit(c)) {
-				_handleException(
-					new ObjectDefinitionNameException.
-						MustOnlyContainLettersAndDigits(),
-					"name", name);
+			if (Validator.isChar(c) || Validator.isDigit(c)) {
+				continue;
 			}
+
+			_handleException(
+				new ObjectDefinitionNameException.
+					MustOnlyContainLettersAndDigits(),
+				"name", name);
 		}
 
 		if ((system && !Character.isUpperCase(nameCharArray[0])) ||
@@ -3829,44 +3863,43 @@ public class ObjectDefinitionLocalServiceImpl
 					"objectDefinitionSettings", null);
 			}
 
-			if (objectDefinitionSettingsValuesMap.containsKey(
+			if (!objectDefinitionSettingsValuesMap.containsKey(
 					ObjectDefinitionSettingConstants.NAME_ACCEPTED_GROUP_IDS)) {
 
-				if (acceptAllGroups != null) {
-					_handleException(
-						new ObjectDefinitionSettingNameException.
-							NotAllowedNames(
-								objectDefinition.getShortName(),
-								Set.of(
-									ObjectDefinitionSettingConstants.
-										NAME_ACCEPTED_GROUP_IDS)),
-						"objectDefinitionSettings", null);
-				}
+				continue;
+			}
 
-				ObjectScopeProvider objectScopeProvider =
-					_objectScopeProviderRegistry.getObjectScopeProvider(
-						objectDefinition.getScope());
-
-				String acceptedGroupIds = objectDefinitionSettingsValuesMap.get(
-					ObjectDefinitionSettingConstants.NAME_ACCEPTED_GROUP_IDS);
-
-				for (String acceptedGroupId :
-						acceptedGroupIds.split("\\s*,\\s*")) {
-
-					if (objectScopeProvider.isValidGroupId(
-							GetterUtil.getLong(acceptedGroupId))) {
-
-						continue;
-					}
-
-					_handleException(
-						new ObjectDefinitionSettingValueException.InvalidValue(
-							objectDefinition.getShortName(),
+			if (acceptAllGroups != null) {
+				_handleException(
+					new ObjectDefinitionSettingNameException.NotAllowedNames(
+						objectDefinition.getShortName(),
+						Set.of(
 							ObjectDefinitionSettingConstants.
-								NAME_ACCEPTED_GROUP_IDS,
-							acceptedGroupId),
-						"objectDefinitionSettings", null);
+								NAME_ACCEPTED_GROUP_IDS)),
+					"objectDefinitionSettings", null);
+			}
+
+			ObjectScopeProvider objectScopeProvider =
+				_objectScopeProviderRegistry.getObjectScopeProvider(
+					objectDefinition.getScope());
+
+			String acceptedGroupIds = objectDefinitionSettingsValuesMap.get(
+				ObjectDefinitionSettingConstants.NAME_ACCEPTED_GROUP_IDS);
+
+			for (String acceptedGroupId : acceptedGroupIds.split("\\s*,\\s*")) {
+				if (objectScopeProvider.isValidGroupId(
+						GetterUtil.getLong(acceptedGroupId))) {
+
+					continue;
 				}
+
+				_handleException(
+					new ObjectDefinitionSettingValueException.InvalidValue(
+						objectDefinition.getShortName(),
+						ObjectDefinitionSettingConstants.
+							NAME_ACCEPTED_GROUP_IDS,
+						acceptedGroupId),
+					"objectDefinitionSettings", null);
 			}
 		}
 	}
@@ -4034,19 +4067,21 @@ public class ObjectDefinitionLocalServiceImpl
 				ObjectDefinitionSettingConstants.NAME_ACCEPTED_GROUP_IDS,
 				objectDefinitionSettings);
 
-			if (Validator.isNull(acceptedGroupIds) ||
-				!ArrayUtil.exists(
+			if (Validator.isNotNull(acceptedGroupIds) &&
+				ArrayUtil.exists(
 					acceptedGroupIds.split("\\s*,\\s*"),
 					acceptedGroupId -> acceptedGroupId.equals(
 						String.valueOf(workflowDefinitionLink.getGroupId())))) {
 
-				_handleException(
-					new ObjectDefinitionScopeException(
-						StringBundler.concat(
-							"The group ", workflowDefinitionLink.getGroupId(),
-							" is not included in the object definition scope")),
-					"workflowDefinitionLinks", null);
+				continue;
 			}
+
+			_handleException(
+				new ObjectDefinitionScopeException(
+					StringBundler.concat(
+						"The group ", workflowDefinitionLink.getGroupId(),
+						" is not included in the object definition scope")),
+				"workflowDefinitionLinks", null);
 		}
 	}
 
@@ -4107,6 +4142,9 @@ public class ObjectDefinitionLocalServiceImpl
 
 	@Reference
 	private DLFileEntryLocalService _dlFileEntryLocalService;
+
+	@Reference
+	private DLFileEntryTextProvider _dlFileEntryTextProvider;
 
 	@Reference
 	private EmptyModelManager _emptyModelManager;
@@ -4342,9 +4380,11 @@ public class ObjectDefinitionLocalServiceImpl
 							objectDefinitionLocalService.getObjectDefinitions(
 								companyId, WorkflowConstants.STATUS_APPROVED)) {
 
-						if (objectDefinition.isActive()) {
-							objectDefinitionDeployer.undeploy(objectDefinition);
+						if (!objectDefinition.isActive()) {
+							continue;
 						}
+
+						objectDefinitionDeployer.undeploy(objectDefinition);
 					}
 				});
 

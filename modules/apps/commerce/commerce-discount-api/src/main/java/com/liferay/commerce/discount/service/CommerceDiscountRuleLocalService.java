@@ -271,11 +271,6 @@ public interface CommerceDiscountRuleLocalService
 		long commerceDiscountId, int start, int end,
 		OrderByComparator<CommerceDiscountRule> orderByComparator);
 
-	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public List<CommerceDiscountRule> getCommerceDiscountRules(
-			long commerceDiscountId, String name, int start, int end)
-		throws PortalException;
-
 	/**
 	 * Returns the number of commerce discount rules.
 	 *
@@ -283,14 +278,6 @@ public interface CommerceDiscountRuleLocalService
 	 */
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public int getCommerceDiscountRulesCount();
-
-	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public int getCommerceDiscountRulesCount(long commerceDiscountId);
-
-	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public int getCommerceDiscountRulesCount(
-			long commerceDiscountId, String name)
-		throws PortalException;
 
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public IndexableActionableDynamicQuery getIndexableActionableDynamicQuery();
@@ -334,4 +321,4 @@ public interface CommerceDiscountRuleLocalService
 		throws PortalException;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-312471019
+// LIFERAY-SERVICE-BUILDER-HASH:1771067220

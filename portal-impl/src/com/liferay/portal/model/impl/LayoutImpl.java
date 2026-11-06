@@ -315,12 +315,14 @@ public class LayoutImpl extends LayoutBaseImpl {
 				LayoutFriendlyURLLocalServiceUtil.getLayoutFriendlyURLs(
 					getPlid())) {
 
-			if (LanguageUtil.isAvailableLocale(
+			if (!LanguageUtil.isAvailableLocale(
 					layoutFriendlyURL.getGroupId(),
 					layoutFriendlyURL.getLanguageId())) {
 
-				availableLanguageIds.add(layoutFriendlyURL.getLanguageId());
+				continue;
 			}
+
+			availableLanguageIds.add(layoutFriendlyURL.getLanguageId());
 		}
 
 		return availableLanguageIds.toArray(new String[0]);
@@ -385,12 +387,14 @@ public class LayoutImpl extends LayoutBaseImpl {
 		while (iterator.hasNext()) {
 			Layout layout = iterator.next();
 
-			if (layout.isHidden() || !layout.isPublished() ||
-				!LayoutPermissionUtil.contains(
+			if (!layout.isHidden() && layout.isPublished() &&
+				LayoutPermissionUtil.contains(
 					permissionChecker, layout, ActionKeys.VIEW)) {
 
-				iterator.remove();
+				continue;
 			}
+
+			iterator.remove();
 		}
 
 		return layouts;
@@ -1601,7 +1605,9 @@ public class LayoutImpl extends LayoutBaseImpl {
 
 		return LayoutPageTemplateEntryLayoutProviderUtil.
 			getLayoutPageTemplateEntryLayout(
-				getGroupId(), getMasterLayoutPageTemplateEntryERC(), getPlid());
+				getCompanyId(), getMasterLayoutPageTemplateEntryERC(),
+				getGroupId(), getMasterLayoutPageTemplateEntryScopeERC(),
+				getPlid());
 	}
 
 	private ColorScheme _getColorScheme() throws PortalException {

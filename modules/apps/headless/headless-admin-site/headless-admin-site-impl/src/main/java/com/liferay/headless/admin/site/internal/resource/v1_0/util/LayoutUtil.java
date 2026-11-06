@@ -13,6 +13,7 @@ import com.liferay.expando.kernel.util.ExpandoUtil;
 import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.exportimport.kernel.staging.StagingUtil;
 import com.liferay.fragment.processor.FragmentEntryProcessorRegistry;
+import com.liferay.headless.admin.site.dto.v1_0.AdvancedStylingConfig;
 import com.liferay.headless.admin.site.dto.v1_0.BasicWidgetPageWidgetInstance;
 import com.liferay.headless.admin.site.dto.v1_0.ClientExtension;
 import com.liferay.headless.admin.site.dto.v1_0.ContentPageSpecification;
@@ -44,11 +45,14 @@ import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
 import com.liferay.layout.page.template.service.LayoutPageTemplateEntryLocalServiceUtil;
 import com.liferay.layout.util.LayoutServiceContextHelperUtil;
 import com.liferay.layout.util.UpdateLayoutModifiedDateThreadLocal;
+import com.liferay.layout.util.UpdateLayoutStatusThreadLocal;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
+import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -559,18 +563,33 @@ public class LayoutUtil {
 		typeSettingsUnicodeProperties.putAll(
 			_getLastImportSettingsMap(serviceContext.getUserId()));
 
-		if (!Objects.equals(
-				typeSettingsUnicodeProperties,
-				layout.getTypeSettingsProperties())) {
-
-			layout = LayoutServiceUtil.updateTypeSettings(
-				layout.getGroupId(), layout.isPrivateLayout(),
-				layout.getLayoutId(), typeSettingsUnicodeProperties.toString());
-		}
-
-		return _updateLayout(
+		layout = _updateLayout(
 			layout, nameMap, null, null, null, null, null, null, null, null,
 			null, friendlyURLMap, serviceContext);
+
+		UnicodeProperties layoutTypeSettingsUnicodeProperties =
+			layout.getTypeSettingsProperties();
+
+		for (String key : new String[] {"layoutUpdateable", "privateLayout"}) {
+			String value = layoutTypeSettingsUnicodeProperties.getProperty(key);
+
+			if (value == null) {
+				continue;
+			}
+
+			typeSettingsUnicodeProperties.setProperty(key, value);
+		}
+
+		if (Objects.equals(
+				typeSettingsUnicodeProperties,
+				layoutTypeSettingsUnicodeProperties)) {
+
+			return layout;
+		}
+
+		return LayoutServiceUtil.updateTypeSettings(
+			layout.getGroupId(), layout.isPrivateLayout(), layout.getLayoutId(),
+			typeSettingsUnicodeProperties.toString());
 	}
 
 	public static Layout updatePortletLayout(
@@ -635,14 +654,33 @@ public class LayoutUtil {
 		long groupId, Map<String, Object> map,
 		WidgetLookAndFeelConfig widgetLookAndFeelConfig) {
 
-		if ((widgetLookAndFeelConfig == null) ||
-			(widgetLookAndFeelConfig.getGeneralConfig() == null)) {
-
+		if (widgetLookAndFeelConfig == null) {
 			return;
+		}
+
+		AdvancedStylingConfig advancedStylingConfig =
+			widgetLookAndFeelConfig.getAdvancedStylingConfig();
+
+		if (advancedStylingConfig != null) {
+			JSONObject advancedDataJSONObject = JSONUtil.put(
+				"customCSS", advancedStylingConfig.getCustomCSS());
+
+			advancedDataJSONObject.put(
+				"customCSSClassName",
+				advancedStylingConfig.getCustomCSSClassNames());
+
+			JSONObject portletSetupCssJSONObject = JSONUtil.put(
+				"advancedData", advancedDataJSONObject);
+
+			map.put("portletSetupCss", portletSetupCssJSONObject.toString());
 		}
 
 		GeneralConfig generalConfig =
 			widgetLookAndFeelConfig.getGeneralConfig();
+
+		if (generalConfig == null) {
+			return;
+		}
 
 		String portletSetupPortletDecoratorId =
 			generalConfig.getCustomApplicationDecorator();
@@ -1208,9 +1246,11 @@ public class LayoutUtil {
 		}
 
 		for (String key : ListUtil.fromCollection(unicodeProperties.keySet())) {
-			if (key.startsWith("lfr-theme:")) {
-				unicodeProperties.remove(key);
+			if (!key.startsWith("lfr-theme:")) {
+				continue;
 			}
+
+			unicodeProperties.remove(key);
 		}
 
 		if ((settings != null) &&
@@ -1256,7 +1296,10 @@ public class LayoutUtil {
 		try (AutoCloseable autoCloseable =
 				LayoutServiceContextHelperUtil.getServiceContextAutoCloseable(
 					layout,
-					UserLocalServiceUtil.getUser(serviceContext.getUserId()))) {
+					UserLocalServiceUtil.getUser(serviceContext.getUserId()));
+			SafeCloseable safeCloseable =
+				UpdateLayoutStatusThreadLocal.
+					setUpdateLayoutStatusWithSafeCloseable(false)) {
 
 			Map<String, SegmentsExperience> actualSegmentsExperiencesMap =
 				new HashMap<>();

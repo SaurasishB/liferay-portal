@@ -28,6 +28,7 @@ import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.security.audit.event.generators.constants.EventTypes;
 import com.liferay.portal.security.audit.rest.client.dto.v1_0.AuditEvent;
+import com.liferay.portal.security.audit.rest.client.dto.v1_0.Creator;
 import com.liferay.portal.security.audit.rest.client.pagination.Page;
 import com.liferay.portal.security.audit.rest.client.pagination.Pagination;
 import com.liferay.portal.security.audit.rest.client.problem.Problem;
@@ -110,12 +111,37 @@ public class AuditEventResourceTest extends BaseAuditEventResourceTestCase {
 
 		assertContains(auditEvent1, (List<AuditEvent>)page.getItems());
 
+		AuditEvent auditEvent3 = page.fetchFirstItem();
+
+		Assert.assertEquals(
+			auditEvent1.getImpersonated(), auditEvent3.getImpersonated());
+
+		Creator impersonatedCreator1 = auditEvent1.getImpersonatedCreator();
+		Creator impersonatedCreator3 = auditEvent3.getImpersonatedCreator();
+
+		Assert.assertEquals(
+			impersonatedCreator1.getId(), impersonatedCreator3.getId());
+		Assert.assertEquals(
+			impersonatedCreator1.getName(), impersonatedCreator3.getName());
+
 		page = auditEventResource.getAuditEventsPage(
 			new Long[] {
 				accountEntry1.getAccountEntryId(),
 				accountEntry2.getAccountEntryId()
 			},
 			contextName, null, null, null, Pagination.of(1, 10), null);
+
+		Assert.assertEquals(2, page.getTotalCount());
+
+		assertContains(auditEvent1, (List<AuditEvent>)page.getItems());
+		assertContains(auditEvent2, (List<AuditEvent>)page.getItems());
+
+		page = auditEventResource.getAuditEventsPage(
+			new Long[] {
+				accountEntry1.getAccountEntryId(),
+				accountEntry2.getAccountEntryId()
+			},
+			null, null, null, null, Pagination.of(1, 10), null);
 
 		Assert.assertEquals(2, page.getTotalCount());
 
@@ -171,7 +197,16 @@ public class AuditEventResourceTest extends BaseAuditEventResourceTestCase {
 		AuditEvent auditEvent = super.randomAuditEvent();
 
 		auditEvent.setAccountId(0L);
-		auditEvent.setContextName((String)null);
+
+		User user = TestPropsValues.getUser();
+
+		auditEvent.setImpersonatedCreator(
+			new Creator() {
+				{
+					id = user.getUserId();
+					name = user.getFullName();
+				}
+			});
 
 		return auditEvent;
 	}
@@ -180,20 +215,29 @@ public class AuditEventResourceTest extends BaseAuditEventResourceTestCase {
 	protected AuditEvent testGetAuditEventsPage_addAuditEvent(
 		AuditEvent auditEvent) {
 
+		AuditMessage auditMessage = new AuditMessage(
+			0, testCompany.getCompanyId(), 0, null, null,
+			auditEvent.getAccountId(), null, auditEvent.getEntityType(),
+			String.valueOf(auditEvent.getEntityId()),
+			auditEvent.getContextName(), auditEvent.getEventType(), null);
+
+		auditMessage.setImpersonated(auditEvent.getImpersonated());
+
+		Creator impersonatedCreator = auditEvent.getImpersonatedCreator();
+
+		auditMessage.setImpersonatedUserId(impersonatedCreator.getId());
+
 		com.liferay.portal.security.audit.storage.model.AuditEvent
 			serviceBuilderAuditEvent = _auditEventLocalService.addAuditEvent(
-				new AuditMessage(
-					0L, testCompany.getCompanyId(), 0L, null, null,
-					auditEvent.getAccountId(), null, auditEvent.getEntityType(),
-					String.valueOf(auditEvent.getEntityId()),
-					auditEvent.getContextName(), auditEvent.getEventType(),
-					null));
+				auditMessage);
 
 		_serviceBuilderAuditEvents.add(serviceBuilderAuditEvent);
 
 		return new AuditEvent() {
 			{
 				id = serviceBuilderAuditEvent.getAuditEventId();
+				impersonated = auditEvent.getImpersonated();
+				impersonatedCreator = auditEvent.getImpersonatedCreator();
 			}
 		};
 	}

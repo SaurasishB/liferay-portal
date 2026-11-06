@@ -15,13 +15,13 @@ import com.fasterxml.jackson.databind.introspect.AnnotatedField;
 
 import com.liferay.osb.faro.constants.FaroProjectConstants;
 import com.liferay.osb.faro.constants.FaroUserConstants;
+import com.liferay.osb.faro.constants.JSONConstants;
 import com.liferay.osb.faro.contacts.demo.internal.model.display.contacts.mixin.BaseMixin;
 import com.liferay.osb.faro.contacts.demo.internal.model.display.contacts.mixin.CredentialsMixin;
 import com.liferay.osb.faro.contacts.demo.internal.model.display.contacts.mixin.OAuth1CredentialsMixin;
 import com.liferay.osb.faro.contacts.demo.internal.model.display.contacts.mixin.OAuth2CredentialsMixin;
 import com.liferay.osb.faro.contacts.demo.internal.model.display.contacts.mixin.PageVisitMixin;
 import com.liferay.osb.faro.contacts.demo.internal.model.display.contacts.mixin.TokenCredentialsMixin;
-import com.liferay.osb.faro.contacts.model.constants.JSONConstants;
 import com.liferay.osb.faro.engine.client.ContactsEngineClient;
 import com.liferay.osb.faro.engine.client.model.Channel;
 import com.liferay.osb.faro.engine.client.model.Credentials;
@@ -72,8 +72,15 @@ import org.osgi.service.component.annotations.ReferencePolicyOption;
 public abstract class DemoCreatorService {
 
 	public void createDemo() throws Exception {
-		faroProject = faroProjectLocalService.fetchFaroProjectByCorpProjectUuid(
-			FaroPropsValues.FARO_PROJECT_ID);
+		faroProject =
+			faroProjectLocalService.fetchFaroProjectBySalesforceAccountId(
+				FaroPropsValues.FARO_PROJECT_ID);
+
+		if (faroProject == null) {
+			faroProject =
+				faroProjectLocalService.fetchFaroProjectByCorpProjectUuid(
+					FaroPropsValues.FARO_PROJECT_ID);
+		}
 
 		if (faroProject == null) {
 			faroProject = createFaroProject();
@@ -84,6 +91,12 @@ public abstract class DemoCreatorService {
 		}
 		catch (Exception exception) {
 			log.error("Unable to add users", exception);
+		}
+
+		if (StringUtil.equals(
+				FaroPropsValues.FARO_DEMO_CREATOR_METHOD, "base")) {
+
+			return;
 		}
 
 		if (hasExistingData()) {
@@ -131,12 +144,13 @@ public abstract class DemoCreatorService {
 		if (FaroPropsValues.OSB_FARO_SUBSCRIPTION_PUSH_ENABLED) {
 			OSBOfferingEntry osbOfferingEntry = new OSBOfferingEntry();
 
-			String productEntryId =
-				ProductConstants.PRODUCT_ENTRY_ID_ENTERPRISE;
+			String productEntryId = ProductConstants.getProductEntryId(
+				ProductConstants.PRODUCT_ENTRY_NAME_ENTERPRISE);
 
 			if (FaroPropsValues.FARO_DEMO_DATA_PLATFORM_ENABLED) {
-				productEntryId =
-					ProductConstants.PRODUCT_ENTRY_ID_DATA_PLATFORM_ENTERPRISE;
+				productEntryId = ProductConstants.getProductEntryId(
+					ProductConstants.
+						PRODUCT_ENTRY_NAME_DATA_PLATFORM_ENTERPRISE);
 			}
 
 			osbOfferingEntry.setProductEntryId(productEntryId);
@@ -165,10 +179,10 @@ public abstract class DemoCreatorService {
 
 		FaroProject faroProject = faroProjectLocalService.addFaroProject(
 			user.getUserId(), FaroPropsValues.FARO_PROJECT_ID,
-			osbAccountEntry.getDossieraAccountKey(),
+			osbAccountEntry.getSalesforceAccountId(),
 			osbAccountEntry.getCorpEntryName(), osbAccountEntry.getName(),
 			FaroPropsValues.FARO_PROJECT_ID, Collections.emptyList(),
-			StringPool.BLANK, StringPool.BLANK,
+			StringPool.BLANK, StringPool.BLANK, FaroPropsValues.FARO_PROJECT_ID,
 			LCPProject.Cluster.US.toString(), JSONConstants.NULL_JSON_ARRAY,
 			FaroProjectConstants.STATE_UNCONFIGURED,
 			_objectMapper.writeValueAsString(faroSubscriptionDisplay), "UTC",

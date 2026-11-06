@@ -13,6 +13,7 @@ Immutable.Record {
   "name": "",
   "ownerEmailAddress": "",
   "recommendationsEnabled": false,
+  "salesforceAccountId": null,
   "serverLocation": null,
   "state": null,
   "stateStartDate": null,
@@ -42,6 +43,7 @@ Immutable.Record {
   "individualCount": 0,
   "knownIndividualCount": 0,
   "lastActivityDate": null,
+  "lastMembershipUpdateDate": null,
   "name": "",
   "properties": Immutable.Map {},
   "referencedObjects": Immutable.Map {
@@ -71,16 +73,6 @@ Immutable.Record {
   "properties": Immutable.Map {},
   "status": null,
   "type": 0,
-}
-`;
-
-exports[`Records should return an EntityLayout Record 1`] = `
-Immutable.Record {
-  "contactsCardTemplatesList": Immutable.List [],
-  "headerContactsCardTemplates": Immutable.List [],
-  "id": null,
-  "name": "",
-  "type": null,
 }
 `;
 

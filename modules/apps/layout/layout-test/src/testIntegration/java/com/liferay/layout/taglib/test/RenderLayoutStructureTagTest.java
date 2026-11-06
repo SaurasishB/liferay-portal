@@ -53,6 +53,7 @@ import com.liferay.info.field.InfoField;
 import com.liferay.info.field.InfoFieldSet;
 import com.liferay.info.field.type.BooleanInfoFieldType;
 import com.liferay.info.field.type.InfoFieldType;
+import com.liferay.info.field.type.SelectInfoFieldType;
 import com.liferay.info.field.type.TextInfoFieldType;
 import com.liferay.info.form.InfoForm;
 import com.liferay.info.item.InfoItemReference;
@@ -100,10 +101,14 @@ import com.liferay.layout.util.structure.FormStyledLayoutStructureItem;
 import com.liferay.layout.util.structure.LayoutStructure;
 import com.liferay.layout.util.structure.LayoutStructureItem;
 import com.liferay.layout.util.structure.LayoutStructureRule;
+import com.liferay.list.type.entry.util.ListTypeEntryUtil;
+import com.liferay.list.type.model.ListTypeDefinition;
+import com.liferay.list.type.service.ListTypeDefinitionLocalService;
 import com.liferay.object.constants.ObjectDefinitionConstants;
 import com.liferay.object.constants.ObjectEntryFolderConstants;
 import com.liferay.object.constants.ObjectFieldConstants;
 import com.liferay.object.field.builder.LongTextObjectFieldBuilder;
+import com.liferay.object.field.builder.PicklistObjectFieldBuilder;
 import com.liferay.object.field.builder.RichTextObjectFieldBuilder;
 import com.liferay.object.field.builder.TextObjectFieldBuilder;
 import com.liferay.object.field.util.ObjectFieldUtil;
@@ -428,7 +433,7 @@ public class RenderLayoutStructureTagTest {
 			}
 
 			String expectedContent =
-				"name=\"ObjectField_text\" placeholder=\"\" type=\"text\" " +
+				"name=\"ObjectField_text\" placeholder=\"\"   type=\"text\" " +
 					"value=\"";
 
 			JSONObject editableValueJSONObject =
@@ -451,7 +456,7 @@ public class RenderLayoutStructureTagTest {
 
 				expectedContent =
 					"name=\"ObjectEntry_externalReferenceCode\" " +
-						"placeholder=\"\" type=\"text\" value=\"";
+						"placeholder=\"\"   type=\"text\" value=\"";
 
 				expectedList.add(
 					expectedContent + externalReferenceCode + StringPool.QUOTE);
@@ -462,7 +467,7 @@ public class RenderLayoutStructureTagTest {
 						"ObjectEntry_objectEntryFriendlyURL")) {
 
 				expectedContent =
-					"name=\"ObjectEntry_objectEntryFriendlyURL\" " +
+					"name=\"ObjectEntry_objectEntryFriendlyURL\"  " +
 						"type=\"text\" value=\"";
 
 				expectedList.add(
@@ -478,7 +483,7 @@ public class RenderLayoutStructureTagTest {
 
 				expectedContent = StringBundler.concat(
 					"name=\"", objectRelationship.getName(),
-					"_objectEntryFriendlyURL\" type=\"text\" value=\"");
+					"_objectEntryFriendlyURL\"  type=\"text\" value=\"");
 
 				expectedList.add(
 					expectedContent + relationshipFriendlyURLValue +
@@ -712,6 +717,67 @@ public class RenderLayoutStructureTagTest {
 		content = _getRenderLayoutHTML(layout);
 
 		Assert.assertTrue(content, content.contains(url));
+	}
+
+	@Test
+	@TestInfo("LPD-112293")
+	public void testEscapeFormInputOptionsMenuLabel() throws Exception {
+		ListTypeDefinition listTypeDefinition =
+			_listTypeDefinitionLocalService.addListTypeDefinition(
+				null, TestPropsValues.getUserId(),
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
+				false,
+				Collections.singletonList(
+					ListTypeEntryUtil.createListTypeEntry(
+						RandomTestUtil.randomString())),
+				_serviceContext);
+
+		ObjectDefinition objectDefinition =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				Collections.singletonList(
+					new PicklistObjectFieldBuilder(
+					).labelMap(
+						LocalizedMapUtil.getLocalizedMap(
+							RandomTestUtil.randomString())
+					).listTypeDefinitionId(
+						listTypeDefinition.getListTypeDefinitionId()
+					).name(
+						CharPool.LOWER_CASE_A + RandomTestUtil.randomString()
+					).build()),
+				ObjectDefinitionConstants.SCOPE_SITE);
+
+		Layout layout = LayoutTestUtil.addTypeContentLayout(_group);
+
+		Layout draftLayout = layout.fetchDraftLayout();
+
+		_addFormToLayout(objectDefinition.getClassName(), draftLayout);
+
+		ContentLayoutTestUtil.publishLayout(draftLayout, layout);
+
+		MockHttpServletRequest mockHttpServletRequest =
+			_getMockHttpServletRequest(layout);
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)mockHttpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
+
+		Locale locale = LocaleUtil.fromLanguageId("ca_ES");
+
+		themeDisplay.setLanguageId(LocaleUtil.toLanguageId(locale));
+		themeDisplay.setLocale(locale);
+
+		MockHttpServletResponse mockHttpServletResponse = _renderLayout(
+			layout, mockHttpServletRequest);
+
+		String content = mockHttpServletResponse.getContentAsString();
+
+		Assert.assertTrue(
+			content,
+			content.contains(
+				StringBundler.concat(
+					"aria-label=\"",
+					HtmlUtil.escape(_language.get(locale, "open-options-menu")),
+					"\"")));
 	}
 
 	@Test
@@ -2933,7 +2999,7 @@ public class RenderLayoutStructureTagTest {
 	}
 
 	@Test
-	@TestInfo("LPS-120094")
+	@TestInfo({"LPD-109694", "LPS-120094"})
 	public void testRenderFragmentEntryLinkWithImageLinkToURL()
 		throws Exception {
 
@@ -3003,7 +3069,7 @@ public class RenderLayoutStructureTagTest {
 					HtmlUtil.escape(
 						_dlURLHelper.getPreviewURL(
 							fileEntry, fileEntry.getFileVersion(), themeDisplay,
-							StringPool.BLANK)),
+							StringPool.BLANK, true, false)),
 					"\" data-fileentryid=\"", fileEntry.getFileEntryId(),
 					"\"")));
 	}
@@ -4133,6 +4199,12 @@ public class RenderLayoutStructureTagTest {
 		}
 
 		if (Objects.equals(
+				infoFieldTypeName, SelectInfoFieldType.INSTANCE.getName())) {
+
+			return "INPUTS-select-from-list";
+		}
+
+		if (Objects.equals(
 				infoFieldTypeName, TextInfoFieldType.INSTANCE.getName())) {
 
 			return "INPUTS-text-input";
@@ -4564,6 +4636,9 @@ public class RenderLayoutStructureTagTest {
 
 	@Inject
 	private LayoutStructureProvider _layoutStructureProvider;
+
+	@Inject
+	private ListTypeDefinitionLocalService _listTypeDefinitionLocalService;
 
 	@Inject
 	private MultiVMPool _multiVMPool;

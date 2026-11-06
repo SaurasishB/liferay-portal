@@ -859,9 +859,11 @@ public class CPDefinitionOptionValueRelLocalServiceTest {
 				"Option value preselected",
 				cpDefinitionOptionValueRel.isPreselected());
 
-			if (targetCPDefinitionOptionValueRel == null) {
-				targetCPDefinitionOptionValueRel = cpDefinitionOptionValueRel;
+			if (targetCPDefinitionOptionValueRel != null) {
+				continue;
 			}
+
+			targetCPDefinitionOptionValueRel = cpDefinitionOptionValueRel;
 		}
 
 		Assert.assertNotEquals(
@@ -1408,7 +1410,7 @@ public class CPDefinitionOptionValueRelLocalServiceTest {
 			quantity.add(BigDecimal.TEN));
 
 		Assert.assertEquals(
-			"New CP definition option value quantity",
+			"New commerce product definition option value quantity",
 			quantity.add(BigDecimal.TEN),
 			newCPDefinitionOptionValueRel.getQuantity());
 

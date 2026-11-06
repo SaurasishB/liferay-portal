@@ -5,33 +5,40 @@
 
 package com.liferay.exportimport.web.internal.display.context;
 
+import com.liferay.exportimport.kernel.staging.StagingUtil;
 import com.liferay.exportimport.rest.dto.v1_0.ExportPreview;
 import com.liferay.exportimport.rest.resource.v1_0.ExportPreviewResource;
 import com.liferay.exportimport.util.ScopeUtil;
 import com.liferay.exportimport.vulcan.batch.engine.ExportImportVulcanBatchEngineTaskItemDelegate.Scope;
+import com.liferay.exportimport.web.internal.util.ExportImportAPIURLUtil;
 import com.liferay.petra.string.StringBundler;
-import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
+import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.portlet.LiferayPortletResponse;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
 import com.liferay.portal.kernel.portlet.url.builder.ResourceURLBuilder;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import java.net.URLEncoder;
-
-import java.nio.charset.StandardCharsets;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * @author Daniel Raposo
@@ -68,6 +75,26 @@ public class ExportImportProcessDisplayContext {
 			liferayPortletResponse, liveGroupId, privateLayout, false);
 	}
 
+	public JSONArray getAvailableLanguagesJSONArray() {
+		JSONArray availableLanguagesJSONArray =
+			JSONFactoryUtil.createJSONArray();
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)_httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
+
+		for (Locale locale : LanguageUtil.getAvailableLocales(_groupId)) {
+			availableLanguagesJSONArray.put(
+				JSONUtil.put(
+					"label", locale.getDisplayName(themeDisplay.getLocale())
+				).put(
+					"value", LocaleUtil.toLanguageId(locale)
+				));
+		}
+
+		return availableLanguagesJSONArray;
+	}
+
 	public String getBackURL() {
 		if (_backURL != null) {
 			return _backURL;
@@ -95,6 +122,11 @@ public class ExportImportProcessDisplayContext {
 		_backURL = backURL;
 
 		return _backURL;
+	}
+
+	public String getDefaultLanguageId() throws PortalException {
+		return LocaleUtil.toLanguageId(
+			PortalUtil.getSiteDefaultLocale(_groupId));
 	}
 
 	public String getExportPreviewAPIURL() {
@@ -138,8 +170,7 @@ public class ExportImportProcessDisplayContext {
 			return _exportPreviewSitesAPIURL;
 		}
 
-		_exportPreviewSitesAPIURL = _getResourceAPIURL(
-			"/export-preview/preview-sites");
+		_exportPreviewSitesAPIURL = _getResourceAPIURL("/export-preview/sites");
 
 		return _exportPreviewSitesAPIURL;
 	}
@@ -193,6 +224,22 @@ public class ExportImportProcessDisplayContext {
 		return _getTitle("new-import-process");
 	}
 
+	public Map<String, Object> getPageTreeModalConfiguration() {
+		Group liveGroup = StagingUtil.getLiveGroup(_group);
+
+		return HashMapBuilder.<String, Object>put(
+			"groupId", liveGroup.getGroupId()
+		).put(
+			"pageSize", PropsValues.LAYOUT_MANAGE_PAGES_INITIAL_CHILDREN
+		).put(
+			"privateLayoutsAvailable",
+			!_staticSite && !liveGroup.isLayoutSetPrototype() &&
+			liveGroup.isPrivateLayoutsEnabled() && liveGroup.hasPrivateLayouts()
+		).put(
+			"siteExternalReferenceCode", liveGroup.getExternalReferenceCode()
+		).build();
+	}
+
 	public Scope getScope() {
 		if (!Validator.isBlank(_getPortletId())) {
 			return Scope.PORTLET;
@@ -213,16 +260,6 @@ public class ExportImportProcessDisplayContext {
 		return ScopeUtil.isCommentsAndRatingsEnabled(_group);
 	}
 
-	public boolean isLookAndFeelEnabled() {
-		if ((getScope() != Scope.PORTLET) &&
-			ScopeUtil.isLookAndFeelEnabled(_group)) {
-
-			return true;
-		}
-
-		return false;
-	}
-
 	public boolean isSiteSelectionEnabled() {
 		if ((getScope() == Scope.COMPANY) &&
 			FeatureFlagManagerUtil.isEnabled(
@@ -236,14 +273,6 @@ public class ExportImportProcessDisplayContext {
 
 	public boolean isStaticSite() {
 		return _staticSite;
-	}
-
-	private String _encode(String value) {
-		if (Validator.isBlank(value)) {
-			return StringPool.BLANK;
-		}
-
-		return URLEncoder.encode(value, StandardCharsets.UTF_8);
 	}
 
 	private ExportPreview _getExportPreview() {
@@ -268,23 +297,33 @@ public class ExportImportProcessDisplayContext {
 					themeDisplay.getUser()
 				).build();
 
-			long plid = ParamUtil.getLong(_httpServletRequest, "plid");
 			String portletId = _getPortletId();
+
+			Layout layout = ExportImportAPIURLUtil.getPortletLayout(
+				ParamUtil.getLong(_httpServletRequest, "plid"), portletId);
+
+			if (layout != null) {
+				Group group = layout.getGroup();
+
+				return exportPreviewResource.getSiteExportPreview(
+					group.getExternalReferenceCode(), null, null, null,
+					portletId, layout.getExternalReferenceCode(), null);
+			}
 
 			if (ScopeUtil.isInstanceScoped(_group)) {
 				return exportPreviewResource.getExportPreview(
-					null, null, plid, portletId, null);
+					null, null, null, portletId, null);
 			}
 
 			if (_group.isDepot()) {
 				return exportPreviewResource.getAssetLibraryExportPreview(
-					_group.getExternalReferenceCode(), null, null, plid,
+					_group.getExternalReferenceCode(), null, null, null,
 					portletId, null);
 			}
 
 			return exportPreviewResource.getSiteExportPreview(
-				_group.getExternalReferenceCode(), null, null, plid, portletId,
-				null);
+				_group.getExternalReferenceCode(), null, null, null, portletId,
+				null, null);
 		}
 		catch (Exception exception) {
 			_log.error("Unable to get export preview", exception);
@@ -298,16 +337,9 @@ public class ExportImportProcessDisplayContext {
 	}
 
 	private String _getResourceAPIURL(String endpoint) {
-		String portletId = _getPortletId();
-
-		if (Validator.isBlank(portletId)) {
-			return ScopeUtil.getAPIURL(_group, endpoint);
-		}
-
-		return StringBundler.concat(
-			ScopeUtil.getAPIURL(_group, endpoint), "?plid=",
-			ParamUtil.getLong(_httpServletRequest, "plid"), "&portletId=",
-			_encode(portletId));
+		return ExportImportAPIURLUtil.getAPIURL(
+			endpoint, _group, ParamUtil.getLong(_httpServletRequest, "plid"),
+			_getPortletId());
 	}
 
 	private String _getTitle(String key) {

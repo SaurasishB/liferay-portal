@@ -42,11 +42,6 @@ interface IBreakdownWithSafeResultsProps extends WithRangeKeyProps {
 	type: CalculationTypes;
 }
 
-interface IEventAnalysisBreakdownProps
-	extends Omit<IBreakdownWithSafeResultsProps, 'event'> {
-	event?: Event | null;
-}
-
 interface IBreakdownTableProps
 	extends WithRangeKeyProps,
 		React.HTMLAttributes<HTMLElement> {
@@ -394,7 +389,7 @@ const getColumns = ({
 				},
 				label: (
 					<div>
-						<span className="breakdown-category">
+						<span className="breakdown-category d-block text-uppercase">
 							{attributeType}
 						</span>
 
@@ -477,19 +472,4 @@ const getColumns = ({
 	return columns;
 };
 
-const EventAnalysisBreakdown: React.FC<IEventAnalysisBreakdownProps> = ({
-	event,
-	...otherProps
-}) => {
-	if (!event) {
-		return (
-			<div className="breakdown-empty">
-				{Liferay.Language.get('add-an-event-to-analyze')}
-			</div>
-		);
-	}
-
-	return <BreakdownWithSafeResults {...otherProps} event={event} />;
-};
-
-export default EventAnalysisBreakdown;
+export default BreakdownWithSafeResults;

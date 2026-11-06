@@ -43,6 +43,7 @@ import com.liferay.portal.configuration.module.configuration.ConfigurationProvid
 import com.liferay.portal.kernel.change.tracking.CTCollectionThreadLocal;
 import com.liferay.portal.kernel.change.tracking.sql.CTSQLModeThreadLocal;
 import com.liferay.portal.kernel.dao.orm.ORMException;
+import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONArray;
@@ -489,16 +490,18 @@ public class ViewChangesDisplayContext {
 						ModelInfoKey modelInfoKey = new ModelInfoKey(
 							classNameId, classPK);
 
-						if (modelInfoMap.get(modelInfoKey) == null) {
-							modelInfoMap.put(
-								modelInfoKey, new ModelInfo(modelKeyCounter++));
-
-							Set<Long> classPKs =
-								classNameIdClassPKsMap.computeIfAbsent(
-									classNameId, key -> new HashSet<>());
-
-							classPKs.add(classPK);
+						if (modelInfoMap.get(modelInfoKey) != null) {
+							continue;
 						}
+
+						modelInfoMap.put(
+							modelInfoKey, new ModelInfo(modelKeyCounter++));
+
+						Set<Long> classPKs =
+							classNameIdClassPKsMap.computeIfAbsent(
+								classNameId, key -> new HashSet<>());
+
+						classPKs.add(classPK);
 					}
 				}
 			}
@@ -531,9 +534,11 @@ public class ViewChangesDisplayContext {
 				JSONArray changesJSONArray = JSONFactoryUtil.createJSONArray();
 
 				for (ModelInfo modelInfo : modelInfoMap.values()) {
-					if (modelInfo._ctEntry) {
-						changesJSONArray.put(modelInfo._modelKey);
+					if (!modelInfo._ctEntry) {
+						continue;
 					}
+
+					changesJSONArray.put(modelInfo._modelKey);
 				}
 
 				return changesJSONArray;
@@ -647,11 +652,13 @@ public class ViewChangesDisplayContext {
 					JSONFactoryUtil.createJSONObject();
 
 				for (ModelInfo modelInfo : modelInfoMap.values()) {
-					if (modelInfo._jsonObject != null) {
-						modelDataJSONObject.put(
-							String.valueOf(modelInfo._modelKey),
-							modelInfo._jsonObject);
+					if (modelInfo._jsonObject == null) {
+						continue;
 					}
+
+					modelDataJSONObject.put(
+						String.valueOf(modelInfo._modelKey),
+						modelInfo._jsonObject);
 				}
 
 				return modelDataJSONObject;
@@ -698,20 +705,21 @@ public class ViewChangesDisplayContext {
 
 					String groupIdString = String.valueOf(groupId);
 
-					if (!siteNamesJSONObject.has(groupIdString)) {
-						Group group = _groupLocalService.fetchGroup(groupId);
+					if (siteNamesJSONObject.has(groupIdString)) {
+						continue;
+					}
 
-						if (group == null) {
-							siteNamesJSONObject.put(
-								groupIdString,
-								_language.get(
-									_themeDisplay.getLocale(), "global"));
-						}
-						else {
-							siteNamesJSONObject.put(
-								groupIdString,
-								group.getName(_themeDisplay.getLocale()));
-						}
+					Group group = _groupLocalService.fetchGroup(groupId);
+
+					if (group == null) {
+						siteNamesJSONObject.put(
+							groupIdString,
+							_language.get(_themeDisplay.getLocale(), "global"));
+					}
+					else {
+						siteNamesJSONObject.put(
+							groupIdString,
+							group.getName(_themeDisplay.getLocale()));
 					}
 				}
 
@@ -1431,6 +1439,8 @@ public class ViewChangesDisplayContext {
 					searchContext.setAttribute(
 						"ctCollectionId", ctCollectionId);
 					searchContext.setAttribute("showHideable", showHideable);
+					searchContext.setEnd(QueryUtil.ALL_POS);
+					searchContext.setStart(QueryUtil.ALL_POS);
 
 					if (groupId == -1) {
 						BooleanQuery booleanQuery = new BooleanQuery();

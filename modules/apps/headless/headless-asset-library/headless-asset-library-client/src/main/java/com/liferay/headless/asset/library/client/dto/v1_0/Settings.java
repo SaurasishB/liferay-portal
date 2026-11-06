@@ -89,6 +89,27 @@ public class Settings implements Cloneable, Serializable {
 
 	protected String defaultLanguageId;
 
+	public String getGoogleMapsAPIKey() {
+		return googleMapsAPIKey;
+	}
+
+	public void setGoogleMapsAPIKey(String googleMapsAPIKey) {
+		this.googleMapsAPIKey = googleMapsAPIKey;
+	}
+
+	public void setGoogleMapsAPIKey(
+		UnsafeSupplier<String, Exception> googleMapsAPIKeyUnsafeSupplier) {
+
+		try {
+			googleMapsAPIKey = googleMapsAPIKeyUnsafeSupplier.get();
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected String googleMapsAPIKey;
+
 	public String getLogoColor() {
 		return logoColor;
 	}
@@ -109,6 +130,27 @@ public class Settings implements Cloneable, Serializable {
 	}
 
 	protected String logoColor;
+
+	public String getMapProviderKey() {
+		return mapProviderKey;
+	}
+
+	public void setMapProviderKey(String mapProviderKey) {
+		this.mapProviderKey = mapProviderKey;
+	}
+
+	public void setMapProviderKey(
+		UnsafeSupplier<String, Exception> mapProviderKeyUnsafeSupplier) {
+
+		try {
+			mapProviderKey = mapProviderKeyUnsafeSupplier.get();
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected String mapProviderKey;
 
 	public MimeTypeLimit[] getMimeTypeLimits() {
 		return mimeTypeLimits;
@@ -248,4 +290,4 @@ public class Settings implements Cloneable, Serializable {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:-679471414
+// LIFERAY-REST-BUILDER-HASH:-1206616639

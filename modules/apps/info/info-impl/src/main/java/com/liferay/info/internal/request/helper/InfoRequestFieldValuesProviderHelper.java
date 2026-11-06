@@ -22,7 +22,6 @@ import com.liferay.info.field.type.LongTextInfoFieldType;
 import com.liferay.info.field.type.MultiselectInfoFieldType;
 import com.liferay.info.field.type.NumberInfoFieldType;
 import com.liferay.info.field.type.PhoneNumberInfoFieldType;
-import com.liferay.info.field.type.PicklistSelectInfoFieldType;
 import com.liferay.info.field.type.RelationshipInfoFieldType;
 import com.liferay.info.field.type.SelectInfoFieldType;
 import com.liferay.info.field.type.TextInfoFieldType;
@@ -50,7 +49,6 @@ import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.TempFileEntryUtil;
-import com.liferay.portal.kernel.util.Tuple;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 
@@ -69,9 +67,11 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -89,7 +89,7 @@ public class InfoRequestFieldValuesProviderHelper {
 	}
 
 	public Map<String, InfoFieldValue<Object>> getInfoFieldValues(
-			HttpServletRequest httpServletRequest)
+			HttpServletRequest httpServletRequest, InfoForm infoForm)
 		throws InfoFormFileUploadException {
 
 		Map<String, InfoFieldValue<Object>> infoFieldValues = new HashMap<>();
@@ -103,23 +103,22 @@ public class InfoRequestFieldValuesProviderHelper {
 
 		String[] checkboxNames = ParamUtil.getStringValues(
 			uploadServletRequest, "checkboxNames");
-		String className = PortalUtil.getClassName(
-			ParamUtil.getLong(uploadServletRequest, "classNameId"));
-		String classTypeId = ParamUtil.getString(
-			uploadServletRequest, "classTypeId");
 		String[] deletedItemIdentifiers = ParamUtil.getStringValues(
 			uploadServletRequest, "deletedItemIdentifiers");
 		long groupId = ParamUtil.getLong(uploadServletRequest, "groupId");
 
+		Set<Locale> availableLocales = LanguageUtil.getAvailableLocales(
+			themeDisplay.getSiteGroupId());
 		Map<String, FileItem[]> multipartParameterMap =
 			uploadServletRequest.getMultipartParameterMap();
-
 		Map<String, List<String>> regularParameterMap =
 			uploadServletRequest.getRegularParameterMap();
 
-		for (InfoField<?> infoField :
-				_getInfoFields(className, classTypeId, groupId)) {
+		Map<String, List<InputName>> inputNamesMap = _getInputNamesMap(
+			LocaleUtil.toLanguageIds(availableLocales), multipartParameterMap,
+			regularParameterMap);
 
+		for (InfoField<?> infoField : _getInfoFields(infoForm)) {
 			if (!infoField.isEditable() &&
 				!ArrayUtil.contains(
 					_ALLOWED_NONEDITABLE_FIELDS, infoField.getName())) {
@@ -127,12 +126,8 @@ public class InfoRequestFieldValuesProviderHelper {
 				continue;
 			}
 
-			Set<Locale> availableLocales = LanguageUtil.getAvailableLocales(
-				themeDisplay.getSiteGroupId());
-
-			Set<String> inputNames = _getInputNames(
-				infoField, LocaleUtil.toLanguageIds(availableLocales),
-				multipartParameterMap, regularParameterMap);
+			Collection<InputName> inputNames = _getInputNames(
+				infoField, inputNamesMap);
 
 			if (inputNames.isEmpty()) {
 				if ((infoField.getInfoFieldType() instanceof
@@ -163,10 +158,10 @@ public class InfoRequestFieldValuesProviderHelper {
 				}
 			}
 
-			for (String inputName : inputNames) {
+			for (InputName inputName : inputNames) {
 				if (infoField.isLocalizable()) {
-					infoFieldValues.put(
-						inputName,
+					_putInfoFieldValue(
+						infoFieldValues,
 						new InfoFieldValue<>(
 							infoField,
 							InfoLocalizedValue.builder(
@@ -179,8 +174,9 @@ public class InfoRequestFieldValuesProviderHelper {
 											LanguageUtil.getLanguageId(locale);
 
 										String localizedInputName =
-											inputName + StringPool.UNDERLINE +
-												languageId;
+											inputName.getName() +
+												StringPool.UNDERLINE +
+													languageId;
 
 										Object value = _parseValue(
 											groupId, infoField, locale,
@@ -189,32 +185,36 @@ public class InfoRequestFieldValuesProviderHelper {
 											regularParameterMap,
 											themeDisplay.getUserId());
 
-										if (value != null) {
-											unsafeBiConsumer.accept(
-												locale, value);
+										if (value == null) {
+											continue;
 										}
+
+										unsafeBiConsumer.accept(locale, value);
 									}
 								}
-							).build()));
+							).build()),
+						inputName);
 
 					continue;
 				}
 
 				List<String> regularParameters = regularParameterMap.get(
-					inputName);
+					inputName.getName());
 
 				Object value = _parseValue(
 					groupId, infoField, themeDisplay.getLocale(),
-					multipartParameterMap, inputName, regularParameterMap,
-					themeDisplay.getUserId());
+					multipartParameterMap, inputName.getName(),
+					regularParameterMap, themeDisplay.getUserId());
 
 				InfoFieldValue<Object> infoFieldValue = _getInfoFieldValue(
 					regularParameters != null, infoField,
 					themeDisplay.getLocale(), value);
 
-				if (infoFieldValue != null) {
-					infoFieldValues.put(inputName, infoFieldValue);
+				if (infoFieldValue == null) {
+					continue;
 				}
+
+				_putInfoFieldValue(infoFieldValues, infoFieldValue, inputName);
 			}
 		}
 
@@ -231,67 +231,18 @@ public class InfoRequestFieldValuesProviderHelper {
 			infoField.getUniqueId(),
 			new InfoFieldValue<>(infoField, deletedItemIdentifiers));
 
-		return _computeInfoFieldValues(infoFieldValues);
-	}
-
-	private Map<String, InfoFieldValue<Object>> _computeInfoFieldValues(
-		Map<String, InfoFieldValue<Object>> initialInfoFieldValues) {
-
-		Map<String, InfoFieldValue<Object>> infoFieldValues = new HashMap<>();
-
-		for (Map.Entry<String, InfoFieldValue<Object>> entry :
-				initialInfoFieldValues.entrySet()) {
-
-			String key = entry.getKey();
-
-			if (!_isRelatedKey(key)) {
-				infoFieldValues.put(key, entry.getValue());
-
-				continue;
-			}
-
-			InfoFieldValue<Object> initialInfoFieldValue = entry.getValue();
-
-			InfoField infoField = initialInfoFieldValue.getInfoField();
-
-			InfoFieldValue<?> infoFieldValue = infoFieldValues.get(
-				infoField.getUniqueId());
-
-			if (infoFieldValue == null) {
-				infoFieldValue = new InfoFieldValue<>(
-					infoField, new RelatedInfoFieldValue<>(new HashMap<>()));
-			}
-
-			RelatedInfoFieldValue relatedInfoFieldValue =
-				(RelatedInfoFieldValue)infoFieldValue.getValue();
-
-			Map
-				<RelatedInfoFieldValue.RelatedInfoFieldValueIdentifier,
-				 InfoFieldValue<?>> relatedInfoFieldValues =
-					relatedInfoFieldValue.getRelatedInfoFieldValues();
-
-			Tuple tuple = _extractIdentifiers(key);
-
-			relatedInfoFieldValues.put(
-				new RelatedInfoFieldValue.RelatedInfoFieldValueIdentifier(
-					(String)tuple.getObject(0), (String)tuple.getObject(1)),
-				initialInfoFieldValue);
-
-			infoFieldValues.put(
-				infoField.getUniqueId(),
-				(InfoFieldValue<Object>)infoFieldValue);
-		}
-
 		return infoFieldValues;
 	}
 
-	private Tuple _extractIdentifiers(String key) {
-		int start = key.indexOf("[$") + 2;
+	public InfoForm getInfoForm(HttpServletRequest httpServletRequest) {
+		UploadServletRequest uploadServletRequest =
+			PortalUtil.getUploadServletRequest(httpServletRequest);
 
-		String result = key.substring(
-			key.indexOf("[$") + 2, key.indexOf("$]", start));
-
-		return new Tuple(StringUtil.split(result, StringPool.DOLLAR));
+		return _getInfoForm(
+			PortalUtil.getClassName(
+				ParamUtil.getLong(uploadServletRequest, "classNameId")),
+			ParamUtil.getString(uploadServletRequest, "classTypeId"),
+			ParamUtil.getLong(uploadServletRequest, "groupId"));
 	}
 
 	private InfoFieldValue<Object> _getInfoFieldValue(
@@ -316,7 +267,15 @@ public class InfoRequestFieldValuesProviderHelper {
 		return new InfoFieldValue<>(infoField, value);
 	}
 
-	private <T> List<InfoField<?>> _getInfoFields(
+	private List<InfoField<?>> _getInfoFields(InfoForm infoForm) {
+		if (infoForm == null) {
+			return new ArrayList<>();
+		}
+
+		return infoForm.getAllInfoFields();
+	}
+
+	private <T> InfoForm _getInfoForm(
 		String className, String formVariationKey, long groupId) {
 
 		InfoItemFormProvider<T> infoItemFormProvider =
@@ -324,76 +283,101 @@ public class InfoRequestFieldValuesProviderHelper {
 				InfoItemFormProvider.class, className);
 
 		if (infoItemFormProvider == null) {
-			return new ArrayList<>();
+			return null;
 		}
 
 		try {
-			InfoForm infoForm = infoItemFormProvider.getInfoForm(
-				formVariationKey, groupId);
-
-			return infoForm.getAllInfoFields();
+			return infoItemFormProvider.getInfoForm(formVariationKey, groupId);
 		}
 		catch (NoSuchFormVariationException noSuchFormVariationException) {
 			if (_log.isDebugEnabled()) {
 				_log.debug(noSuchFormVariationException);
 			}
 
-			return new ArrayList<>();
+			return null;
 		}
 	}
 
-	private Set<String> _getInputNames(
-		InfoField infoField, String[] languageIds,
-		Map<String, FileItem[]> multipartParameterNames,
-		Map<String, List<String>> regularParameterNames) {
+	private InputName _getInputName(boolean localized, String name) {
+		int index = name.indexOf("[$");
 
-		Set<String> inputNames = new HashSet<>();
+		if ((index == -1) || !name.endsWith("$]")) {
+			return new InputName(localized, name, null, name);
+		}
 
-		Set<String> allParameterNames = new HashSet<>(
-			multipartParameterNames.keySet());
+		String[] externalReferenceCodes = StringUtil.split(
+			name.substring(index + 2, name.length() - 2), StringPool.DOLLAR);
 
-		allParameterNames.addAll(regularParameterNames.keySet());
+		if (externalReferenceCodes.length != 2) {
+			return new InputName(localized, name, null, name);
+		}
 
-		for (String parameterName : allParameterNames) {
-			if (parameterName.startsWith(infoField.getUniqueId())) {
-				if (((infoField.getInfoFieldType() ==
-						PicklistSelectInfoFieldType.INSTANCE) ||
-					 (infoField.getInfoFieldType() ==
-						 RelationshipInfoFieldType.INSTANCE)) &&
-					parameterName.endsWith("-label")) {
+		return new InputName(
+			localized, name,
+			new RelatedInfoFieldValue.RelatedInfoFieldValueIdentifier(
+				externalReferenceCodes[0], externalReferenceCodes[1]),
+			name.substring(0, index));
+	}
 
-					continue;
-				}
+	private Collection<InputName> _getInputNames(
+		InfoField<?> infoField, Map<String, List<InputName>> inputNamesMap) {
 
-				if (!infoField.isLocalizable()) {
-					inputNames.add(parameterName);
+		Map<String, InputName> inputNames = new LinkedHashMap<>();
 
-					continue;
-				}
+		for (InputName inputName :
+				inputNamesMap.getOrDefault(
+					infoField.getUniqueId(), Collections.emptyList())) {
 
-				for (String languageId : languageIds) {
-					if (parameterName.endsWith(languageId)) {
-						inputNames.add(
+			if (infoField.isLocalizable() != inputName.isLocalized()) {
+				continue;
+			}
+
+			inputNames.putIfAbsent(inputName.getName(), inputName);
+		}
+
+		return inputNames.values();
+	}
+
+	private Map<String, List<InputName>> _getInputNamesMap(
+		String[] languageIds, Map<String, FileItem[]> multipartParameterMap,
+		Map<String, List<String>> regularParameterMap) {
+
+		Map<String, List<InputName>> inputNamesMap = new HashMap<>();
+
+		Set<String> parameterNames = new LinkedHashSet<>(
+			multipartParameterMap.keySet());
+
+		parameterNames.addAll(regularParameterMap.keySet());
+
+		for (String parameterName : parameterNames) {
+			List<InputName> inputNames = new ArrayList<>();
+
+			inputNames.add(_getInputName(false, parameterName));
+
+			for (String languageId : languageIds) {
+				if (parameterName.endsWith(StringPool.UNDERLINE + languageId)) {
+					inputNames.add(
+						_getInputName(
+							true,
 							StringUtil.replaceLast(
 								parameterName,
 								StringPool.UNDERLINE + languageId,
-								StringPool.BLANK));
+								StringPool.BLANK)));
 
-						break;
-					}
+					break;
 				}
+			}
+
+			for (InputName inputName : inputNames) {
+				List<InputName> uniqueIdInputNames =
+					inputNamesMap.computeIfAbsent(
+						inputName.getUniqueId(), uniqueId -> new ArrayList<>());
+
+				uniqueIdInputNames.add(inputName);
 			}
 		}
 
-		return inputNames;
-	}
-
-	private boolean _isRelatedKey(String key) {
-		if (key.contains("[$") && key.contains("$]")) {
-			return true;
-		}
-
-		return false;
+		return inputNamesMap;
 	}
 
 	private Object _parseValue(
@@ -547,6 +531,44 @@ public class InfoRequestFieldValuesProviderHelper {
 		return null;
 	}
 
+	private void _putInfoFieldValue(
+		Map<String, InfoFieldValue<Object>> infoFieldValues,
+		InfoFieldValue<Object> initialInfoFieldValue, InputName inputName) {
+
+		RelatedInfoFieldValue.RelatedInfoFieldValueIdentifier
+			relatedInfoFieldValueIdentifier =
+				inputName.getRelatedInfoFieldValueIdentifier();
+
+		if (relatedInfoFieldValueIdentifier == null) {
+			infoFieldValues.put(inputName.getUniqueId(), initialInfoFieldValue);
+
+			return;
+		}
+
+		InfoField<?> infoField = initialInfoFieldValue.getInfoField();
+
+		InfoFieldValue<Object> infoFieldValue = infoFieldValues.get(
+			infoField.getUniqueId());
+
+		if (infoFieldValue == null) {
+			infoFieldValue = new InfoFieldValue<>(
+				infoField, new RelatedInfoFieldValue<>(new LinkedHashMap<>()));
+		}
+
+		RelatedInfoFieldValue relatedInfoFieldValue =
+			(RelatedInfoFieldValue)infoFieldValue.getValue();
+
+		Map
+			<RelatedInfoFieldValue.RelatedInfoFieldValueIdentifier,
+			 InfoFieldValue<?>> relatedInfoFieldValues =
+				relatedInfoFieldValue.getRelatedInfoFieldValues();
+
+		relatedInfoFieldValues.put(
+			relatedInfoFieldValueIdentifier, initialInfoFieldValue);
+
+		infoFieldValues.put(infoField.getUniqueId(), infoFieldValue);
+	}
+
 	private static final String[] _ALLOWED_NONEDITABLE_FIELDS = {
 		"expirationDate", "reviewDate"
 	};
@@ -555,5 +577,45 @@ public class InfoRequestFieldValuesProviderHelper {
 		InfoRequestFieldValuesProviderHelper.class);
 
 	private final InfoItemServiceRegistry _infoItemServiceRegistry;
+
+	private static class InputName {
+
+		public InputName(
+			boolean localized, String name,
+			RelatedInfoFieldValue.RelatedInfoFieldValueIdentifier
+				relatedInfoFieldValueIdentifier,
+			String uniqueId) {
+
+			_localized = localized;
+			_name = name;
+			_relatedInfoFieldValueIdentifier = relatedInfoFieldValueIdentifier;
+			_uniqueId = uniqueId;
+		}
+
+		public String getName() {
+			return _name;
+		}
+
+		public RelatedInfoFieldValue.RelatedInfoFieldValueIdentifier
+			getRelatedInfoFieldValueIdentifier() {
+
+			return _relatedInfoFieldValueIdentifier;
+		}
+
+		public String getUniqueId() {
+			return _uniqueId;
+		}
+
+		public boolean isLocalized() {
+			return _localized;
+		}
+
+		private final boolean _localized;
+		private final String _name;
+		private final RelatedInfoFieldValue.RelatedInfoFieldValueIdentifier
+			_relatedInfoFieldValueIdentifier;
+		private final String _uniqueId;
+
+	}
 
 }

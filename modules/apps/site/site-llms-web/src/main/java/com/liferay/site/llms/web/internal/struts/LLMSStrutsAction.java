@@ -19,7 +19,6 @@ import com.liferay.portal.kernel.struts.StrutsAction;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.Portal;
-import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.site.configuration.manager.LLMSConfigurationManager;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,7 +30,10 @@ import org.osgi.service.component.annotations.Reference;
 /**
  * @author Jonathan McCann
  */
-@Component(property = "path=/portal/llms", service = StrutsAction.class)
+@Component(
+	property = {"layout.required=false", "path=/portal/llms"},
+	service = StrutsAction.class
+)
 public class LLMSStrutsAction implements StrutsAction {
 
 	@Override
@@ -54,14 +56,9 @@ public class LLMSStrutsAction implements StrutsAction {
 			boolean enabled = false;
 			String content = null;
 
-			String host = GetterUtil.getString(
-				_portal.getForwardedHost(httpServletRequest));
-
-			host = StringUtil.toLowerCase(host);
-			host = host.trim();
-
 			VirtualHost virtualHost = _virtualHostLocalService.fetchVirtualHost(
-				host);
+				GetterUtil.getString(
+					_portal.getForwardedHost(httpServletRequest)));
 
 			if ((virtualHost != null) && (virtualHost.getLayoutSetId() > 0)) {
 				LayoutSet layoutSet = _layoutSetLocalService.fetchLayoutSet(

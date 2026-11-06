@@ -237,7 +237,9 @@ public abstract class BaseBundlePersistentResource
 
 			setProducerBuildURL(producerBuildURL);
 
-			if (JenkinsResultsParserUtil.isURL(producerBuildURL)) {
+			if (JenkinsResultsParserUtil.isURL(producerBuildURL) &&
+				!_isSkipProducerBuild(producerBuildURL)) {
+
 				_updateBuild(producerBuildURL);
 			}
 
@@ -532,7 +534,7 @@ public abstract class BaseBundlePersistentResource
 		String producerBuildURL = getProducerBuildURL();
 
 		if (!JenkinsResultsParserUtil.isURL(producerBuildURL)) {
-			print("WARNING: Unable to find producer build url");
+			print("WARNING: Unable to find producer build URL");
 
 			return;
 		}
@@ -754,11 +756,40 @@ public abstract class BaseBundlePersistentResource
 			return false;
 		}
 
-		JSONObject apiJSONObject = JenkinsAPIUtil.getAPIJSONObject(
-			controllerBuildURL, "result");
+		JSONObject apiJSONObject;
+
+		try {
+			apiJSONObject = JenkinsAPIUtil.getAPIJSONObject(
+				controllerBuildURL, "result");
+		}
+		catch (RuntimeException runtimeException) {
+			if (isBuildDiscarded(controllerBuildURL)) {
+				return true;
+			}
+
+			throw runtimeException;
+		}
 
 		return !JenkinsResultsParserUtil.isNullOrEmpty(
 			apiJSONObject.optString("result"));
+	}
+
+	private boolean _isSkipProducerBuild(String producerBuildURL) {
+		if (Objects.equals(producerBuildURL, _discardedProducerBuildURL)) {
+			return true;
+		}
+
+		if ((_build != null) || (_topLevelBuild == null) ||
+			!isBuildDiscarded(producerBuildURL)) {
+
+			return false;
+		}
+
+		print("WARNING: Producer build " + producerBuildURL + " was discarded");
+
+		_discardedProducerBuildURL = producerBuildURL;
+
+		return true;
 	}
 
 	private boolean _isTransientFailure(Build build) {
@@ -1060,6 +1091,7 @@ public abstract class BaseBundlePersistentResource
 
 	private Build _build;
 	private int _cancelledReinvocationsCount;
+	private String _discardedProducerBuildURL;
 	private int _failCount;
 	private int _failedInvocationsCount;
 	private int _lookupFailuresCount;

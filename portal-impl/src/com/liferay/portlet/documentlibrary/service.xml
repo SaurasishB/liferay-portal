@@ -61,17 +61,8 @@
 
 		<!-- Finder methods -->
 
-		<finder name="GroupId" return-type="Collection">
-			<finder-column name="groupId" />
-		</finder>
-		<finder name="CompanyId" return-type="Collection">
-			<finder-column name="companyId" />
-		</finder>
 		<finder name="RepositoryId" return-type="Collection">
 			<finder-column name="repositoryId" />
-		</finder>
-		<finder name="MimeType" return-type="Collection">
-			<finder-column name="mimeType" />
 		</finder>
 		<finder name="FileEntryTypeId" return-type="Collection">
 			<finder-column name="fileEntryTypeId" />
@@ -95,10 +86,6 @@
 		<finder name="G_F" return-type="Collection">
 			<finder-column name="groupId" />
 			<finder-column arrayable-operator="OR" name="folderId" />
-		</finder>
-		<finder name="R_F" return-type="Collection">
-			<finder-column name="repositoryId" />
-			<finder-column name="folderId" />
 		</finder>
 		<finder name="F_N" return-type="Collection">
 			<finder-column name="folderId" />
@@ -133,12 +120,6 @@
 			<finder-column name="companyId" />
 			<finder-column name="classNameId" />
 			<finder-column name="classPK" />
-		</finder>
-		<finder name="S_L_C1_C2" return-type="Collection">
-			<finder-column name="smallImageId" />
-			<finder-column name="largeImageId" />
-			<finder-column name="custom1ImageId" />
-			<finder-column name="custom2ImageId" />
 		</finder>
 	</entity>
 	<entity external-reference-code="company" human-name="document library file entry metadata" local-service="true" name="DLFileEntryMetadata" remote-service="false" uuid="true">
@@ -265,21 +246,6 @@
 			<finder-column name="groupId" />
 			<finder-column name="folderId" />
 		</finder>
-		<finder name="C_NotS" return-type="Collection">
-			<finder-column name="companyId" />
-			<finder-column comparator="!=" name="status" />
-		</finder>
-		<finder name="G_F_A" return-type="Collection">
-			<finder-column name="groupId" />
-			<finder-column name="folderId" />
-			<finder-column name="active" />
-		</finder>
-		<finder name="G_F_A_S" return-type="Collection">
-			<finder-column name="groupId" />
-			<finder-column name="folderId" />
-			<finder-column name="active" />
-			<finder-column name="status" />
-		</finder>
 	</entity>
 	<entity human-name="document library file version" local-service="true" name="DLFileVersion" remote-service="true" uuid="true">
 
@@ -335,22 +301,12 @@
 
 		<!-- Finder methods -->
 
-		<finder name="CompanyId" return-type="Collection">
-			<finder-column name="companyId" />
-		</finder>
 		<finder name="FileEntryId" return-type="Collection">
 			<finder-column name="fileEntryId" />
-		</finder>
-		<finder name="MimeType" return-type="Collection">
-			<finder-column name="mimeType" />
 		</finder>
 		<finder name="C_SU" return-type="Collection">
 			<finder-column name="companyId" />
 			<finder-column name="storeUUID" />
-		</finder>
-		<finder name="C_NotS" return-type="Collection">
-			<finder-column name="companyId" />
-			<finder-column comparator="!=" name="status" />
 		</finder>
 		<finder name="F_V" return-type="DLFileVersion" unique="true">
 			<finder-column name="fileEntryId" />
@@ -359,10 +315,6 @@
 		<finder name="F_S" return-type="Collection">
 			<finder-column name="fileEntryId" />
 			<finder-column arrayable-operator="OR" name="status" />
-		</finder>
-		<finder name="LtD_S" return-type="Collection">
-			<finder-column comparator="&lt;" name="displayDate" />
-			<finder-column name="status" />
 		</finder>
 		<finder name="G_F_S" return-type="Collection">
 			<finder-column name="groupId" />
@@ -430,9 +382,6 @@
 
 		<!-- Finder methods -->
 
-		<finder name="GroupId" return-type="Collection">
-			<finder-column name="groupId" />
-		</finder>
 		<finder name="CompanyId" return-type="Collection">
 			<finder-column name="companyId" />
 		</finder>
@@ -443,10 +392,6 @@
 			<finder-column name="groupId" />
 			<finder-column name="parentFolderId" />
 		</finder>
-		<finder name="C_NotS" return-type="Collection">
-			<finder-column name="companyId" />
-			<finder-column comparator="!=" name="status" />
-		</finder>
 		<finder name="R_M" return-type="DLFolder">
 			<finder-column name="repositoryId" />
 			<finder-column name="mountPoint" />
@@ -454,10 +399,6 @@
 		<finder name="R_P" return-type="Collection">
 			<finder-column name="repositoryId" />
 			<finder-column name="parentFolderId" />
-		</finder>
-		<finder name="P_N" return-type="Collection">
-			<finder-column name="parentFolderId" />
-			<finder-column name="name" />
 		</finder>
 		<finder db-index="false" name="GtF_C_P" return-type="Collection">
 			<finder-column comparator="&gt;" name="folderId" />
@@ -473,12 +414,6 @@
 			<finder-column name="groupId" />
 			<finder-column name="parentFolderId" />
 			<finder-column name="name" />
-		</finder>
-		<finder db-index="false" name="GtF_C_P_NotS" return-type="Collection">
-			<finder-column comparator="&gt;" name="folderId" />
-			<finder-column name="companyId" />
-			<finder-column name="parentFolderId" />
-			<finder-column comparator="!=" name="status" />
 		</finder>
 		<finder name="G_M_P_H" return-type="Collection">
 			<finder-column name="groupId" />

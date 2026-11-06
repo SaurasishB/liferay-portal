@@ -8,17 +8,25 @@ package com.liferay.portal.security.audit.router.internal.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.configuration.test.util.CompanyConfigurationTemporarySwapper;
 import com.liferay.portal.configuration.test.util.ConfigurationTemporarySwapper;
 import com.liferay.portal.kernel.audit.AuditMessage;
-import com.liferay.portal.kernel.audit.AuditRequestThreadLocal;
+import com.liferay.portal.kernel.audit.AuditRequestContext;
+import com.liferay.portal.kernel.audit.AuditRequestContextThreadLocal;
 import com.liferay.portal.kernel.audit.AuditRouter;
-import com.liferay.portal.kernel.model.Company;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
+import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.model.Role;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
-import com.liferay.portal.kernel.service.CompanyLocalServiceUtil;
+import com.liferay.portal.kernel.service.RoleLocalService;
+import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
-import com.liferay.portal.kernel.test.util.CompanyTestUtil;
+import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
+import com.liferay.portal.kernel.test.util.RoleTestUtil;
+import com.liferay.portal.kernel.test.util.TestPropsValues;
+import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.security.audit.router.configuration.PersistentAuditMessageProcessorConfiguration;
@@ -28,11 +36,10 @@ import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -49,279 +56,19 @@ public class PersistentAuditMessageProcessorTest {
 	public static final AggregateTestRule aggregateTestRule =
 		new LiferayIntegrationTestRule();
 
-	@BeforeClass
-	public static void setUpClass() throws Exception {
-		_company1 = CompanyTestUtil.addCompany();
-		_company2 = CompanyTestUtil.addCompany();
-	}
-
-	@AfterClass
-	public static void tearDownClass() throws Exception {
-		CompanyLocalServiceUtil.deleteCompany(_company1.getCompanyId());
-		CompanyLocalServiceUtil.deleteCompany(_company2.getCompanyId());
-	}
-
 	@FeatureFlag("LPD-6417")
 	@Test
-	public void testProcessCorrelationIdPersistsAfterClear() throws Exception {
-		try (CompanyConfigurationTemporarySwapper
-				companyConfigurationTemporarySwapper =
-					new CompanyConfigurationTemporarySwapper(
-						_company1.getCompanyId(),
-						PersistentAuditMessageProcessorConfiguration.class.
-							getName(),
-						HashMapDictionaryBuilder.<String, Object>put(
-							"bufferSize", 2
-						).put(
-							"flushInterval", _FLUSH_INTERVAL
-						).build())) {
-
-			String correlationId = RandomTestUtil.randomString();
-
-			AuditRequestThreadLocal auditRequestThreadLocal =
-				AuditRequestThreadLocal.getAuditThreadLocal();
-
-			auditRequestThreadLocal.setCorrelationId(correlationId);
-
-			String eventType1 = _createEventType();
-
-			_route(_company1.getCompanyId(), eventType1);
-
-			auditRequestThreadLocal.setCorrelationId(null);
-
-			Assert.assertEquals(
-				0, _getAuditEventsCount(_company1.getCompanyId(), eventType1));
-
-			String eventType2 = _createEventType();
-
-			_route(_company1.getCompanyId(), eventType2);
-
-			AuditEvent auditEvent1 = _getAuditEvent(
-				_company1.getCompanyId(), eventType1);
-			AuditEvent auditEvent2 = _getAuditEvent(
-				_company1.getCompanyId(), eventType2);
-
-			Assert.assertEquals(correlationId, auditEvent1.getCorrelationId());
-			Assert.assertEquals(
-				StringPool.BLANK, auditEvent2.getCorrelationId());
-
-			AuditRequestThreadLocal.removeAuditThreadLocal();
-		}
+	public void testProcess() throws Exception {
+		_testProcessCorrelationIdPersistsAfterClear();
+		_testProcessRolesPersistAfterRoleChanges();
 	}
 
-	@FeatureFlag("LPD-6417")
-	@Test
-	public void testProcessDoesNotDropBufferedEventsOnDisable()
-		throws Exception {
+	private Role _addRole() throws Exception {
+		Role role = RoleTestUtil.addRole(RoleConstants.TYPE_REGULAR);
 
-		String eventType = _createEventType();
+		_roles.add(role);
 
-		try (CompanyConfigurationTemporarySwapper
-				companyConfigurationTemporarySwapper =
-					new CompanyConfigurationTemporarySwapper(
-						_company1.getCompanyId(),
-						PersistentAuditMessageProcessorConfiguration.class.
-							getName(),
-						HashMapDictionaryBuilder.<String, Object>put(
-							"bufferSize", 2000
-						).put(
-							"enabled", true
-						).put(
-							"flushInterval", _FLUSH_INTERVAL
-						).build())) {
-
-			_route(_company1.getCompanyId(), eventType);
-
-			Assert.assertEquals(
-				0, _getAuditEventsCount(_company1.getCompanyId(), eventType));
-		}
-
-		try (CompanyConfigurationTemporarySwapper
-				companyConfigurationTemporarySwapper =
-					new CompanyConfigurationTemporarySwapper(
-						_company1.getCompanyId(),
-						PersistentAuditMessageProcessorConfiguration.class.
-							getName(),
-						HashMapDictionaryBuilder.<String, Object>put(
-							"enabled", false
-						).build())) {
-
-			_route(_company1.getCompanyId(), _createEventType());
-
-			Assert.assertEquals(
-				0, _getAuditEventsCount(_company1.getCompanyId(), eventType));
-		}
-
-		try (CompanyConfigurationTemporarySwapper
-				companyConfigurationTemporarySwapper =
-					new CompanyConfigurationTemporarySwapper(
-						_company1.getCompanyId(),
-						PersistentAuditMessageProcessorConfiguration.class.
-							getName(),
-						HashMapDictionaryBuilder.<String, Object>put(
-							"bufferSize", 1
-						).put(
-							"enabled", true
-						).put(
-							"flushInterval", _FLUSH_INTERVAL
-						).build())) {
-
-			_route(_company1.getCompanyId(), _createEventType());
-
-			Assert.assertEquals(
-				1, _getAuditEventsCount(_company1.getCompanyId(), eventType));
-		}
-	}
-
-	@FeatureFlag("LPD-6417")
-	@Test
-	public void testProcessDoesNotDropBufferedEventsOnReconfigure()
-		throws Exception {
-
-		String eventType = _createEventType();
-
-		try (CompanyConfigurationTemporarySwapper
-				companyConfigurationTemporarySwapper =
-					new CompanyConfigurationTemporarySwapper(
-						_company1.getCompanyId(),
-						PersistentAuditMessageProcessorConfiguration.class.
-							getName(),
-						HashMapDictionaryBuilder.<String, Object>put(
-							"bufferSize", 2000
-						).put(
-							"flushInterval", _FLUSH_INTERVAL
-						).build())) {
-
-			_route(_company1.getCompanyId(), eventType);
-
-			Assert.assertEquals(
-				0, _getAuditEventsCount(_company1.getCompanyId(), eventType));
-		}
-
-		try (CompanyConfigurationTemporarySwapper
-				companyConfigurationTemporarySwapper =
-					new CompanyConfigurationTemporarySwapper(
-						_company1.getCompanyId(),
-						PersistentAuditMessageProcessorConfiguration.class.
-							getName(),
-						HashMapDictionaryBuilder.<String, Object>put(
-							"bufferSize", 1
-						).put(
-							"flushInterval", _FLUSH_INTERVAL
-						).build())) {
-
-			_route(_company1.getCompanyId(), _createEventType());
-
-			Assert.assertEquals(
-				1, _getAuditEventsCount(_company1.getCompanyId(), eventType));
-		}
-	}
-
-	@FeatureFlag("LPD-6417")
-	@Test
-	public void testProcessWhenBufferSizesAreDifferent() throws Exception {
-		try (CompanyConfigurationTemporarySwapper
-				companyConfigurationTemporarySwapper1 =
-					new CompanyConfigurationTemporarySwapper(
-						_company1.getCompanyId(),
-						PersistentAuditMessageProcessorConfiguration.class.
-							getName(),
-						HashMapDictionaryBuilder.<String, Object>put(
-							"bufferSize", 1
-						).put(
-							"flushInterval", _FLUSH_INTERVAL
-						).build());
-			CompanyConfigurationTemporarySwapper
-				companyConfigurationTemporarySwapper2 =
-					new CompanyConfigurationTemporarySwapper(
-						_company2.getCompanyId(),
-						PersistentAuditMessageProcessorConfiguration.class.
-							getName(),
-						HashMapDictionaryBuilder.<String, Object>put(
-							"bufferSize", 2000
-						).put(
-							"flushInterval", _FLUSH_INTERVAL
-						).build())) {
-
-			String eventType1 = _createEventType();
-			String eventType2 = _createEventType();
-
-			_route(_company1.getCompanyId(), eventType1);
-			_route(_company2.getCompanyId(), eventType2);
-
-			Assert.assertEquals(
-				1, _getAuditEventsCount(_company1.getCompanyId(), eventType1));
-			Assert.assertEquals(
-				0, _getAuditEventsCount(_company2.getCompanyId(), eventType2));
-		}
-	}
-
-	@FeatureFlag("LPD-6417")
-	@Test
-	public void testProcessWhenEnabledValuesAreDifferent() throws Exception {
-		try (CompanyConfigurationTemporarySwapper
-				companyConfigurationTemporarySwapper1 =
-					new CompanyConfigurationTemporarySwapper(
-						_company1.getCompanyId(),
-						PersistentAuditMessageProcessorConfiguration.class.
-							getName(),
-						HashMapDictionaryBuilder.<String, Object>put(
-							"bufferSize", 1
-						).put(
-							"enabled", true
-						).build());
-			CompanyConfigurationTemporarySwapper
-				companyConfigurationTemporarySwapper2 =
-					new CompanyConfigurationTemporarySwapper(
-						_company2.getCompanyId(),
-						PersistentAuditMessageProcessorConfiguration.class.
-							getName(),
-						HashMapDictionaryBuilder.<String, Object>put(
-							"bufferSize", 1
-						).put(
-							"enabled", false
-						).build())) {
-
-			String eventType1 = _createEventType();
-			String eventType2 = _createEventType();
-
-			_route(_company1.getCompanyId(), eventType1);
-			_route(_company2.getCompanyId(), eventType2);
-
-			Assert.assertEquals(
-				1, _getAuditEventsCount(_company1.getCompanyId(), eventType1));
-			Assert.assertEquals(
-				0, _getAuditEventsCount(_company2.getCompanyId(), eventType2));
-		}
-	}
-
-	@FeatureFlag(enable = false, value = "LPD-6417")
-	@Test
-	public void testProcessWhenFeatureFlagIsDisabled() throws Exception {
-		try (CompanyConfigurationTemporarySwapper
-				companyConfigurationTemporarySwapper =
-					new CompanyConfigurationTemporarySwapper(
-						_company2.getCompanyId(),
-						PersistentAuditMessageProcessorConfiguration.class.
-							getName(),
-						HashMapDictionaryBuilder.<String, Object>put(
-							"enabled", false
-						).build());
-			ConfigurationTemporarySwapper configurationTemporarySwapper =
-				new ConfigurationTemporarySwapper(
-					PersistentAuditMessageProcessorConfiguration.class.
-						getName(),
-					HashMapDictionaryBuilder.<String, Object>put(
-						"bufferSize", 1
-					).build())) {
-
-			String eventType = _createEventType();
-
-			_route(_company2.getCompanyId(), eventType);
-
-			Assert.assertEquals(
-				1, _getAuditEventsCount(_company2.getCompanyId(), eventType));
-		}
+		return role;
 	}
 
 	private String _createEventType() {
@@ -351,26 +98,167 @@ public class PersistentAuditMessageProcessorTest {
 		}
 	}
 
-	private void _route(long companyId, String eventType) throws Exception {
+	private void _route(long companyId, long userId, String eventType)
+		throws Exception {
+
 		try (SafeCloseable safeCloseable =
 				CompanyThreadLocal.setCompanyIdWithSafeCloseable(companyId)) {
 
 			_auditRouter.route(
 				new AuditMessage(
-					companyId, RandomTestUtil.randomLong(),
-					RandomTestUtil.randomString(), eventType));
+					companyId, userId, RandomTestUtil.randomString(),
+					eventType));
+		}
+	}
+
+	private void _route(long companyId, String eventType) throws Exception {
+		_route(companyId, RandomTestUtil.randomLong(), eventType);
+	}
+
+	private void _testProcessCorrelationIdPersistsAfterClear()
+		throws Exception {
+
+		try (ConfigurationTemporarySwapper configurationTemporarySwapper =
+				new ConfigurationTemporarySwapper(
+					PersistentAuditMessageProcessorConfiguration.class.
+						getName(),
+					HashMapDictionaryBuilder.<String, Object>put(
+						"bufferSize", 1
+					).build())) {
+
+			_route(TestPropsValues.getCompanyId(), _createEventType());
+		}
+
+		try (ConfigurationTemporarySwapper configurationTemporarySwapper =
+				new ConfigurationTemporarySwapper(
+					PersistentAuditMessageProcessorConfiguration.class.
+						getName(),
+					HashMapDictionaryBuilder.<String, Object>put(
+						"bufferSize", 2
+					).put(
+						"flushInterval", _FLUSH_INTERVAL
+					).build())) {
+
+			String correlationId = RandomTestUtil.randomString();
+
+			AuditRequestContext auditRequestContext =
+				AuditRequestContextThreadLocal.getAuditRequestContext();
+
+			auditRequestContext.setCorrelationId(correlationId);
+
+			String eventType1 = _createEventType();
+
+			_route(TestPropsValues.getCompanyId(), eventType1);
+
+			auditRequestContext.setCorrelationId(null);
+
+			Assert.assertEquals(
+				0,
+				_getAuditEventsCount(
+					TestPropsValues.getCompanyId(), eventType1));
+
+			String eventType2 = _createEventType();
+
+			_route(TestPropsValues.getCompanyId(), eventType2);
+
+			AuditEvent auditEvent1 = _getAuditEvent(
+				TestPropsValues.getCompanyId(), eventType1);
+			AuditEvent auditEvent2 = _getAuditEvent(
+				TestPropsValues.getCompanyId(), eventType2);
+
+			Assert.assertEquals(correlationId, auditEvent1.getCorrelationId());
+			Assert.assertEquals(
+				StringPool.BLANK, auditEvent2.getCorrelationId());
+
+			AuditRequestContextThreadLocal.removeAuditRequestContext();
+		}
+	}
+
+	private void _testProcessRolesPersistAfterRoleChanges() throws Exception {
+		_user = UserTestUtil.addUser();
+
+		Role role1 = _addRole();
+		Role role2 = _addRole();
+
+		_userLocalService.addRoleUser(role1.getRoleId(), _user.getUserId());
+		_userLocalService.addRoleUser(role2.getRoleId(), _user.getUserId());
+
+		String eventType = _createEventType();
+		String role1Name = role1.getName();
+		Role role3 = _addRole();
+
+		try (ConfigurationTemporarySwapper configurationTemporarySwapper =
+				new ConfigurationTemporarySwapper(
+					PersistentAuditMessageProcessorConfiguration.class.
+						getName(),
+					HashMapDictionaryBuilder.<String, Object>put(
+						"bufferSize", 2000
+					).put(
+						"flushInterval", _FLUSH_INTERVAL
+					).build())) {
+
+			_route(
+				TestPropsValues.getCompanyId(), _user.getUserId(), eventType);
+
+			_userLocalService.deleteRoleUser(
+				role1.getRoleId(), _user.getUserId());
+
+			role1.setName(RandomTestUtil.randomString());
+
+			_roleLocalService.updateRole(role1);
+
+			_roleLocalService.deleteRole(role2);
+
+			_userLocalService.addRoleUser(role3.getRoleId(), _user.getUserId());
+
+			Assert.assertEquals(
+				0,
+				_getAuditEventsCount(
+					TestPropsValues.getCompanyId(), eventType));
+		}
+
+		try (ConfigurationTemporarySwapper configurationTemporarySwapper =
+				new ConfigurationTemporarySwapper(
+					PersistentAuditMessageProcessorConfiguration.class.
+						getName(),
+					HashMapDictionaryBuilder.<String, Object>put(
+						"bufferSize", 1
+					).put(
+						"flushInterval", _FLUSH_INTERVAL
+					).build())) {
+
+			_route(TestPropsValues.getCompanyId(), _createEventType());
+
+			AuditEvent auditEvent = _getAuditEvent(
+				TestPropsValues.getCompanyId(), eventType);
+
+			List<String> roleNames = JSONUtil.toStringList(
+				JSONFactoryUtil.createJSONArray(auditEvent.getRoles()));
+
+			Assert.assertTrue(roleNames.contains(role2.getName()));
+			Assert.assertFalse(roleNames.contains(role3.getName()));
+			Assert.assertTrue(roleNames.contains(role1Name));
 		}
 	}
 
 	private static final long _FLUSH_INTERVAL = 86400000;
-
-	private static Company _company1;
-	private static Company _company2;
 
 	@Inject
 	private AuditEventLocalService _auditEventLocalService;
 
 	@Inject
 	private AuditRouter _auditRouter;
+
+	@Inject
+	private RoleLocalService _roleLocalService;
+
+	@DeleteAfterTestRun
+	private final List<Role> _roles = new ArrayList<>();
+
+	@DeleteAfterTestRun
+	private User _user;
+
+	@Inject
+	private UserLocalService _userLocalService;
 
 }

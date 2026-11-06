@@ -181,13 +181,6 @@ public class CommercePriceListLocalServiceWrapper
 			commercePriceListId);
 	}
 
-	@Override
-	public void deleteCommercePriceLists(long companyId)
-		throws com.liferay.portal.kernel.exception.PortalException {
-
-		_commercePriceListLocalService.deleteCommercePriceLists(companyId);
-	}
-
 	/**
 	 * @throws PortalException
 	 */
@@ -543,14 +536,6 @@ public class CommercePriceListLocalServiceWrapper
 
 	@Override
 	public java.util.List<CommercePriceList> getCommercePriceLists(
-		long companyId, int start, int end) {
-
-		return _commercePriceListLocalService.getCommercePriceLists(
-			companyId, start, end);
-	}
-
-	@Override
-	public java.util.List<CommercePriceList> getCommercePriceLists(
 		long[] groupIds, long companyId, int start, int end) {
 
 		return _commercePriceListLocalService.getCommercePriceLists(
@@ -748,14 +733,6 @@ public class CommercePriceListLocalServiceWrapper
 
 	@Override
 	public int getCommercePriceListsCount(
-		long commercePricingClassId, String name) {
-
-		return _commercePriceListLocalService.getCommercePriceListsCount(
-			commercePricingClassId, name);
-	}
-
-	@Override
-	public int getCommercePriceListsCount(
 		long[] groupIds, long companyId, int status) {
 
 		return _commercePriceListLocalService.getCommercePriceListsCount(
@@ -816,14 +793,6 @@ public class CommercePriceListLocalServiceWrapper
 		com.liferay.portal.kernel.search.SearchContext searchContext) {
 
 		return _commercePriceListLocalService.search(searchContext);
-	}
-
-	@Override
-	public java.util.List<CommercePriceList> searchByCommercePricingClassId(
-		long commercePricingClassId, String name, int start, int end) {
-
-		return _commercePriceListLocalService.searchByCommercePricingClassId(
-			commercePricingClassId, name, start, end);
 	}
 
 	@Override
@@ -904,16 +873,6 @@ public class CommercePriceListLocalServiceWrapper
 	}
 
 	@Override
-	public void updateCommercePriceListCurrencies(
-			long companyId, String oldCommerceCurrencyCode,
-			String newCommerceCurrencyCode)
-		throws com.liferay.portal.kernel.exception.PortalException {
-
-		_commercePriceListLocalService.updateCommercePriceListCurrencies(
-			companyId, oldCommerceCurrencyCode, newCommerceCurrencyCode);
-	}
-
-	@Override
 	public CommercePriceList updateExternalReferenceCode(
 			CommercePriceList commercePriceList, String externalReferenceCode)
 		throws com.liferay.portal.kernel.exception.PortalException {
@@ -974,4 +933,4 @@ public class CommercePriceListLocalServiceWrapper
 	private CommercePriceListLocalService _commercePriceListLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1386049642
+// LIFERAY-SERVICE-BUILDER-HASH:-276696647

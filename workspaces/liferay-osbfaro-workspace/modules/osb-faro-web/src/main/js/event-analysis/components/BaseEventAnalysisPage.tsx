@@ -1,11 +1,12 @@
 import BaseEditPage from 'shared/components/base-edit-page';
-import ClayLayout from '@clayui/layout';
-import ConditionsPanel from '../components/event-analysis-editor/event-analysis-builder/ConditionsPanel';
+import ConditionsPanel from 'shared/components/conditions-panel/ConditionsPanel';
 import DownloadPDFReport, {
 	ReportContainer,
 } from 'shared/components/download-report/DownloadPDFReport';
+import EventAnalysisBuilder from '../components/event-analysis-editor/event-analysis-builder';
 import EventAnalysisEditor from '../components/event-analysis-editor';
 import Form from 'shared/components/form';
+import LoadingModal from 'shared/components/modals/LoadingModal';
 import NavigationWarning from 'shared/components/NavigationWarning';
 import React, {useMemo, useState} from 'react';
 import {addAlert} from 'shared/actions/alerts';
@@ -16,7 +17,6 @@ import {
 	Event,
 	Filters,
 } from 'event-analysis/utils/types';
-import {close, modalTypes, open} from 'shared/actions/modals';
 import {
 	CreateEventAnalysisMutation,
 	EventAnalysisMutationData,
@@ -28,11 +28,13 @@ import {getSafeRangeSelectors} from 'shared/util/util';
 import {hasChanges} from 'shared/util/react';
 import {omit} from 'lodash';
 import {Routes, toRoute} from 'shared/util/router';
+import {SortableChipTypes} from '../components/event-analysis-editor/event-analysis-builder/SortableChipTypes';
 import {useAttributes} from '../components/event-analysis-editor/context/attributes';
 import {useChannelContext} from 'shared/context/channel';
 import {useCurrentUser} from 'shared/hooks/useCurrentUser';
 import {useDataSources} from 'shared/context/dataSources';
 import {useDispatch} from 'react-redux';
+import {useModal} from '@clayui/modal';
 import {useField} from 'formik';
 import {useHistoryAdapter} from 'shared/hooks/useHistoryAdapter';
 import {useMutation} from '@apollo/client';
@@ -56,6 +58,11 @@ const ERRORS = {
 		),
 	},
 };
+
+const CONDITION_DRAG_TYPES = [
+	SortableChipTypes.Breakdown,
+	SortableChipTypes.Filter,
+];
 
 const FORM_ID = 'eventAnalysisForm';
 
@@ -93,6 +100,8 @@ const BaseEventAnalysisPage: React.FC<IBaseEventAnalysisPageProps> = ({
 	rangeSelectors: rangeSelectorsProp,
 }) => {
 	const dispatch = useDispatch();
+
+	const loadingModal = useModal();
 
 	useReportContainer(ReportContainer.EventAnalysisPage);
 
@@ -145,20 +154,7 @@ const BaseEventAnalysisPage: React.FC<IBaseEventAnalysisPageProps> = ({
 		{name}: {name: string},
 		{setSubmitting}: {setSubmitting: (submitting: boolean) => void}
 	) => {
-		dispatch(
-			open(
-				modalTypes.LOADING_MODAL,
-				{
-					message: Liferay.Language.get(
-						'this-will-only-take-a-moment'
-					),
-					title: eventAnalysisId
-						? Liferay.Language.get('updating')
-						: Liferay.Language.get('creating'),
-				},
-				{closeOnBlur: false}
-			)
-		);
+		loadingModal.onOpenChange(true);
 
 		saveEventAnalysis({
 			variables: {
@@ -183,7 +179,7 @@ const BaseEventAnalysisPage: React.FC<IBaseEventAnalysisPageProps> = ({
 				setSubmitting(false);
 				setSubmitted(true);
 
-				dispatch(close());
+				loadingModal.onOpenChange(false);
 
 				history.push(
 					toRoute(Routes.EVENT_ANALYSIS, {
@@ -210,7 +206,7 @@ const BaseEventAnalysisPage: React.FC<IBaseEventAnalysisPageProps> = ({
 					setSubmitting(false);
 					setSubmitted(false);
 
-					dispatch(close());
+					loadingModal.onOpenChange(false);
 
 					const {alertType, message} =
 						ERRORS[graphQLErrors[0].messageKey];
@@ -262,122 +258,166 @@ const BaseEventAnalysisPage: React.FC<IBaseEventAnalysisPageProps> = ({
 		setType(type);
 	};
 
-	return (
-		<BaseEditPage documentTitle={Liferay.Language.get('event-analysis')}>
-			<div
-				className="event-analysis-page"
-				id={ReportContainer.EventAnalysisPage}
+	// Built outside the form's render prop so typing the title does not re-render them
+
+	const conditionsPanel = (
+		<BaseEditPage.Sidebar
+			label={Liferay.Language.get('conditions-library')}
+			position="left"
+		>
+			<ConditionsPanel
+				dragTypes={CONDITION_DRAG_TYPES}
+				title={Liferay.Language.get('conditions-library')}
 			>
-				<Form
-					initialValues={{
-						name: initialName,
-					}}
-					onSubmit={handleSubmit}
-				>
-					{({dirty, handleSubmit, isSubmitting, values: {name}}) => {
-						const hasChanges =
-							attributesContextChanged ||
-							dirty ||
-							compareToPreviousChanged ||
-							eventChanged ||
-							rangeSelectorsChanged;
-
-						const listURL = toRoute(Routes.EVENT_ANALYSIS, {
-							channelId,
-							groupId,
-						});
-
-						return (
-							<>
-								<BaseEditPage.Toolbar
-									backURL={listURL}
-									title={
-										eventAnalysisId
-											? Liferay.Language.get(
-													'edit-event-analysis'
-												)
-											: Liferay.Language.get(
-													'new-event-analysis'
-												)
-									}
-								>
-									<BaseEditPage.Toolbar.Item>
-										<DownloadPDFReport
-											disabled={!!dataSourceStates.empty}
-											infoMessage={Liferay.Language.get(
-												'the-report-will-be-downloaded-exactly-as-it-is-displayed-on-your-screen.-please-verify-if-the-desired-tabs-and-filters-are-selected-before-proceeding'
-											)}
-											subtitle={selectedChannel?.name}
-											title={Liferay.Language.get(
-												'event-analysis-report'
-											)}
-										/>
-									</BaseEditPage.Toolbar.Item>
-
-									<BaseEditPage.Toolbar.Divider />
-
-									<BaseEditPage.Toolbar.Cancel
-										href={listURL}
-									/>
-
-									<BaseEditPage.Toolbar.Save
-										disabled={
-											!name ||
-											!event?.id ||
-											!hasChanges ||
-											isSubmitting
-										}
-										form={FORM_ID}
-										label={Liferay.Language.get(
-											'save-analysis'
-										)}
-										type="submit"
-									/>
-								</BaseEditPage.Toolbar>
-
-								<Form.Form id={FORM_ID} onSubmit={handleSubmit}>
-									<NavigationWarning
-										when={
-											!submitted &&
-											hasChanges &&
-											!isSubmitting
-										}
-									/>
-
-									<ClayLayout.ContainerFluid
-										className="pb-4 pt-4"
-										size="xl"
-									>
-										<EventAnalysisTitle />
-									</ClayLayout.ContainerFluid>
-								</Form.Form>
-							</>
-						);
-					}}
-				</Form>
-
-				<ConditionsPanel
+				<EventAnalysisBuilder
 					event={event ?? undefined}
 					onEventChange={onEventChange}
 				/>
+			</ConditionsPanel>
+		</BaseEditPage.Sidebar>
+	);
 
-				<ClayLayout.ContainerFluid
-					className="page-container pb-4"
-					size="xl"
+	const editor = (
+		<EventAnalysisEditor
+			channelId={channelId}
+			compareToPrevious={compareToPrevious}
+			event={event}
+			onCompareToPreviousChange={onCompareToPreviousChange}
+			onRangeSelectorsChange={onRangeSelectorsChange}
+			onTypeChange={onTypeChange}
+			rangeSelectors={rangeSelectors!}
+			type={type}
+		/>
+	);
+
+	return (
+		<>
+			<BaseEditPage
+				documentTitle={Liferay.Language.get('event-analysis')}
+			>
+				<div
+					className="d-flex flex-column"
+					id={ReportContainer.EventAnalysisPage}
 				>
-					<EventAnalysisEditor
-						channelId={channelId}
-						compareToPrevious={compareToPrevious}
-						event={event!}
-						onCompareToPreviousChange={onCompareToPreviousChange}
-						onRangeSelectorsChange={onRangeSelectorsChange}
-						onTypeChange={onTypeChange}
-						rangeSelectors={rangeSelectors!}
-						type={type}
-					/>
-				</ClayLayout.ContainerFluid>
-			</div>
-		</BaseEditPage>
+					<Form
+						initialValues={{
+							name: initialName,
+						}}
+						onSubmit={handleSubmit}
+					>
+						{({
+							dirty,
+							handleSubmit,
+							isSubmitting,
+							values: {name},
+						}) => {
+							const hasChanges =
+								attributesContextChanged ||
+								dirty ||
+								compareToPreviousChanged ||
+								eventChanged ||
+								rangeSelectorsChanged;
+
+							const listURL = toRoute(Routes.EVENT_ANALYSIS, {
+								channelId,
+								groupId,
+							});
+
+							return (
+								<>
+									<BaseEditPage.Toolbar
+										backURL={listURL}
+										title={
+											eventAnalysisId
+												? Liferay.Language.get(
+														'edit-event-analysis'
+													)
+												: Liferay.Language.get(
+														'new-event-analysis'
+													)
+										}
+									>
+										<BaseEditPage.Toolbar.Item>
+											<DownloadPDFReport
+												disabled={
+													!!dataSourceStates.empty
+												}
+												infoMessage={Liferay.Language.get(
+													'the-report-will-be-downloaded-exactly-as-it-is-displayed-on-your-screen.-please-verify-if-the-desired-tabs-and-filters-are-selected-before-proceeding'
+												)}
+												subtitle={selectedChannel?.name}
+												title={Liferay.Language.get(
+													'event-analysis-report'
+												)}
+											/>
+										</BaseEditPage.Toolbar.Item>
+
+										<BaseEditPage.Toolbar.Divider />
+
+										<BaseEditPage.Toolbar.Cancel
+											href={listURL}
+										/>
+
+										<BaseEditPage.Toolbar.Save
+											disabled={
+												!name ||
+												!event?.id ||
+												!hasChanges ||
+												isSubmitting
+											}
+											form={FORM_ID}
+											label={Liferay.Language.get(
+												'save-analysis'
+											)}
+											type="submit"
+										/>
+									</BaseEditPage.Toolbar>
+
+									<BaseEditPage.Body>
+										{conditionsPanel}
+
+										<BaseEditPage.Main className="page-container">
+											<Form.Form
+												id={FORM_ID}
+												onSubmit={handleSubmit}
+											>
+												<NavigationWarning
+													when={
+														!submitted &&
+														hasChanges &&
+														!isSubmitting
+													}
+												/>
+
+												<div className="mb-4">
+													<EventAnalysisTitle />
+												</div>
+											</Form.Form>
+
+											{editor}
+										</BaseEditPage.Main>
+									</BaseEditPage.Body>
+								</>
+							);
+						}}
+					</Form>
+				</div>
+			</BaseEditPage>
+
+			{loadingModal.open && (
+				<LoadingModal
+					message={Liferay.Language.get(
+						'this-will-only-take-a-moment'
+					)}
+					observer={loadingModal.observer}
+					title={
+						eventAnalysisId
+							? Liferay.Language.get('updating')
+							: Liferay.Language.get('creating')
+					}
+				/>
+			)}
+		</>
 	);
 };
 

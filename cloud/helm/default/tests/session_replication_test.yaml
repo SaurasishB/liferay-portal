@@ -8,6 +8,28 @@ tests:
     -   asserts:
             -   matchRegex:
                     path: spec.template.spec.initContainers[?(@.name=="liferay-prepopulate-data")].command[2]
+                    pattern: timeout="1200000"
+        documentSelector:
+            path: kind
+            skipEmptyTemplates: true
+            value: StatefulSet
+        it: Applies a replication transport timeout of a million milliseconds or more as an integer
+        set:
+            tomcat.sessionReplication.transportTimeoutMs: 1200000
+    -   asserts:
+            -   matchRegex:
+                    path: spec.template.spec.initContainers[?(@.name=="liferay-prepopulate-data")].command[2]
+                    pattern: timeout="25000"
+        documentSelector:
+            path: kind
+            skipEmptyTemplates: true
+            value: StatefulSet
+        it: Applies the configured replication transport timeout
+        set:
+            tomcat.sessionReplication.transportTimeoutMs: 25000
+    -   asserts:
+            -   matchRegex:
+                    path: spec.template.spec.initContainers[?(@.name=="liferay-prepopulate-data")].command[2]
                     pattern: com\.liferay\.support\.tomcat\.session\.LiferayDeltaManager
             -   matchRegex:
                     path: spec.template.spec.initContainers[?(@.name=="liferay-prepopulate-data")].command[2]
@@ -35,6 +57,26 @@ tests:
             skipEmptyTemplates: true
             value: StatefulSet
         it: Declares both replication ports so the NetworkPolicy can name them
+    -   asserts:
+            -   matchRegex:
+                    path: spec.template.spec.initContainers[?(@.name=="liferay-prepopulate-data")].command[2]
+                    pattern: timeout="300000"
+        documentSelector:
+            path: kind
+            skipEmptyTemplates: true
+            value: StatefulSet
+        it: Falls back to the default replication transport timeout when the session replication block is removed
+        set:
+            tomcat.sessionReplication: null
+    -   asserts:
+            -   matchRegex:
+                    path: spec.template.spec.initContainers[?(@.name=="liferay-prepopulate-data")].command[2]
+                    pattern: timeout="300000"
+        documentSelector:
+            path: kind
+            skipEmptyTemplates: true
+            value: StatefulSet
+        it: Keeps the five minute replication transport timeout by default
     -   asserts:
             -   matchRegex:
                     path: spec.template.spec.initContainers[?(@.name=="liferay-prepopulate-data")].command[2]

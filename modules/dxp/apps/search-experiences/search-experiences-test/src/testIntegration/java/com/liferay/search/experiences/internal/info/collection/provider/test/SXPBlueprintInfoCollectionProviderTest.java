@@ -10,12 +10,18 @@ import com.liferay.info.collection.provider.CollectionQuery;
 import com.liferay.info.collection.provider.InfoCollectionProvider;
 import com.liferay.info.item.InfoItemServiceRegistry;
 import com.liferay.info.pagination.InfoPage;
+import com.liferay.info.pagination.Pagination;
 import com.liferay.journal.constants.JournalFolderConstants;
 import com.liferay.journal.model.JournalArticle;
 import com.liferay.journal.test.util.JournalTestUtil;
+import com.liferay.object.constants.ObjectDefinitionConstants;
+import com.liferay.object.model.ObjectDefinition;
+import com.liferay.object.test.util.ObjectDefinitionTestUtil;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.dao.orm.QueryUtil;
+import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
@@ -117,6 +123,51 @@ public class SXPBlueprintInfoCollectionProviderTest {
 	}
 
 	@Test
+	public void testGetCollectionInfoPageWithDisplayAllPagination()
+		throws Exception {
+
+		SXPBlueprint sxpBlueprint = _sxpBlueprintLocalService.addSXPBlueprint(
+			RandomTestUtil.randomString(), TestPropsValues.getUserId(),
+			_readJSON("configurationJSON"), null, null, StringPool.BLANK,
+			Collections.singletonMap(
+				LocaleUtil.US, RandomTestUtil.randomString()),
+			_serviceContext);
+
+		InfoCollectionProvider<JournalArticle> infoCollectionProvider =
+			_infoItemServiceRegistry.getInfoItemService(
+				InfoCollectionProvider.class,
+				StringBundler.concat(
+					SXPBlueprint.class.getName(), StringPool.UNDERLINE,
+					sxpBlueprint.getCompanyId(), StringPool.UNDERLINE,
+					sxpBlueprint.getExternalReferenceCode()));
+
+		CollectionQuery collectionQuery = new CollectionQuery();
+
+		collectionQuery.setPagination(
+			Pagination.of(QueryUtil.ALL_POS, QueryUtil.ALL_POS));
+
+		ServiceContextThreadLocal.pushServiceContext(_serviceContext);
+
+		InfoPage<JournalArticle> infoPage =
+			infoCollectionProvider.getCollectionInfoPage(collectionQuery);
+
+		ServiceContextThreadLocal.popServiceContext();
+
+		List<? extends JournalArticle> journalArticles =
+			infoPage.getPageItems();
+
+		JournalArticle journalArticle = journalArticles.get(0);
+
+		Assert.assertEquals(
+			_journalArticle.getPrimaryKey(), journalArticle.getPrimaryKey());
+
+		Assert.assertEquals(
+			journalArticles.toString(), 1, journalArticles.size());
+
+		Assert.assertEquals(1, infoPage.getTotalCount());
+	}
+
+	@Test
 	public void testIsAvailable() throws Exception {
 		SXPBlueprint sxpBlueprint = _sxpBlueprintLocalService.addSXPBlueprint(
 			RandomTestUtil.randomString(), TestPropsValues.getUserId(),
@@ -143,6 +194,62 @@ public class SXPBlueprintInfoCollectionProviderTest {
 		}
 	}
 
+	@Test
+	public void testIsAvailableWithMissingObjectDefinition() throws Exception {
+		String className =
+			ObjectDefinitionConstants.
+				CLASS_NAME_PREFIX_CUSTOM_OBJECT_DEFINITION +
+					RandomTestUtil.randomLong();
+
+		InfoCollectionProvider<?> infoCollectionProvider =
+			_getInfoCollectionProvider(className);
+
+		Assert.assertEquals(
+			className, infoCollectionProvider.getCollectionItemClassName());
+		Assert.assertFalse(infoCollectionProvider.isAvailable());
+	}
+
+	@Test
+	public void testIsAvailableWithObjectDefinition() throws Exception {
+		_objectDefinition =
+			ObjectDefinitionTestUtil.addCustomObjectDefinition();
+
+		InfoCollectionProvider<?> infoCollectionProvider =
+			_getInfoCollectionProvider(_objectDefinition.getClassName());
+
+		Assert.assertEquals(
+			_objectDefinition.getClassName(),
+			infoCollectionProvider.getCollectionItemClassName());
+		Assert.assertTrue(infoCollectionProvider.isAvailable());
+	}
+
+	private InfoCollectionProvider<?> _getInfoCollectionProvider(
+			String searchableAssetType)
+		throws Exception {
+
+		SXPBlueprint sxpBlueprint = _sxpBlueprintLocalService.addSXPBlueprint(
+			RandomTestUtil.randomString(), TestPropsValues.getUserId(),
+			JSONUtil.put(
+				"generalConfiguration",
+				JSONUtil.put(
+					"collectionProvider", true
+				).put(
+					"searchableAssetTypes", JSONUtil.put(searchableAssetType)
+				)
+			).toString(),
+			null, null, StringPool.BLANK,
+			Collections.singletonMap(
+				LocaleUtil.US, RandomTestUtil.randomString()),
+			_serviceContext);
+
+		return _infoItemServiceRegistry.getInfoItemService(
+			InfoCollectionProvider.class,
+			StringBundler.concat(
+				SXPBlueprint.class.getName(), StringPool.UNDERLINE,
+				sxpBlueprint.getCompanyId(), StringPool.UNDERLINE,
+				sxpBlueprint.getExternalReferenceCode()));
+	}
+
 	private String _readJSON(String name) {
 		return StringUtil.read(
 			_clazz,
@@ -158,6 +265,9 @@ public class SXPBlueprintInfoCollectionProviderTest {
 
 	@DeleteAfterTestRun
 	private JournalArticle _journalArticle;
+
+	@DeleteAfterTestRun
+	private ObjectDefinition _objectDefinition;
 
 	private ServiceContext _serviceContext;
 

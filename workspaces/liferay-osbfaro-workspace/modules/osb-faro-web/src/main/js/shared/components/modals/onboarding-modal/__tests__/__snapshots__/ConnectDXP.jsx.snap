@@ -5,13 +5,17 @@ exports[`ConnectDXP should query dataSources without credentialsType 1`] = `
   <div
     class="modal-header"
   >
+    <h1
+      class="modal-title"
+      tabindex="-1"
+    />
     <button
       aria-label="Close"
-      class="button-root close btn btn-secondary"
+      class="close btn btn-unstyled"
       type="button"
     >
       <svg
-        class="lexicon-icon lexicon-icon-times icon-root"
+        class="lexicon-icon lexicon-icon-times"
         role="presentation"
       >
         <use
@@ -24,38 +28,29 @@ exports[`ConnectDXP should query dataSources without credentialsType 1`] = `
     class="modal-body"
   >
     <div
-      class="analytics-to-dxp-container"
+      class="align-items-center d-flex justify-content-around mb-5 w-100"
     >
       <svg
         class="lexicon-icon lexicon-icon-dxp_icon icon-root icon-size-xl"
+        data-file="dxp_icon.svg"
         role="presentation"
-      >
-        <use
-          href="#dxp_icon"
-        />
-      </svg>
+      />
       <svg
-        class="lexicon-icon lexicon-icon-ac_horizontal_arrows arrows icon-root icon-size-lg connected"
+        class="lexicon-icon lexicon-icon-ac_horizontal_arrows icon-root icon-size-lg text-success"
+        data-file="ac_horizontal_arrows.svg"
         role="presentation"
-      >
-        <use
-          href="#ac_horizontal_arrows"
-        />
-      </svg>
+      />
       <svg
         class="lexicon-icon lexicon-icon-ac_logo icon-root icon-size-xl"
+        data-file="ac_logo.svg"
         role="presentation"
-      >
-        <use
-          href="#ac_logo"
-        />
-      </svg>
+      />
     </div>
     <div
       class="text-center mb-4"
     >
       <span
-        class="text-10 font-weight-bold"
+        class="text-6 font-weight-bold"
       >
         Your DXP Instance Is Connected to Analytics Cloud
       </span>
@@ -71,7 +66,7 @@ exports[`ConnectDXP should query dataSources without credentialsType 1`] = `
             class="autofit-col autofit-col-expand"
           >
             <span
-              class="text-3 font-weight-bold"
+              class="text-4 font-weight-bold"
             >
               Sites
             </span>
@@ -80,7 +75,7 @@ exports[`ConnectDXP should query dataSources without credentialsType 1`] = `
             class="autofit-col"
           >
             <span
-              class="label text-uppercase label-lg label-secondary"
+              class="label label-lg label-inverse-secondary"
             >
               <span
                 class="label-item label-item-expand"
@@ -97,7 +92,7 @@ exports[`ConnectDXP should query dataSources without credentialsType 1`] = `
             class="autofit-col autofit-col-expand"
           >
             <span
-              class="text-3 font-weight-bold"
+              class="text-4 font-weight-bold"
             >
               Contacts
             </span>
@@ -106,7 +101,7 @@ exports[`ConnectDXP should query dataSources without credentialsType 1`] = `
             class="autofit-col"
           >
             <span
-              class="label text-uppercase label-lg label-secondary"
+              class="label label-lg label-inverse-secondary"
             >
               <span
                 class="label-item label-item-expand"
@@ -121,7 +116,7 @@ exports[`ConnectDXP should query dataSources without credentialsType 1`] = `
         class="mt-2"
       >
         <span
-          class="text-3 text-secondary"
+          class="text-4 text-secondary"
         >
           You can check your data source syncing status under settings in data sources, or continue configuring your data source on your DXP instance.
         </span>
@@ -131,20 +126,29 @@ exports[`ConnectDXP should query dataSources without credentialsType 1`] = `
   <div
     class="modal-footer"
   >
-    <div>
-      <button
-        class="button-root btn btn-secondary"
-        disabled=""
-        type="button"
+    <div
+      class="modal-item-last"
+    >
+      <div
+        class="btn-group-spaced"
+        role="group"
       >
-        Cancel
-      </button>
-      <a
-        class="button-root ml-2 btn btn-primary"
-        href="/workspace/23/settings/data-source"
-      >
-        Done
-      </a>
+        <div>
+          <button
+            class="button-root btn btn-secondary"
+            disabled=""
+            type="button"
+          >
+            Cancel
+          </button>
+          <a
+            class="button-root ml-2 btn btn-primary"
+            href="/workspace/23/settings/data-source"
+          >
+            Done
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -155,13 +159,17 @@ exports[`ConnectDXP should render 1`] = `
   <div
     class="modal-header"
   >
+    <h1
+      class="modal-title"
+      tabindex="-1"
+    />
     <button
       aria-label="Close"
-      class="button-root close btn btn-secondary"
+      class="close btn btn-unstyled"
       type="button"
     >
       <svg
-        class="lexicon-icon lexicon-icon-times icon-root"
+        class="lexicon-icon lexicon-icon-times"
         role="presentation"
       >
         <use
@@ -174,38 +182,30 @@ exports[`ConnectDXP should render 1`] = `
     class="modal-body"
   >
     <div
-      class="analytics-to-dxp-container"
+      class="align-items-center d-flex justify-content-around mb-5 w-100"
     >
       <svg
         class="lexicon-icon lexicon-icon-dxp_icon icon-root icon-size-xl"
+        data-file="dxp_icon.svg"
         role="presentation"
-      >
-        <use
-          href="#dxp_icon"
-        />
-      </svg>
+      />
       <svg
-        class="lexicon-icon lexicon-icon-ac_horizontal_arrows arrows icon-root icon-size-lg"
+        class="lexicon-icon lexicon-icon-ac_horizontal_arrows icon-root icon-size-lg text-info"
+        data-file="ac_horizontal_arrows.svg"
         role="presentation"
-      >
-        <use
-          href="#ac_horizontal_arrows"
-        />
-      </svg>
+      />
       <svg
-        class="lexicon-icon lexicon-icon-ac_logo icon-root icon-size-xl logo-disconnected"
+        class="lexicon-icon lexicon-icon-ac_logo icon-root icon-size-xl"
+        data-file="ac_logo.svg"
         role="presentation"
-      >
-        <use
-          href="#ac_logo"
-        />
-      </svg>
+        style="filter: grayscale(1);"
+      />
     </div>
     <div
       class="text-center mb-4"
     >
       <span
-        class="text-10 font-weight-bold"
+        class="text-6 font-weight-bold"
       >
         Connect Your Liferay DXP
       </span>
@@ -256,7 +256,7 @@ exports[`ConnectDXP should render 1`] = `
       class="mt-1"
     >
       <span
-        class="text-3 text-secondary"
+        class="text-4 text-secondary"
       >
         <a
           class=""
@@ -289,7 +289,10 @@ exports[`ConnectDXP should render 1`] = `
             DXP Requirements
           </span>
           <span
+            aria-label="DXP Requirements"
             class="info-popover-root ml-2"
+            role="button"
+            tabindex="0"
           >
             <svg
               class="lexicon-icon lexicon-icon-question-circle-full icon-root"
@@ -352,19 +355,28 @@ exports[`ConnectDXP should render 1`] = `
   <div
     class="modal-footer"
   >
-    <div>
-      <button
-        class="button-root btn btn-secondary"
-        type="button"
+    <div
+      class="modal-item-last"
+    >
+      <div
+        class="btn-group-spaced"
+        role="group"
       >
-        Cancel
-      </button>
-      <a
-        class="button-root ml-2 btn btn-primary"
-        href="/workspace/23/settings/data-source"
-      >
-        Done
-      </a>
+        <div>
+          <button
+            class="button-root btn btn-secondary"
+            type="button"
+          >
+            Cancel
+          </button>
+          <a
+            class="button-root ml-2 btn btn-primary"
+            href="/workspace/23/settings/data-source"
+          >
+            Done
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -375,13 +387,17 @@ exports[`ConnectDXP should render connected state 1`] = `
   <div
     class="modal-header"
   >
+    <h1
+      class="modal-title"
+      tabindex="-1"
+    />
     <button
       aria-label="Close"
-      class="button-root close btn btn-secondary"
+      class="close btn btn-unstyled"
       type="button"
     >
       <svg
-        class="lexicon-icon lexicon-icon-times icon-root"
+        class="lexicon-icon lexicon-icon-times"
         role="presentation"
       >
         <use
@@ -394,38 +410,29 @@ exports[`ConnectDXP should render connected state 1`] = `
     class="modal-body"
   >
     <div
-      class="analytics-to-dxp-container"
+      class="align-items-center d-flex justify-content-around mb-5 w-100"
     >
       <svg
         class="lexicon-icon lexicon-icon-dxp_icon icon-root icon-size-xl"
+        data-file="dxp_icon.svg"
         role="presentation"
-      >
-        <use
-          href="#dxp_icon"
-        />
-      </svg>
+      />
       <svg
-        class="lexicon-icon lexicon-icon-ac_horizontal_arrows arrows icon-root icon-size-lg connected"
+        class="lexicon-icon lexicon-icon-ac_horizontal_arrows icon-root icon-size-lg text-success"
+        data-file="ac_horizontal_arrows.svg"
         role="presentation"
-      >
-        <use
-          href="#ac_horizontal_arrows"
-        />
-      </svg>
+      />
       <svg
         class="lexicon-icon lexicon-icon-ac_logo icon-root icon-size-xl"
+        data-file="ac_logo.svg"
         role="presentation"
-      >
-        <use
-          href="#ac_logo"
-        />
-      </svg>
+      />
     </div>
     <div
       class="text-center mb-4"
     >
       <span
-        class="text-10 font-weight-bold"
+        class="text-6 font-weight-bold"
       >
         Your DXP Instance Is Connected to Analytics Cloud
       </span>
@@ -441,7 +448,7 @@ exports[`ConnectDXP should render connected state 1`] = `
             class="autofit-col autofit-col-expand"
           >
             <span
-              class="text-3 font-weight-bold"
+              class="text-4 font-weight-bold"
             >
               Sites
             </span>
@@ -450,7 +457,7 @@ exports[`ConnectDXP should render connected state 1`] = `
             class="autofit-col"
           >
             <span
-              class="label text-uppercase label-lg label-secondary"
+              class="label label-lg label-inverse-secondary"
             >
               <span
                 class="label-item label-item-expand"
@@ -467,7 +474,7 @@ exports[`ConnectDXP should render connected state 1`] = `
             class="autofit-col autofit-col-expand"
           >
             <span
-              class="text-3 font-weight-bold"
+              class="text-4 font-weight-bold"
             >
               Contacts
             </span>
@@ -476,7 +483,7 @@ exports[`ConnectDXP should render connected state 1`] = `
             class="autofit-col"
           >
             <span
-              class="label text-uppercase label-lg label-secondary"
+              class="label label-lg label-inverse-secondary"
             >
               <span
                 class="label-item label-item-expand"
@@ -491,7 +498,7 @@ exports[`ConnectDXP should render connected state 1`] = `
         class="mt-2"
       >
         <span
-          class="text-3 text-secondary"
+          class="text-4 text-secondary"
         >
           You can check your data source syncing status under settings in data sources, or continue configuring your data source on your DXP instance.
         </span>
@@ -501,20 +508,29 @@ exports[`ConnectDXP should render connected state 1`] = `
   <div
     class="modal-footer"
   >
-    <div>
-      <button
-        class="button-root btn btn-secondary"
-        disabled=""
-        type="button"
+    <div
+      class="modal-item-last"
+    >
+      <div
+        class="btn-group-spaced"
+        role="group"
       >
-        Cancel
-      </button>
-      <a
-        class="button-root ml-2 btn btn-primary"
-        href="/workspace/23/settings/data-source"
-      >
-        Done
-      </a>
+        <div>
+          <button
+            class="button-root btn btn-secondary"
+            disabled=""
+            type="button"
+          >
+            Cancel
+          </button>
+          <a
+            class="button-root ml-2 btn btn-primary"
+            href="/workspace/23/settings/data-source"
+          >
+            Done
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 </div>

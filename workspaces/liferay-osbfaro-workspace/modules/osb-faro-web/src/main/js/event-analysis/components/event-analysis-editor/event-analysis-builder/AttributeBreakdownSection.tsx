@@ -1,4 +1,4 @@
-import AddConditionButton from './AddConditionButton';
+import AddConditionButton from 'shared/components/conditions-panel/AddConditionButton';
 import AttributeBreakdownDropdown from './attribute-breakdown-dropdown';
 import AttributeConditionsSection from './AttributeConditionsSection';
 import React from 'react';
@@ -25,13 +25,10 @@ const AttributeBreakdownSection: React.FC<IAttributeBreakdownSectionProps> = ({
 		moveBreakdown,
 	} = useAttributes();
 
-	if (!eventId) {
-		return null;
-	}
-
 	return (
 		<AttributeConditionsSection
 			action={
+				eventId &&
 				breakdownOrder.length < MAX_ATTRIBUTES && (
 					<AttributeBreakdownDropdown
 						alignmentPosition={Align.RightTop}

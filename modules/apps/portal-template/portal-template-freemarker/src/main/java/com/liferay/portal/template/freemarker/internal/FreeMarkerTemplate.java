@@ -17,6 +17,7 @@ import com.liferay.portal.template.TemplateResourceThreadLocal;
 import com.liferay.portal.template.engine.BaseTemplate;
 import com.liferay.portal.template.engine.TemplateContextHelper;
 
+import freemarker.core.Environment;
 import freemarker.core.ParseException;
 
 import freemarker.ext.beans.BeansWrapper;
@@ -77,6 +78,10 @@ public class FreeMarkerTemplate extends BaseTemplate {
 
 		_freeMarkerManager.addTaglibSupport(
 			context, httpServletRequest, httpServletResponse, _beansWrapper);
+
+		setTaglibContext(
+			_freeMarkerManager.getContributedTemplateModels(
+				httpServletRequest.getServletContext(), _beansWrapper));
 	}
 
 	@Override
@@ -144,11 +149,15 @@ public class FreeMarkerTemplate extends BaseTemplate {
 						getTemplateResourceUUID(templateResource),
 						TemplateConstants.DEFAUT_ENCODING);
 
-					template.setObjectWrapper(_beansWrapper);
+					Environment environment =
+						template.createProcessingEnvironment(
+							new CachableDefaultMapAdapter(
+								context, _beansWrapper),
+							writer);
 
-					template.process(
-						new CachableDefaultMapAdapter(context, _beansWrapper),
-						writer);
+					environment.setObjectWrapper(_beansWrapper);
+
+					environment.process();
 				}
 				finally {
 					TemplateResourceThreadLocal.setTemplateResource(

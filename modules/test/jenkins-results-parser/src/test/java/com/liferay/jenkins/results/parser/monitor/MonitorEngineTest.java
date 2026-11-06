@@ -131,7 +131,7 @@ public class MonitorEngineTest extends com.liferay.jenkins.results.parser.Test {
 					hangingTestMonitor.getId());
 
 			testEquals(
-				MonitorResult.Status.UNKNOWN, latestMonitorResult.getStatus());
+				MonitorResult.Status.CRITICAL, latestMonitorResult.getStatus());
 			testEquals(
 				"Monitor a timed out after 1000 ms",
 				latestMonitorResult.getMessage());
@@ -148,7 +148,7 @@ public class MonitorEngineTest extends com.liferay.jenkins.results.parser.Test {
 				throwingTestMonitor.getId());
 
 			testEquals(
-				MonitorResult.Status.UNKNOWN, latestMonitorResult.getStatus());
+				MonitorResult.Status.CRITICAL, latestMonitorResult.getStatus());
 			testEquals(
 				"Monitor c failed: Unable to execute the monitor",
 				latestMonitorResult.getMessage());
@@ -284,6 +284,37 @@ public class MonitorEngineTest extends com.liferay.jenkins.results.parser.Test {
 		Assert.assertTrue(
 			String.valueOf(monitorResult.getDurationMillis()),
 			monitorResult.getDurationMillis() >= 200);
+	}
+
+	@Test
+	public void testRunCycleKeepsLinkURLs() {
+		MonitorResultStore monitorResultStore = new MonitorResultStore();
+
+		List<String> linkURLs = Collections.singletonList(
+			"https://" + RandomTestUtil.randomString());
+
+		TestMonitor testMonitor = new TestMonitor(
+			_newMonitorConfig(RandomTestUtil.randomString(), 10, 0)) {
+
+			@Override
+			public MonitorResult execute() {
+				return new MonitorResult(
+					linkURLs, RandomTestUtil.randomString(), null,
+					MonitorResult.Status.CRITICAL, RandomTestUtil.randomLong());
+			}
+
+		};
+
+		MonitorEngine monitorEngine = new MonitorEngine(
+			monitorResultStore,
+			Collections.<Monitor>singletonList(testMonitor));
+
+		monitorEngine.runCycle();
+
+		MonitorResult monitorResult = monitorResultStore.getLatestMonitorResult(
+			testMonitor.getId());
+
+		testEquals(linkURLs, monitorResult.getLinkURLs());
 	}
 
 	@Test

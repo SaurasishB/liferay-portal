@@ -24,6 +24,7 @@ import com.liferay.osb.faro.web.internal.constants.FaroMessageDestinationNames;
 import com.liferay.osb.faro.web.internal.messaging.destination.creator.DestinationCreator;
 import com.liferay.osb.faro.web.internal.util.JSONUtil;
 import com.liferay.osb.faro.web.internal.util.OSBAccountEntryUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONObject;
@@ -141,39 +142,16 @@ public class UpdateFaroProjectSubscriptionsMessageListener
 					exception);
 			}
 
-			OSBAccountEntry osbAccountEntry = null;
-
-			if (Validator.isNull(faroProject.getCorpProjectUuid())) {
-				Date createDate = new Date(faroProject.getCreateTime());
-				String subscription = faroProject.getSubscription();
-
-				osbAccountEntry = new OSBAccountEntry() {
-					{
-						OSBOfferingEntry osbOfferingEntry =
-							new OSBOfferingEntry();
-
-						osbOfferingEntry.setProductEntryId(
-							_getProductEntryId(subscription));
-						osbOfferingEntry.setQuantity(1);
-						osbOfferingEntry.setStartDate(createDate);
-
-						setOfferingEntries(
-							Collections.singletonList(osbOfferingEntry));
-					}
-				};
-			}
-			else if (FaroPropsValues.OSB_FARO_SUBSCRIPTION_PUSH_ENABLED) {
-				osbAccountEntry = OSBAccountEntryUtil.build(faroProject);
-			}
-			else {
-				osbAccountEntry = _provisioningClient.getOSBAccountEntry(
-					faroProject.getCorpProjectUuid());
-			}
-
-			FaroSubscriptionDisplay faroSubscriptionDisplay =
-				new FaroSubscriptionDisplay(osbAccountEntry);
-
 			try {
+				OSBAccountEntry osbAccountEntry = _getOSBAccountEntry(
+					faroProject);
+
+				faroProject = _updateSalesforceAccountId(
+					faroProject, osbAccountEntry.getSalesforceAccountId());
+
+				FaroSubscriptionDisplay faroSubscriptionDisplay =
+					new FaroSubscriptionDisplay(osbAccountEntry);
+
 				if (Objects.equals(
 						faroProject.getState(),
 						FaroProjectConstants.STATE_UNAVAILABLE)) {
@@ -200,7 +178,10 @@ public class UpdateFaroProjectSubscriptionsMessageListener
 					JSONUtil.writeValueAsString(faroSubscriptionDisplay));
 			}
 			catch (Exception exception) {
-				_log.error(exception);
+				_log.error(
+					"Unable to update Faro project subscription for " +
+						faroProject,
+					exception);
 
 				_faroProjectLocalService.updateState(
 					faroProject.getFaroProjectId(),
@@ -245,16 +226,29 @@ public class UpdateFaroProjectSubscriptionsMessageListener
 
 		if (faroProjectUsage == null) {
 			_faroProjectUsageLocalService.addFaroProjectUsage(
-				faroProject.getCompanyId(), 0, faroProject.getFaroProjectId(),
+				faroProject.getCompanyId(), 0,
+				projectUsageMetric.getActiveLogicalBytes(),
+				projectUsageMetric.getAnonymousIndividualsCount(),
+				projectUsageMetric.getEventsCount(),
+				faroProject.getFaroProjectId(),
 				projectUsageMetric.getKnownIndividualsCount(),
-				_getMonthDateKey(date), projectUsageMetric.getPageViewsCount(),
-				date);
+				projectUsageMetric.getLongTermLogicalBytes(),
+				_getMonthDateKey(date),
+				projectUsageMetric.getOnDemandBytesBilled(),
+				projectUsageMetric.getPageViewsCount(),
+				projectUsageMetric.getReservationSlotMs(), date);
 		}
 		else {
 			_faroProjectUsageLocalService.updateFaroProjectUsage(
 				faroProjectUsage.getFaroProjectUsageId(),
+				projectUsageMetric.getActiveLogicalBytes(),
+				projectUsageMetric.getAnonymousIndividualsCount(),
+				projectUsageMetric.getEventsCount(),
 				projectUsageMetric.getKnownIndividualsCount(),
-				projectUsageMetric.getPageViewsCount());
+				projectUsageMetric.getLongTermLogicalBytes(),
+				projectUsageMetric.getOnDemandBytesBilled(),
+				projectUsageMetric.getPageViewsCount(),
+				projectUsageMetric.getReservationSlotMs());
 		}
 	}
 
@@ -266,6 +260,38 @@ public class UpdateFaroProjectSubscriptionsMessageListener
 		calendar.set(Calendar.DAY_OF_MONTH, 1);
 
 		return DateUtil.formatDate(calendar.getTime(), DateUtil.PATTERN_DATE);
+	}
+
+	private OSBAccountEntry _getOSBAccountEntry(FaroProject faroProject)
+		throws Exception {
+
+		if (Validator.isNull(faroProject.getCorpProjectUuid()) &&
+			Validator.isNull(faroProject.getSalesforceAccountId())) {
+
+			Date createDate = new Date(faroProject.getCreateTime());
+			String subscription = faroProject.getSubscription();
+
+			return new OSBAccountEntry() {
+				{
+					OSBOfferingEntry osbOfferingEntry = new OSBOfferingEntry();
+
+					osbOfferingEntry.setProductEntryId(
+						_getProductEntryId(subscription));
+					osbOfferingEntry.setQuantity(1);
+					osbOfferingEntry.setStartDate(createDate);
+
+					setOfferingEntries(
+						Collections.singletonList(osbOfferingEntry));
+				}
+			};
+		}
+
+		if (FaroPropsValues.OSB_FARO_SUBSCRIPTION_PUSH_ENABLED) {
+			return OSBAccountEntryUtil.build(faroProject);
+		}
+
+		return _provisioningClient.getOSBAccountEntry(
+			faroProject.getCorpProjectUuid());
 	}
 
 	private String _getProductEntryId(String subscription) throws Exception {
@@ -283,7 +309,32 @@ public class UpdateFaroProjectSubscriptionsMessageListener
 			}
 		}
 
-		return ProductConstants.PRODUCT_ENTRY_ID_BASIC;
+		return ProductConstants.getProductEntryId(
+			ProductConstants.PRODUCT_ENTRY_NAME_BASIC);
+	}
+
+	private FaroProject _updateSalesforceAccountId(
+		FaroProject faroProject, String salesforceAccountId) {
+
+		if (Validator.isNull(salesforceAccountId) ||
+			salesforceAccountId.equals(faroProject.getSalesforceAccountId())) {
+
+			return faroProject;
+		}
+
+		try {
+			return _faroProjectLocalService.updateSalesforceAccountId(
+				faroProject.getFaroProjectId(), salesforceAccountId);
+		}
+		catch (Exception exception) {
+			_log.error(
+				StringBundler.concat(
+					"Unable to set Salesforce account ID ", salesforceAccountId,
+					" for ", faroProject),
+				exception);
+
+			return faroProject;
+		}
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(

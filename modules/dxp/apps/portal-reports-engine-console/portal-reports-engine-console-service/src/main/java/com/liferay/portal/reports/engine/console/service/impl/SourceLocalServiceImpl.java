@@ -18,10 +18,10 @@ import com.liferay.portal.kernel.service.ResourceLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.systemevent.SystemEvent;
-import com.liferay.portal.kernel.util.OrderByComparator;
 import com.liferay.portal.kernel.util.PortalClassLoaderUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.reports.engine.console.exception.SourceDriverClassNameException;
+import com.liferay.portal.reports.engine.console.internal.util.SourceDriverPasswordUtil;
 import com.liferay.portal.reports.engine.console.model.Source;
 import com.liferay.portal.reports.engine.console.service.base.SourceLocalServiceBaseImpl;
 import com.liferay.portal.reports.engine.console.util.ReportsEngineConsoleUtil;
@@ -130,22 +130,6 @@ public class SourceLocalServiceImpl extends SourceLocalServiceBaseImpl {
 	}
 
 	@Override
-	public List<Source> getSources(
-		long groupId, String name, String driverUrl, boolean andSearch,
-		int start, int end, OrderByComparator<Source> orderByComparator) {
-
-		return sourceFinder.findByG_N_DU(
-			groupId, name, driverUrl, andSearch, start, end, orderByComparator);
-	}
-
-	@Override
-	public int getSourcesCount(
-		long groupId, String name, String driverUrl, boolean andSearch) {
-
-		return sourceFinder.countByG_N_DU(groupId, name, driverUrl, andSearch);
-	}
-
-	@Override
 	public Source updateSource(
 			long sourceId, Map<Locale, String> nameMap, String driverClassName,
 			String driverUrl, String driverUserName, String driverPassword,
@@ -160,7 +144,10 @@ public class SourceLocalServiceImpl extends SourceLocalServiceBaseImpl {
 			driverPassword = source.getDriverPassword();
 		}
 
-		_validate(driverClassName, driverUrl, driverUserName, driverPassword);
+		_validate(
+			driverClassName, driverUrl, driverUserName,
+			SourceDriverPasswordUtil.getDriverPassword(
+				source.getCompanyId(), driverPassword, sourceId));
 
 		source.setModifiedDate(serviceContext.getModifiedDate(null));
 		source.setNameMap(nameMap);

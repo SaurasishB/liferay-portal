@@ -74,11 +74,6 @@ public class CommerceAddressRestrictionLocalServiceImpl
 	}
 
 	@Override
-	public void deleteCommerceAddressRestrictions(long countryId) {
-		commerceAddressRestrictionPersistence.removeByCountryId(countryId);
-	}
-
-	@Override
 	public void deleteCommerceAddressRestrictions(
 		String className, long classPK) {
 
@@ -118,8 +113,9 @@ public class CommerceAddressRestrictionLocalServiceImpl
 		String className, long classPK, long countryId) {
 
 		CommerceAddressRestriction commerceAddressRestriction =
-			commerceAddressRestrictionLocalService.
-				fetchCommerceAddressRestriction(className, classPK, countryId);
+			commerceAddressRestrictionPersistence.fetchByC_C_C(
+				_classNameLocalService.getClassNameId(className), classPK,
+				countryId);
 
 		if (commerceAddressRestriction != null) {
 			return true;

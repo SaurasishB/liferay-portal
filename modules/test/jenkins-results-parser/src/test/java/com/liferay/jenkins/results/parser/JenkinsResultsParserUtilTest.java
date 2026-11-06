@@ -14,9 +14,18 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.net.URL;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.locks.ReentrantLock;
+
+import org.apache.http.client.utils.URIBuilder;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -32,6 +41,33 @@ import org.mockito.Mockito;
  */
 public class JenkinsResultsParserUtilTest
 	extends com.liferay.jenkins.results.parser.Test {
+
+	@Test
+	public void testBuildFormContent() {
+		testEquals(
+			"client_id=a%26b&grant_type=client_credentials",
+			JenkinsResultsParserUtil.buildFormContent(
+				_newParameters(
+					"grant_type", "client_credentials", "client_id", "a&b")));
+	}
+
+	@Test
+	public void testBuildFormContentWithReservedCharacters() {
+		testEquals(
+			"A=a%23b&B=a%26b&C=100%25+pass&D=a%3Db&E=a%2Bb&F=a+b",
+			JenkinsResultsParserUtil.buildFormContent(
+				_newParameters(
+					"A", "a#b", "B", "a&b", "C", "100% pass", "D", "a=b", "E",
+					"a+b", "F", "a b")));
+	}
+
+	@Test
+	public void testBuildFormContentWithoutParameters() {
+		testEquals(
+			"",
+			JenkinsResultsParserUtil.buildFormContent(Collections.emptyMap()));
+		testEquals("", JenkinsResultsParserUtil.buildFormContent(null));
+	}
 
 	@Test
 	public void testDecodeURLParameterPart() {
@@ -53,6 +89,30 @@ public class JenkinsResultsParserUtilTest
 		testEquals(
 			"master",
 			JenkinsResultsParserUtil.decodeURLParameterPart("master"));
+	}
+
+	@Test
+	public void testEncodeLegacyURLPart() {
+		testEquals(
+			"!master", JenkinsResultsParserUtil.encodeLegacyURLPart("!master"));
+		testEquals(
+			"0%201%202", JenkinsResultsParserUtil.encodeLegacyURLPart("0 1 2"));
+		testEquals(
+			"100%%20pass",
+			JenkinsResultsParserUtil.encodeLegacyURLPart("100% pass"));
+		testEquals(
+			"ABC%28123",
+			JenkinsResultsParserUtil.encodeLegacyURLPart("ABC(123"));
+		testEquals(
+			"ABC%29123",
+			JenkinsResultsParserUtil.encodeLegacyURLPart("ABC)123"));
+		testEquals(
+			"ABC%5B123",
+			JenkinsResultsParserUtil.encodeLegacyURLPart("ABC[123"));
+		testEquals(
+			"ABC%5D123",
+			JenkinsResultsParserUtil.encodeLegacyURLPart("ABC]123"));
+		testEquals("a+b", JenkinsResultsParserUtil.encodeLegacyURLPart("a+b"));
 	}
 
 	@Test
@@ -216,6 +276,19 @@ public class JenkinsResultsParserUtilTest
 	}
 
 	@Test
+	public void testGetGitHubApiSearchUrl() throws Exception {
+		URL url = new URL(
+			JenkinsResultsParserUtil.getGitHubApiSearchUrl(
+				Arrays.asList("head:a&b#c", "is:pr")));
+
+		Map<String, String> parameters =
+			JenkinsResultsParserUtil.getQueryParameters(url.getQuery());
+
+		testEquals("head:a&b#c is:pr", parameters.get("q"));
+		testEquals(1, parameters.size());
+	}
+
+	@Test
 	public void testGetJenkinsBuildQueueId() {
 		testEquals(
 			"0",
@@ -301,6 +374,34 @@ public class JenkinsResultsParserUtilTest
 		testEquals(
 			message,
 			JenkinsResultsParserUtil.getMessage(new IOException(message)));
+	}
+
+	@Test
+	public void testGetMostAvailableMasterURL() throws Exception {
+		Properties buildProperties = new Properties();
+
+		buildProperties.setProperty(
+			"jenkins.load.balancer.url", "http://test-1-0/load_balancer");
+
+		JenkinsResultsParserUtil.setBuildProperties(buildProperties);
+
+		mockURLReaders();
+
+		JSONObject jsonObject = new JSONObject();
+
+		jsonObject.put("mostAvailableMasterURL", "http://test-1-2");
+
+		setURLReaderOutput(
+			jsonObject.toString(),
+			JenkinsResultsParserUtil.combine(
+				"?baseInvocationURL=http%3A%2F%2Ftest-1%3Fa%3D1%26b%3D2",
+				"&blacklist=test-1-1%2Ctest-1-3&invokedJobBatchSize=2",
+				"&jobName=test%25job"));
+
+		testEquals(
+			"http://test-1-2",
+			JenkinsResultsParserUtil.getMostAvailableMasterURL(
+				"http://test-1?a=1&b=2", "test-1-1,test-1-3", 2, "test%job"));
 	}
 
 	@Test
@@ -449,6 +550,107 @@ public class JenkinsResultsParserUtilTest
 	}
 
 	@Test
+	public void testGetQueryParametersWithBuiltURL() throws Exception {
+		Map<String, String> parameters = _newParameters(
+			"A", "a#b", "B", "a&b", "C", "100% pass", "D", "a=b", "E", "a+b",
+			"F", "a b", "G a", "name with a space");
+
+		URIBuilder uriBuilder = JenkinsResultsParserUtil.newURIBuilder(
+			"http://" + RandomTestUtil.randomString(), parameters);
+
+		URL url = new URL(uriBuilder.toString());
+
+		testEquals(
+			parameters,
+			JenkinsResultsParserUtil.getQueryParameters(url.getQuery()));
+	}
+
+	@Test
+	public void testGetQueryParametersWithEmptyAndValuelessParameters() {
+		Map<String, String> parameters =
+			JenkinsResultsParserUtil.getQueryParameters(
+				"AXIS_VARIABLE=&pretty");
+
+		testEquals("", parameters.get("AXIS_VARIABLE"));
+		testEquals(null, parameters.get("pretty"));
+		testEquals(2, parameters.size());
+	}
+
+	@Test
+	public void testGetQueryParametersWithInvalidEscape() {
+		Map<String, String> parameters =
+			JenkinsResultsParserUtil.getQueryParameters(
+				"PORTAL_BUILD_NOTES=100% pass");
+
+		testEquals("100% pass", parameters.get("PORTAL_BUILD_NOTES"));
+		testEquals(1, parameters.size());
+	}
+
+	@Test
+	public void testGetQueryParametersWithNestedURL() {
+		Map<String, String> parameters =
+			JenkinsResultsParserUtil.getQueryParameters(
+				JenkinsResultsParserUtil.combine(
+					"JOB_VARIANT=functional&PARENT_BUILD_URL=",
+					"http%3A%2F%2Ftest-1-1%2Fjob%2Fy%2F1%2F"));
+
+		testEquals("functional", parameters.get("JOB_VARIANT"));
+		testEquals(
+			"http://test-1-1/job/y/1/", parameters.get("PARENT_BUILD_URL"));
+		testEquals(2, parameters.size());
+	}
+
+	@Test
+	public void testGetQueryParametersWithRawNumberSign() {
+		Map<String, String> parameters =
+			JenkinsResultsParserUtil.getQueryParameters(
+				"A=PortalSmoke#Smoke&B=1");
+
+		testEquals("PortalSmoke#Smoke", parameters.get("A"));
+		testEquals("1", parameters.get("B"));
+		testEquals(2, parameters.size());
+	}
+
+	@Test
+	public void testGetQueryParametersWithRepeatedName() {
+		Map<String, String> parameters =
+			JenkinsResultsParserUtil.getQueryParameters("V=1&V=2");
+
+		testEquals("1", parameters.get("V"));
+		testEquals(1, parameters.size());
+	}
+
+	@Test
+	public void testGetQueryParametersWithReservedCharacters() {
+		Map<String, String> parameters =
+			JenkinsResultsParserUtil.getQueryParameters(
+				JenkinsResultsParserUtil.combine(
+					"A=PortalSmoke%23Smoke&B=AWS%20%26%20CI&C=a%3Db&D=a%2Bb&",
+					"E=a+b&F=100%25%20pass"));
+
+		testEquals("PortalSmoke#Smoke", parameters.get("A"));
+		testEquals("AWS & CI", parameters.get("B"));
+		testEquals("a=b", parameters.get("C"));
+		testEquals("a+b", parameters.get("D"));
+		testEquals("a b", parameters.get("E"));
+		testEquals("100% pass", parameters.get("F"));
+		testEquals(6, parameters.size());
+	}
+
+	@Test
+	public void testGetQueryParametersWithoutQueryString() {
+		Map<String, String> emptyParameters =
+			JenkinsResultsParserUtil.getQueryParameters("");
+
+		testEquals(0, emptyParameters.size());
+
+		Map<String, String> nullParameters =
+			JenkinsResultsParserUtil.getQueryParameters(null);
+
+		testEquals(0, nullParameters.size());
+	}
+
+	@Test
 	public void testGetRemoteURL() {
 		testEquals(
 			"https://test-1-20.liferay.com/ABC?123=456&xyz=abc",
@@ -493,6 +695,220 @@ public class JenkinsResultsParserUtilTest
 	}
 
 	@Test
+	public void testGetThreadDump() {
+		String threadDump = JenkinsResultsParserUtil.getThreadDump();
+
+		Assert.assertTrue(
+			threadDump.contains(
+				"JenkinsResultsParserUtilTest.testGetThreadDump"));
+
+		Thread currentThread = Thread.currentThread();
+
+		Assert.assertTrue(
+			threadDump.contains(
+				JenkinsResultsParserUtil.combine(
+					"\"", currentThread.getName(), "\"")));
+	}
+
+	@Test(timeout = 30000)
+	public void testGetThreadDumpBlockedThread() throws Exception {
+		String lockOwnerThreadName = "lock-owner";
+		String lockWaiterThreadName = "lock-waiter";
+
+		Object lock = new Object();
+
+		CountDownLatch holdCountDownLatch = new CountDownLatch(1);
+		CountDownLatch lockedCountDownLatch = new CountDownLatch(1);
+
+		Thread lockOwnerThread = new Thread(
+			() -> {
+				synchronized (lock) {
+					lockedCountDownLatch.countDown();
+
+					try {
+						holdCountDownLatch.await();
+					}
+					catch (InterruptedException interruptedException) {
+						throw new RuntimeException(interruptedException);
+					}
+				}
+			},
+			lockOwnerThreadName);
+
+		Thread lockWaiterThread = new Thread(
+			() -> {
+				synchronized (lock) {
+				}
+			},
+			lockWaiterThreadName);
+
+		try {
+			lockOwnerThread.start();
+
+			lockedCountDownLatch.await();
+
+			lockWaiterThread.start();
+
+			while (lockWaiterThread.getState() != Thread.State.BLOCKED) {
+				JenkinsResultsParserUtil.sleep(10);
+			}
+
+			String threadDump = JenkinsResultsParserUtil.getThreadDump();
+
+			String lockWaiterThreadDumpEntry = _getThreadDumpEntry(
+				threadDump, lockWaiterThreadName);
+
+			Assert.assertTrue(lockWaiterThreadDumpEntry.contains("BLOCKED"));
+
+			Assert.assertTrue(
+				lockWaiterThreadDumpEntry.contains(
+					JenkinsResultsParserUtil.combine(
+						" on ", Object.class.getName(), "@",
+						Integer.toHexString(System.identityHashCode(lock)))));
+
+			Assert.assertTrue(
+				lockWaiterThreadDumpEntry.contains(
+					JenkinsResultsParserUtil.combine(
+						"owned by \"", lockOwnerThreadName, "\"")));
+
+			String lockOwnerThreadDumpEntry = _getThreadDumpEntry(
+				threadDump, lockOwnerThreadName);
+
+			Assert.assertTrue(lockOwnerThreadDumpEntry.contains("- locked"));
+		}
+		finally {
+			holdCountDownLatch.countDown();
+
+			lockOwnerThread.join();
+
+			lockWaiterThread.join();
+		}
+	}
+
+	@Test(timeout = 30000)
+	public void testGetThreadDumpDeadlockedThreads() throws Exception {
+		String threadName0 = "deadlock-0";
+		String threadName1 = "deadlock-1";
+
+		ReentrantLock reentrantLock0 = new ReentrantLock();
+		ReentrantLock reentrantLock1 = new ReentrantLock();
+
+		CountDownLatch bothLockedCountDownLatch = new CountDownLatch(2);
+		CountDownLatch proceedCountDownLatch = new CountDownLatch(1);
+
+		Thread thread0 = new Thread(
+			() -> _awaitDeadlock(
+				bothLockedCountDownLatch, reentrantLock0, proceedCountDownLatch,
+				reentrantLock1),
+			threadName0);
+
+		Thread thread1 = new Thread(
+			() -> _awaitDeadlock(
+				bothLockedCountDownLatch, reentrantLock1, proceedCountDownLatch,
+				reentrantLock0),
+			threadName1);
+
+		thread0.setDaemon(true);
+		thread1.setDaemon(true);
+
+		try {
+			thread0.start();
+			thread1.start();
+
+			bothLockedCountDownLatch.await();
+
+			proceedCountDownLatch.countDown();
+
+			String threadDump = JenkinsResultsParserUtil.getThreadDump();
+
+			for (int i = 0; i < 500; i++) {
+				if (threadDump.contains(" deadlocked threads:")) {
+					break;
+				}
+
+				JenkinsResultsParserUtil.sleep(10);
+
+				threadDump = JenkinsResultsParserUtil.getThreadDump();
+			}
+
+			Assert.assertTrue(threadDump.contains(" deadlocked threads:"));
+
+			String deadlockSection = threadDump.substring(
+				threadDump.indexOf(" deadlocked threads:"));
+
+			Assert.assertTrue(
+				deadlockSection.contains(
+					JenkinsResultsParserUtil.combine("\"", threadName0, "\"")));
+
+			Assert.assertTrue(
+				deadlockSection.contains(
+					JenkinsResultsParserUtil.combine("\"", threadName1, "\"")));
+
+			String threadDumpEntry = _getThreadDumpEntry(
+				threadDump, threadName0);
+
+			Assert.assertTrue(
+				threadDumpEntry.contains("\tLocked synchronizers:\n"));
+		}
+		finally {
+			thread0.interrupt();
+			thread1.interrupt();
+
+			thread0.join();
+			thread1.join();
+		}
+	}
+
+	@Test(timeout = 30000)
+	public void testGetThreadDumpTruncatedStack() throws Exception {
+		String threadName = "deep-stack";
+
+		CountDownLatch deepStackCountDownLatch = new CountDownLatch(1);
+		CountDownLatch holdCountDownLatch = new CountDownLatch(1);
+
+		Object lock = new Object();
+
+		Thread thread = new Thread(
+			() -> {
+				synchronized (lock) {
+					_buildDeepStack(
+						deepStackCountDownLatch, 60, holdCountDownLatch);
+				}
+			},
+			threadName);
+
+		thread.setDaemon(true);
+
+		try {
+			thread.start();
+
+			deepStackCountDownLatch.await();
+
+			int stackTraceElementsCount = 0;
+
+			String threadDumpEntry = _getThreadDumpEntry(
+				JenkinsResultsParserUtil.getThreadDump(), threadName);
+
+			for (String line : threadDumpEntry.split("\n")) {
+				if (!line.startsWith("\tat ")) {
+					continue;
+				}
+
+				stackTraceElementsCount++;
+			}
+
+			Assert.assertEquals(40, stackTraceElementsCount);
+
+			Assert.assertTrue(threadDumpEntry.contains("\t...\n\t- locked "));
+		}
+		finally {
+			holdCountDownLatch.countDown();
+
+			thread.join();
+		}
+	}
+
+	@Test
 	public void testInvokeJenkinsBuild() throws Exception {
 		Environment environment = mockEnvironment();
 
@@ -511,12 +927,12 @@ public class JenkinsResultsParserUtilTest
 
 		JenkinsResultsParserUtil.setBuildProperties(buildProperties);
 
-		UrlReader urlReader = mockUrlReader();
+		mockURLReaders();
 
 		Mockito.doReturn(
 			"https://test-1-1.liferay.com/queue/item/12345"
 		).when(
-			urlReader
+			getStreamURLReader()
 		).doGetResponseHeader(
 			Mockito.eq("Location"), Mockito.any(), Mockito.any(), Mockito.any(),
 			Mockito.any(), Mockito.anyInt(), Mockito.anyString()
@@ -773,12 +1189,208 @@ public class JenkinsResultsParserUtilTest
 		}
 	}
 
+	@Test
+	public void testNewURIBuilder() {
+		URIBuilder uriBuilder = JenkinsResultsParserUtil.newURIBuilder(
+			"http://test-1-1/job/x/buildWithParameters",
+			_newParameters(
+				"PARENT_BUILD_URL", "http://test-1-1/job/y/1/", "JOB_VARIANT",
+				"functional"));
+
+		testEquals(
+			JenkinsResultsParserUtil.combine(
+				"http://test-1-1/job/x/buildWithParameters?",
+				"JOB_VARIANT=functional&PARENT_BUILD_URL=",
+				"http%3A%2F%2Ftest-1-1%2Fjob%2Fy%2F1%2F"),
+			uriBuilder.toString());
+	}
+
+	@Test
+	public void testNewURIBuilderWithFragment() {
+		URIBuilder uriBuilder = JenkinsResultsParserUtil.newURIBuilder(
+			"http://test-1-1/job/x?a=1#summary");
+
+		uriBuilder.addParameter("b", "2");
+
+		testEquals(
+			"http://test-1-1/job/x?a=1&b=2#summary", uriBuilder.toString());
+	}
+
+	@Test
+	public void testNewURIBuilderWithIllegalBaseURL() {
+		URIBuilder uriBuilder = JenkinsResultsParserUtil.newURIBuilder(
+			"http://test-1-1/job/a b/api/json");
+
+		uriBuilder.addParameter("tree", "result");
+
+		testEquals(
+			"http://test-1-1/job/a%20b/api/json?tree=result",
+			uriBuilder.toString());
+	}
+
+	@Test
+	public void testNewURIBuilderWithUnsortedParameters() {
+		URIBuilder uriBuilder = JenkinsResultsParserUtil.newURIBuilder(
+			"http://test-1-1/job/x",
+			_newParameters("gamma", "3", "beta", "2", "alpha", "1"));
+
+		testEquals(
+			"http://test-1-1/job/x?alpha=1&beta=2&gamma=3",
+			uriBuilder.toString());
+	}
+
+	@Test
+	public void testNewURIBuilderWithoutParameters() {
+		URIBuilder uriBuilder = JenkinsResultsParserUtil.newURIBuilder(
+			"http://test-1-1/job/x/buildWithParameters",
+			Collections.emptyMap());
+
+		testEquals(
+			"http://test-1-1/job/x/buildWithParameters", uriBuilder.toString());
+
+		uriBuilder = JenkinsResultsParserUtil.newURIBuilder(
+			"http://test-1-1/job/x/buildWithParameters", null);
+
+		testEquals(
+			"http://test-1-1/job/x/buildWithParameters", uriBuilder.toString());
+	}
+
+	@Test
+	public void testNormalizeURLWithBarePercent() {
+		testEquals(
+			"http://test-1-1/job/x?V=100%25%20pass&W=a%2Bb",
+			JenkinsResultsParserUtil.normalizeURL(
+				"http://test-1-1/job/x?V=100% pass&W=a%2Bb"));
+	}
+
+	@Test
+	public void testNormalizeURLWithEncodedParameters() {
+		String url = JenkinsResultsParserUtil.combine(
+			"http://test-1-1/job/x/buildWithParameters?",
+			"A=a%23b&B=a%26b&C=100%25%20pass&D=a%3Db&E=a%2Bb&F=a%20b");
+
+		testSame(url, JenkinsResultsParserUtil.normalizeURL(url));
+	}
+
+	@Test
+	public void testNormalizeURLWithEscapeSequences() {
+		testEquals(
+			JenkinsResultsParserUtil.combine(
+				"http://test-1-1/job/x?V=%250/%20%250:%20%250@%20%250G%20",
+				"%250%60%20%250g%20%09%20%0A%20%0F%20%0a%20%0f"),
+			JenkinsResultsParserUtil.normalizeURL(
+				"http://test-1-1/job/x?V=%0/ %0: %0@ %0G %0` %0g %09 %0A %0F " +
+					"%0a %0f"));
+	}
+
+	@Test
+	public void testNormalizeURLWithFragment() {
+		testEquals(
+			"http://test-1-1/job/x?a=1%202#summary",
+			JenkinsResultsParserUtil.normalizeURL(
+				"http://test-1-1/job/x?a=1 2#summary"));
+	}
+
+	@Test
+	public void testNormalizeURLWithIllegalPathCharacters() {
+		testEquals(
+			"http://test-1-1/job/a%20b/1/",
+			JenkinsResultsParserUtil.normalizeURL(
+				"http://test-1-1/job/a b/1/"));
+		testEquals(
+			"http://test-1-1/job/x?tree=result%5B0%5D",
+			JenkinsResultsParserUtil.normalizeURL(
+				"http://test-1-1/job/x?tree=result[0]"));
+	}
+
+	@Test
+	public void testNormalizeURLWithLegalURL() {
+		String url = JenkinsResultsParserUtil.combine(
+			"http://test-1-1/job/test-portal-acceptance-pullrequest(master)/",
+			"buildWithParameters?V=a%2Bb&W=AWS%20%26%20CI");
+
+		testSame(url, JenkinsResultsParserUtil.normalizeURL(url));
+	}
+
+	@Test
+	public void testNormalizeURLWithNonASCIICharacters() {
+		String normalizedURL = JenkinsResultsParserUtil.normalizeURL(
+			"http://test-1-1/job/café/x?name=é");
+
+		testEquals(
+			"http://test-1-1/job/caf%C3%A9/x?name=%C3%A9", normalizedURL);
+		testEquals(
+			normalizedURL,
+			JenkinsResultsParserUtil.normalizeURL(normalizedURL));
+	}
+
+	@Test
+	public void testNormalizeURLWithNormalizedURL() {
+		String normalizedURL = JenkinsResultsParserUtil.normalizeURL(
+			"http://test-1-1/job/x?tree=actions[parameters[name,value]]");
+
+		testEquals(
+			JenkinsResultsParserUtil.combine(
+				"http://test-1-1/job/x?tree=actions%5Bparameters%5Bname,",
+				"value%5D%5D"),
+			normalizedURL);
+		testEquals(
+			normalizedURL,
+			JenkinsResultsParserUtil.normalizeURL(normalizedURL));
+	}
+
 	protected Environment mockEnvironment() {
 		Environment environment = Mockito.mock(Environment.class);
 
 		Environment.setInstance(environment);
 
 		return environment;
+	}
+
+	private void _awaitDeadlock(
+		CountDownLatch bothLockedLatch, ReentrantLock heldLock,
+		CountDownLatch proceedLatch, ReentrantLock requestedLock) {
+
+		heldLock.lock();
+
+		try {
+			bothLockedLatch.countDown();
+
+			proceedLatch.await();
+
+			requestedLock.lockInterruptibly();
+
+			requestedLock.unlock();
+		}
+		catch (InterruptedException interruptedException) {
+			Thread currentThread = Thread.currentThread();
+
+			currentThread.interrupt();
+		}
+		finally {
+			heldLock.unlock();
+		}
+	}
+
+	private void _buildDeepStack(
+		CountDownLatch deepStackLatch, int depth, CountDownLatch holdLatch) {
+
+		if (depth > 0) {
+			_buildDeepStack(deepStackLatch, depth - 1, holdLatch);
+
+			return;
+		}
+
+		deepStackLatch.countDown();
+
+		try {
+			holdLatch.await();
+		}
+		catch (InterruptedException interruptedException) {
+			Thread currentThread = Thread.currentThread();
+
+			currentThread.interrupt();
+		}
 	}
 
 	private ServerSocket _createServerSocket() throws Exception {
@@ -804,6 +1416,42 @@ public class JenkinsResultsParserUtilTest
 			buildAwsPropertiesFile.exists());
 
 		return JenkinsResultsParserUtil.getProperties(buildAwsPropertiesFile);
+	}
+
+	private String _getThreadDumpEntry(String threadDump, String threadName) {
+		StringBuilder sb = new StringBuilder();
+
+		boolean matched = false;
+
+		for (String line : threadDump.split("\n")) {
+			if (line.startsWith(
+					JenkinsResultsParserUtil.combine("\"", threadName, "\""))) {
+
+				matched = true;
+			}
+			else if (matched && line.isEmpty()) {
+				break;
+			}
+
+			if (!matched) {
+				continue;
+			}
+
+			sb.append(line);
+			sb.append("\n");
+		}
+
+		return sb.toString();
+	}
+
+	private Map<String, String> _newParameters(String... namesAndValues) {
+		Map<String, String> parameters = new LinkedHashMap<>();
+
+		for (int i = 0; i < namesAndValues.length; i = i + 2) {
+			parameters.put(namesAndValues[i], namesAndValues[i + 1]);
+		}
+
+		return parameters;
 	}
 
 	private void _testFetchBuildURL(

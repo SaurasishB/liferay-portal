@@ -817,12 +817,6 @@ public class MBMessageLocalServiceUtil {
 		return getService().getPersistedModel(primaryKeyObj);
 	}
 
-	public static int getPositionInThread(long messageId)
-		throws PortalException {
-
-		return getService().getPositionInThread(messageId);
-	}
-
 	public static List<MBMessage> getRootDiscussionMessages(
 			String className, long classPK, int status)
 		throws PortalException {
@@ -883,65 +877,8 @@ public class MBMessageLocalServiceUtil {
 			userId, threadId, status, start, end, comparator);
 	}
 
-	public static int getThreadMessagesCount(long threadId, boolean answer) {
-		return getService().getThreadMessagesCount(threadId, answer);
-	}
-
 	public static int getThreadMessagesCount(long threadId, int status) {
 		return getService().getThreadMessagesCount(threadId, status);
-	}
-
-	public static List<MBMessage> getThreadRepliesMessages(
-		long threadId, int status, int start, int end) {
-
-		return getService().getThreadRepliesMessages(
-			threadId, status, start, end);
-	}
-
-	public static List<MBMessage> getUserDiscussionMessages(
-		long userId, long classNameId, long classPK, int status, int start,
-		int end, OrderByComparator<MBMessage> orderByComparator) {
-
-		return getService().getUserDiscussionMessages(
-			userId, classNameId, classPK, status, start, end,
-			orderByComparator);
-	}
-
-	public static List<MBMessage> getUserDiscussionMessages(
-		long userId, long[] classNameIds, int status, int start, int end,
-		OrderByComparator<MBMessage> orderByComparator) {
-
-		return getService().getUserDiscussionMessages(
-			userId, classNameIds, status, start, end, orderByComparator);
-	}
-
-	public static List<MBMessage> getUserDiscussionMessages(
-		long userId, String className, long classPK, int status, int start,
-		int end, OrderByComparator<MBMessage> orderByComparator) {
-
-		return getService().getUserDiscussionMessages(
-			userId, className, classPK, status, start, end, orderByComparator);
-	}
-
-	public static int getUserDiscussionMessagesCount(
-		long userId, long classNameId, long classPK, int status) {
-
-		return getService().getUserDiscussionMessagesCount(
-			userId, classNameId, classPK, status);
-	}
-
-	public static int getUserDiscussionMessagesCount(
-		long userId, long[] classNameIds, int status) {
-
-		return getService().getUserDiscussionMessagesCount(
-			userId, classNameIds, status);
-	}
-
-	public static int getUserDiscussionMessagesCount(
-		long userId, String className, long classPK, int status) {
-
-		return getService().getUserDiscussionMessagesCount(
-			userId, className, classPK, status);
 	}
 
 	public static long moveMessageAttachmentToTrash(
@@ -1067,4 +1004,4 @@ public class MBMessageLocalServiceUtil {
 			MBMessageLocalServiceUtil.class, MBMessageLocalService.class);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-846832070
+// LIFERAY-SERVICE-BUILDER-HASH:1766722829

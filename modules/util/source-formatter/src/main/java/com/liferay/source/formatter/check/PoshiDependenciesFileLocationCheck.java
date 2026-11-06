@@ -10,9 +10,6 @@ import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.StringUtil;
-import com.liferay.portal.tools.GitUtil;
-import com.liferay.source.formatter.SourceFormatterArgs;
-import com.liferay.source.formatter.processor.SourceProcessor;
 import com.liferay.source.formatter.util.FileUtil;
 import com.liferay.source.formatter.util.SourceFormatterUtil;
 
@@ -89,8 +86,7 @@ public class PoshiDependenciesFileLocationCheck extends BaseFileCheck {
 	}
 
 	private void _checkGlobalDependenciesFileReferences(
-			String absolutePath, String fileName)
-		throws Exception {
+		String absolutePath, String fileName) {
 
 		for (Map.Entry<String, Set<String>> entry :
 				_dependenciesGlobalFileReferencesMap.entrySet()) {
@@ -98,41 +94,18 @@ public class PoshiDependenciesFileLocationCheck extends BaseFileCheck {
 			List<String> referencesFileNames = ListUtil.fromCollection(
 				entry.getValue());
 
-			if (referencesFileNames.size() != 1) {
+			if ((referencesFileNames.size() != 1) ||
+				!StringUtil.equals(absolutePath, referencesFileNames.get(0))) {
+
 				continue;
 			}
 
-			SourceProcessor sourceProcessor = getSourceProcessor();
-
-			SourceFormatterArgs sourceFormatterArgs =
-				sourceProcessor.getSourceFormatterArgs();
-
-			if (sourceFormatterArgs.isFormatCurrentBranch()) {
-				String currentBranchFileDiff = GitUtil.getCurrentBranchFileDiff(
-					sourceFormatterArgs.getBaseDirName(),
-					sourceFormatterArgs.getGitWorkingBranchName(),
-					absolutePath);
-
-				for (String line : currentBranchFileDiff.split("\n")) {
-					if (line.startsWith(StringPool.DASH) &&
-						_containsFileName(
-							line, _getShortFileName(entry.getKey()))) {
-
-						break;
-					}
-				}
-			}
-
-			if (sourceFormatterArgs.isFormatCurrentBranch() ||
-				StringUtil.equals(absolutePath, referencesFileNames.get(0))) {
-
-				addMessage(
-					fileName,
-					StringBundler.concat(
-						"Test dependencies file \"", entry.getKey(),
-						"\" is only referenced by one module, move it to ",
-						"module dependencies directory"));
-			}
+			addMessage(
+				fileName,
+				StringBundler.concat(
+					"Test dependencies file \"", entry.getKey(),
+					"\" is only referenced by one module, move it to module ",
+					"dependencies directory"));
 		}
 	}
 
@@ -198,12 +171,14 @@ public class PoshiDependenciesFileLocationCheck extends BaseFileCheck {
 				file.getCanonicalPath(), new String[] {"**/*.testcase"});
 
 			for (String fileName : fileNames) {
-				if (fileName.contains("portal-web") ||
-					fileName.matches(
+				if (!fileName.contains("portal-web") &&
+					!fileName.matches(
 						".+/modules/.+-test/src/testFunctional(/.*)?")) {
 
-					_testCaseFileNames.add(fileName);
+					continue;
 				}
+
+				_testCaseFileNames.add(fileName);
 			}
 
 			fileNames = SourceFormatterUtil.scanForFileNames(
@@ -213,13 +188,14 @@ public class PoshiDependenciesFileLocationCheck extends BaseFileCheck {
 				});
 
 			for (String fileName : fileNames) {
-				if (!fileName.contains("/playwright/") &&
-					!fileName.contains("/poshi/") &&
-					!fileName.contains("/source-formatter/")) {
+				if (fileName.contains("/playwright/") ||
+					fileName.contains("/poshi/") ||
+					fileName.contains("/source-formatter/")) {
 
-					_dependenciesFileReferencesMap.put(
-						fileName, new TreeSet<>());
+					continue;
 				}
+
+				_dependenciesFileReferencesMap.put(fileName, new TreeSet<>());
 			}
 		}
 
@@ -231,12 +207,13 @@ public class PoshiDependenciesFileLocationCheck extends BaseFileCheck {
 			file.getCanonicalPath(), new String[0]);
 
 		for (String fileName : fileNames) {
-			if (!fileName.contains(".lar/") && !fileName.contains(".war/") &&
-				!fileName.contains(".zip/")) {
+			if (fileName.contains(".lar/") || fileName.contains(".war/") ||
+				fileName.contains(".zip/")) {
 
-				_dependenciesGlobalFileReferencesMap.put(
-					fileName, new TreeSet<>());
+				continue;
 			}
+
+			_dependenciesGlobalFileReferencesMap.put(fileName, new TreeSet<>());
 		}
 
 		for (String testCaseFileName : _testCaseFileNames) {
@@ -246,33 +223,37 @@ public class PoshiDependenciesFileLocationCheck extends BaseFileCheck {
 			for (Map.Entry<String, Set<String>> entry :
 					_dependenciesFileReferencesMap.entrySet()) {
 
-				if (_containsFileName(
+				if (!_containsFileName(
 						testCaseFileContent,
 						_getShortFileName(entry.getKey()))) {
 
-					Set<String> referencesFileNames = entry.getValue();
-
-					referencesFileNames.add(testCaseFileName);
-
-					_dependenciesFileReferencesMap.put(
-						entry.getKey(), referencesFileNames);
+					continue;
 				}
+
+				Set<String> referencesFileNames = entry.getValue();
+
+				referencesFileNames.add(testCaseFileName);
+
+				_dependenciesFileReferencesMap.put(
+					entry.getKey(), referencesFileNames);
 			}
 
 			for (Map.Entry<String, Set<String>> entry :
 					_dependenciesGlobalFileReferencesMap.entrySet()) {
 
-				if (_containsFileName(
+				if (!_containsFileName(
 						testCaseFileContent,
 						_getShortFileName(entry.getKey()))) {
 
-					Set<String> referencesFileNames = entry.getValue();
-
-					referencesFileNames.add(testCaseFileName);
-
-					_dependenciesGlobalFileReferencesMap.put(
-						entry.getKey(), referencesFileNames);
+					continue;
 				}
+
+				Set<String> referencesFileNames = entry.getValue();
+
+				referencesFileNames.add(testCaseFileName);
+
+				_dependenciesGlobalFileReferencesMap.put(
+					entry.getKey(), referencesFileNames);
 			}
 		}
 	}

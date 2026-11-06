@@ -6,13 +6,21 @@
 package com.liferay.portal.vulcan.internal.graphql.servlet.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
+import com.liferay.petra.function.UnsafeRunnable;
+import com.liferay.petra.function.transform.TransformUtil;
+import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.reflect.ReflectionUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.configuration.test.util.CompanyConfigurationTemporarySwapper;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManager;
 import com.liferay.portal.kernel.json.JSONArray;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.model.CompanyConstants;
 import com.liferay.portal.kernel.security.auth.PrincipalException;
+import com.liferay.portal.kernel.test.util.FeatureFlagTestUtil;
 import com.liferay.portal.kernel.test.util.HTTPTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
@@ -20,12 +28,19 @@ import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.Http;
+import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.test.log.LogCapture;
+import com.liferay.portal.test.log.LogEntry;
+import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
+import com.liferay.portal.vulcan.feature.flag.FeatureFlag;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLName;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLTypeExtension;
+import com.liferay.portal.vulcan.graphql.contributor.GraphQLContributor;
 import com.liferay.portal.vulcan.graphql.servlet.ServletData;
+import com.liferay.portal.vulcan.internal.test.util.FeatureFlagManagerTestUtil;
 import com.liferay.portal.vulcan.internal.test.util.PaginationConfigurationTestUtil;
 
 import jakarta.ws.rs.NotFoundException;
@@ -90,6 +105,40 @@ public class GraphQLServletTest {
 	}
 
 	@Test
+	public void testGraphQLContributor() throws Exception {
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"notprivacysafe.graphql.GraphQL", LoggerTestUtil.ERROR)) {
+
+			Assert.assertNull(_getContributedTestDTO1JSONObject());
+		}
+
+		Bundle bundle = FrameworkUtil.getBundle(GraphQLServletTest.class);
+
+		BundleContext bundleContext = bundle.getBundleContext();
+
+		ServiceRegistration<GraphQLContributor> serviceRegistration =
+			bundleContext.registerService(
+				GraphQLContributor.class, new TestGraphQLContributor(), null);
+
+		try {
+			JSONObject jsonObject = _getContributedTestDTO1JSONObject();
+
+			Assert.assertEquals(
+				_testDTO1.getString(),
+				jsonObject.getString("contributorString"));
+		}
+		finally {
+			serviceRegistration.unregister();
+		}
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"notprivacysafe.graphql.GraphQL", LoggerTestUtil.ERROR)) {
+
+			Assert.assertNull(_getContributedTestDTO1JSONObject());
+		}
+	}
+
+	@Test
 	public void testGraphQLNameConflict() throws Exception {
 
 		// TestDTO2 has the GraphQL name "FileEntry" which is already
@@ -111,6 +160,56 @@ public class GraphQLServletTest {
 					"query"),
 				"JSONObject/data", "JSONObject/__type", "JSONArray/fields"),
 			JSONCompareMode.LENIENT);
+	}
+
+	@Test
+	public void testGraphQLWithDependencyFeatureFlag() throws Exception {
+		_testGraphQLWithFeatureFlag(
+			TestPropsValues.getCompanyId(), "GRAPHQL-456");
+	}
+
+	@Test
+	public void testGraphQLWithFeatureFlag() throws Exception {
+		_testGraphQLWithFeatureFlag(
+			TestPropsValues.getCompanyId(), _FEATURE_FLAG_KEY);
+	}
+
+	@Test
+	public void testGraphQLWithSystemFeatureFlag() throws Exception {
+		_testGraphQLWithFeatureFlag(CompanyConstants.SYSTEM, _FEATURE_FLAG_KEY);
+	}
+
+	@Test
+	public void testGraphQLWithUndeclaredFeatureFlag() throws Exception {
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.portal.vulcan.internal.graphql.servlet." +
+					"GraphQLServletExtender",
+				LoggerTestUtil.WARN);
+			SafeCloseable safeCloseable =
+				FeatureFlagManagerTestUtil.swapWithSafeCloseable(
+					_featureFlagManager)) {
+
+			JSONArray namespacedQueryFieldsJSONArray = _getFieldsJSONArray(
+				_getNamespacedQueryTypeName());
+
+			Assert.assertTrue(
+				_hasField(namespacedQueryFieldsJSONArray, "testDTO1"));
+			Assert.assertFalse(
+				_hasField(
+					namespacedQueryFieldsJSONArray,
+					"testUndeclaredFeatureFlagDTO"));
+
+			List<String> messages = TransformUtil.transform(
+				logCapture.getLogEntries(), LogEntry::getMessage);
+
+			Assert.assertTrue(
+				messages.toString(),
+				messages.contains(
+					StringBundler.concat(
+						"Feature flag ", _FEATURE_FLAG_KEY_UNDECLARED,
+						" is not available for company ",
+						TestPropsValues.getCompanyId())));
+		}
 	}
 
 	@Test
@@ -187,6 +286,45 @@ public class GraphQLServletTest {
 	}
 
 	@Test
+	public void testQueryBatchOperationLimit() throws Exception {
+		_assertBatch(1);
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"portal_web.docroot.errors.code_jsp", LoggerTestUtil.ERROR)) {
+
+			Assert.assertEquals(
+				400,
+				HTTPTestUtil.invokeToHttpCode(
+					_getBatchJSONArray(
+						2
+					).toString(),
+					"graphql", Http.Method.POST));
+		}
+
+		_withGraphQLBatchOperationLimit(-1, () -> _assertBatch(11));
+		_withGraphQLBatchOperationLimit(0, () -> _assertBatch(11));
+		_withGraphQLBatchOperationLimit(
+			2,
+			() -> {
+				_assertBatch(2);
+
+				try (LogCapture logCapture =
+						LoggerTestUtil.configureLog4JLogger(
+							"portal_web.docroot.errors.code_jsp",
+							LoggerTestUtil.ERROR)) {
+
+					Assert.assertEquals(
+						400,
+						HTTPTestUtil.invokeToHttpCode(
+							_getBatchJSONArray(
+								3
+							).toString(),
+							"graphql", Http.Method.POST));
+				}
+			});
+	}
+
+	@Test
 	public void testQueryDepthLimit() throws Exception {
 		Configuration[] configurations = _configurationAdmin.listConfigurations(
 			StringBundler.concat(
@@ -260,6 +398,52 @@ public class GraphQLServletTest {
 				factoryConfiguration.update(configuration.getProperties());
 			}
 		}
+	}
+
+	@Test
+	public void testQueryIntrospectionFieldLimit() throws Exception {
+		_assertIntrospectionFieldLimitExceeded(
+			"__Field.args",
+			new GraphQLField(
+				"__schema",
+				new GraphQLField(
+					"types",
+					new GraphQLField(
+						"fields",
+						new GraphQLField("a: args", new GraphQLField("name")),
+						new GraphQLField(
+							"b: args", new GraphQLField("name"))))));
+		_assertIntrospectionFieldLimitExceeded(
+			"__Schema.types",
+			new GraphQLField(
+				"__schema",
+				new GraphQLField("a: types", new GraphQLField("name")),
+				new GraphQLField("b: types", new GraphQLField("name"))));
+		_assertIntrospectionFieldLimitExceeded(
+			"query.__schema",
+			new GraphQLField(
+				"a: __schema",
+				new GraphQLField("queryType", new GraphQLField("name"))),
+			new GraphQLField(
+				"b: __schema",
+				new GraphQLField("queryType", new GraphQLField("name"))));
+
+		Assert.assertNotNull(
+			JSONUtil.getValueAsJSONArray(
+				_invoke(
+					new GraphQLField(
+						"__schema",
+						new GraphQLField(
+							"directives",
+							new GraphQLField("args", new GraphQLField("name"))),
+						new GraphQLField(
+							"types",
+							new GraphQLField(
+								"fields",
+								new GraphQLField(
+									"args", new GraphQLField("name"))))),
+					"query"),
+				"JSONObject/data", "JSONObject/__schema", "JSONArray/types"));
 	}
 
 	@Test
@@ -661,6 +845,48 @@ public class GraphQLServletTest {
 
 	}
 
+	public static class TestGraphQLContributor implements GraphQLContributor {
+
+		@Override
+		public String getPath() {
+			return _path;
+		}
+
+		@Override
+		public TestContributorQuery getQuery() {
+			return new TestContributorQuery();
+		}
+
+		@Override
+		public boolean isJaxRsResourceInvocation() {
+			return false;
+		}
+
+		public static class TestContributorQuery {
+
+			@GraphQLTypeExtension(TestDTO1.class)
+			public class TestContributorGraphQLTypeExtension {
+
+				public TestContributorGraphQLTypeExtension(TestDTO1 testDTO1) {
+					_testDTO1 = testDTO1;
+				}
+
+				@com.liferay.portal.vulcan.graphql.annotation.GraphQLField
+				public String contributorString() {
+					return _testDTO1.getString();
+				}
+
+				private final TestDTO1 _testDTO1;
+
+			}
+
+		}
+
+		private final String _path =
+			"/" + RandomTestUtil.randomString() + "-graphql/v1_0";
+
+	}
+
 	public static class TestMutation {
 
 		@com.liferay.portal.vulcan.graphql.annotation.GraphQLField
@@ -702,6 +928,12 @@ public class GraphQLServletTest {
 		}
 
 		@com.liferay.portal.vulcan.graphql.annotation.GraphQLField
+		@FeatureFlag(_FEATURE_FLAG_KEY)
+		public GraphQLServletTest.TestDTO1 testFeatureFlagDTO() {
+			return _testDTO1;
+		}
+
+		@com.liferay.portal.vulcan.graphql.annotation.GraphQLField
 		public GraphQLServletTest.TestDTO1 testNoPermissionOverDTO()
 			throws PrincipalException.MustHavePermission {
 
@@ -721,6 +953,12 @@ public class GraphQLServletTest {
 			throw new SecurityException();
 		}
 
+		@com.liferay.portal.vulcan.graphql.annotation.GraphQLField
+		@FeatureFlag(_FEATURE_FLAG_KEY_UNDECLARED)
+		public GraphQLServletTest.TestDTO1 testUndeclaredFeatureFlagDTO() {
+			return _testDTO1;
+		}
+
 		@GraphQLTypeExtension(TestDTO1.class)
 		public class TestGraphQLTypeExtension {
 
@@ -730,6 +968,12 @@ public class GraphQLServletTest {
 
 			@com.liferay.portal.vulcan.graphql.annotation.GraphQLField
 			public String extendedString() {
+				return _testDTO1.getExtendedString();
+			}
+
+			@com.liferay.portal.vulcan.graphql.annotation.GraphQLField
+			@FeatureFlag(_FEATURE_FLAG_KEY)
+			public String featureFlagString() {
 				return _testDTO1.getExtendedString();
 			}
 
@@ -813,9 +1057,11 @@ public class GraphQLServletTest {
 			for (int i = 0; i < length; i++) {
 				sb.append(_serializeValue(Array.get(value, i)));
 
-				if (i < (length - 1)) {
-					sb.append(", ");
+				if (i >= (length - 1)) {
+					continue;
 				}
+
+				sb.append(", ");
 			}
 
 			sb.append("]");
@@ -897,6 +1143,25 @@ public class GraphQLServletTest {
 		}
 	}
 
+	private void _assertBatch(int size) throws Exception {
+		JSONArray jsonArray = JSONFactoryUtil.createJSONArray(
+			HTTPTestUtil.invokeToString(
+				_getBatchJSONArray(
+					size
+				).toString(),
+				"graphql", Http.Method.POST));
+
+		Assert.assertEquals(size, jsonArray.length());
+
+		for (int i = 0; i < size; i++) {
+			_assertEquals(
+				false, _testDTO1,
+				JSONUtil.getValueAsJSONObject(
+					jsonArray.getJSONObject(i), "JSONObject/data",
+					"JSONObject/testDTO1"));
+		}
+	}
+
 	private void _assertEquals(
 		boolean assertExtendedProperties, TestDTO1 expectedTestDTO1,
 		JSONObject jsonObject) {
@@ -939,6 +1204,56 @@ public class GraphQLServletTest {
 			JSONCompareMode.LENIENT);
 	}
 
+	private void _assertIntrospectionFieldLimitExceeded(
+			String fieldCoordinates, GraphQLField... graphQLFields)
+		throws Exception {
+
+		JSONObject jsonObject = _invoke(
+			new GraphQLField("query", graphQLFields));
+
+		Assert.assertNull(
+			JSONUtil.getValueAsJSONObject(jsonObject, "JSONObject/data"));
+		JSONAssert.assertEquals(
+			JSONUtil.put(
+				"extensions",
+				JSONUtil.put(
+					"code", "Bad Request"
+				).put(
+					"exception", JSONUtil.put("errno", 400)
+				)
+			).put(
+				"message", fieldCoordinates + " is present more than once"
+			).toString(),
+			JSONUtil.getValueAsString(
+				jsonObject, "JSONArray/errors", "Object/0"),
+			JSONCompareMode.LENIENT);
+	}
+
+	private JSONArray _getBatchJSONArray(int size) {
+		JSONArray jsonArray = JSONFactoryUtil.createJSONArray();
+
+		GraphQLField graphQLField = new GraphQLField(
+			"query",
+			new GraphQLField(
+				"testDTO1", new GraphQLField("id"), new GraphQLField("map"),
+				new GraphQLField("string")));
+
+		for (int i = 0; i < size; i++) {
+			jsonArray.put(JSONUtil.put("query", graphQLField.toString()));
+		}
+
+		return jsonArray;
+	}
+
+	private JSONObject _getContributedTestDTO1JSONObject() throws Exception {
+		return JSONUtil.getValueAsJSONObject(
+			_invoke(
+				new GraphQLField(
+					"testDTO1", new GraphQLField("contributorString")),
+				"query"),
+			"JSONObject/data", "JSONObject/testDTO1");
+	}
+
 	private String _getDeprecationReason(
 		boolean mutation, String operationName) {
 
@@ -958,6 +1273,18 @@ public class GraphQLServletTest {
 		return sb.toString();
 	}
 
+	private JSONArray _getFieldsJSONArray(String typeName) throws Exception {
+		return JSONUtil.getValueAsJSONArray(
+			_invoke(
+				new GraphQLField(
+					"__type(name: \"" + typeName + "\")",
+					new GraphQLField(
+						"fields", new GraphQLField("name"),
+						new GraphQLField("type", new GraphQLField("name")))),
+				"query"),
+			"JSONObject/data", "JSONObject/__type", "JSONArray/fields");
+	}
+
 	private JSONObject _getJSONObject(
 		JSONArray jsonArray, String operationName) {
 
@@ -974,16 +1301,50 @@ public class GraphQLServletTest {
 		return null;
 	}
 
-	private JSONObject _invoke(GraphQLField graphQLField, String type)
-		throws Exception {
+	private String _getNamespacedQueryTypeName() throws Exception {
+		JSONArray queryFieldsJSONArray = JSONUtil.getValueAsJSONArray(
+			_invoke(
+				new GraphQLField(
+					"__schema",
+					new GraphQLField(
+						"queryType",
+						new GraphQLField(
+							"fields", new GraphQLField("name"),
+							new GraphQLField(
+								"type", new GraphQLField("name"))))),
+				"query"),
+			"JSONObject/data", "JSONObject/__schema", "JSONObject/queryType",
+			"JSONArray/fields");
 
-		GraphQLField queryGraphQLField = new GraphQLField(type, graphQLField);
+		return JSONUtil.getValueAsString(
+			_getJSONObject(queryFieldsJSONArray, "testPath_v1_0"),
+			"JSONObject/type", "Object/name");
+	}
+
+	private boolean _hasField(JSONArray fieldsJSONArray, String name) {
+		JSONObject jsonObject = _getJSONObject(fieldsJSONArray, name);
+
+		if (jsonObject != null) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private JSONObject _invoke(GraphQLField queryGraphQLField)
+		throws Exception {
 
 		return HTTPTestUtil.invokeToJSONObject(
 			JSONUtil.put(
 				"query", queryGraphQLField.toString()
 			).toString(),
 			"graphql", Http.Method.POST);
+	}
+
+	private JSONObject _invoke(GraphQLField graphQLField, String type)
+		throws Exception {
+
+		return _invoke(new GraphQLField(type, graphQLField));
 	}
 
 	private void _test(
@@ -1006,6 +1367,90 @@ public class GraphQLServletTest {
 
 		Assert.assertEquals(expectedPage, jsonObject.getInt("page"));
 		Assert.assertEquals(expectedPageSize, jsonObject.getInt("pageSize"));
+	}
+
+	private void _testGraphQLWithFeatureFlag(boolean enabled) throws Exception {
+		String namespacedQueryTypeName = _getNamespacedQueryTypeName();
+
+		JSONArray namespacedQueryFieldsJSONArray = _getFieldsJSONArray(
+			namespacedQueryTypeName);
+
+		Assert.assertEquals(
+			enabled,
+			_hasField(namespacedQueryFieldsJSONArray, "testFeatureFlagDTO"));
+
+		JSONArray testDTO1FieldsJSONArray = _getFieldsJSONArray(
+			JSONUtil.getValueAsString(
+				_getJSONObject(namespacedQueryFieldsJSONArray, "testDTO1"),
+				"JSONObject/type", "Object/name"));
+
+		Assert.assertEquals(
+			enabled, _hasField(testDTO1FieldsJSONArray, "featureFlagString"));
+
+		JSONObject jsonObject = null;
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"notprivacysafe.graphql.GraphQL", LoggerTestUtil.ERROR)) {
+
+			jsonObject = _invoke(
+				new GraphQLField(
+					"testPath_v1_0",
+					new GraphQLField(
+						"testFeatureFlagDTO", new GraphQLField("id"),
+						new GraphQLField("featureFlagString"))),
+				"query");
+		}
+
+		if (enabled) {
+			Assert.assertEquals(
+				_testDTO1.getExtendedString(),
+				JSONUtil.getValueAsString(
+					jsonObject, "JSONObject/data", "JSONObject/testPath_v1_0",
+					"JSONObject/testFeatureFlagDTO",
+					"Object/featureFlagString"));
+		}
+		else {
+			JSONAssert.assertEquals(
+				JSONUtil.put(
+					"errors",
+					JSONUtil.putAll(
+						JSONUtil.put(
+							"extensions",
+							JSONUtil.put(
+								"exception", JSONUtil.put("errno", 400))
+						).put(
+							"message",
+							StringBundler.concat(
+								"Validation error (FieldUndefined@[",
+								"testPath_v1_0/testFeatureFlagDTO]) : Field ",
+								"'testFeatureFlagDTO' in type '",
+								namespacedQueryTypeName, "' is undefined")
+						))
+				).toString(),
+				jsonObject.toString(), JSONCompareMode.LENIENT);
+		}
+	}
+
+	private void _testGraphQLWithFeatureFlag(
+			long companyId, String featureFlagKey)
+		throws Exception {
+
+		_testGraphQLWithFeatureFlag(false);
+
+		try (SafeCloseable safeCloseable =
+				FeatureFlagTestUtil.setFeatureFlagsWithSafeCloseable(
+					true, _FEATURE_FLAG_KEY)) {
+
+			FeatureFlagTestUtil.invokeFeatureFlagListeners(
+				companyId, true, featureFlagKey);
+
+			_testGraphQLWithFeatureFlag(true);
+		}
+
+		FeatureFlagTestUtil.invokeFeatureFlagListeners(
+			companyId, false, featureFlagKey);
+
+		_testGraphQLWithFeatureFlag(false);
 	}
 
 	private String _toGraphQLString(TestDTO1 testDTO1) throws Exception {
@@ -1035,8 +1480,34 @@ public class GraphQLServletTest {
 		return sb.toString();
 	}
 
+	private void _withGraphQLBatchOperationLimit(
+			int graphQLBatchOperationLimit,
+			UnsafeRunnable<Exception> unsafeRunnable)
+		throws Exception {
+
+		try (CompanyConfigurationTemporarySwapper
+				companyConfigurationTemporarySwapper =
+					new CompanyConfigurationTemporarySwapper(
+						TestPropsValues.getCompanyId(),
+						"com.liferay.portal.vulcan.internal.configuration." +
+							"HeadlessAPICompanyConfiguration",
+						MapUtil.singletonDictionary(
+							"graphQLBatchOperationLimit",
+							graphQLBatchOperationLimit))) {
+
+			unsafeRunnable.run();
+		}
+	}
+
+	private static final String _FEATURE_FLAG_KEY = "GRAPHQL-123";
+
+	private static final String _FEATURE_FLAG_KEY_UNDECLARED = "UNDECLARED-123";
+
 	@Inject
 	private ConfigurationAdmin _configurationAdmin;
+
+	@Inject
+	private FeatureFlagManager _featureFlagManager;
 
 	private ServiceRegistration<ServletData> _serviceRegistration;
 	private TestDTO1 _testDTO1;

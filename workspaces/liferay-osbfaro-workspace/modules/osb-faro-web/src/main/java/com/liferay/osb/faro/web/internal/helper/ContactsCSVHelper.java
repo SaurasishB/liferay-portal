@@ -11,7 +11,7 @@ import com.liferay.document.library.kernel.model.DLFileVersion;
 import com.liferay.document.library.kernel.model.DLVersionNumberIncrease;
 import com.liferay.document.library.kernel.service.DLFileEntryLocalService;
 import com.liferay.document.library.kernel.service.DLFileVersionLocalService;
-import com.liferay.osb.faro.contacts.model.constants.ContactsConstants;
+import com.liferay.osb.faro.constants.ContactsConstants;
 import com.liferay.osb.faro.engine.client.model.DataSource;
 import com.liferay.osb.faro.engine.client.model.DataSourceField;
 import com.liferay.osb.faro.web.internal.exception.FaroException;
@@ -242,9 +242,11 @@ public class ContactsCSVHelper {
 			Map<String, Object> individualMap = new HashMap<>();
 
 			for (int i = 0; i < headers.length; i++) {
-				if (row[i] != null) {
-					individualMap.put(headers[i], row[i]);
+				if (row[i] == null) {
+					continue;
 				}
+
+				individualMap.put(headers[i], row[i]);
 			}
 
 			individualMaps.add(individualMap);

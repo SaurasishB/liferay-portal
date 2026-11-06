@@ -13,7 +13,7 @@ Stand up a working Liferay Workspace from zero, or diagnose a workspace that loo
 
 - The user asks to set up, initialize, or scaffold a workspace, or asks for setup help.
 - The server appears down or unreachable.
-- The workspace looks uninitialized — missing `bundles/`, or missing `gradle.properties`.
+- The workspace looks uninitialized — missing the `bundles` directory, or missing `gradle.properties`.
 - Do not run through all steps for a returning user whose server is already running.
 
 > **Note:** These rules apply to local workspace initialization and must not be used to configure higher environments (UAT/Prod).
@@ -24,20 +24,21 @@ Stand up a working Liferay Workspace from zero, or diagnose a workspace that loo
 
 - **Check version**: read `liferay.workspace.product` in `gradle.properties`.
 - **Verify tooling**: check that `blade` (`blade --version`) and Java (`javac -version`) are installed. If missing, provide installation steps.
-- **DXP License**: if `liferay.workspace.product` contains `dxp`, a license file is required. Liferay identifies license files by XML content, not filename — check `bundles/deploy/` for any `.xml` file whose root element is `<license>` or `<licenses>`. If none is found, stop and ask the user to place their license file in `bundles/deploy/` before continuing. For Docker, apply the same check to the directory mounted to the container's deploy path. Community Edition and free tier products do not require a license — skip this check for those.
-- **License is consumed on boot**: Liferay registers the key into the database and deletes the file, so an empty `bundles/deploy/` on an already booted instance is the normal licensed state, not a missing license. Confirm activation from the log instead — `grep --extended-regexp --ignore-case 'license validation passed|License registered' bundles/tomcat*/logs/catalina.out`. Because the license now lives in the database, **clearing `bundles/data` also discards it**; copy a key again into `bundles/deploy/` as part of any such reset.
+- **DXP License**: if `liferay.workspace.product` contains `dxp`, a license file is required. Liferay identifies license files by XML content, not filename — check `bundles/deploy` for any `.xml` file whose root element is `<license>` or `<licenses>`. If none is found, stop and ask the user to place their license file in `bundles/deploy` before continuing. For Docker, apply the same check to the directory mounted to the container's deploy path. Community Edition and free tier products do not require a license — skip this check for those.
+- **License is consumed on boot**: Liferay registers the key into the database and deletes the file, so an empty `bundles/deploy` directory on an already booted instance is the normal licensed state, not a missing license. Confirm activation from the log instead — `grep --extended-regexp --ignore-case 'license validation passed|License registered' bundles/tomcat*/logs/catalina.out`. Because the license now lives in the database, **clearing `bundles/data` also discards it**; copy a key again into `bundles/deploy` as part of any such reset.
+- **Keep an environment directory in Git**: the workspace plugin refuses to configure unless the `configs` directory holds at least one directory besides `common` and `docker`, and Git does not keep an empty directory. A workspace whose `configs/local` is empty therefore works where it was made, but a fresh clone fails on every Gradle call, `blade gw deploy` included, with `The 'configs' directory must contain one directory not named: common, docker` (verified on a 2026.Q3.5 workspace). Commit a file in it: a `portal-ext.properties`, or an empty `.gitkeep`.
 
 ### Environment Readiness and State Sync
 
 #### Configure MCP Before Starting the Server
 
-If the Liferay MCP server is supported in your DXP version (see `skills/mcp-server/SKILL.md`), configure it **now**, before starting Liferay. CLI agents load MCP settings at startup only — configuring it after the server is already running means the agent will need to restart, costing another full server boot. Do it in this order:
+If the Liferay MCP server is supported in your DXP version (see `skills/mcp-server/SKILL.md`), set it up **now**, before starting Liferay. CLI agents load MCP settings at startup only, and the portal reads its feature flags at boot — getting either half wrong after the server is running costs another full server boot. Do it in this order:
 
-1. Follow the enablement and client configuration steps in `skills/mcp-server/SKILL.md`.
+1. Load `skills/mcp-server/SKILL.md` and run its "Audit the Current State First" table. Do not skip it because an MCP entry already appears in the agent's server list — that entry is only the client half and proves nothing about the portal's `LPD-63311` flag, which a fresh bundle never has.
 
-1. Prompt the user to exit and restart their CLI session.
+1. Complete only the steps the audit shows missing. Enable the flag in the configuration the bundle will boot with. Fix or add the client entry if needed.
 
-1. After restarting, verify the MCP server entry appears in your client's server list. A disconnected or failed status is expected — the server is not running yet. If the entry is absent, recheck the MCP configuration before proceeding.
+1. If the client configuration changed, prompt the user to exit and restart their CLI session, then verify the MCP server entry appears in the client's server list. A disconnected or failed status is expected — the server is not running yet. If the entry is absent, recheck the MCP configuration before proceeding.
 
 1. Then continue below to start the Liferay server.
 
@@ -45,7 +46,7 @@ Skip this block if MCP is not supported in your DXP version.
 
 #### Tomcat
 
-- **Initialize**: run `blade server init` if `bundles/` does not exist.
+- **Initialize**: run `blade server init` if the `bundles` directory does not exist.
 
 - **Clear the seeded database (Hypersonic, before the first start)**: a downloaded bundle ships with a seeded Hypersonic database in which `test@liferay.com` already exists with the first login flags set. Boot it as is and every `/o/*` call returns 403 no matter what `portal-ext.properties` contains, because those properties are read only when the admin is created.
 
@@ -59,11 +60,11 @@ Skip this block if MCP is not supported in your DXP version.
   auth.verifier.BasicAuthHeaderAuthVerifier.urls.includes=/api/*,/xmlrpc/*,/o/*
   ```
 
-  Every headless REST endpoint and MCP `call-http-endpoint` hits `/o/*`. Without this, those calls return 403. Adding it reactively costs an extra edit + sync + restart cycle.
+  Every headless REST endpoint hits `/o/*`, and so does every MCP `call-http-endpoint` call on 2026.Q1 and 2026.Q2. Without this, those calls return 403. Adding it reactively costs an extra edit + sync + restart cycle.
 
   **Security note**: this is for local development only. BasicAuth sends credentials in every request. For production, use OAuth2 with `OAuth2HeaderAuthVerifier` instead. Never enable BasicAuth on `/o/*` in production.
 
-- **Instance and admin properties (dev only)**: a new workspace ships `configs/local/portal-ext.properties` with nothing but commented-out JDBC lines, so add every line below rather than assuming any of them is already there:
+- **Instance and admin properties (dev only)**: a new workspace ships `configs/local/portal-ext.properties` with nothing but JDBC lines that are commented out, so add every line below rather than assuming any of them is already there:
 
   ```
   admin.email.from.address=test@liferay.com
@@ -85,7 +86,7 @@ Skip this block if MCP is not supported in your DXP version.
 
   The properties above are what skip the manual first login, but they only take effect if this copy happens before the bundle has ever booted. See First Login Bootstrap below.
 
-- **Free port 8080 first**: every Liferay workspace defaults to 8080, so another workspace left running holds it. Run `ss -ltnp | grep ':8080 '` and **wait for the result before launching** — do not batch the check with the start command. If the port is taken, stop that instance with its own `bundles/tomcat*/bin/shutdown.sh` or move this workspace to another port. A bind conflict is easy to misread: Tomcat still logs `Server startup in [N] milliseconds` even though the connector never came up, so the boot looks fine while every request is served by the *other* instance and its separate database — which surfaces as inexplicable login or data failures. Treat `Address already in use` in `catalina.out` as a failed boot regardless of the startup line, and confirm the listening pid belongs to this bundle.
+- **Free port 8080 first**: every Liferay workspace defaults to 8080, so another workspace left running holds it. Run `ss -ltnp | grep ':8080 '` and **wait for the result before launching** — do not batch the check with the start command. If the port is taken, **ask the user** whether to stop that instance (with its own `bundles/tomcat*/bin/shutdown.sh`) or move this workspace to another port — it is a process this session did not start, so the restart permission in `liferay-rules.md` → "Server Restarts" does not cover it. A bind conflict is easy to misread: Tomcat still logs `Server startup in [N] milliseconds` even though the connector never came up, so the boot looks fine while every request is served by the *other* instance and its separate database — which surfaces as inexplicable login or data failures. Treat `Address already in use` in `catalina.out` as a failed boot regardless of the startup line, and confirm the listening pid belongs to this bundle.
 
 - **Start server**: `blade server run` (foreground, recommended for debugging) or `blade server start` (background). These commands are Tomcat only — do not use them for Docker.
 
@@ -97,7 +98,7 @@ Skip this block if MCP is not supported in your DXP version.
 - **Database**: verify the compose file defines a database service (MySQL). Docker has no embedded database; both the database and Liferay containers must be running.
 - **Configuration**: check whether the compose file uses `image:` (prebuilt) or `build:` (custom image):
   - `image: liferay/dxp:...` (prebuilt) → configuration is in `liferay.env` (env vars). See `skills/feature-flags/SKILL.md` for the env var encoding.
-  - `build: ...` → configuration is baked into the image via `configs/docker/`. Rebuild the image to apply changes.
+  - `build: ...` → configuration is baked into the image via `configs/docker`. Rebuild the image to apply changes.
 - **Initial build**: before the first `docker compose up`, build and output client extensions to the volume mounted directory: `./gradlew deploy`.
 - **Start**: `docker compose up` (foreground) or `docker compose up --detach` (background). Run from the directory containing the compose file.
 - **Login**: use credentials defined in `liferay.env` (default: `test@liferay.com` / `test`).
@@ -109,7 +110,7 @@ Skip this block if MCP is not supported in your DXP version.
 
 ### First Login Bootstrap (Mandatory Before API/MCP Calls)
 
-On a fresh Liferay instance, the default admin `test@liferay.com` is created with `passwordReset=true` and `agreedToTermsOfUse=false` in the database. Until the portal stops enforcing both, every authenticated API call (REST, MCP `call-http-endpoint`) returns 403 — including for the Omni Admin user. `terms.of.use.required=false` and `users.reminder.queries.enabled=false` lift their half of that enforcement on any boot, but `passwordReset` is written when the admin is created, so only `passwords.default.policy.change.required=false` already in effect at that point avoids it.
+On a fresh Liferay instance, the default admin `test@liferay.com` is created with `passwordReset=true` and `agreedToTermsOfUse=false` in the database. Until the portal stops enforcing both, every authenticated API call (REST, or an MCP tool call) returns 403 — including for the Omni Admin user. `terms.of.use.required=false` and `users.reminder.queries.enabled=false` lift their half of that enforcement on any boot, but `passwordReset` is written when the admin is created, so only `passwords.default.policy.change.required=false` already in effect at that point avoids it.
 
 - **Cleared and synced before its first start**: nothing to do. The admin was created with the properties in effect, so `passwordReset` was never set.
 
@@ -119,9 +120,9 @@ Prompt the user to log into `http://localhost:${PORT}` as `test@liferay.com` / `
 
 Do not automate the browser login flow — Liferay's login form structure varies across versions and automation is brittle.
 
-### MCP Connection Check (When MCP Is Configured)
+### MCP Connection Check (When MCP Is Supported)
 
-With the server running, verify the MCP connection using your client's built in connection test (see `skills/mcp-server/SKILL.md`). If it returns 401/403, stop and ask the user for updated credentials. If MCP tools are not visible, ensure the CLI session was restarted after configuration.
+With the server running, first run the endpoint probe in `skills/mcp-server/SKILL.md` → "Audit the Current State First". A `404` means `LPD-63311` is not in effect on the portal, whatever the agent's server list shows — enable it and restart Liferay before going further. On 2026.Q3, a `404` with the flag in effect means the `MCPServerConfiguration` switch is off; enable it per `skills/mcp-server/SKILL.md`, which needs no restart. On 2026.Q1 and 2026.Q2, the probe does not check credentials; only a tool call does (see `skills/mcp-server/SKILL.md` → "Audit the Current State First"). Then run the tool call in `skills/mcp-server/SKILL.md` → "Connection Check". If it reports `Status code: 401` or `403`, or the probe returns HTTP `401` on 2026.Q3, stop and ask the user for updated credentials. If MCP tools are not visible, ensure the CLI session was restarted after configuration.
 
 Only fall back to direct REST APIs if MCP has been configured correctly and is still returning errors. "Not yet configured" is not a valid fallback condition — configure it first.
 
@@ -134,10 +135,11 @@ If the user prompts for setup assistance, guide them through these steps one by 
 ## Success Signal
 
 - `gradle.properties` and `settings.gradle` present
-- `bundles/tomcat*/` present
+- `bundles/tomcat*` directory present
 - HTTP request to `http://localhost:${PORT}` returns 200
 - User can sign in with the default credentials
 - BasicAuth verifier configured (if doing local REST/MCP work)
+- MCP endpoint probe returns 200 and the MCP server is connected in the agent (when MCP is supported)
 - First login bootstrap complete (or skipped via preboot flag settings)
 
 ## References

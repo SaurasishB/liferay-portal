@@ -256,9 +256,9 @@
 		</module>
 		<module name="com.liferay.source.formatter.checkstyle.check.AutoBatchPreparedStatementUtilCheck">
 			<property name="category" value="Bug Prevention" />
-			<property name="description" value="Finds cases where `AutoBatchPreparedStatementUtil.autoBatch` or `AutoBatchPreparedStatementUtil.concurrentAutoBatch` should be used." />
+			<property name="description" value="Finds cases where `AutoBatchPreparedStatementUtil.autoBatch`, `AutoBatchPreparedStatementUtil.autoBatchWithResults`, or `AutoBatchPreparedStatementUtil.concurrentAutoBatch` should be used." />
 			<property name="enabled" value="false" />
-			<message key="auto.batch.prepared.statement.util.use" value="Use &quot;AutoBatchPreparedStatementUtil.autoBatch&quot; or &quot;AutoBatchPreparedStatementUtil.concurrentAutoBatch&quot; to create a prepared statement when using &quot;preparedStatement.executeBatch()&quot;" />
+			<message key="auto.batch.prepared.statement.util.use" value="Use &quot;AutoBatchPreparedStatementUtil.autoBatch&quot;, &quot;AutoBatchPreparedStatementUtil.autoBatchWithResults&quot;, or &quot;AutoBatchPreparedStatementUtil.concurrentAutoBatch&quot; to create a prepared statement when using &quot;preparedStatement.executeBatch()&quot;" />
 		</module>
 		<module name="com.liferay.source.formatter.checkstyle.check.BatchableUpdateCheck">
 			<property name="category" value="Performance" />
@@ -414,6 +414,11 @@
 			<property name="description" value="Checks the creation of DTO enum." />
 			<message key="create.use" value="Use &quot;create&quot; to create DTO enum, instead of &quot;valueOf&quot;" />
 		</module>
+		<module name="com.liferay.source.formatter.checkstyle.check.EarlyLoopExitCheck">
+			<property name="category" value="Styling" />
+			<property name="description" value="Finds if-statements at the end of a loop body that can be inverted to use `break`, `continue`, `return`, or `throw` as early as possible." />
+			<message key="loop.exit.early" value="Invert the condition and use &quot;{0}&quot; as early as possible instead of nesting the rest of the loop body in the if-statement" />
+		</module>
 		<module name="com.liferay.source.formatter.checkstyle.check.EmptyConstructorCheck">
 			<property name="category" value="Bug Prevention" />
 			<property name="description" value="Finds unnecessary empty constructors." />
@@ -474,7 +479,7 @@
 		</module>
 		<module name="com.liferay.source.formatter.checkstyle.check.FIPSTLSVerificationCheck">
 			<property name="category" value="Security" />
-			<property name="description" value="Finds outbound TLS verification bypasses that are not guarded by `PropsValues.FIPS_ENABLED`, see LPD-93649." />
+			<property name="description" value="Finds outbound TLS verification bypasses that are not guarded by `PropsValues.FIPS_ENABLED`." />
 			<property name="enabled" value="false" />
 			<message key="guard.class.required" value="Missing check &quot;PropsValues.FIPS_ENABLED&quot; in if-statement condition in the same class as a trust manager, see LPD-93649" />
 			<message key="guard.method.required" value="Missing check &quot;PropsValues.FIPS_ENABLED&quot; in if-statement condition in the same method as &quot;{0}&quot;, see LPD-93649" />
@@ -752,6 +757,11 @@
 			<property name="description" value="Verifies that `GetterUtil.parse*` is used to parse primitive types, when possible." />
 			<message key="getter.util.method.use" value="Use &quot;GetterUtil.{0}&quot; or properly catch &quot;NumberFormatException&quot; when calling &quot;{1}.{2}&quot;" />
 		</module>
+		<module name="com.liferay.source.formatter.checkstyle.check.PatternMatchingForSwitchCheck">
+			<property name="category" value="Performance" />
+			<property name="description" value="Finds usage of pattern matching for `switch`." />
+			<message key="pattern.matching.for.switch.avoid" value="Do not use pattern matching for switch" />
+		</module>
 		<module name="com.liferay.source.formatter.checkstyle.check.PersistenceCallCheck">
 			<property name="category" value="Bug Prevention" />
 			<property name="description" value="Finds illegal persistence calls across component boundaries." />
@@ -790,6 +800,11 @@
 			<property name="category" value="Performance" />
 			<property name="description" value="Finds usage of `record`." />
 			<message key="record.class.avoid" value="Do not declare record class" />
+		</module>
+		<module name="com.liferay.source.formatter.checkstyle.check.RecordPatternCheck">
+			<property name="category" value="Performance" />
+			<property name="description" value="Finds usage of record patterns." />
+			<message key="record.pattern.avoid" value="Do not use record patterns" />
 		</module>
 		<module name="com.liferay.source.formatter.checkstyle.check.RedundantBranchingStatementCheck">
 			<property name="category" value="Performance" />
@@ -877,6 +892,11 @@
 			<property name="description" value="Finds secrets compared with a method that returns at the first differing byte." />
 			<property name="enabled" value="false" />
 			<message key="message.digest.is.equal.use" value="Use &quot;MessageDigest.isEqual&quot; to compare secrets, see LPD-93281" />
+		</module>
+		<module name="com.liferay.source.formatter.checkstyle.check.SecretResolverCheck">
+			<property name="category" value="Security" />
+			<property name="description" value="Finds configuration credentials read without resolving them through `SecretResolver` or `SecretResolverUtil`." />
+			<message key="resolve.required" value="Resolve &quot;{0}&quot; through &quot;SecretResolver&quot; or &quot;SecretResolverUtil&quot; before using the value, see LPD-107260" />
 		</module>
 		<module name="com.liferay.source.formatter.checkstyle.check.SelfReferenceCheck">
 			<property name="category" value="Bug Prevention" />
@@ -1027,6 +1047,11 @@
 			<property name="description" value="Checks that names of threads follow naming conventions." />
 			<message key="thread.rename" value="Rename thread to &quot;{0}&quot;" />
 		</module>
+		<module name="com.liferay.source.formatter.checkstyle.check.ToSQLCallCheck">
+			<property name="category" value="Performance" />
+			<property name="description" value="Finds `toSQL(ASTNodeListener)` calls whose SQL string is unused, which should pass a consumer that ignores the text to `toSQL(Consumer, ASTNodeListener)` instead." />
+			<message key="consumer.use" value="Use &quot;toSQL(string -&gt; '{}', astNodeListener)&quot; instead of &quot;toSQL(astNodeListener)&quot; when the SQL string is unused, see LPD-113238" />
+		</module>
 		<module name="com.liferay.source.formatter.checkstyle.check.TransactionalTestRuleCheck">
 			<property name="category" value="Bug Prevention" />
 			<property name="description" value="Finds usage of `TransactionalTestRule` in `*StagedModelDataHandlerTest`." />
@@ -1037,6 +1062,12 @@
 			<property name="description" value="Ensures using Try-With-Resources statement to properly close the resource." />
 			<property name="populateTypeNames" value="false" />
 			<message key="try.with.resources.use" value="Use Try-With-Resources statement to declare &quot;{0}&quot; instead of closing the resource in the &quot;finally&quot; statement using &quot;{1}&quot;" />
+		</module>
+		<module name="com.liferay.source.formatter.checkstyle.check.TypedPropertyKeyCheck">
+			<property name="category" value="Bug Prevention" />
+			<property name="description" value="Checks that a typed property key such as `service.ranking:Integer` is not used outside component property strings." />
+			<message key="typed.property.key.filter.incorrect" value="The typed key syntax &quot;{0}&quot; is only parsed in component property strings, use the plain key &quot;{1}&quot; in a filter" />
+			<message key="typed.property.key.value.incorrect" value="The typed key syntax &quot;{0}&quot; is only parsed in component property strings, use the plain key &quot;{1}&quot; with a typed value" />
 		</module>
 		<module name="com.liferay.source.formatter.checkstyle.check.UnicodePropertiesBuilderCheck">
 			<property name="category" value="Miscellaneous" />

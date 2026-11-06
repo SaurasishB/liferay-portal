@@ -34,7 +34,10 @@ const ORDERED_TAB_IDS: TabId[] = ['governance', 'inventory', 'performance'];
 
 function isTabEnabled(tabId: TabId, administeredSpaceIds: string[]) {
 	if (tabId === 'governance') {
-		return Boolean(Liferay.FeatureFlags['LPD-82226']);
+		return (
+			Boolean(Liferay.FeatureFlags['LPD-82226']) &&
+			Boolean(administeredSpaceIds.length)
+		);
 	}
 
 	if (tabId === 'performance') {
@@ -47,7 +50,9 @@ function isTabEnabled(tabId: TabId, administeredSpaceIds: string[]) {
 function Wrapper({
 	additionalProps,
 	admin,
+	administeredSpaceGroupIds,
 	administeredSpaceIds,
+	allSpacesAdministered,
 	analyticsEnabled,
 	constants,
 	freeTier,
@@ -55,7 +60,9 @@ function Wrapper({
 }: {
 	additionalProps: DashboardAdditionalProps & GovernanceAdditionalProps;
 	admin: boolean;
+	administeredSpaceGroupIds: string[];
 	administeredSpaceIds: string[];
+	allSpacesAdministered: boolean;
 	analyticsEnabled: boolean;
 	constants: {[key: string]: string};
 	freeTier: boolean;
@@ -73,7 +80,9 @@ function Wrapper({
 				<Dashboards
 					additionalProps={additionalProps}
 					admin={admin}
+					administeredSpaceGroupIds={administeredSpaceGroupIds}
 					administeredSpaceIds={administeredSpaceIds}
+					allSpacesAdministered={allSpacesAdministered}
 					analyticsEnabled={analyticsEnabled}
 					constants={constants}
 					freeTier={freeTier}
@@ -87,7 +96,9 @@ function Wrapper({
 function Dashboards({
 	additionalProps,
 	admin,
+	administeredSpaceGroupIds,
 	administeredSpaceIds,
+	allSpacesAdministered,
 	analyticsEnabled,
 	constants,
 	freeTier,
@@ -95,7 +106,9 @@ function Dashboards({
 }: {
 	additionalProps: DashboardAdditionalProps & GovernanceAdditionalProps;
 	admin: boolean;
+	administeredSpaceGroupIds: string[];
 	administeredSpaceIds: string[];
+	allSpacesAdministered: boolean;
 	analyticsEnabled: boolean;
 	constants: {[key: string]: string};
 	freeTier: boolean;
@@ -135,7 +148,9 @@ function Dashboards({
 				{tabId === 'governance' ? (
 					<GovernanceDashboard
 						additionalProps={additionalProps}
-						constants={constants}
+						allSpacesAdministered={allSpacesAdministered}
+						spaceGroupIds={administeredSpaceGroupIds}
+						spaceIds={administeredSpaceIds}
 					/>
 				) : null}
 

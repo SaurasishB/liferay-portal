@@ -83,8 +83,20 @@ import {config as cookiesBannerWebConfig} from './tests/cookies-banner-web/main/
 import {config as dataCleanupConfig} from './tests/data-cleanup/main/config';
 import {config as depotWebConfig} from './tests/depot-web/main/config';
 import {config as designLibraryWebConfig} from './tests/design-library-web/main/config';
+import {config as digitalSalesRoomWebConfig} from './tests/digital-sales-room-web/main/config';
 import {config as dispatchWebConfig} from './tests/dispatch-web/main/config';
 import {config as documentLibraryWebConfig} from './tests/document-library-web/main/config';
+import {config as documentLibraryWebUpgradeDocumentsAndMedia621015Config} from './tests/document-library-web/upgrade-documents-and-media-621015/config';
+import {config as documentLibraryWebUpgradeDocumentsAndMedia621021Config} from './tests/document-library-web/upgrade-documents-and-media-621021/config';
+import {config as documentLibraryWebUpgradeDocumentsAndMedia625Config} from './tests/document-library-web/upgrade-documents-and-media-625/config';
+import {config as documentLibraryWebUpgradeDocumentsAndMedia701015Config} from './tests/document-library-web/upgrade-documents-and-media-701015/config';
+import {config as documentLibraryWebUpgradeDocumentsAndMedia71105Config} from './tests/document-library-web/upgrade-documents-and-media-71105/config';
+import {config as documentLibraryWebUpgradeDocumentsAndMedia72104Config} from './tests/document-library-web/upgrade-documents-and-media-72104/config';
+import {config as documentLibraryWebUpgradeDocumentsAndMedia73101Config} from './tests/document-library-web/upgrade-documents-and-media-73101/config';
+import {config as documentLibraryWebUpgradeDocumentsAndMediaFileSizeLimit701015Config} from './tests/document-library-web/upgrade-documents-and-media-file-size-limit-701015/config';
+import {config as documentLibraryWebUpgradeDocumentsAndMediaFileSizeLimit71105Config} from './tests/document-library-web/upgrade-documents-and-media-file-size-limit-71105/config';
+import {config as documentLibraryWebUpgradeDocumentsAndMediaFileSizeLimit72104Config} from './tests/document-library-web/upgrade-documents-and-media-file-size-limit-72104/config';
+import {config as documentLibraryWebUpgradeDocumentsAndMediaFileSizeLimit73101Config} from './tests/document-library-web/upgrade-documents-and-media-file-size-limit-73101/config';
 import {config as dynamicDataMappingFormWebConfig} from './tests/dynamic-data-mapping-form-web/main/config';
 import {config as e2eCmsDxpConfig} from './tests/e2e-cms-dxp/main/config';
 import {config as expandoWebConfig} from './tests/expando-web/main/config';
@@ -123,6 +135,7 @@ import {config as ipGeocoderSampleWebConfig} from './tests/ip-geocoder-sample-we
 import {config as itemSelectorTaglibConfig} from './tests/item-selector-taglib/main/config';
 import {config as journalWebConfig} from './tests/journal-web/main/config';
 import {config as knowledgeBaseWebConfig} from './tests/knowledge-base-web/main/config';
+import {config as launchWebConfig} from './tests/launch-web/main/config';
 import {config as layoutAdminWebConfig} from './tests/layout-admin-web/main/config';
 import {config as layoutContentPageEditorWebFormContainerConfig} from './tests/layout-content-page-editor-web/form-container/config';
 import {config as layoutContentPageEditorWebFragmentsConfig} from './tests/layout-content-page-editor-web/fragments/config';
@@ -206,6 +219,7 @@ import {config as portalSearchAdminWebConfig} from './tests/portal-search-admin-
 import {config as portalSearchWebConfig} from './tests/portal-search-web/main/config';
 import {config as portalSecurityAuditWebConfig} from './tests/portal-security-audit-web/main/config';
 import {config as portalSecurityContentSecurityPolicyConfig} from './tests/portal-security-content-security-policy/main/config';
+import {config as portalSecurityKeyImplConfig} from './tests/portal-security-key-impl/main/config';
 import {config as portalSecurityLdapConfig} from './tests/portal-security-ldap/main/config';
 import {config as portalSecurityScriptManagementWebConfig} from './tests/portal-security-script-management-web/main/config';
 import {config as portalSecurityServiceAccessPolicyService} from './tests/portal-security-service-access-policy-service/main/config';
@@ -246,7 +260,6 @@ import {config as siteCmsSiteInitializerConfig} from './tests/site-cms-site-init
 import {config as siteCmsSiteInitializerPermissionsConfig} from './tests/site-cms-site-initializer/permissions/config';
 import {config as siteCmsSiteInitializerStructureBuilderConfig} from './tests/site-cms-site-initializer/structure-builder/config';
 import {config as siteCmsStandaloneSiteInitializerConfig} from './tests/site-cms-standalone-site-initializer/main/config';
-import {config as siteDsrSiteInitializerConfig} from './tests/site-dsr-site-initializer/main/config';
 import {config as siteMySitesWebConfig} from './tests/site-my-sites-web/main/config';
 import {config as siteNavigationAdminWebConfig} from './tests/site-navigation-admin-web/main/config';
 import {config as siteNavigationBreadcrumbWebConfig} from './tests/site-navigation-breadcrumb-web/main/config';
@@ -365,8 +378,20 @@ export default defineConfig({
 		customerConfig,
 		depotWebConfig,
 		designLibraryWebConfig,
+		digitalSalesRoomWebConfig,
 		dispatchWebConfig,
 		documentLibraryWebConfig,
+		documentLibraryWebUpgradeDocumentsAndMedia621015Config,
+		documentLibraryWebUpgradeDocumentsAndMedia621021Config,
+		documentLibraryWebUpgradeDocumentsAndMedia625Config,
+		documentLibraryWebUpgradeDocumentsAndMedia701015Config,
+		documentLibraryWebUpgradeDocumentsAndMedia71105Config,
+		documentLibraryWebUpgradeDocumentsAndMedia72104Config,
+		documentLibraryWebUpgradeDocumentsAndMedia73101Config,
+		documentLibraryWebUpgradeDocumentsAndMediaFileSizeLimit701015Config,
+		documentLibraryWebUpgradeDocumentsAndMediaFileSizeLimit71105Config,
+		documentLibraryWebUpgradeDocumentsAndMediaFileSizeLimit72104Config,
+		documentLibraryWebUpgradeDocumentsAndMediaFileSizeLimit73101Config,
 		dynamicDataMappingFormWebConfig,
 		e2eCmsDxpConfig,
 		expandoWebConfig,
@@ -405,6 +430,7 @@ export default defineConfig({
 		itemSelectorTaglibConfig,
 		journalWebConfig,
 		knowledgeBaseWebConfig,
+		launchWebConfig,
 		layoutAdminWebConfig,
 		layoutContentPageEditorWebConfig,
 		layoutContentPageEditorWebFormContainerConfig,
@@ -489,6 +515,7 @@ export default defineConfig({
 		portalSearchWebConfig,
 		portalSecurityAuditWebConfig,
 		portalSecurityContentSecurityPolicyConfig,
+		portalSecurityKeyImplConfig,
 		portalSecurityLdapConfig,
 		portalSecurityScriptManagementWebConfig,
 		portalSecurityServiceAccessPolicyService,
@@ -526,7 +553,6 @@ export default defineConfig({
 		siteCmsSiteInitializerPermissionsConfig,
 		siteCmsSiteInitializerStructureBuilderConfig,
 		siteCmsStandaloneSiteInitializerConfig,
-		siteDsrSiteInitializerConfig,
 		siteMySitesWebConfig,
 		siteNavigationAdminWebConfig,
 		siteNavigationBreadcrumbWebConfig,

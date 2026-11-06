@@ -5,7 +5,6 @@
 
 package com.liferay.jenkins.results.parser.monitor;
 
-import com.liferay.jenkins.results.parser.Dom4JUtil;
 import com.liferay.jenkins.results.parser.JenkinsMaster;
 import com.liferay.jenkins.results.parser.JenkinsResultsParserUtil;
 
@@ -15,9 +14,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.dom4j.Document;
-import org.dom4j.Node;
 
 import org.json.JSONObject;
 
@@ -33,9 +29,12 @@ public class JobHealthMonitor extends BaseMonitor {
 
 		_cadenceSeconds = getLongValue("parameter", 0, "cadence", parameters);
 		_expectedGreen = _isExpectedGreen(parameters);
+
 		_jenkinsMaster = JenkinsMaster.getInstance(
 			getRequiredParameter("master.name", parameters));
 		_jobName = getRequiredParameter("job.name", parameters);
+
+		_remoteJobURL = getRemoteJobURL(_jenkinsMaster, _jobName);
 
 		_thresholds = monitorConfig.getThresholds();
 
@@ -58,7 +57,7 @@ public class JobHealthMonitor extends BaseMonitor {
 		catch (Exception exception) {
 			return new MonitorResult(
 				JenkinsResultsParserUtil.combine(
-					"Unable to read ", _jenkinsMaster.getURL(), ": ",
+					"Unable to read ", _jenkinsMaster.getRemoteURL(), ": ",
 					JenkinsResultsParserUtil.getMessage(exception)),
 				null, MonitorResult.Status.CRITICAL, currentTimeMillis);
 		}
@@ -67,7 +66,7 @@ public class JobHealthMonitor extends BaseMonitor {
 			return new MonitorResult(
 				JenkinsResultsParserUtil.combine(
 					"Job ", _jobName, " was not found on ",
-					_jenkinsMaster.getURL()),
+					_jenkinsMaster.getRemoteURL()),
 				null, MonitorResult.Status.CRITICAL, currentTimeMillis);
 		}
 
@@ -140,7 +139,7 @@ public class JobHealthMonitor extends BaseMonitor {
 					"Unable to determine the last build timestamp for job ",
 					_jobName));
 
-			statuses.add(MonitorResult.Status.UNKNOWN);
+			statuses.add(MonitorResult.Status.WARN);
 
 			return _newMonitorResult(
 				currentTimeMillis, messages, metrics, statuses);
@@ -164,27 +163,36 @@ public class JobHealthMonitor extends BaseMonitor {
 		}
 		else {
 			try {
-				cronSchedule = _getCronSchedule();
+				cronSchedule = getCronSchedule(
+					_jobName, _jenkinsMaster.getName());
 
 				if (cronSchedule != null) {
-					overdueGraceSeconds = _getOverdueGraceSeconds(
-						cronSchedule, currentTimeMillis);
+					overdueGraceSeconds = getOverdueGraceSeconds(
+						cronSchedule, currentTimeMillis, _thresholds);
 
-					overdueDeadlineTimestamp = _getOverdueDeadlineTimestamp(
+					overdueDeadlineTimestamp = getOverdueDeadlineTimestamp(
 						cronSchedule, currentTimeMillis, overdueGraceSeconds);
 
 					if (overdueDeadlineTimestamp <= 0) {
-						messages.add(
-							_getUnreachableScheduleMessage(cronSchedule));
+						messages.add(_getInvalidScheduleMessage(cronSchedule));
 
-						statuses.add(MonitorResult.Status.UNKNOWN);
+						statuses.add(MonitorResult.Status.WARN);
 					}
 				}
 				else {
 					messages.add(_getMissingScheduleMessage());
 
-					statuses.add(MonitorResult.Status.UNKNOWN);
+					statuses.add(MonitorResult.Status.WARN);
 				}
+			}
+			catch (IllegalArgumentException illegalArgumentException) {
+				messages.add(
+					JenkinsResultsParserUtil.combine(
+						"Job ", _jobName, " has an invalid schedule: ",
+						JenkinsResultsParserUtil.getMessage(
+							illegalArgumentException)));
+
+				statuses.add(MonitorResult.Status.WARN);
 			}
 			catch (Exception exception) {
 				messages.add(
@@ -192,7 +200,7 @@ public class JobHealthMonitor extends BaseMonitor {
 						"Unable to read the schedule for job ", _jobName, ": ",
 						JenkinsResultsParserUtil.getMessage(exception)));
 
-				statuses.add(MonitorResult.Status.UNKNOWN);
+				statuses.add(MonitorResult.Status.CRITICAL);
 			}
 		}
 
@@ -229,32 +237,9 @@ public class JobHealthMonitor extends BaseMonitor {
 		MasterResourceReader.clearInstances();
 	}
 
-	private CronSchedule _getCronSchedule() throws Exception {
-		if (_cronScheduleLoaded) {
-			return _cronSchedule;
-		}
-
-		MasterResourceReader masterResourceReader =
-			MasterResourceReader.getInstance(_jenkinsMaster.getName());
-
-		Document document = masterResourceReader.getJobConfigDocument(
-			_jobName,
-			getAttemptTimeoutMillis(MasterResourceReader.RETRIES_SIZE_MAX));
-
-		Node specNode = Dom4JUtil.getNodeByXPath(
-			document, "//hudson.triggers.TimerTrigger/spec");
-
-		if (specNode != null) {
-			String spec = specNode.getText();
-
-			if (!JenkinsResultsParserUtil.isNullOrEmpty(spec)) {
-				_cronSchedule = new CronSchedule(spec);
-			}
-		}
-
-		_cronScheduleLoaded = true;
-
-		return _cronSchedule;
+	@Override
+	protected String getDefaultLinkURL() {
+		return _remoteJobURL;
 	}
 
 	private String _getDurationExceededMessage(long lastBuildAgeSeconds) {
@@ -265,6 +250,12 @@ public class JobHealthMonitor extends BaseMonitor {
 			", exceeding its maximum duration of ",
 			JenkinsResultsParserUtil.toDurationString(
 				_buildDurationMaximumSeconds * 1000));
+	}
+
+	private String _getInvalidScheduleMessage(CronSchedule cronSchedule) {
+		return JenkinsResultsParserUtil.combine(
+			"Job ", _jobName, " has an invalid schedule: ",
+			cronSchedule.getSpec());
 	}
 
 	private JSONObject _getJobJSONObject() throws IOException {
@@ -293,29 +284,6 @@ public class JobHealthMonitor extends BaseMonitor {
 		return JenkinsResultsParserUtil.combine(
 			"Job ", _jobName, " has no cadence and no schedule, so it is not ",
 			"checked for being on time");
-	}
-
-	private long _getOverdueDeadlineTimestamp(
-		CronSchedule cronSchedule, long currentTimeMillis,
-		long overdueGraceSeconds) {
-
-		long toleranceSeconds =
-			overdueGraceSeconds + cronSchedule.getHashSpanSeconds();
-
-		return cronSchedule.getPreviousFireTimestamp(
-			currentTimeMillis - (toleranceSeconds * 1000));
-	}
-
-	private long _getOverdueGraceSeconds(
-		CronSchedule cronSchedule, long currentTimeMillis) {
-
-		long periodSeconds = cronSchedule.getPeriodSeconds(currentTimeMillis);
-
-		if (periodSeconds <= 0) {
-			return _overdueGraceSeconds;
-		}
-
-		return getOverdueGraceSeconds(periodSeconds, _thresholds);
 	}
 
 	private String _getOverdueMessage(
@@ -355,12 +323,6 @@ public class JobHealthMonitor extends BaseMonitor {
 			" plus a grace period of ",
 			JenkinsResultsParserUtil.toDurationString(
 				overdueGraceSeconds * 1000));
-	}
-
-	private String _getUnreachableScheduleMessage(CronSchedule cronSchedule) {
-		return JenkinsResultsParserUtil.combine(
-			"Job ", _jobName, " has the schedule ", cronSchedule.getSpec(),
-			", which never comes round");
 	}
 
 	private String _getUntriggerableMessage(boolean disabled) {
@@ -414,12 +376,11 @@ public class JobHealthMonitor extends BaseMonitor {
 
 	private final long _buildDurationMaximumSeconds;
 	private final long _cadenceSeconds;
-	private CronSchedule _cronSchedule;
-	private boolean _cronScheduleLoaded;
 	private final boolean _expectedGreen;
 	private final JenkinsMaster _jenkinsMaster;
 	private final String _jobName;
 	private final long _overdueGraceSeconds;
+	private final String _remoteJobURL;
 	private final Map<String, String> _thresholds;
 
 }

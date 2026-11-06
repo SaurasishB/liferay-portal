@@ -13,6 +13,7 @@ import com.liferay.headless.admin.site.dto.v1_0.AnalyticsConfiguration;
 import com.liferay.headless.admin.site.dto.v1_0.GoogleAnalyticsConfiguration;
 import com.liferay.headless.admin.site.dto.v1_0.RatingsTypes;
 import com.liferay.headless.admin.site.dto.v1_0.Site;
+import com.liferay.headless.admin.site.internal.dto.v1_0.util.CreatorUtil;
 import com.liferay.headless.admin.site.resource.v1_0.SiteResource;
 import com.liferay.layout.util.LayoutServiceContextHelper;
 import com.liferay.petra.function.UnsafeFunction;
@@ -209,12 +210,6 @@ public class SiteResourceImpl
 	@Override
 	public Response getSiteSiteInitializer(String externalReferenceCode)
 		throws Exception {
-
-		if (!FeatureFlagManagerUtil.isEnabled(
-				contextCompany.getCompanyId(), "LPD-19870")) {
-
-			throw new UnsupportedOperationException();
-		}
 
 		Group group = _groupService.getGroupByExternalReferenceCode(
 			externalReferenceCode, contextCompany.getCompanyId());
@@ -587,9 +582,12 @@ public class SiteResourceImpl
 
 		_initThemeDisplay();
 
+		PermissionChecker permissionChecker =
+			PermissionThreadLocal.getPermissionChecker();
+
 		try (AutoCloseable autoCloseable =
 				_layoutServiceContextHelper.getServiceContextAutoCloseable(
-					contextCompany, contextUser)) {
+					contextCompany, permissionChecker.getUser())) {
 
 			return _addGroup(externalReferenceCode, site, _getServiceContext());
 		}
@@ -597,7 +595,8 @@ public class SiteResourceImpl
 
 			// LPS-169057
 
-			PermissionCacheUtil.clearCache(contextUser.getUserId());
+			PermissionCacheUtil.clearCache(
+				contextUser.getUserId(), permissionChecker.getUserId());
 
 			throw exception;
 		}
@@ -611,16 +610,28 @@ public class SiteResourceImpl
 			ServiceContext serviceContext)
 		throws Exception {
 
-		Group group = _groupService.addGroup(
-			externalReferenceCode,
-			_getParentGroupId(null, site.getParentSiteExternalReferenceCode()),
-			GroupConstants.DEFAULT_LIVE_GROUP_ID, _getNameMap(site),
-			_getDescriptionMap(site), _getType(site.getMembershipType()),
-			_getTypeSettings(site, null),
-			_isManualMembership(site.getManualMembership()),
-			_getMembershipRestriction(site.getMembershipRestriction()),
-			_getFriendlyUrlPath(null, site), true, false,
-			_isActive(site.getActive()), serviceContext);
+		Group group = null;
+
+		String name = PrincipalThreadLocal.getName();
+
+		try {
+			PrincipalThreadLocal.setName(contextUser.getUserId(), false);
+
+			group = _groupService.addGroup(
+				externalReferenceCode,
+				_getParentGroupId(
+					null, site.getParentSiteExternalReferenceCode()),
+				GroupConstants.DEFAULT_LIVE_GROUP_ID, _getNameMap(site),
+				_getDescriptionMap(site), _getType(site.getMembershipType()),
+				_getTypeSettings(site, null),
+				_isManualMembership(site.getManualMembership()),
+				_getMembershipRestriction(site.getMembershipRestriction()),
+				_getFriendlyUrlPath(null, site), true, false,
+				_isActive(site.getActive()), serviceContext);
+		}
+		finally {
+			PrincipalThreadLocal.setName(name, false);
+		}
 
 		LiveUsers.joinGroup(
 			contextCompany.getCompanyId(), group.getGroupId(),
@@ -836,12 +847,14 @@ public class SiteResourceImpl
 		List<Site> selectedSites = new ArrayList<>();
 
 		for (Site site : sites) {
-			if (ArrayUtil.contains(
+			if (!ArrayUtil.contains(
 					selectedExternalReferenceCodes,
 					site.getExternalReferenceCode())) {
 
-				selectedSites.add(site);
+				continue;
 			}
+
+			selectedSites.add(site);
 		}
 
 		return selectedSites;
@@ -1066,9 +1079,11 @@ public class SiteResourceImpl
 			String typeSettingValue = oldUnicodeProperties.get(
 				excludedTypeSetting);
 
-			if (typeSettingValue != null) {
-				unicodeProperties.put(excludedTypeSetting, typeSettingValue);
+			if (typeSettingValue == null) {
+				continue;
 			}
+
+			unicodeProperties.put(excludedTypeSetting, typeSettingValue);
 		}
 
 		return unicodeProperties.toString();
@@ -1140,6 +1155,9 @@ public class SiteResourceImpl
 							"assetAutoTaggingEnabled")));
 				setContentSharingWithChildrenEnabled(
 					group::isContentSharingWithChildrenEnabled);
+				setCreator(
+					() -> CreatorUtil.toCreator(
+						group.getCreatorUserId(), null));
 				setDefaultLanguageId(group::getDefaultLanguageId);
 				setDescription(
 					() -> group.getDescription(LocaleUtil.getDefault()));
@@ -1226,9 +1244,12 @@ public class SiteResourceImpl
 	}
 
 	private Group _updateGroup(Group group, Site site) throws Exception {
+		PermissionChecker permissionChecker =
+			PermissionThreadLocal.getPermissionChecker();
+
 		try (AutoCloseable autoCloseable =
 				_layoutServiceContextHelper.getServiceContextAutoCloseable(
-					contextCompany, contextUser)) {
+					contextCompany, permissionChecker.getUser())) {
 
 			if ((group.isCompany() || group.isControlPanel() ||
 				 group.isGuest()) &&
@@ -1257,7 +1278,7 @@ public class SiteResourceImpl
 			return updatedGroup;
 		}
 		catch (Exception exception) {
-			PermissionCacheUtil.clearCache(contextUser.getUserId());
+			PermissionCacheUtil.clearCache(permissionChecker.getUserId());
 
 			throw exception;
 		}

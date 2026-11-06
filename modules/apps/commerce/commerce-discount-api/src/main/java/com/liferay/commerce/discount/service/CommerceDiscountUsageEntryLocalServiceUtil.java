@@ -124,13 +124,6 @@ public class CommerceDiscountUsageEntryLocalServiceUtil {
 			commerceDiscountUsageEntryId);
 	}
 
-	public static void deleteCommerceUsageEntry(
-		long commerceAccountId, long commerceOrderId, long commerceDiscountId) {
-
-		getService().deleteCommerceUsageEntry(
-			commerceAccountId, commerceOrderId, commerceDiscountId);
-	}
-
 	public static void deleteCommerceUsageEntryByDiscountId(
 		long commerceDiscountId) {
 
@@ -278,25 +271,11 @@ public class CommerceDiscountUsageEntryLocalServiceUtil {
 			commerceDiscountId);
 	}
 
-	public static int getCommerceDiscountUsageEntriesCount(
-		long commerceAccountId, long commerceOrderId, long commerceDiscountId) {
-
-		return getService().getCommerceDiscountUsageEntriesCount(
-			commerceAccountId, commerceOrderId, commerceDiscountId);
-	}
-
 	public static int getCommerceDiscountUsageEntriesCountByAccountId(
 		long commerceAccountId, long commerceDiscountId) {
 
 		return getService().getCommerceDiscountUsageEntriesCountByAccountId(
 			commerceAccountId, commerceDiscountId);
-	}
-
-	public static int getCommerceDiscountUsageEntriesCountByOrderId(
-		long commerceOrderId, long commerceDiscountId) {
-
-		return getService().getCommerceDiscountUsageEntriesCountByOrderId(
-			commerceOrderId, commerceDiscountId);
 	}
 
 	/**
@@ -374,4 +353,4 @@ public class CommerceDiscountUsageEntryLocalServiceUtil {
 			CommerceDiscountUsageEntryLocalService.class);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1848025534
+// LIFERAY-SERVICE-BUILDER-HASH:-2012147123

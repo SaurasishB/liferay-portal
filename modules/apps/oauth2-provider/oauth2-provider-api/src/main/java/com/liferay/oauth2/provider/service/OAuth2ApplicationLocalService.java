@@ -124,6 +124,9 @@ public interface OAuth2ApplicationLocalService
 			boolean trustedApplication, ServiceContext serviceContext)
 		throws PortalException;
 
+	public void checkDynamicRegistratorOAuth2Application(long companyId)
+		throws PortalException;
+
 	/**
 	 * Creates a new o auth2 application with the primary key. Does not add the o auth2 application to the database.
 	 *
@@ -410,4 +413,4 @@ public interface OAuth2ApplicationLocalService
 		throws PortalException;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-962047129
+// LIFERAY-SERVICE-BUILDER-HASH:1581353399

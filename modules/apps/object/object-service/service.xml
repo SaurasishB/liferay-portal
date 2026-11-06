@@ -374,11 +374,6 @@
 			<finder-column name="companyId" />
 			<finder-column name="parentObjectEntryFolderId" />
 		</finder>
-		<finder name="G_C_LikeT" return-type="Collection">
-			<finder-column name="groupId" />
-			<finder-column name="companyId" />
-			<finder-column comparator="LIKE" name="treePath" />
-		</finder>
 		<finder name="G_C_P_N_NotS" return-type="Collection">
 			<finder-column name="groupId" />
 			<finder-column name="companyId" />
@@ -496,10 +491,6 @@
 		<finder name="C_U" return-type="Collection">
 			<finder-column name="companyId" />
 			<finder-column name="userId" />
-		</finder>
-		<finder name="C_BT" return-type="Collection">
-			<finder-column name="companyId" />
-			<finder-column name="businessType" />
 		</finder>
 		<finder name="LTDI_S" return-type="Collection">
 			<finder-column name="listTypeDefinitionId" />
@@ -1057,10 +1048,6 @@
 			<finder-column name="objectDefinitionId" />
 			<finder-column name="active" />
 		</finder>
-		<finder name="ODI_E" return-type="Collection">
-			<finder-column name="objectDefinitionId" />
-			<finder-column name="engine" />
-		</finder>
 		<finder name="ODI_O" return-type="Collection">
 			<finder-column name="objectDefinitionId" />
 			<finder-column name="outputType" />
@@ -1300,6 +1287,7 @@
 		<exception>ObjectEntryScope</exception>
 		<exception>ObjectEntryValues</exception>
 		<exception>ObjectFieldBusinessType</exception>
+		<exception>ObjectFieldDBColumnName</exception>
 		<exception>ObjectFieldDBType</exception>
 		<exception>ObjectFieldLabel</exception>
 		<exception>ObjectFieldListTypeDefinitionId</exception>

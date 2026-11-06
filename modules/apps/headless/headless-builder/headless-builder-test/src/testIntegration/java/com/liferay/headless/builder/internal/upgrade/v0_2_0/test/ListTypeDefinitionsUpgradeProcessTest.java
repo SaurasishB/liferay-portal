@@ -8,7 +8,6 @@ package com.liferay.headless.builder.internal.upgrade.v0_2_0.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.batch.engine.unit.BatchEngineUnitProcessor;
 import com.liferay.batch.engine.unit.BatchEngineUnitReader;
-import com.liferay.headless.builder.test.BaseTestCase;
 import com.liferay.list.type.model.ListTypeDefinition;
 import com.liferay.list.type.model.ListTypeEntry;
 import com.liferay.list.type.service.ListTypeDefinitionLocalService;
@@ -41,7 +40,6 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.Objects;
 
 import org.junit.Assert;
 import org.junit.ClassRule;
@@ -153,22 +151,14 @@ public class ListTypeDefinitionsUpgradeProcessTest {
 	}
 
 	private void _deployLatestVersion() throws Exception {
-		Bundle testBundle = FrameworkUtil.getBundle(BaseTestCase.class);
+		Bundle bundle = FrameworkUtil.getBundle(
+			_upgradeStepRegistrator.getClass());
 
-		BundleContext bundleContext = testBundle.getBundleContext();
+		_deleteFile(bundle, "00.list.type.definition");
+		_deleteFile(bundle, "01.object.definition");
 
-		for (Bundle bundle : bundleContext.getBundles()) {
-			if (Objects.equals(
-					bundle.getSymbolicName(),
-					"com.liferay.headless.builder.impl")) {
-
-				_deleteFile(bundle, "00.list.type.definition");
-				_deleteFile(bundle, "01.object.definition");
-
-				_batchEngineUnitProcessor.processBatchEngineUnits(
-					_batchEngineUnitReader.getBatchEngineUnits(bundle));
-			}
-		}
+		_batchEngineUnitProcessor.processBatchEngineUnits(
+			_batchEngineUnitReader.getBatchEngineUnits(bundle));
 	}
 
 	private void _installBundle(String bundleName) throws Exception {
@@ -185,10 +175,12 @@ public class ListTypeDefinitionsUpgradeProcessTest {
 					fetchObjectDefinitionByExternalReferenceCode(
 						externalReferenceCode, TestPropsValues.getCompanyId());
 
-			if (objectDefinition != null) {
-				_objectDefinitionLocalService.deleteObjectDefinition(
-					objectDefinition);
+			if (objectDefinition == null) {
+				continue;
 			}
+
+			_objectDefinitionLocalService.deleteObjectDefinition(
+				objectDefinition);
 		}
 
 		for (String externalReferenceCode :
@@ -202,10 +194,12 @@ public class ListTypeDefinitionsUpgradeProcessTest {
 					fetchListTypeDefinitionByExternalReferenceCode(
 						externalReferenceCode, TestPropsValues.getCompanyId());
 
-			if (listTypeDefinition != null) {
-				_listTypeDefinitionLocalService.deleteListTypeDefinition(
-					listTypeDefinition);
+			if (listTypeDefinition == null) {
+				continue;
 			}
+
+			_listTypeDefinitionLocalService.deleteListTypeDefinition(
+				listTypeDefinition);
 		}
 
 		Bundle bundle = FrameworkUtil.getBundle(

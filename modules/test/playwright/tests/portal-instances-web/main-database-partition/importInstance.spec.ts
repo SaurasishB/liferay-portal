@@ -6,16 +6,12 @@
 import {expect, mergeTests} from '@playwright/test';
 
 import {loginTest} from '../../../fixtures/loginTest';
-import {notificationsPagesTest} from '../../../fixtures/notificationsPagesTest';
 import {virtualInstancesPagesTest} from '../../../fixtures/virtualInstancesPagesTest';
+import {ApiHelpers} from '../../../helpers/ApiHelpers';
 import {getRandomInt} from '../../../utils/getRandomInt';
 import getRandomString from '../../../utils/getRandomString';
 
-const test = mergeTests(
-	loginTest(),
-	notificationsPagesTest,
-	virtualInstancesPagesTest
-);
+const test = mergeTests(loginTest(), virtualInstancesPagesTest);
 
 test(
 	'LPD-92621 Importing an invalid schema name shows an error',
@@ -36,7 +32,7 @@ test(
 test(
 	'LPD-92621 Importing an exported schema shows the import success message',
 	{tag: '@LPD-92621'},
-	async ({virtualInstancesPage}) => {
+	async ({page, virtualInstancesPage}) => {
 		test.setTimeout(5 * 180 * 1000);
 
 		const exportedWebId = getRandomString();
@@ -53,11 +49,29 @@ test(
 			const schemaName =
 				await virtualInstancesPage.exportVirtualInstance(exportedWebId);
 
-			await virtualInstancesPage.deleteVirtualInstance(exportedWebId);
+			const apiHelpers = new ApiHelpers(page);
+
+			const headlessBatchEngine = apiHelpers.headlessBatchEngine;
+
+			const headlessPortalInstance = apiHelpers.headlessPortalInstance;
+
+			const importTask =
+				await headlessPortalInstance.deleteVirtualInstancesBatch([
+					exportedWebId,
+				]);
+
+			const finishedImportTask =
+				await headlessBatchEngine.waitForImportTask(importTask.id);
+
+			expect(finishedImportTask.executeStatus).toBe('COMPLETED');
 
 			exportedCreated = false;
 
 			await virtualInstancesPage.openImportVirtualInstanceModal();
+
+			await expect(
+				virtualInstancesPage.importInstanceDocumentLibraryFilesWarning
+			).toBeVisible();
 
 			await virtualInstancesPage.submitImportVirtualInstance({
 				name: importedWebId,
@@ -85,30 +99,17 @@ test(
 );
 
 test(
-	'LPD-93377 Importing a nonexistent schema notifies the user of the failure',
+	'LPD-93377 Importing a nonexistent schema shows an error',
 	{tag: '@LPD-93377'},
-	async ({notificationsPage, virtualInstancesPage}) => {
-		test.setTimeout(2 * 180 * 1000);
-
-		const schemaName = `lexported_${getRandomInt()}`;
-
+	async ({virtualInstancesPage}) => {
 		await virtualInstancesPage.openImportVirtualInstanceModal();
 
-		await virtualInstancesPage.submitImportVirtualInstance({schemaName});
+		await virtualInstancesPage.submitImportVirtualInstance({
+			schemaName: `lexported_${getRandomInt()}`,
+		});
 
 		await expect(
-			virtualInstancesPage.importStartedMessage(schemaName)
+			virtualInstancesPage.importInstanceNonexistentSchemaErrorMessage
 		).toBeVisible();
-
-		await expect(async () => {
-			await notificationsPage.goto();
-
-			await expect(
-				notificationsPage.getNotification(
-					'The exported schema does not exist.',
-					`The instance could not be imported from the schema ${schemaName}.`
-				)
-			).toBeVisible({timeout: 10 * 1000});
-		}).toPass({timeout: 300 * 1000});
 	}
 );

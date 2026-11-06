@@ -13,6 +13,7 @@ import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectDefinitionSetting;
 import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.object.service.ObjectDefinitionSettingLocalService;
+import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.object.service.ObjectRelationshipLocalService;
 import com.liferay.object.test.util.ObjectDefinitionTestUtil;
 import com.liferay.object.test.util.TreeTestUtil;
@@ -21,12 +22,15 @@ import com.liferay.portal.kernel.cache.MultiVMPool;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.upgrade.UpgradeProcess;
-import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.upgrade.registry.UpgradeStepRegistrator;
 import com.liferay.portal.upgrade.test.util.UpgradeTestUtil;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -37,7 +41,6 @@ import org.junit.runner.RunWith;
 /**
  * @author Guilherme Camacho
  */
-@FeatureFlag("LPS-164563")
 @RunWith(Arquillian.class)
 public class ObjectDefinitionSettingUpgradeProcessTest {
 
@@ -50,6 +53,30 @@ public class ObjectDefinitionSettingUpgradeProcessTest {
 	public void setUp() throws Exception {
 		FrontendDataSetTestUtil.initialize(
 			ObjectDefinitionSettingUpgradeProcessTest.class);
+	}
+
+	@After
+	public void tearDown() throws Exception {
+		List<String> objectDefinitionNames = new ArrayList<>();
+
+		if (_objectDefinitionA != null) {
+			objectDefinitionNames.add(_objectDefinitionA.getName());
+		}
+
+		if (_objectDefinitionAA != null) {
+			objectDefinitionNames.add(_objectDefinitionAA.getName());
+		}
+
+		if (_objectDefinitionAB != null) {
+			objectDefinitionNames.add(_objectDefinitionAB.getName());
+		}
+
+		TreeTestUtil.deleteObjectDefinitionHierarchy(
+			_objectDefinitionLocalService,
+			objectDefinitionNames.toArray(new String[0]),
+			_objectEntryLocalService, _objectRelationshipLocalService);
+
+		FrontendDataSetTestUtil.tearDown();
 	}
 
 	@Test
@@ -197,13 +224,8 @@ public class ObjectDefinitionSettingUpgradeProcessTest {
 	@DeleteAfterTestRun
 	private ObjectDefinition _objectDefinition;
 
-	@DeleteAfterTestRun
 	private ObjectDefinition _objectDefinitionA;
-
-	@DeleteAfterTestRun
 	private ObjectDefinition _objectDefinitionAA;
-
-	@DeleteAfterTestRun
 	private ObjectDefinition _objectDefinitionAB;
 
 	@Inject
@@ -212,6 +234,9 @@ public class ObjectDefinitionSettingUpgradeProcessTest {
 	@Inject
 	private ObjectDefinitionSettingLocalService
 		_objectDefinitionSettingLocalService;
+
+	@Inject
+	private ObjectEntryLocalService _objectEntryLocalService;
 
 	@Inject
 	private ObjectRelationshipLocalService _objectRelationshipLocalService;

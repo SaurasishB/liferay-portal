@@ -38,7 +38,6 @@ test(
 		test.setTimeout(240000);
 
 		const dptName = `DPT ${getRandomString()}`;
-		const spaceName = `Space ${getRandomString()}`;
 		const contentTitle = `Title ${getRandomString()}`;
 		const friendlyUrlPath = `restricted-${getRandomString()}`.toLowerCase();
 
@@ -71,10 +70,7 @@ test(
 			await displayPageTemplatesPage.markAsDefault(dptName);
 		});
 
-		const space = await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		await apiHelpers.headlessAssetLibrary.connectSite(
 			space.externalReferenceCode,
@@ -89,7 +85,7 @@ test(
 				title: contentTitle,
 			},
 			APPLICATION_NAME,
-			spaceName
+			space.name
 		);
 
 		const role = await apiHelpers.headlessAdminUser.postRole({
@@ -103,7 +99,7 @@ test(
 			[{actionIds: ['VIEW'], roleName: role.name}]
 		);
 
-		const displayUrl = `/web${site.friendlyUrlPath}/cmsbasicwebcontent/asset-library-${space.id}/${friendlyUrlPath}`;
+		const displayUrl = `/web${site.friendlyUrlPath}/cmsbasicwebcontent/${space.friendlyURL.substring(1)}/${friendlyUrlPath}`;
 
 		await test.step('GUEST is denied and the content body is not exposed', async () => {
 			const guestContext = await browser.newContext({

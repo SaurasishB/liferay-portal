@@ -5,6 +5,7 @@
 
 import {FrameLocator, Locator, Page, expect} from '@playwright/test';
 
+import {clickAndExpectToBeVisible} from '../../../utils/clickAndExpectToBeVisible';
 import {waitForAlert} from '../../../utils/waitForAlert';
 import {GlobalMenuPage} from '../../product-navigation-applications-menu/GlobalMenuPage';
 import {CommerceDNDTablePage} from '../commerceDNDTablePage';
@@ -44,9 +45,12 @@ export class CommerceAdminProductPage extends CommerceDNDTablePage {
 	readonly productVirtualFileEntryURLInput: Locator;
 	readonly productVirtualLink: Locator;
 	readonly productsTableRowLink: (productName: string) => Locator;
+	readonly productsTableRowWithStatus: (
+		productName: string,
+		status: string
+	) => Locator;
 	readonly spareProductMenuButton: Locator;
 	readonly specificProductMenuLink: (productName: string) => Promise<Locator>;
-	readonly validProductCheckbox: (productName: string) => Promise<Locator>;
 	readonly virtualSettingsOverrideLink: Locator;
 
 	constructor(page: Page) {
@@ -149,19 +153,25 @@ export class CommerceAdminProductPage extends CommerceDNDTablePage {
 		});
 		this.productsTableRowLink = (productName: string) =>
 			page.getByRole('link', {exact: true, name: productName});
+		this.productsTableRowWithStatus = (
+			productName: string,
+			status: string
+		) =>
+			page
+				.getByRole('row')
+				.filter({
+					has: page.getByRole('link', {
+						exact: true,
+						name: productName,
+					}),
+				})
+				.filter({hasText: status});
 		this.spareProductMenuButton = page.getByRole('menuitem', {
 			exact: true,
 			name: 'Add Spare Product',
 		});
 		this.specificProductMenuLink = async (productName: string) => {
 			return page.getByRole('link', {name: productName});
-		};
-		this.validProductCheckbox = async (productName: string) => {
-			return page
-				.frameLocator('#modalIframe')
-				.getByTestId('row')
-				.filter({hasText: productName})
-				.getByRole('checkbox', {disabled: false});
 		};
 		this.virtualSettingsOverrideLink = page
 			.frameLocator('iframe')
@@ -219,6 +229,23 @@ export class CommerceAdminProductPage extends CommerceDNDTablePage {
 		await this.globalMenuPage.goToCommerce('Products');
 	}
 
+	async deleteProduct(productName: string, status: string) {
+		await clickAndExpectToBeVisible({
+			autoClick: true,
+			target: this.deleteMenuItem,
+			trigger: this.productsTableRowWithStatus(
+				productName,
+				status
+			).getByRole('button'),
+		});
+
+		await waitForAlert(this.page);
+
+		await expect(
+			this.productsTableRowWithStatus(productName, status)
+		).toHaveCount(0);
+	}
+
 	async gotoProduct(productName: string) {
 		await expect(async () => {
 			await this.goto();
@@ -226,6 +253,19 @@ export class CommerceAdminProductPage extends CommerceDNDTablePage {
 			await this.managementToolbarSearchInput.fill(productName);
 			await this.managementToolbarSearchInput.press('Enter');
 			await this.productsTableRowLink(productName).click();
+		}).toPass();
+	}
+
+	async searchProduct(productName: string) {
+		await expect(async () => {
+			await this.goto();
+			await this.table.waitFor({state: 'visible'});
+			await this.managementToolbarSearchInput.fill(productName);
+			await this.managementToolbarSearchInput.press('Enter');
+
+			await expect(
+				this.productsTableRowLink(productName).first()
+			).toBeVisible();
 		}).toPass();
 	}
 }

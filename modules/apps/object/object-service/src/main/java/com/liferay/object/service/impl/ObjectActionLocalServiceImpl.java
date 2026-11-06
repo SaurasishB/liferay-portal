@@ -46,6 +46,7 @@ import com.liferay.object.service.persistence.ObjectDefinitionPersistence;
 import com.liferay.object.service.persistence.ObjectFieldPersistence;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.reflect.ReflectionUtil;
+import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.exception.PortalException;
@@ -612,17 +613,19 @@ public class ObjectActionLocalServiceImpl
 			return labelMap;
 		}
 
+		Map<Locale, String> populatedLabelMap = new HashMap<>(labelMap);
+
 		if (labelMap.size() == 1) {
-			for (Map.Entry<Locale, String> entry : labelMap.entrySet()) {
-				labelMap.put(locale, entry.getValue());
+			for (String label : labelMap.values()) {
+				populatedLabelMap.put(locale, label);
 			}
 
-			return labelMap;
+			return populatedLabelMap;
 		}
 
-		labelMap.put(locale, name);
+		populatedLabelMap.put(locale, name);
 
-		return labelMap;
+		return populatedLabelMap;
 	}
 
 	private void _validateActive(
@@ -1020,6 +1023,20 @@ public class ObjectActionLocalServiceImpl
 			if (Validator.isNull(parametersUnicodeProperties.get("url"))) {
 				errorMessageKeys.put("url", "required");
 			}
+
+			parametersUnicodeProperties.put(
+				"urlHostsAllowed",
+				StringUtil.removeChar(
+					parametersUnicodeProperties.get("urlHostsAllowed"),
+					CharPool.SPACE));
+		}
+
+		if (!Objects.equals(
+				objectActionExecutorKey,
+				ObjectActionExecutorConstants.KEY_WEBHOOK)) {
+
+			parametersUnicodeProperties.remove("urlHostsAllowed");
+			parametersUnicodeProperties.remove("urlLocalNetworkAccessEnabled");
 		}
 
 		if (Objects.nonNull(

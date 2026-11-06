@@ -1,4 +1,4 @@
-import AddConditionButton from './AddConditionButton';
+import AddConditionButton from 'shared/components/conditions-panel/AddConditionButton';
 import AttributeConditionsSection from './AttributeConditionsSection';
 import AttributeFilterDropdown from './attribute-filter-dropdown';
 import React from 'react';
@@ -18,23 +18,21 @@ const AttributeFilterSection: React.FC<IAttributeFilterSectionProps> = ({
 	const {attributes, deleteFilter, filterOrder, filters, moveFilter} =
 		useAttributes();
 
-	if (!eventId) {
-		return null;
-	}
-
 	return (
 		<AttributeConditionsSection
 			action={
-				<AttributeFilterDropdown
-					alignmentPosition={Align.RightTop}
-					eventId={eventId}
-					trigger={
-						<AddConditionButton
-							label={Liferay.Language.get('add-filter')}
-						/>
-					}
-					uneditableIds={Object.keys(attributes)}
-				/>
+				eventId && (
+					<AttributeFilterDropdown
+						alignmentPosition={Align.RightTop}
+						eventId={eventId}
+						trigger={
+							<AddConditionButton
+								label={Liferay.Language.get('add-filter')}
+							/>
+						}
+						uneditableIds={Object.keys(attributes)}
+					/>
+				)
 			}
 			className="attribute-filter-section-root"
 			conditions={filters}

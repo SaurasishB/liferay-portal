@@ -20,7 +20,8 @@ import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionCheckerFactoryUtil;
 import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.service.RoleService;
-import com.liferay.portal.kernel.service.UserLocalServiceUtil;
+import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.test.context.ContextUserReplace;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
@@ -28,6 +29,7 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.RoleTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
+import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.LinkedHashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.PortletKeys;
@@ -73,6 +75,45 @@ public class RoleServiceTest extends BasePermissionTestCase {
 	}
 
 	@Test
+	public void testCopyRole() throws Exception {
+		Role role1 = RoleTestUtil.addRole(RoleConstants.TYPE_REGULAR);
+		User user = UserTestUtil.addUser();
+
+		PrincipalException.MustHavePermission mustHavePermission =
+			Assert.assertThrows(
+				PrincipalException.MustHavePermission.class,
+				() -> _copyRole(role1, user));
+
+		Assert.assertTrue(
+			ArrayUtil.contains(
+				mustHavePermission.actionId, ActionKeys.ADD_ROLE));
+
+		Role role2 = RoleTestUtil.addRole(RoleConstants.TYPE_REGULAR);
+
+		RoleTestUtil.addResourcePermission(
+			role2, PortletKeys.PORTAL, ResourceConstants.SCOPE_COMPANY,
+			String.valueOf(TestPropsValues.getCompanyId()),
+			ActionKeys.ADD_ROLE);
+
+		_userLocalService.addRoleUser(role2.getRoleId(), user.getUserId());
+
+		mustHavePermission = Assert.assertThrows(
+			PrincipalException.MustHavePermission.class,
+			() -> _copyRole(role1, user));
+
+		Assert.assertTrue(
+			ArrayUtil.contains(mustHavePermission.actionId, ActionKeys.VIEW));
+
+		RoleTestUtil.addResourcePermission(
+			role2, Role.class.getName(), ResourceConstants.SCOPE_COMPANY,
+			String.valueOf(TestPropsValues.getCompanyId()), ActionKeys.VIEW);
+
+		Role role3 = _copyRole(role1, user);
+
+		Assert.assertEquals(user.getUserId(), role3.getUserId());
+	}
+
+	@Test
 	public void testGetOrAddEmptyRole() throws Exception {
 		try (SafeCloseable safeCloseable =
 				LazyReferencingThreadLocal.setEnabledWithSafeCloseable(true)) {
@@ -88,8 +129,7 @@ public class RoleServiceTest extends BasePermissionTestCase {
 
 			User user = UserTestUtil.addUser();
 
-			UserLocalServiceUtil.addRoleUser(
-				role1.getRoleId(), user.getUserId());
+			_userLocalService.addRoleUser(role1.getRoleId(), user.getUserId());
 
 			try (ContextUserReplace contextUserReplace = new ContextUserReplace(
 					user, PermissionCheckerFactoryUtil.create(user))) {
@@ -172,6 +212,16 @@ public class RoleServiceTest extends BasePermissionTestCase {
 			RandomTestUtil.randomLocaleStringMap(),
 			RandomTestUtil.randomLocaleStringMap(), RoleConstants.TYPE_REGULAR,
 			subtype, null);
+	}
+
+	private Role _copyRole(Role sourceRole, User user) throws Exception {
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				user, PermissionCheckerFactoryUtil.create(user))) {
+
+			return _roleService.copyRole(
+				TestPropsValues.getUserId(), RandomTestUtil.randomString(),
+				sourceRole.getRoleId(), new ServiceContext());
+		}
 	}
 
 	private void _testSearch() throws Exception {
@@ -306,5 +356,8 @@ public class RoleServiceTest extends BasePermissionTestCase {
 	private RoleService _roleService;
 
 	private final List<Role> _roles = new ArrayList<>();
+
+	@Inject
+	private UserLocalService _userLocalService;
 
 }

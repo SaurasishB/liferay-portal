@@ -1,4 +1,4 @@
-import ClayIcon from '@clayui/icon';
+import ClayIcon from 'shared/components/Icon';
 import ClaySticker from '@clayui/sticker';
 import getCN from 'classnames';
 import React from 'react';
@@ -154,6 +154,8 @@ interface ICriteriaSidebarItemProps {
 export class CriteriaSidebarItem extends React.Component<ICriteriaSidebarItemProps> {
 	static contextType = KeyboardMovementContext;
 
+	declare context: React.ContextType<typeof KeyboardMovementContext>;
+
 	constructor(props: ICriteriaSidebarItemProps) {
 		super(props);
 
@@ -167,8 +169,6 @@ export class CriteriaSidebarItem extends React.Component<ICriteriaSidebarItemPro
 			connectDragPreview(getEmptyImage(), {captureDraggingState: true});
 		}
 	}
-
-	declare context: React.ContextType<typeof KeyboardMovementContext>;
 
 	handleKeyDown(event: React.KeyboardEvent<HTMLLIElement>) {
 		const {startMovement} = this.context;

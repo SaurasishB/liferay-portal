@@ -39,6 +39,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.http.client.utils.URIBuilder;
 
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -59,11 +60,13 @@ public abstract class BaseBuild implements Build {
 
 	@Override
 	public void addTestrayAttachmentURL(URL testrayAttachmentURL) {
-		if (_testrayAttachmentURLs.contains(testrayAttachmentURL)) {
-			return;
-		}
+		synchronized (_testrayAttachmentURLs) {
+			if (_testrayAttachmentURLs.contains(testrayAttachmentURL)) {
+				return;
+			}
 
-		_testrayAttachmentURLs.add(testrayAttachmentURL);
+			_testrayAttachmentURLs.add(testrayAttachmentURL);
+		}
 	}
 
 	@Override
@@ -178,9 +181,11 @@ public abstract class BaseBuild implements Build {
 
 			String buildURL = invocation.getBuildURL();
 
-			if (buildURL != null) {
-				badBuildURLs.add(buildURL);
+			if (buildURL == null) {
+				continue;
 			}
+
+			badBuildURLs.add(buildURL);
 		}
 
 		return badBuildURLs;
@@ -461,13 +466,15 @@ public abstract class BaseBuild implements Build {
 				String failureMessage = failureMessageGenerator.getMessage(
 					this);
 
-				if (!JenkinsResultsParserUtil.isNullOrEmpty(failureMessage)) {
-					JSONObject failureReportJSONObject = new JSONObject();
-
-					failureReportJSONObject.put("message", failureMessage);
-
-					failureReportsJSONArray.put(failureReportJSONObject);
+				if (JenkinsResultsParserUtil.isNullOrEmpty(failureMessage)) {
+					continue;
 				}
+
+				JSONObject failureReportJSONObject = new JSONObject();
+
+				failureReportJSONObject.put("message", failureMessage);
+
+				failureReportsJSONArray.put(failureReportJSONObject);
 			}
 
 			if (!failureReportsJSONArray.isEmpty()) {
@@ -800,26 +807,10 @@ public abstract class BaseBuild implements Build {
 			return null;
 		}
 
-		StringBuffer sb = new StringBuffer(jobURL);
+		URIBuilder uriBuilder = JenkinsResultsParserUtil.newURIBuilder(
+			jobURL + "/buildWithParameters", getParameters());
 
-		sb.append("/buildWithParameters?");
-
-		Map<String, String> parameters = new HashMap<>(getParameters());
-
-		for (Map.Entry<String, String> parameter : parameters.entrySet()) {
-			sb.append(
-				JenkinsResultsParserUtil.encodeURLParameterPart(
-					parameter.getKey()));
-			sb.append("=");
-			sb.append(
-				JenkinsResultsParserUtil.encodeURLParameterPart(
-					parameter.getValue()));
-			sb.append("&");
-		}
-
-		sb.deleteCharAt(sb.length() - 1);
-
-		return sb.toString();
+		return uriBuilder.toString();
 	}
 
 	@Override
@@ -1012,11 +1003,13 @@ public abstract class BaseBuild implements Build {
 		for (TestResult testResult : testResults) {
 			long testDuration = testResult.getDuration();
 
-			if (testDuration > longestTestDuration) {
-				longestTestDuration = testDuration;
-
-				longestRunningTest = testResult;
+			if (testDuration <= longestTestDuration) {
+				continue;
 			}
+
+			longestTestDuration = testDuration;
+
+			longestRunningTest = testResult;
 		}
 
 		return longestRunningTest;
@@ -1253,30 +1246,34 @@ public abstract class BaseBuild implements Build {
 
 			matcher = stopWatchPattern.matcher(line);
 
-			if (matcher.matches()) {
-				long duration = Long.parseLong(matcher.group("milliseconds"));
-
-				String seconds = matcher.group("seconds");
-
-				if (seconds != null) {
-					duration += Long.parseLong(seconds) * 1000L;
-				}
-
-				String minutes = matcher.group("minutes");
-
-				if (minutes != null) {
-					duration += Long.parseLong(minutes) * 60L * 1000L;
-				}
-
-				String stopWatchName = matcher.group("name");
-
-				StopWatchRecord stopWatchRecord = _stopWatchRecordsGroup.get(
-					stopWatchName);
-
-				if (stopWatchRecord != null) {
-					stopWatchRecord.setDuration(duration);
-				}
+			if (!matcher.matches()) {
+				continue;
 			}
+
+			long duration = Long.parseLong(matcher.group("milliseconds"));
+
+			String seconds = matcher.group("seconds");
+
+			if (seconds != null) {
+				duration += Long.parseLong(seconds) * 1000L;
+			}
+
+			String minutes = matcher.group("minutes");
+
+			if (minutes != null) {
+				duration += Long.parseLong(minutes) * 60L * 1000L;
+			}
+
+			String stopWatchName = matcher.group("name");
+
+			StopWatchRecord stopWatchRecord = _stopWatchRecordsGroup.get(
+				stopWatchName);
+
+			if (stopWatchRecord == null) {
+				continue;
+			}
+
+			stopWatchRecord.setDuration(duration);
 		}
 
 		return _stopWatchRecordsGroup;
@@ -1380,33 +1377,35 @@ public abstract class BaseBuild implements Build {
 	}
 
 	@Override
-	public synchronized List<URL> getTestrayAttachmentURLs() {
-		if (!Objects.equals(getStatus(), "completed") ||
-			_testrayAttachmentURLsFound) {
+	public List<URL> getTestrayAttachmentURLs() {
+		synchronized (_testrayAttachmentURLs) {
+			if (!Objects.equals(getStatus(), "completed") ||
+				_testrayAttachmentURLsFound) {
+
+				return _testrayAttachmentURLs;
+			}
+
+			String consoleText = getConsoleText();
+
+			for (String line : consoleText.split("\\n")) {
+				Matcher matcher = _testrayCloudObjectURLPattern.matcher(line);
+
+				if (!matcher.find()) {
+					continue;
+				}
+
+				try {
+					addTestrayAttachmentURL(new URL(matcher.group("url")));
+				}
+				catch (MalformedURLException malformedURLException) {
+					throw new RuntimeException(malformedURLException);
+				}
+			}
+
+			_testrayAttachmentURLsFound = true;
 
 			return _testrayAttachmentURLs;
 		}
-
-		String consoleText = getConsoleText();
-
-		for (String line : consoleText.split("\\n")) {
-			Matcher matcher = _testrayCloudObjectURLPattern.matcher(line);
-
-			if (!matcher.find()) {
-				continue;
-			}
-
-			try {
-				addTestrayAttachmentURL(new URL(matcher.group("url")));
-			}
-			catch (MalformedURLException malformedURLException) {
-				throw new RuntimeException(malformedURLException);
-			}
-		}
-
-		_testrayAttachmentURLsFound = true;
-
-		return _testrayAttachmentURLs;
 	}
 
 	@Override
@@ -1472,7 +1471,7 @@ public abstract class BaseBuild implements Build {
 			catch (MalformedURLException malformedURLException) {
 				throw new RuntimeException(
 					JenkinsResultsParserUtil.combine(
-						"Unable to compare urls ", buildURL, " and ",
+						"Unable to compare URLs ", buildURL, " and ",
 						thisBuildURL),
 					malformedURLException);
 			}
@@ -2100,7 +2099,7 @@ public abstract class BaseBuild implements Build {
 		}
 		catch (IOException ioException) {
 			throw new RuntimeException(
-				"Unable to format github message", ioException);
+				"Unable to format GitHub message", ioException);
 		}
 
 		for (String highPriorityContentToken : _TOKENS_HIGH_PRIORITY_CONTENT) {
@@ -2137,9 +2136,12 @@ public abstract class BaseBuild implements Build {
 			_status = "completed";
 			_stopWatchRecordsGroup =
 				cachedDownstreamBuildReport.getStopWatchRecordsGroup();
-			_testrayAttachmentURLs.addAll(
-				cachedDownstreamBuildReport.getTestrayAttachmentURLs());
-			_testrayAttachmentURLsFound = true;
+
+			synchronized (_testrayAttachmentURLs) {
+				_testrayAttachmentURLs.addAll(
+					cachedDownstreamBuildReport.getTestrayAttachmentURLs());
+				_testrayAttachmentURLsFound = true;
+			}
 
 			_jenkinsMaster = cachedDownstreamBuildReport.getJenkinsMaster();
 
@@ -2503,6 +2505,10 @@ public abstract class BaseBuild implements Build {
 
 	protected MultiPattern getBuildURLMultiPattern() {
 		return _buildURLMultiPattern;
+	}
+
+	protected DownstreamBuildReport getCachedDownstreamBuildReport() {
+		return _cachedDownstreamBuildReport;
 	}
 
 	protected String getDiffDurationString(long diffDuration) {
@@ -2949,11 +2955,14 @@ public abstract class BaseBuild implements Build {
 				i);
 
 			String key = propertyJSONObject.getString("name");
+
 			String value = propertyJSONObject.optString("value");
 
-			if ((value != null) && !value.isEmpty()) {
-				tempMap.put(key, value);
+			if ((value == null) || value.isEmpty()) {
+				continue;
 			}
+
+			tempMap.put(key, value);
 		}
 
 		return tempMap;
@@ -3021,11 +3030,13 @@ public abstract class BaseBuild implements Build {
 				TestResult testResult = TestResultFactory.newTestResult(
 					build, casesJSONArray.getJSONObject(j));
 
-				if ((testStatus == null) ||
-					testStatus.equals(testResult.getStatus())) {
+				if ((testStatus != null) &&
+					!testStatus.equals(testResult.getStatus())) {
 
-					testResults.add(testResult);
+					continue;
 				}
+
+				testResults.add(testResult);
 			}
 		}
 
@@ -3080,15 +3091,18 @@ public abstract class BaseBuild implements Build {
 
 				Object value = parameterJSONObject.opt("value");
 
-				if (value instanceof String) {
-					String valueString = value.toString();
-
-					if (!valueString.isEmpty()) {
-						_parameters.put(
-							parameterJSONObject.getString("name"),
-							value.toString());
-					}
+				if (!(value instanceof String)) {
+					continue;
 				}
+
+				String valueString = value.toString();
+
+				if (valueString.isEmpty()) {
+					continue;
+				}
+
+				_parameters.put(
+					parameterJSONObject.getString("name"), value.toString());
 			}
 
 			return;
@@ -3098,18 +3112,17 @@ public abstract class BaseBuild implements Build {
 	}
 
 	protected void loadParametersFromQueryString(String queryString) {
-		for (String parameter : queryString.split("&")) {
-			if (!parameter.contains("=")) {
+		Map<String, String> queryParameters =
+			JenkinsResultsParserUtil.getQueryParameters(queryString);
+
+		for (Map.Entry<String, String> entry : queryParameters.entrySet()) {
+			String value = entry.getValue();
+
+			if (value == null) {
 				continue;
 			}
 
-			String[] parameterParts = parameter.split("=", 2);
-
-			_parameters.put(
-				JenkinsResultsParserUtil.decodeURLParameterPart(
-					parameterParts[0]),
-				JenkinsResultsParserUtil.decodeURLParameterPart(
-					parameterParts[1]));
+			_parameters.put(entry.getKey(), value);
 		}
 	}
 
@@ -3257,7 +3270,7 @@ public abstract class BaseBuild implements Build {
 
 				content = JenkinsResultsParserUtil.toString(
 					JenkinsResultsParserUtil.getLocalURL(urlString), false,
-					maxRetries, retryPeriodSeconds, 0, true);
+					maxRetries, retryPeriodSeconds, 0, false);
 			}
 			catch (IOException ioException) {
 				if (required) {
@@ -3657,8 +3670,11 @@ public abstract class BaseBuild implements Build {
 			JenkinsResultsParserUtil.decodeURLParameterPart(
 				invocationURLMatcher.group("jobName")));
 
-		loadParametersFromQueryString(
-			invocationURLMatcher.group("queryString"));
+		String queryString = invocationURLMatcher.group("queryString");
+
+		if (queryString != null) {
+			loadParametersFromQueryString(queryString);
+		}
 
 		String masterId = invocationURLMatcher.group("masterId");
 
@@ -3701,7 +3717,7 @@ public abstract class BaseBuild implements Build {
 		JenkinsResultsParserUtil.combine(
 			"\\w+://(?<cohortName>test-\\d+)(-(?<masterId>\\d+))?",
 			"(\\.liferay\\.com)?/+job\\/+(?<jobName>[^\\/]+).*\\/",
-			"buildWithParameters\\?(?<queryString>.*)"));
+			"buildWithParameters(\\?(?<queryString>.*))?"));
 	private static final Pattern _testrayCloudObjectURLPattern =
 		Pattern.compile(
 			JenkinsResultsParserUtil.combine(

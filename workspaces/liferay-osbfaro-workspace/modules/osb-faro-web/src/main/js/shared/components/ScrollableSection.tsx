@@ -1,5 +1,5 @@
 import ClayButton from '@clayui/button';
-import ClayIcon from '@clayui/icon';
+import ClayIcon from 'shared/components/Icon';
 import getCN from 'classnames';
 import React, {createRef} from 'react';
 import {hasChanges} from 'shared/util/react';
@@ -46,6 +46,8 @@ export default class ScrollableSection extends React.Component<
 		showScroll: false,
 	};
 
+	private _containerRef = createRef<HTMLDivElement>();
+
 	constructor(props: IScrollableSectionProps) {
 		super(props);
 		this.handleShowScroll = this.handleShowScroll.bind(this);
@@ -74,8 +76,6 @@ export default class ScrollableSection extends React.Component<
 	componentWillUnmount() {
 		window.removeEventListener('resize', this.handleShowScroll);
 	}
-
-	private _containerRef = createRef<HTMLDivElement>();
 
 	handleShowScroll() {
 		if (this._containerRef.current) {

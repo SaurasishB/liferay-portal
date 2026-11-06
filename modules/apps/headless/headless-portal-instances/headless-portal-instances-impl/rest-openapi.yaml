@@ -41,7 +41,7 @@ components:
             properties:
                 active:
                     description:
-                        whether the portal instance is active.
+                        whether the portal instance is active. PATCH ignores it; use the activate and deactivate endpoints to change it.
                     type: boolean
                 admin:
                     $ref: "#/components/schemas/Admin"
@@ -60,7 +60,7 @@ components:
                     type: string
                 maxUsers:
                     description:
-                        maximum number of users, or 0 for unlimited.
+                        maximum number of users, or 0 for unlimited. PATCH ignores it.
                     format: int32
                     type: integer
                 portalInstanceId:
@@ -217,7 +217,7 @@ paths:
     /portal-instances/copy:
         post:
             description:
-                Copies the portal instance. Through POST /portal-instances/copy/batch the same operation runs asynchronously; poll the returned import task.
+                Copies the portal instance. Through POST /portal-instances/copy/batch the same operation runs asynchronously; poll the returned import task. Document Library files are not included and must be transferred separately.
             operationId: postPortalInstanceCopy
             requestBody:
                 content:
@@ -242,7 +242,7 @@ paths:
     /portal-instances/export:
         post:
             description:
-                Exports the portal instance. Through POST /portal-instances/export/batch the same operation runs asynchronously; poll the returned import task.
+                Exports the portal instance. Through POST /portal-instances/export/batch the same operation runs asynchronously; poll the returned import task. Document Library files are not included and must be transferred separately.
             operationId: postPortalInstanceExport
             requestBody:
                 content:
@@ -267,7 +267,7 @@ paths:
     /portal-instances/import:
         post:
             description:
-                Imports a DB partition portal instance
+                Imports a DB partition portal instance. Document Library files are not included and must be transferred separately.
             operationId: postPortalInstanceImport
             requestBody:
                 content:
@@ -333,7 +333,7 @@ paths:
         patch:
             # @review
             description:
-                Updates the portal instance with information sent in the request body. Only the provided fields are updated.
+                Updates the portal instance's domain and virtual host with the values sent in the request body. Only the provided fields are updated.
             operationId: patchPortalInstance
             parameters:
                 -   in: path

@@ -8,6 +8,7 @@ package com.liferay.portal.action;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.audit.AuditMessage;
 import com.liferay.portal.kernel.audit.AuditRouterUtil;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.log.Log;
@@ -245,24 +246,25 @@ public class LayoutAction implements Action {
 		for (Portlet curPortlet : allPortlets) {
 			String curPortletId = curPortlet.getPortletId();
 
-			if (curPortletId.equals(portletId) ||
-				curPortlet.isPartialActionServeResource()) {
+			if (!curPortletId.equals(portletId) &&
+				!curPortlet.isPartialActionServeResource()) {
 
-				BufferCacheServletResponse bufferCacheServletResponse =
-					new BufferCacheServletResponse(httpServletResponse);
-
-				PortletContainerUtil.preparePortlet(
-					httpServletRequest, curPortlet);
-
-				PortletContainerUtil.serveResource(
-					httpServletRequest, bufferCacheServletResponse, curPortlet);
-
-				RenderData renderData = new RenderData(
-					bufferCacheServletResponse.getContentType(),
-					bufferCacheServletResponse.getString());
-
-				renderDataMap.put(curPortletId, renderData);
+				continue;
 			}
+
+			BufferCacheServletResponse bufferCacheServletResponse =
+				new BufferCacheServletResponse(httpServletResponse);
+
+			PortletContainerUtil.preparePortlet(httpServletRequest, curPortlet);
+
+			PortletContainerUtil.serveResource(
+				httpServletRequest, bufferCacheServletResponse, curPortlet);
+
+			RenderData renderData = new RenderData(
+				bufferCacheServletResponse.getContentType(),
+				bufferCacheServletResponse.getString());
+
+			renderDataMap.put(curPortletId, renderData);
 		}
 
 		return RenderStateUtil.generateJSON(
@@ -311,7 +313,9 @@ public class LayoutAction implements Action {
 					JSONObject additionalInfoJSONObject = null;
 
 					if (Validator.isNotNull(themeDisplay.getDoAsUserId()) &&
-						(realUser.getUserId() != user.getUserId())) {
+						(realUser.getUserId() != user.getUserId()) &&
+						!FeatureFlagManagerUtil.isEnabled(
+							realUser.getCompanyId(), "LPD-6417")) {
 
 						additionalInfoJSONObject = JSONUtil.put(
 							"doAsUserEmailAddress", user.getEmailAddress()

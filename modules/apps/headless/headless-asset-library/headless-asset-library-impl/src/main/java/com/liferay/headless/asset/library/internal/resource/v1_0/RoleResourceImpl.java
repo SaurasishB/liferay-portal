@@ -34,6 +34,7 @@ import com.liferay.portal.kernel.service.UserGroupRoleLocalService;
 import com.liferay.portal.kernel.service.UserGroupRoleService;
 import com.liferay.portal.kernel.service.UserGroupService;
 import com.liferay.portal.kernel.service.UserService;
+import com.liferay.portal.kernel.service.permission.UserGroupRolePermissionUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.vulcan.pagination.Page;
 import com.liferay.portal.vulcan.pagination.Pagination;
@@ -63,11 +64,27 @@ public class RoleResourceImpl extends BaseRoleResourceImpl {
 
 		_checkAssetLibraryAdminOrAssetLibraryMember(group.getGroupId());
 
-		List<com.liferay.portal.kernel.model.Role> serviceBuilderRoles =
-			_roleLocalService.getTypeRoles(RoleConstants.TYPE_DEPOT);
+		PermissionChecker permissionChecker =
+			PermissionThreadLocal.getPermissionChecker();
 
-		serviceBuilderRoles = DepotRoleUtil.filter(
-			group.getGroupId(), serviceBuilderRoles);
+		List<com.liferay.portal.kernel.model.Role> serviceBuilderRoles =
+			transform(
+				DepotRoleUtil.filter(
+					group.getGroupId(),
+					_roleLocalService.getTypeRoles(RoleConstants.TYPE_DEPOT)),
+				serviceBuilderRole -> {
+					if (UserGroupRolePermissionUtil.contains(
+							permissionChecker, group, serviceBuilderRole) ||
+						(DepotRolesConstants.ASSET_LIBRARY_MEMBER.equals(
+							serviceBuilderRole.getName()) &&
+						 _hasAssetLibraryAdminOrAssignMembersOrAssignUserRoles(
+							 group.getGroupId()))) {
+
+						return serviceBuilderRole;
+					}
+
+					return null;
+				});
 
 		if (pagination == null) {
 			return Page.of(transform(serviceBuilderRoles, this::_toRole));
@@ -176,6 +193,10 @@ public class RoleResourceImpl extends BaseRoleResourceImpl {
 				user.getUserId(), group.getGroupId());
 		}
 		else {
+			long[] roleIds = _getRoleIds(roles);
+
+			DepotRoleUtil.validate(group.getGroupId(), roleIds);
+
 			_userGroupRoleService.deleteUserGroupRoles(
 				user.getUserId(), group.getGroupId(),
 				ListUtil.toLongArray(
@@ -183,7 +204,7 @@ public class RoleResourceImpl extends BaseRoleResourceImpl {
 					com.liferay.portal.kernel.model.Role.ROLE_ID_ACCESSOR));
 
 			_userGroupRoleService.addUserGroupRoles(
-				user.getUserId(), group.getGroupId(), _getRoleIds(roles));
+				user.getUserId(), group.getGroupId(), roleIds);
 
 			updatedServiceBuilderRoles = _roleService.getUserGroupRoles(
 				user.getUserId(), group.getGroupId());
@@ -211,6 +232,10 @@ public class RoleResourceImpl extends BaseRoleResourceImpl {
 					userGroup.getUserGroupId());
 		}
 
+		long[] roleIds = _getRoleIds(roles);
+
+		DepotRoleUtil.validate(group.getGroupId(), roleIds);
+
 		_userGroupGroupRoleService.deleteUserGroupGroupRoles(
 			userGroup.getUserGroupId(), group.getGroupId(),
 			ListUtil.toLongArray(
@@ -219,7 +244,7 @@ public class RoleResourceImpl extends BaseRoleResourceImpl {
 				UserGroupGroupRole::getRoleId));
 
 		_userGroupGroupRoleService.addUserGroupGroupRoles(
-			userGroup.getUserGroupId(), group.getGroupId(), _getRoleIds(roles));
+			userGroup.getUserGroupId(), group.getGroupId(), roleIds);
 
 		return Page.of(
 			transform(
@@ -248,18 +273,7 @@ public class RoleResourceImpl extends BaseRoleResourceImpl {
 			long groupId)
 		throws Exception {
 
-		PermissionChecker permissionChecker =
-			PermissionThreadLocal.getPermissionChecker();
-
-		if (permissionChecker.isGroupAdmin(groupId)) {
-			return;
-		}
-
-		if (!_groupModelResourcePermission.contains(
-				permissionChecker, groupId, ActionKeys.ASSIGN_MEMBERS) &&
-			!_groupModelResourcePermission.contains(
-				permissionChecker, groupId, ActionKeys.ASSIGN_USER_ROLES)) {
-
+		if (!_hasAssetLibraryAdminOrAssignMembersOrAssignUserRoles(groupId)) {
 			throw new PrincipalException.MustHavePermission(
 				contextUser.getUserId(), ActionKeys.ASSIGN_MEMBERS);
 		}
@@ -288,6 +302,25 @@ public class RoleResourceImpl extends BaseRoleResourceImpl {
 
 				return serviceBuilderRole.getRoleId();
 			});
+	}
+
+	private boolean _hasAssetLibraryAdminOrAssignMembersOrAssignUserRoles(
+			long groupId)
+		throws Exception {
+
+		PermissionChecker permissionChecker =
+			PermissionThreadLocal.getPermissionChecker();
+
+		if (permissionChecker.isGroupAdmin(groupId) ||
+			_groupModelResourcePermission.contains(
+				permissionChecker, groupId, ActionKeys.ASSIGN_MEMBERS) ||
+			_groupModelResourcePermission.contains(
+				permissionChecker, groupId, ActionKeys.ASSIGN_USER_ROLES)) {
+
+			return true;
+		}
+
+		return false;
 	}
 
 	private boolean _isDefaultAssetLibraryMemberRoleAssignment(

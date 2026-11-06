@@ -1,5 +1,5 @@
 import ClayButton from '@clayui/button';
-import ClayIcon from '@clayui/icon';
+import ClayIcon from 'shared/components/Icon';
 import getCN from 'classnames';
 import React, {createRef} from 'react';
 import ScrollableSection from 'shared/components/ScrollableSection';
@@ -79,6 +79,8 @@ export default class Tabs extends React.Component<ITabsProps> {
 		itemsIList: List(),
 	};
 
+	private _scrollableSectionRef = createRef<ScrollableSection>();
+
 	componentDidUpdate(prevProps: ITabsProps) {
 		const {itemsIList} = this.props;
 
@@ -97,8 +99,6 @@ export default class Tabs extends React.Component<ITabsProps> {
 			}
 		}
 	}
-
-	private _scrollableSectionRef = createRef<ScrollableSection>();
 
 	render() {
 		const {

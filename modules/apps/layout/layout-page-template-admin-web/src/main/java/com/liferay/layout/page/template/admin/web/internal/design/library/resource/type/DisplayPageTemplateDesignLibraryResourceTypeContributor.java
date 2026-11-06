@@ -17,6 +17,7 @@ import com.liferay.layout.page.template.constants.LayoutPageTemplateConstants;
 import com.liferay.layout.page.template.constants.LayoutPageTemplateEntryTypeConstants;
 import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
@@ -128,11 +129,12 @@ public class DisplayPageTemplateDesignLibraryResourceTypeContributor
 							LAYOUT_PAGE_TEMPLATES,
 						0, 0, PortletRequest.RENDER_PHASE)
 				).setMVCRenderCommandName(
-					"/layout_page_template_admin/edit_display_page"
+					"/layout_page_template_admin" +
+						"/edit_layout_page_template_entry"
 				).setRedirect(
 					backURL
 				).setParameter(
-					"displayPageTemplateExternalReferenceCode",
+					"layoutPageTemplateEntryExternalReferenceCode",
 					"{embedded.externalReferenceCode}"
 				).buildString(),
 				"pencil", "edit", LanguageUtil.get(httpServletRequest, "edit"),
@@ -172,9 +174,10 @@ public class DisplayPageTemplateDesignLibraryResourceTypeContributor
 							LAYOUT_PAGE_TEMPLATES,
 						0, 0, PortletRequest.RENDER_PHASE)
 				).setMVCRenderCommandName(
-					"/layout_page_template_admin/view_display_page_permissions"
+					"/layout_page_template_admin" +
+						"/view_layout_page_template_entry_permissions"
 				).setParameter(
-					"displayPageTemplateExternalReferenceCode",
+					"layoutPageTemplateEntryExternalReferenceCode",
 					"{embedded.externalReferenceCode}"
 				).buildString(),
 				"password-policies", "permissions",
@@ -219,6 +222,12 @@ public class DisplayPageTemplateDesignLibraryResourceTypeContributor
 	@Override
 	public boolean hasViewPermission(
 		PermissionChecker permissionChecker, DepotEntry depotEntry) {
+
+		if (!FeatureFlagManagerUtil.isEnabled(
+				depotEntry.getCompanyId(), "LPD-81651")) {
+
+			return false;
+		}
 
 		return _portletResourcePermission.contains(
 			permissionChecker, depotEntry.getGroupId(), ActionKeys.VIEW);

@@ -153,13 +153,6 @@ public class CommerceTaxFixedRateAddressRelLocalServiceUtil {
 			commerceTaxMethodId);
 	}
 
-	public static void deleteCommerceTaxFixedRateAddressRelsByCountryId(
-		long countryId) {
-
-		getService().deleteCommerceTaxFixedRateAddressRelsByCountryId(
-			countryId);
-	}
-
 	public static void deleteCommerceTaxFixedRateAddressRelsByCPTaxCategoryId(
 		long cpTaxCategoryId) {
 
@@ -369,23 +362,6 @@ public class CommerceTaxFixedRateAddressRelLocalServiceUtil {
 			commerceTaxMethodId, start, end);
 	}
 
-	public static List<CommerceTaxFixedRateAddressRel>
-		getCommerceTaxMethodFixedRateAddressRels(
-			long commerceTaxMethodId, int start, int end,
-			OrderByComparator<CommerceTaxFixedRateAddressRel>
-				orderByComparator) {
-
-		return getService().getCommerceTaxMethodFixedRateAddressRels(
-			commerceTaxMethodId, start, end, orderByComparator);
-	}
-
-	public static int getCommerceTaxMethodFixedRateAddressRelsCount(
-		long commerceTaxMethodId) {
-
-		return getService().getCommerceTaxMethodFixedRateAddressRelsCount(
-			commerceTaxMethodId);
-	}
-
 	public static
 		com.liferay.portal.kernel.dao.orm.IndexableActionableDynamicQuery
 			getIndexableActionableDynamicQuery() {
@@ -449,4 +425,4 @@ public class CommerceTaxFixedRateAddressRelLocalServiceUtil {
 			CommerceTaxFixedRateAddressRelLocalService.class);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1369438938
+// LIFERAY-SERVICE-BUILDER-HASH:-661892379

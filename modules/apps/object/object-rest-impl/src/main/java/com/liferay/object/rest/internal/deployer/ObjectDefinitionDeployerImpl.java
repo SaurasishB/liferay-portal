@@ -491,6 +491,9 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 		).put(
 			"entity.class.name", Collaborator.class.getName()
 		).put(
+			"implementation.class.name",
+			CollaboratorResourceImpl.class.getName()
+		).put(
 			"osgi.jaxrs.application.select",
 			"(osgi.jaxrs.name=" + osgiJaxRsName + ")"
 		).put(
@@ -541,6 +544,8 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 			"companyId", companyIds
 		).put(
 			"entity.class.name", Comment.class.getName()
+		).put(
+			"implementation.class.name", CommentResourceImpl.class.getName()
 		).put(
 			"osgi.jaxrs.application.select",
 			"(osgi.jaxrs.name=" + osgiJaxRsName + ")"
@@ -707,6 +712,8 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 		).put(
 			"entity.class.name", _getEntityClassName(objectDefinition)
 		).put(
+			"implementation.class.name", ObjectEntryResourceImpl.class.getName()
+		).put(
 			"osgi.jaxrs.application.select",
 			"(osgi.jaxrs.name=" + osgiJaxRsName + ")"
 		).put(
@@ -841,6 +848,10 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 							"entity.class.name",
 							_getEntityClassName(objectDefinition)
 						).put(
+							"implementation.class.name",
+							ObjectEntryRelatedObjectsResourceImpl.class.
+								getName()
+						).put(
 							"osgi.jaxrs.application.select",
 							"(osgi.jaxrs.name=" + osgiJaxRsName + ")"
 						).put(
@@ -946,12 +957,14 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 			boolean groupAware = objectScopeProvider.isGroupAware();
 			boolean hasScope = value.contains("scopes");
 
-			if ((!groupAware && hasScope) ||
-				(groupAware && !hasScope &&
-				 !value.startsWith("/{objectEntryId}"))) {
+			if ((groupAware || !hasScope) &&
+				(!groupAware || hasScope ||
+				 value.startsWith("/{objectEntryId}"))) {
 
-				excludedOperationIds.add(method.getName());
+				continue;
 			}
+
+			excludedOperationIds.add(method.getName());
 		}
 	}
 

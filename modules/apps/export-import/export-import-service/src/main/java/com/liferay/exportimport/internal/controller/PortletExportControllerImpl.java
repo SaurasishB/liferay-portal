@@ -204,9 +204,11 @@ public class PortletExportControllerImpl implements PortletExportController {
 				AssetLink assetLink = _assetLinkLocalService.fetchAssetLink(
 					assetLinkId);
 
-				if ((assetLink != null) && !assetLinks.contains(assetLink)) {
-					assetLinks.add(assetLink);
+				if ((assetLink == null) || assetLinks.contains(assetLink)) {
+					continue;
 				}
+
+				assetLinks.add(assetLink);
 			}
 
 			for (AssetLink assetLink : assetLinks) {
@@ -852,6 +854,16 @@ public class PortletExportControllerImpl implements PortletExportController {
 		headerElement.addAttribute(
 			"company-group-id",
 			String.valueOf(portletDataContext.getCompanyGroupId()));
+
+		Group companyGroup = _groupLocalService.fetchCompanyGroup(
+			portletDataContext.getCompanyId());
+
+		if (companyGroup != null) {
+			headerElement.addAttribute(
+				"company-group-external-reference-code",
+				companyGroup.getExternalReferenceCode());
+		}
+
 		headerElement.addAttribute("group-id", String.valueOf(scopeGroupId));
 		headerElement.addAttribute(
 			"user-personal-site-group-id",
@@ -1033,9 +1045,11 @@ public class PortletExportControllerImpl implements PortletExportController {
 				Set<String> scopedLayoutPrimaryKeys = new HashSet<>();
 
 				for (String oldScopedPrimaryKey : oldScopedPrimaryKeys) {
-					if (oldScopedPrimaryKey.contains(Layout.class.getName())) {
-						scopedLayoutPrimaryKeys.add(oldScopedPrimaryKey);
+					if (!oldScopedPrimaryKey.contains(Layout.class.getName())) {
+						continue;
 					}
+
+					scopedLayoutPrimaryKeys.add(oldScopedPrimaryKey);
 				}
 
 				portletDataContext.addScopedPrimaryKeys(

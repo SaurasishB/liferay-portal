@@ -23,6 +23,7 @@ import com.liferay.gradle.plugins.LiferayBasePlugin;
 import com.liferay.gradle.plugins.node.NodeExtension;
 import com.liferay.gradle.plugins.node.task.NpmInstallTask;
 import com.liferay.gradle.plugins.source.formatter.SourceFormatterPlugin;
+import com.liferay.gradle.plugins.util.PortalTools;
 import com.liferay.gradle.plugins.workspace.LiferayWorkspaceYarnPlugin;
 import com.liferay.gradle.plugins.workspace.WorkspaceExtension;
 import com.liferay.gradle.plugins.workspace.WorkspacePlugin;
@@ -232,6 +233,8 @@ public class RootProjectConfigurator implements Plugin<Project> {
 		GradleUtil.applyPlugin(project, LifecycleBasePlugin.class);
 		GradleUtil.applyPlugin(project, SourceFormatterPlugin.class);
 
+		_addDependenciesSourceFormatter(project);
+
 		String nodePackageManager = workspaceExtension.getNodePackageManager();
 
 		if (nodePackageManager.equals("yarn")) {
@@ -343,6 +346,12 @@ public class RootProjectConfigurator implements Plugin<Project> {
 		GradleUtil.addDependency(
 			project, BUNDLE_SUPPORT_CONFIGURATION_NAME, "com.liferay",
 			"com.liferay.portal.tools.bundle.support", "latest.release");
+	}
+
+	private void _addDependenciesSourceFormatter(Project project) {
+		PortalTools.addPortalToolDependencies(
+			project, SourceFormatterPlugin.CONFIGURATION_NAME,
+			PortalTools.GROUP, "com.liferay.source.formatter");
 	}
 
 	private void _addDockerTasks(
@@ -1916,10 +1925,12 @@ public class RootProjectConfigurator implements Plugin<Project> {
 						boolean success = file.setLastModified(
 							fileCopyDetails.getLastModified());
 
-						if (!success) {
-							logger.error(
-								"Unable to set last modified time of {}", file);
+						if (success) {
+							continue;
 						}
+
+						logger.error(
+							"Unable to set last modified time of {}", file);
 					}
 				}
 
@@ -2082,9 +2093,11 @@ public class RootProjectConfigurator implements Plugin<Project> {
 		for (int i = 0; i < segments.length; i++) {
 			sb.append(segments[i].toUpperCase());
 
-			if (i < (segments.length - 1)) {
-				sb.append("_PERIOD_");
+			if (i >= (segments.length - 1)) {
+				continue;
 			}
+
+			sb.append("_PERIOD_");
 		}
 
 		return sb.toString();

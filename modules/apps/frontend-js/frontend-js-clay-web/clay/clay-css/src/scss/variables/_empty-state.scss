@@ -18,9 +18,18 @@ $c-empty-state-image: () !default;
 $c-empty-state-image: map-deep-merge(
 	(
 		margin-bottom: -0.5rem,
-		max-width: 250px,
+		max-width: 288px,
 		width: 100%,
 		word-wrap: break-word,
+
+		'.c-empty-state-illustration': (
+			margin-bottom: -2.5rem,
+
+			'> svg': (
+				height: 288px,
+				width: 288px,
+			),
+		),
 	),
 	$c-empty-state-image
 );
@@ -87,11 +96,22 @@ $c-empty-state-sm: map-deep-merge(
 
 		c-empty-state-image: (
 			max-width: 120px,
+
+			'.c-empty-state-illustration': (
+				display: flex,
+				margin-bottom: -0.5rem,
+
+				'> svg': (
+					height: 138px,
+					width: 138px,
+				),
+			),
 		),
 
 		c-empty-state-title: (
 			font-size: 1rem,
 			line-height: 1.5,
+			margin-top: 1rem,
 		),
 
 		c-empty-state-text: (

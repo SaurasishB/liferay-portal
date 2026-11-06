@@ -21,18 +21,18 @@ function main {
 
 	local charts=(
 		aws
-		aws-infrastructure
 		aws-infrastructure-provider
 		aws-marketplace
 		azure
 		azure-infrastructure-provider
+		client-extension
 		default
 		dxp-operator
 		gcp
-		gcp-infrastructure
 		gcp-infrastructure-provider
 		infrastructure
 		observability
+		observability-paas
 		platform
 		platform-components
 	)
@@ -57,7 +57,7 @@ function main {
 
 		if [[ ${test_files} ]]
 		then
-			helm dependency update "${cloud_dir}/helm/${chart}"
+			"${cloud_dir}/scripts/update_helm_dependencies.sh" "${cloud_dir}/helm/${chart}"
 
 			helm unittest \
 				--output-file "${test_reports_dir}/helm-unittest-${chart}.xml" \

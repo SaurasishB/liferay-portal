@@ -9,6 +9,9 @@ import {clickAndExpectToBeVisible} from '../../utils/clickAndExpectToBeVisible';
 import {PORTLET_URLS} from '../../utils/portletUrls';
 import {waitForAlert} from '../../utils/waitForAlert';
 
+const DL_ADMIN_NAMESPACE =
+	'_com_liferay_document_library_web_portlet_DLAdminPortlet_';
+
 export type TVocabularyCategory = {
 	categoryNames: string[];
 	vocabularyName: string;
@@ -63,6 +66,25 @@ export class DocumentLibraryPage {
 		await this.page.goto(
 			`/group${siteUrl || '/guest'}${PORTLET_URLS.documentLibrary}`
 		);
+	}
+
+	async gotoFolder({
+		folderId,
+		siteUrl,
+	}: {
+		folderId: number;
+		siteUrl: Site['friendlyUrlPath'];
+	}) {
+		await this.page.goto(
+			`/group${siteUrl}${PORTLET_URLS.documentLibrary}&${DL_ADMIN_NAMESPACE}mvcRenderCommandName=%2Fdocument_library%2Fview_folder&${DL_ADMIN_NAMESPACE}folderId=${folderId}&${DL_ADMIN_NAMESPACE}displayStyle=icon`
+		);
+	}
+
+	getFileEntryStatus(title: string) {
+		return this.page
+			.locator('.card')
+			.filter({hasText: title})
+			.locator('.label');
 	}
 
 	async waitForSuccessAlert() {
@@ -128,6 +150,44 @@ export class DocumentLibraryPage {
 		});
 
 		await expect(currentViewLabel).toBeVisible();
+	}
+
+	async copyTo({
+		entryTitle,
+		folderName,
+		isFolder = false,
+	}: {
+		entryTitle: string;
+		folderName: string;
+		isFolder?: boolean;
+	}) {
+		if (isFolder) {
+			await this.goToFolderAction('Copy To', entryTitle);
+		}
+		else {
+			await this.goToFileEntryAction('Copy To', entryTitle);
+		}
+
+		const copyButton = this.page.getByRole('button', {
+			exact: true,
+			name: 'Copy',
+		});
+
+		await expect(copyButton).toBeDisabled();
+
+		await this.page
+			.getByRole('button', {exact: true, name: 'Select'})
+			.click();
+
+		await this.page
+			.frameLocator('iframe[title*="Select"]')
+			.getByRole('row', {name: folderName})
+			.getByRole('button', {exact: true, name: 'Select'})
+			.click();
+
+		await expect(copyButton).toBeEnabled();
+
+		await copyButton.click();
 	}
 
 	async deleteAllFileEntries() {

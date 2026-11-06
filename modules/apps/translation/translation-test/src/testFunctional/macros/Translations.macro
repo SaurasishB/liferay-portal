@@ -16,25 +16,6 @@ definition {
 	}
 
 	@summary = "Default summary"
-	macro assertFileNameFromTempFolder(webContentTitle = null, pageName = null) {
-		if (isSet(pageName)) {
-			var translationZipFileName = TestCase.waitForDownloadedTempFileName(fileNamePattern = "${pageName}*.zip");
-		}
-		else {
-			var translationZipFileName = TestCase.waitForDownloadedTempFileName(fileNamePattern = "${webContentTitle}*.zip");
-		}
-
-		echo("## translationZipFileName: ${translationZipFileName}");
-
-		if (contains(${translationZipFileName}, "en_US")) {
-			echo("This is a exported translation file.");
-		}
-		else {
-			fail("FAIL!");
-		}
-	}
-
-	@summary = "Default summary"
 	macro autoTranslate() {
 		Click(
 			key_text = "Auto Translate",
@@ -71,22 +52,8 @@ definition {
 			locator1 = "Translation#DROPDOWN_MENU_ITEM");
 
 		AssertElementPresent(
-			key_locale = ${newTargetLocale},
-			locator1 = "Translation#CONTENT_TITLE");
-	}
-
-	@summary = "Default summary"
-	macro copyTranslateFile(translationFileName = null, dependencyFile = null) {
-		if (contains(${translationZipFileName}, " ")) {
-			var translationZipFileName = StringUtil.replace(${translationZipFileName}, " ", "*");
-		}
-
-		if (isSet(dependencyFile)) {
-			AntCommands.runCommand("build-test-translation.xml", "copy-translation-file -DdependencyFile=${dependencyFile} -Dtranslation.file.name=${translationFileName} -Dtranslation.zip.file.name=${translationZipFileName}");
-		}
-		else {
-			AntCommands.runCommand("build-test-translation.xml", "copy-translation-file -Dtranslation.file.name=${translationFileName} -Dtranslation.zip.file.name=${translationZipFileName}");
-		}
+			key_currentLocale = StringUtil.lowerCase(${newTargetLocale}),
+			locator1 = "Button#TRANSLATIONS_LOCALIZATION");
 	}
 
 	@summary = "Default summary"
@@ -115,7 +82,7 @@ definition {
 
 		Type(
 			key_text = "secretKey",
-			locator1 = "TextArea#ANY",
+			locator1 = "TextInput#ANY_PASSWORD",
 			value1 = ${secretKey});
 
 		FormFields.enableCheckbox(fieldName = "enabled");
@@ -135,7 +102,7 @@ definition {
 
 		Type(
 			key_text = "subscriptionKey",
-			locator1 = "TextArea#ANY",
+			locator1 = "TextInput#ANY_PASSWORD",
 			value1 = ${subscriptionKey});
 
 		Type(
@@ -245,40 +212,6 @@ definition {
 		DownloadTempFile();
 
 		Button.clickCancel();
-	}
-
-	@summary = "Default summary"
-	macro gotoBulkExportTranslation() {
-		if (contains(${exportTranslationEntry}, "Page")) {
-			for (var exportTranslationEntry : list ${exportTranslationEntry}) {
-				PagesAdmin.selectPageItem(pageName = ${exportTranslationEntry});
-			}
-		}
-		else {
-			for (var exportTranslationEntry : list ${exportTranslationEntry}) {
-				LexiconEntry.selectEntry(rowEntry = ${exportTranslationEntry});
-			}
-		}
-
-		if (isSet(options)) {
-			Click(locator1 = "ManagementBar#ELLIPSIS");
-
-			MenuItem.clickNoError(menuItem = "Export for Translations");
-		}
-		else {
-			Click(
-				key_text = "upload",
-				locator1 = "ManagementBar#ANY_ICON");
-		}
-	}
-
-	@summary = "Default summary"
-	macro gotoBulkImportTranslation() {
-		MouseOver.mouseOverNotVisible(locator1 = "Portlet#OPTIONS_ICON");
-
-		Click(locator1 = "Portlet#OPTIONS_ICON");
-
-		MenuItem.click(menuItem = "Import Translations");
 	}
 
 	@summary = "Default summary"
@@ -458,9 +391,10 @@ definition {
 			key_settingFieldName = "Enabled",
 			locator1 = "SystemSettings#SETTING_FIELD_NAME_CHECKBOX");
 
-		SystemSettings.editTextAreaSetting(
-			settingName = "Service Account Private Key",
-			settingValue = ${settingValue});
+		Type(
+			key_text = "serviceAccountPrivateKey",
+			locator1 = "TextInput#ANY_PASSWORD",
+			value1 = ${settingValue});
 
 		Button.clickSave();
 
@@ -472,6 +406,8 @@ definition {
 		var wifCredentialsFile = "/root/.gcloud/translate.json";
 
 		var attributes = FileUtil.read(${wifCredentialsFile});
+
+		var attributes = StringUtil.regexReplaceAll(${attributes}, "[\r\n]", "");
 
 		return ${attributes};
 	}
@@ -508,14 +444,14 @@ definition {
 			CKEditor.typeContentInEitherEditor(
 				content = ${webContentContent},
 				fieldLabel = "Content",
-				iframeLocator = "CKEditor#BODY_FIELD_IFRAME_2");
+				iframeIndex = 2);
 		}
 
 		if (isSet(webContentDescription)) {
 			CKEditor.typeContentInEitherEditor(
 				content = ${webContentDescription},
 				fieldLabel = "Description",
-				iframeLocator = "CKEditor#BODY_FIELD_IFRAME");
+				iframeIndex = 1);
 		}
 
 		if (isSet(webContentSourceHtml)) {
@@ -639,20 +575,6 @@ definition {
 	}
 
 	@summary = "Default summary"
-	macro updateTranslateFileID(structuredContentId = null, translationFileName = null, translationEntryType = null, dependencyFile = null) {
-		if (contains(${translationZipFileName}, " ")) {
-			var translationZipFileName = StringUtil.replace(${translationZipFileName}, " ", "*");
-		}
-
-		if (isSet(dependencyFile)) {
-			AntCommands.runCommand("build-test-translation.xml", "update-translation-file-id -DdependencyFile=${dependencyFile} -DstructuredContentId=${structuredContentId} -Dtranslation.entry.type=${translationEntryType} -Dtranslation.file.name=${translationFileName} -Dtranslation.zip.file.name=${translationZipFileName}");
-		}
-		else {
-			AntCommands.runCommand("build-test-translation.xml", "update-translation-file-id -Dtranslation.entry.type=${translationEntryType} -Dtranslation.file.name=${translationFileName} -Dtranslation.zip.file.name=${translationZipFileName}");
-		}
-	}
-
-	@summary = "Default summary"
 	macro uploadTranslationsFile(fileName = null) {
 		var tempFileDirectory = selenium.getOutputDirName();
 
@@ -731,27 +653,6 @@ definition {
 					key_fieldName = ${webContentNumericFieldLabel},
 					key_fieldValue = ${webContentNumeric},
 					locator1 = "Translation#BASE_LANGUAGE_FIELD");
-			}
-		}
-	}
-
-	@summary = "Default summary"
-	macro viewCSVErrorReport(viewNoSuccessfullyImportedTranslation = null, reportContent = null, errorReportName = null) {
-		var fileContent = TestCase.getTempFileContent(fileName = ${errorReportName});
-
-		if (contains(${fileContent}, ${reportContent})) {
-			echo("The import translation error can be viewed in the report.");
-		}
-		else {
-			fail("The import translation error can not be viewed in the report");
-		}
-
-		if (isSet(viewNoSuccessfullyImportedTranslation)) {
-			if (!(contains(${fileContent}, ${viewNoSuccessfullyImportedTranslation}))) {
-				echo("No imported translation info in the report");
-			}
-			else {
-				fail("The error report is incorrect.");
 			}
 		}
 	}
@@ -850,13 +751,6 @@ definition {
 	}
 
 	@summary = "Default summary"
-	macro viewNoTranslationEntry(title = null) {
-		AssertElementNotPresent(
-			ey_rowEntry = ${title},
-			locator1 = "ContentRow#ENTRY_CONTENT_ENTRY_NAME");
-	}
-
-	@summary = "Default summary"
 	macro viewTargetFields(webContentDescription = null, webContentText = null, elementText = null, webContentInteger = null, webContentTitle = null, link = null, webContentContent = null, webContentTextBox = null, webContentNumber = null, contentPageName = null, webContentHtml = null, webContentDecimal = null) {
 		if (isSet(contentPageName)) {
 			AssertElementPresent(
@@ -890,21 +784,21 @@ definition {
 			CKEditor.assertContentInEitherEditor(
 				content = ${webContentContent},
 				fieldLabel = "Content",
-				iframeLocator = "CKEditor#BODY_FIELD_IFRAME_2");
+				iframeIndex = 2);
 		}
 
 		if (isSet(webContentDescription)) {
 			CKEditor.assertContentInEitherEditor(
 				content = ${webContentDescription},
 				fieldLabel = "Description",
-				iframeLocator = "CKEditor#BODY_FIELD_IFRAME");
+				iframeIndex = 1);
 		}
 
 		if (isSet(webContentHtml)) {
 			CKEditor.assertContentInEitherEditor(
 				content = ${webContentHtml},
 				fieldLabel = "Rich Text",
-				iframeLocator = "CKEditor#BODY_FIELD_IFRAME_2");
+				iframeIndex = 2);
 		}
 
 		if (isSet(webContentText)) {

@@ -24,7 +24,7 @@ test(
 
 		const file1Title = `title ${getRandomString()}`;
 
-		const objectEntry = await apiHelpers.objectEntry.postObjectEntry(
+		await apiHelpers.objectEntry.postObjectEntry(
 			{
 				file: {
 					fileBase64: 'R0lGODlhAQABAAAAACw=',
@@ -37,28 +37,18 @@ test(
 			spaceName
 		);
 
-		try {
-			await spaceSummaryPage.goto(spaceName);
-			await spaceSummaryPage.viewAllFilesLink.click();
+		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.viewAllFilesLink.click();
 
-			await expect(
-				page.getByRole('combobox', {name: 'Gallery View Selected'})
-			).toBeVisible();
+		await expect(
+			page.getByRole('combobox', {name: 'Gallery View Selected'})
+		).toBeVisible();
 
-			await expect(
-				spaceSummaryPage.galleryPreview.getByText(
-					'No Preview Available'
-				)
-			).toBeVisible();
+		await expect(
+			spaceSummaryPage.galleryPreview.getByText('No Preview Available')
+		).toBeVisible();
 
-			await expect(page.getByText(file1Title)).toBeVisible();
-		}
-		finally {
-			await apiHelpers.objectEntry.deleteObjectEntry(
-				applicationName,
-				String(objectEntry.id)
-			);
-		}
+		await expect(page.getByText(file1Title)).toBeVisible();
 	}
 );
 
@@ -116,17 +106,13 @@ test(
 	'View All Files link is not rendered when there are no files',
 	{tag: '@LPD-85991'},
 	async ({apiHelpers, spaceSummaryPage}) => {
-		const spaceName = `Space ${getRandomString()}`;
-
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
+		const space = await apiHelpers.headlessAssetLibrary.createSpace({
 			settings: {
 				logoColor: 'outline-3',
 			},
-			type: 'Space',
 		});
 
-		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
 		await expect(spaceSummaryPage.viewAllFilesLink).not.toBeVisible();
 
@@ -145,7 +131,7 @@ test(
 
 		const fileTitle = `title ${getRandomString()}`;
 
-		const objectEntry = await apiHelpers.objectEntry.postObjectEntry(
+		await apiHelpers.objectEntry.postObjectEntry(
 			{
 				file: {
 					fileBase64: 'R0lGODlhAQABAAAAACw=',
@@ -158,25 +144,13 @@ test(
 			spaceName
 		);
 
-		try {
-			await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(spaceName);
 
-			await expect(page.getByText(fileTitle)).toBeVisible();
+		await expect(page.getByText(fileTitle)).toBeVisible();
 
-			await page.getByText(fileTitle).click();
+		await page.getByText(fileTitle).click();
 
-			await expect(
-				page.getByRole('textbox', {name: 'Title'})
-			).toBeVisible();
-		}
-		finally {
-			if (objectEntry) {
-				await apiHelpers.objectEntry.deleteObjectEntry(
-					applicationName,
-					String(objectEntry.id)
-				);
-			}
-		}
+		await expect(page.getByRole('textbox', {name: 'Title'})).toBeVisible();
 	}
 );
 
@@ -201,17 +175,13 @@ test(
 	'View All Content link is not rendered when there is no content',
 	{tag: '@LPD-85991'},
 	async ({apiHelpers, spaceSummaryPage}) => {
-		const spaceName = `Space ${getRandomString()}`;
-
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
+		const space = await apiHelpers.headlessAssetLibrary.createSpace({
 			settings: {
 				logoColor: 'outline-3',
 			},
-			type: 'Space',
 		});
 
-		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
 		await expect(spaceSummaryPage.viewAllContentLink).not.toBeVisible();
 
@@ -254,7 +224,7 @@ test(
 
 		const contentTitle = `title ${getRandomString()}`;
 
-		const objectEntry = await apiHelpers.objectEntry.postObjectEntry(
+		await apiHelpers.objectEntry.postObjectEntry(
 			{
 				objectEntryFolderExternalReferenceCode: 'L_CONTENTS',
 				title: contentTitle,
@@ -263,27 +233,15 @@ test(
 			spaceName
 		);
 
-		try {
-			await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(spaceName);
 
-			await expect(
-				page.getByRole('link', {name: contentTitle})
-			).toBeVisible();
+		await expect(
+			page.getByRole('link', {name: contentTitle})
+		).toBeVisible();
 
-			await page.getByRole('link', {name: contentTitle}).click();
+		await page.getByRole('link', {name: contentTitle}).click();
 
-			await expect(
-				page.getByRole('textbox', {name: 'Title'})
-			).toBeVisible();
-		}
-		finally {
-			if (objectEntry) {
-				await apiHelpers.objectEntry.deleteObjectEntry(
-					applicationName,
-					String(objectEntry.id)
-				);
-			}
-		}
+		await expect(page.getByRole('textbox', {name: 'Title'})).toBeVisible();
 	}
 );
 
@@ -326,20 +284,14 @@ test(
 	'Space member without assign-members permission cannot see the Add Members button',
 	{tag: '@LPD-89584'},
 	async ({apiHelpers, spaceSummaryPage}) => {
-		const spaceName = getRandomString();
-
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
-			settings: {},
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		const user = await apiHelpers.headlessAdminUser.postUserAccount();
 		const userFullName = `${user.givenName} ${user.familyName}`;
 
 		registerUserCredentials(user);
 
-		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
 		await spaceSummaryPage.addUserOrUserGroup(userFullName, 'users');
 
@@ -348,7 +300,7 @@ test(
 			user.alternateName
 		);
 
-		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
 		await spaceSummaryPage.usersTab.click();
 
@@ -366,45 +318,31 @@ test(
 	async ({apiHelpers, assetsPage, page, spaceSummaryPage}) => {
 		const applicationName = 'cms/basic-web-contents';
 		const file1Title = `Title ${getRandomString()}`;
-		const spaceName = `Space ${getRandomString()}`;
-		let objectEntry1;
 
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
+		const space = await apiHelpers.headlessAssetLibrary.createSpace({
 			settings: {
 				logoColor: 'outline-3',
 				sharingEnabled: true,
 			},
-			type: 'Space',
 		});
 
-		try {
-			objectEntry1 = await apiHelpers.objectEntry.postObjectEntry(
-				{
-					objectEntryFolderExternalReferenceCode: 'L_CONTENTS',
-					title: file1Title,
-				},
-				applicationName,
-				spaceName
-			);
+		await apiHelpers.objectEntry.postObjectEntry(
+			{
+				objectEntryFolderExternalReferenceCode: 'L_CONTENTS',
+				title: file1Title,
+			},
+			applicationName,
+			space.name
+		);
 
-			await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
-			await assetsPage.execItemAction({
-				action: 'Share',
-				filter: file1Title,
-			});
+		await assetsPage.execItemAction({
+			action: 'Share',
+			filter: file1Title,
+		});
 
-			await expect(page.locator('.modal-title')).toContainText(
-				file1Title
-			);
-		}
-		finally {
-			await apiHelpers.objectEntry.deleteObjectEntry(
-				applicationName,
-				String(objectEntry1.id)
-			);
-		}
+		await expect(page.locator('.modal-title')).toContainText(file1Title);
 	}
 );
 
@@ -413,13 +351,8 @@ test(
 	{tag: '@LPD-85670'},
 	async ({apiHelpers, page, spaceSummaryPage}) => {
 		const applicationName = 'cms/basic-web-contents';
-		const spaceName = `Space ${getRandomString()}`;
 
-		const space = await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
-			settings: {},
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		const titles: string[] = [];
 
@@ -438,7 +371,7 @@ test(
 			);
 		}
 
-		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
 		await expect(
 			page.getByRole('link', {
@@ -477,13 +410,8 @@ test(
 		const applicationName = 'cms/basic-web-contents';
 		const newerFileTitle = `Newer ${getRandomString()}`;
 		const olderFileTitle = `Older ${getRandomString()}`;
-		const spaceName = `Space ${getRandomString()}`;
 
-		const space = await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
-			settings: {},
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		await apiHelpers.objectEntry.postObjectEntry(
 			{
@@ -511,7 +439,7 @@ test(
 			space.name
 		);
 
-		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
 		const firstFileTitle = await page
 			.getByRole('link', {name: /Newer|Older/})
@@ -529,13 +457,8 @@ test(
 		const applicationName = 'cms/basic-web-contents';
 		const newerContentTitle = `Newer ${getRandomString()}`;
 		const olderContentTitle = `Older ${getRandomString()}`;
-		const spaceName = `Space ${getRandomString()}`;
 
-		const space = await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
-			settings: {},
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		await apiHelpers.objectEntry.postObjectEntry(
 			{
@@ -555,7 +478,7 @@ test(
 			space.name
 		);
 
-		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
 		const firstContentTitle = await page
 			.getByRole('link', {name: /Newer|Older/})
@@ -571,13 +494,8 @@ test(
 	{tag: '@LPD-85670'},
 	async ({apiHelpers, assetsPage, page, spaceSummaryPage}) => {
 		const applicationName = 'cms/basic-documents';
-		const spaceName = `Space ${getRandomString()}`;
 
-		const space = await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
-			settings: {},
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		const titles: string[] = [];
 
@@ -600,7 +518,7 @@ test(
 			);
 		}
 
-		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
 		await expect(
 			page.getByRole('link', {
@@ -639,13 +557,8 @@ test(
 	{tag: '@LPD-85670'},
 	async ({apiHelpers, page, spaceSummaryPage}) => {
 		const applicationName = 'cms/basic-web-contents';
-		const spaceName = `Space ${getRandomString()}`;
 
-		const space = await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
-			settings: {},
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		const folderTitles: string[] = [];
 		const entryTitles: string[] = [];
@@ -674,7 +587,7 @@ test(
 			);
 		}
 
-		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
 		const allTitles = [...folderTitles, ...entryTitles];
 

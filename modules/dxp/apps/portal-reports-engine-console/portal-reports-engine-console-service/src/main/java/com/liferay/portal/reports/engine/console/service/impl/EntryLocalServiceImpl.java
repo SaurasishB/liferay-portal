@@ -34,7 +34,6 @@ import com.liferay.portal.kernel.settings.GroupServiceSettingsLocator;
 import com.liferay.portal.kernel.systemevent.SystemEvent;
 import com.liferay.portal.kernel.util.DateFormatFactoryUtil;
 import com.liferay.portal.kernel.util.Localization;
-import com.liferay.portal.kernel.util.OrderByComparator;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.SubscriptionSender;
@@ -51,6 +50,7 @@ import com.liferay.portal.reports.engine.console.exception.EntryEmailDeliveryExc
 import com.liferay.portal.reports.engine.console.exception.EntryEmailNotificationsException;
 import com.liferay.portal.reports.engine.console.internal.constants.ReportsEngineDestinationNames;
 import com.liferay.portal.reports.engine.console.internal.util.ReportsEngineConsoleSubscriptionSender;
+import com.liferay.portal.reports.engine.console.internal.util.SourceDriverPasswordUtil;
 import com.liferay.portal.reports.engine.console.model.Definition;
 import com.liferay.portal.reports.engine.console.model.Entry;
 import com.liferay.portal.reports.engine.console.model.Source;
@@ -66,7 +66,6 @@ import java.text.DateFormat;
 
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -274,7 +273,10 @@ public class EntryLocalServiceImpl extends EntryLocalServiceBaseImpl {
 				ReportRequestContext.JDBC_DRIVER_CLASS,
 				source.getDriverClassName());
 			reportRequestContext.setAttribute(
-				ReportRequestContext.JDBC_PASSWORD, source.getDriverPassword());
+				ReportRequestContext.JDBC_PASSWORD,
+				SourceDriverPasswordUtil.getDriverPassword(
+					source.getCompanyId(), source.getDriverPassword(),
+					source.getSourceId()));
 			reportRequestContext.setAttribute(
 				ReportRequestContext.JDBC_URL, source.getDriverUrl());
 			reportRequestContext.setAttribute(
@@ -300,27 +302,6 @@ public class EntryLocalServiceImpl extends EntryLocalServiceBaseImpl {
 		return _store.getFileNames(
 			entry.getCompanyId(), CompanyConstants.SYSTEM,
 			entry.getAttachmentsDir());
-	}
-
-	@Override
-	public List<Entry> getEntries(
-		long groupId, String definitionName, String userName, Date createDateGT,
-		Date createDateLT, boolean andSearch, int start, int end,
-		OrderByComparator<Entry> orderByComparator) {
-
-		return entryFinder.findByG_CD_N_SN(
-			groupId, definitionName, userName, createDateGT, createDateLT,
-			andSearch, start, end, orderByComparator);
-	}
-
-	@Override
-	public int getEntriesCount(
-		long groupId, String definitionName, String userName, Date createDateGT,
-		Date createDateLT, boolean andSearch) {
-
-		return entryFinder.countByG_CD_N_SN(
-			groupId, definitionName, userName, createDateGT, createDateLT,
-			andSearch);
 	}
 
 	@Override

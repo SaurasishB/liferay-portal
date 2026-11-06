@@ -17,10 +17,13 @@ import com.liferay.journal.exception.InvalidDDMStructureException;
 import com.liferay.journal.model.JournalArticle;
 import com.liferay.journal.model.JournalFolder;
 import com.liferay.journal.service.JournalArticleLocalService;
+import com.liferay.journal.service.JournalArticleService;
 import com.liferay.journal.service.JournalFolderLocalService;
 import com.liferay.journal.service.JournalFolderService;
 import com.liferay.journal.test.util.JournalFolderFixture;
 import com.liferay.journal.test.util.JournalTestUtil;
+import com.liferay.petra.function.UnsafeRunnable;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -29,11 +32,13 @@ import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.role.RoleConstants;
+import com.liferay.portal.kernel.security.auth.PrincipalException;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionCheckerFactoryUtil;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
+import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.context.ContextUserReplace;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
@@ -45,13 +50,20 @@ import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.trash.TrashHandler;
 import com.liferay.portal.kernel.trash.TrashHandlerRegistryUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.SetUtil;
+import com.liferay.portal.kernel.util.Time;
+import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 import com.liferay.trash.exception.RestoreEntryException;
 
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 
 import org.junit.Assert;
@@ -259,6 +271,61 @@ public class JournalFolderServiceTest {
 	}
 
 	@Test
+	@TestInfo("LPD-112322")
+	public void testGetFoldersAndArticlesWithDraftAndScheduledArticles()
+		throws Exception {
+
+		JournalFolder journalFolder = _journalFolderFixture.addFolder(
+			_group.getGroupId(), RandomTestUtil.randomString());
+
+		JournalArticle approvedJournalArticle = _addApprovedJournalArticle(
+			journalFolder, RandomTestUtil.randomString());
+
+		_addDraftJournalArticle(journalFolder, TestPropsValues.getUserId());
+		_addScheduledJournalArticle(journalFolder);
+
+		User user = UserTestUtil.addUser();
+
+		JournalArticle userDraftJournalArticle = _addDraftJournalArticle(
+			journalFolder, user.getUserId());
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				user, PermissionCheckerFactoryUtil.create(user))) {
+
+			Assert.assertEquals(
+				SetUtil.fromArray(
+					approvedJournalArticle, userDraftJournalArticle),
+				new HashSet<>(
+					_journalFolderService.getFoldersAndArticles(
+						_group.getGroupId(), 0, journalFolder.getFolderId(),
+						WorkflowConstants.STATUS_ANY, LocaleUtil.getDefault(),
+						QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)));
+			Assert.assertEquals(
+				SetUtil.fromArray(
+					approvedJournalArticle, userDraftJournalArticle),
+				new HashSet<>(
+					_journalFolderService.getFoldersAndArticles(
+						_group.getGroupId(), TestPropsValues.getUserId(),
+						journalFolder.getFolderId(),
+						WorkflowConstants.STATUS_DRAFT, LocaleUtil.getDefault(),
+						QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)));
+			Assert.assertEquals(
+				2,
+				_journalFolderService.getFoldersAndArticlesCount(
+					_group.getGroupId(), 0, journalFolder.getFolderId(),
+					WorkflowConstants.STATUS_ANY));
+			Assert.assertEquals(
+				2,
+				_journalFolderService.getFoldersAndArticlesCount(
+					_group.getGroupId(),
+					Arrays.asList(journalFolder.getFolderId()),
+					WorkflowConstants.STATUS_ANY));
+		}
+
+		_userLocalService.deleteUser(user);
+	}
+
+	@Test
 	public void testGetInheritedWorkflowFolderId() throws Exception {
 		ServiceContext serviceContext =
 			ServiceContextTestUtil.getServiceContext(_group.getGroupId());
@@ -416,6 +483,44 @@ public class JournalFolderServiceTest {
 	}
 
 	@Test
+	public void testMoveArticleFromTrashWithoutAddArticlePermission()
+		throws Exception {
+
+		User user = UserTestUtil.addUser();
+
+		JournalArticle journalArticle =
+			_journalArticleLocalService.moveArticleToTrash(
+				TestPropsValues.getUserId(),
+				JournalTestUtil.addArticle(
+					user.getUserId(), _group.getGroupId(),
+					JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID));
+
+		JournalFolder journalFolder = _journalFolderFixture.addFolder(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+			RandomTestUtil.randomString());
+
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext(
+				_group.getGroupId(), user.getUserId());
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				user, PermissionCheckerFactoryUtil.create(user))) {
+
+			_assertMustHavePermission(
+				ActionKeys.ADD_ARTICLE,
+				() -> _journalArticleService.moveArticleFromTrash(
+					_group.getGroupId(), journalArticle.getResourcePrimKey(),
+					journalFolder.getFolderId(), serviceContext));
+			_assertMustHavePermission(
+				ActionKeys.ADD_ARTICLE,
+				() -> _journalArticleService.moveArticleFromTrash(
+					_group.getGroupId(), journalArticle.getArticleId(),
+					journalFolder.getFolderId(), serviceContext));
+		}
+	}
+
+	@Test
 	public void testMoveArticleToRestrictedFolder() throws Exception {
 		DDMStructure ddmStructure1 = DDMStructureTestUtil.addStructure(
 			_group.getGroupId(), JournalArticle.class.getName());
@@ -474,6 +579,76 @@ public class JournalFolderServiceTest {
 			Assert.fail();
 		}
 		catch (InvalidDDMStructureException invalidDDMStructureException) {
+		}
+	}
+
+	@Test
+	public void testMoveFolder() throws Exception {
+		User user = UserTestUtil.addUser();
+
+		JournalFolder journalFolder = JournalTestUtil.addFolder(
+			user.getUserId(), _group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+			RandomTestUtil.randomString());
+
+		JournalFolder parentJournalFolder = _journalFolderFixture.addFolder(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+			RandomTestUtil.randomString());
+
+		Role role = RoleTestUtil.addRole(RoleConstants.TYPE_REGULAR);
+
+		_resourcePermissionLocalService.setResourcePermissions(
+			TestPropsValues.getCompanyId(), JournalFolder.class.getName(),
+			ResourceConstants.SCOPE_INDIVIDUAL,
+			String.valueOf(parentJournalFolder.getFolderId()), role.getRoleId(),
+			new String[] {ActionKeys.ADD_SUBFOLDER});
+
+		_userLocalService.addRoleUser(role.getRoleId(), user.getUserId());
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				user, PermissionCheckerFactoryUtil.create(user))) {
+
+			journalFolder = _journalFolderService.moveFolder(
+				journalFolder.getFolderId(), parentJournalFolder.getFolderId(),
+				ServiceContextTestUtil.getServiceContext(
+					_group.getGroupId(), user.getUserId()));
+		}
+
+		Assert.assertEquals(
+			parentJournalFolder.getFolderId(),
+			journalFolder.getParentFolderId());
+	}
+
+	@Test
+	public void testMoveFolderFromTrashWithoutAddFolderPermission()
+		throws Exception {
+
+		User user = UserTestUtil.addUser();
+
+		JournalFolder journalFolder = JournalTestUtil.addFolder(
+			user.getUserId(), _group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+			RandomTestUtil.randomString());
+
+		_journalFolderLocalService.moveFolderToTrash(
+			TestPropsValues.getUserId(), journalFolder.getFolderId());
+
+		JournalFolder parentJournalFolder = _journalFolderFixture.addFolder(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+			RandomTestUtil.randomString());
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				user, PermissionCheckerFactoryUtil.create(user))) {
+
+			_assertMustHavePermission(
+				ActionKeys.ADD_FOLDER,
+				() -> _journalFolderService.moveFolderFromTrash(
+					journalFolder.getFolderId(),
+					parentJournalFolder.getFolderId(),
+					ServiceContextTestUtil.getServiceContext(
+						_group.getGroupId(), user.getUserId())));
 		}
 	}
 
@@ -615,6 +790,33 @@ public class JournalFolderServiceTest {
 			Assert.fail();
 		}
 		catch (InvalidDDMStructureException invalidDDMStructureException) {
+		}
+	}
+
+	@Test
+	public void testMoveFolderWithoutAddFolderPermission() throws Exception {
+		User user = UserTestUtil.addUser();
+
+		JournalFolder journalFolder = JournalTestUtil.addFolder(
+			user.getUserId(), _group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+			RandomTestUtil.randomString());
+
+		JournalFolder parentJournalFolder = _journalFolderFixture.addFolder(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+			RandomTestUtil.randomString());
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				user, PermissionCheckerFactoryUtil.create(user))) {
+
+			_assertMustHavePermission(
+				ActionKeys.ADD_FOLDER,
+				() -> _journalFolderService.moveFolder(
+					journalFolder.getFolderId(),
+					parentJournalFolder.getFolderId(),
+					ServiceContextTestUtil.getServiceContext(
+						_group.getGroupId(), user.getUserId())));
 		}
 	}
 
@@ -876,6 +1078,34 @@ public class JournalFolderServiceTest {
 	}
 
 	@Test
+	public void testUpdateFolderWithoutAddFolderPermission() throws Exception {
+		User user = UserTestUtil.addUser();
+
+		JournalFolder journalFolder = JournalTestUtil.addFolder(
+			user.getUserId(), _group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+			RandomTestUtil.randomString());
+
+		JournalFolder parentJournalFolder = _journalFolderFixture.addFolder(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+			RandomTestUtil.randomString());
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				user, PermissionCheckerFactoryUtil.create(user))) {
+
+			_assertMustHavePermission(
+				ActionKeys.ADD_FOLDER,
+				() -> _journalFolderService.updateFolder(
+					_group.getGroupId(), journalFolder.getFolderId(),
+					parentJournalFolder.getFolderId(), journalFolder.getName(),
+					journalFolder.getDescription(), false,
+					ServiceContextTestUtil.getServiceContext(
+						_group.getGroupId(), user.getUserId())));
+		}
+	}
+
+	@Test
 	public void testUpdateParentWithRestriction() throws Exception {
 		JournalFolder parentFolder = _journalFolderFixture.addFolder(
 			_group.getGroupId(),
@@ -946,6 +1176,67 @@ public class JournalFolderServiceTest {
 				_group, TestPropsValues.getUserId()));
 	}
 
+	private JournalArticle _addApprovedJournalArticle(
+			JournalFolder journalFolder, String title)
+		throws Exception {
+
+		return JournalTestUtil.addArticle(
+			_group.getGroupId(), journalFolder.getFolderId(), title,
+			RandomTestUtil.randomString());
+	}
+
+	private JournalArticle _addDraftJournalArticle(
+			JournalFolder journalFolder, long userId)
+		throws Exception {
+
+		return JournalTestUtil.addArticle(
+			_group.getGroupId(), journalFolder.getFolderId(),
+			JournalArticleConstants.CLASS_NAME_ID_DEFAULT,
+			RandomTestUtil.randomString(), RandomTestUtil.randomString(),
+			RandomTestUtil.randomString(), LocaleUtil.getSiteDefault(), true,
+			false,
+			ServiceContextTestUtil.getServiceContext(
+				_group.getGroupId(), userId));
+	}
+
+	private JournalArticle _addScheduledJournalArticle(
+			JournalFolder journalFolder)
+		throws Exception {
+
+		return JournalTestUtil.addArticle(
+			_group.getGroupId(), journalFolder.getFolderId(),
+			JournalArticleConstants.CLASS_NAME_ID_DEFAULT, StringPool.BLANK,
+			true,
+			HashMapBuilder.put(
+				LocaleUtil.getSiteDefault(), RandomTestUtil.randomString()
+			).build(),
+			HashMapBuilder.put(
+				LocaleUtil.getSiteDefault(), RandomTestUtil.randomString()
+			).build(),
+			HashMapBuilder.put(
+				LocaleUtil.getSiteDefault(), RandomTestUtil.randomString()
+			).build(),
+			null, LocaleUtil.getSiteDefault(),
+			new Date(System.currentTimeMillis() + Time.DAY), null, true, true,
+			ServiceContextTestUtil.getServiceContext(_group.getGroupId()));
+	}
+
+	private void _assertMustHavePermission(
+			String actionId, UnsafeRunnable<Exception> unsafeRunnable)
+		throws Exception {
+
+		try {
+			unsafeRunnable.run();
+
+			Assert.fail();
+		}
+		catch (PrincipalException.MustHavePermission principalException) {
+			String message = principalException.getMessage();
+
+			Assert.assertTrue(message, message.contains(actionId));
+		}
+	}
+
 	private static final Log _log = LogFactoryUtil.getLog(
 		JournalFolderServiceTest.class);
 
@@ -954,6 +1245,9 @@ public class JournalFolderServiceTest {
 
 	@Inject
 	private JournalArticleLocalService _journalArticleLocalService;
+
+	@Inject
+	private JournalArticleService _journalArticleService;
 
 	private JournalFolderFixture _journalFolderFixture;
 

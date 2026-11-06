@@ -22,6 +22,9 @@ import getRandomString from '../../../utils/getRandomString';
 import {performLogout, userData} from '../../../utils/performLogin';
 import {openProductMenu} from '../../../utils/productMenu';
 import {waitForAlert} from '../../../utils/waitForAlert';
+import getFragmentDefinition from '../../layout-content-page-editor-web/main/utils/getFragmentDefinition';
+import getPageDefinition from '../../layout-content-page-editor-web/main/utils/getPageDefinition';
+import getWidgetDefinition from '../../layout-content-page-editor-web/main/utils/getWidgetDefinition';
 import {ORDER_WORKFLOW_STATUS_CODE} from '../../workspaces/liferay-workspace-marketplace/main/utils/constants';
 
 type TBrakeFluidUnitsOfMeasure = {
@@ -52,6 +55,101 @@ type TUnitOfMeasure = {
 	name: {[key: string]: string};
 	promoPrice: number;
 };
+
+const CHANNEL_PAYMENT_METHOD_NAMES: {[paymentIntegrationKey: string]: string} =
+	{
+		'money-order': 'Money Order',
+		'paypal': 'PayPal Subscriptions',
+		'paypal-integration': 'PayPal',
+	};
+
+export async function activateChannelPaymentMethod(
+	apiHelpers: DataApiHelpers,
+	channelId: number,
+	paymentIntegrationKey: string
+) {
+	const company =
+		await apiHelpers.jsonWebServicesCompany.getCompanyByWebId(
+			'liferay.com'
+		);
+
+	const channelGroup = await apiHelpers.jsonWebServicesGroup.getGroupByKey(
+		company.companyId,
+		String(channelId)
+	);
+
+	return apiHelpers.jsonWebServicesCommercePaymentMethodGroupRel.addCommercePaymentMethodGroupRel(
+		Number(channelGroup.groupId),
+		CHANNEL_PAYMENT_METHOD_NAMES[paymentIntegrationKey],
+		paymentIntegrationKey
+	);
+}
+
+export async function checkoutStorefrontSetUp(
+	apiHelpers: DataApiHelpers,
+	commerceAdminChannelsPage: CommerceAdminChannelsPage,
+	page: Page,
+	site: Site
+) {
+	const channel = await apiHelpers.headlessCommerceAdminChannel.postChannel({
+		name: getRandomString(),
+		siteGroupId: site.id,
+	});
+
+	await commerceAdminChannelsPage.changeCommerceChannelSiteType(
+		channel.name,
+		'B2B'
+	);
+
+	await waitForAlert(page);
+
+	const catalog = await apiHelpers.headlessCommerceAdminCatalog.postCatalog({
+		name: getRandomString(),
+	});
+
+	const product = await apiHelpers.headlessCommerceAdminCatalog.postProduct({
+		catalogId: catalog.id,
+		name: {en_US: getRandomString()},
+		skus: [
+			{
+				cost: 0,
+				price: 10,
+				published: true,
+				purchasable: true,
+				sku: getRandomString(),
+			},
+		],
+	});
+
+	const {skus} = await apiHelpers.headlessCommerceAdminCatalog.getProduct(
+		product.productId
+	);
+
+	const {account, buyerUser} = await createAccountWithBuyerUser(
+		apiHelpers,
+		site.id
+	);
+
+	const checkoutLayout = await apiHelpers.headlessDelivery.createSitePage({
+		pageDefinition: getPageDefinition([
+			getWidgetDefinition({
+				id: getRandomString(),
+				widgetName:
+					'com_liferay_commerce_checkout_web_internal_portlet_CommerceCheckoutPortlet',
+			}),
+		]),
+		siteId: site.id,
+		title: getRandomString(),
+	});
+
+	return {
+		account,
+		buyerUser,
+		channel,
+		checkoutLayout,
+		sku: skus[0],
+	};
+}
 
 export async function classicCommerceSetUp(
 	apiHelpers: DataApiHelpers,
@@ -637,13 +735,6 @@ export async function initializerSetUp(
 		catalogItems[0].id
 	);
 
-	for (const product of products) {
-		apiHelpers.data.push({
-			id: product.productId,
-			type: 'product',
-		});
-	}
-
 	const options = await apiHelpers.headlessCommerceAdminCatalog.getOptions();
 
 	for (let i = 0; i < options.totalCount; i++) {
@@ -680,6 +771,13 @@ export async function initializerSetUp(
 		apiHelpers.data.push({
 			id: warehouses.items[i].id,
 			type: 'warehouse',
+		});
+	}
+
+	for (const product of products) {
+		apiHelpers.data.push({
+			id: product.productId,
+			type: 'product',
 		});
 	}
 
@@ -881,6 +979,53 @@ export async function deployProductFragmentsOnDefaultDPT(
 	return displayPageTemplateName;
 }
 
+export async function miniCartCheckoutSetUp(
+	apiHelpers: DataApiHelpers,
+	commerceAdminChannelsPage: CommerceAdminChannelsPage,
+	page: Page,
+	site: Site
+) {
+	for (const widgetName of [
+		'com_liferay_commerce_checkout_web_internal_portlet_CommerceCheckoutPortlet',
+		'com_liferay_commerce_order_content_web_internal_portlet_CommerceOpenOrderContentPortlet',
+	]) {
+		await apiHelpers.headlessDelivery.createSitePage({
+			pageDefinition: getPageDefinition([
+				getWidgetDefinition({id: getRandomString(), widgetName}),
+			]),
+			siteId: site.id,
+			title: getRandomString(),
+		});
+	}
+
+	await apiHelpers.headlessDelivery.createSitePage({
+		pageDefinition: getPageDefinition([
+			getWidgetDefinition({
+				id: getRandomString(),
+				widgetName:
+					'com_liferay_commerce_product_content_web_internal_portlet_CPContentPortlet',
+			}),
+			getFragmentDefinition({
+				id: getRandomString(),
+				key: 'COMMERCE_CART_FRAGMENTS-mini-cart',
+			}),
+		]),
+		siteId: site.id,
+		title: getRandomString(),
+	});
+
+	const channel = await apiHelpers.headlessCommerceAdminChannel.postChannel({
+		siteGroupId: site.id,
+	});
+
+	await commerceAdminChannelsPage.changeCommerceChannelSiteType(
+		channel.name,
+		'B2B'
+	);
+
+	await waitForAlert(page);
+}
+
 export async function miniumSetUp(
 	apiHelpers: DataApiHelpers,
 	siteName?: string
@@ -912,6 +1057,7 @@ export async function createAccountWithBuyerUser(
 	siteId: number | string,
 	options?: {
 		accountName?: string;
+		languageId?: string;
 		userEmailAddress?: string;
 		userFirstName?: string;
 		userLastName?: string;
@@ -1036,6 +1182,7 @@ export async function createBuyerUserForAccount(
 	apiHelpers: DataApiHelpers,
 	siteId: number | string,
 	options?: {
+		languageId?: string;
 		userEmailAddress?: string;
 		userFirstName?: string;
 		userLastName?: string;
@@ -1054,6 +1201,7 @@ export async function createBuyerUserForAccount(
 		emailAddress: userEmailAddress,
 		familyName: userLastName,
 		givenName: userFirstName,
+		languageId: options?.languageId,
 	});
 
 	await assignBuyerUserToAccount(account, apiHelpers, buyerUser);

@@ -12,11 +12,17 @@ import com.liferay.portal.kernel.struts.StrutsAction;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
+import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.WebKeys;
+import com.liferay.portal.test.log.LogCapture;
+import com.liferay.portal.test.log.LogEntry;
+import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
+
+import java.util.List;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -51,7 +57,7 @@ public class FindEntryStrutsActionTest {
 	}
 
 	@Test
-	public void testAllowedDomainsCanRedirect() throws Exception {
+	public void testExecute() throws Exception {
 		ConfigurationTestUtil.saveConfiguration(
 			_PID,
 			HashMapDictionaryBuilder.<String, Object>put(
@@ -60,11 +66,35 @@ public class FindEntryStrutsActionTest {
 				"securityMode", "domain"
 			).build());
 
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.portal.util.PortalImpl", LoggerTestUtil.WARN)) {
+
+			Assert.assertNotEquals(
+				"https://google.co", _execute("https://google.co"));
+
+			List<LogEntry> logEntries = logCapture.getLogEntries();
+
+			Assert.assertEquals(logEntries.toString(), 1, logEntries.size());
+
+			LogEntry logEntry = logEntries.get(0);
+
+			Assert.assertEquals(
+				"Redirect URL https://google.co is not allowed",
+				logEntry.getMessage());
+		}
+
+		Assert.assertEquals(
+			"https://mail.google.com", _execute("https://mail.google.com"));
+	}
+
+	private String _execute(String noSuchEntryRedirect) throws Exception {
 		MockHttpServletRequest mockHttpServletRequest =
 			new MockHttpServletRequest();
 
 		mockHttpServletRequest.addParameter(
-			"noSuchEntryRedirect", "https://mail.google.com");
+			"noSuchEntryRedirect", noSuchEntryRedirect);
+		mockHttpServletRequest.setRequestURI(
+			"/" + RandomTestUtil.randomString());
 
 		ThemeDisplay themeDisplay = new ThemeDisplay();
 
@@ -79,9 +109,7 @@ public class FindEntryStrutsActionTest {
 		_editInfoItemStrutsAction.execute(
 			mockHttpServletRequest, mockHttpServletResponse);
 
-		Assert.assertEquals(
-			"https://mail.google.com",
-			mockHttpServletResponse.getRedirectedUrl());
+		return mockHttpServletResponse.getRedirectedUrl();
 	}
 
 	private static final String _PID =

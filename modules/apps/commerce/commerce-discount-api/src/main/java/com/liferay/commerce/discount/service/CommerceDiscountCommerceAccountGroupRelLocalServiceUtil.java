@@ -137,8 +137,9 @@ public class CommerceDiscountCommerceAccountGroupRelLocalServiceUtil {
 	 */
 	@Deprecated
 	public static void
-		deleteCommerceDiscountCommerceAccountGroupRelsBycommerceAccountGroupId(
-			long commerceAccountGroupId) {
+			deleteCommerceDiscountCommerceAccountGroupRelsBycommerceAccountGroupId(
+				long commerceAccountGroupId)
+		throws PortalException {
 
 		getService().
 			deleteCommerceDiscountCommerceAccountGroupRelsBycommerceAccountGroupId(
@@ -316,14 +317,6 @@ public class CommerceDiscountCommerceAccountGroupRelLocalServiceUtil {
 			commerceDiscountId, start, end, orderByComparator);
 	}
 
-	public static List<CommerceDiscountCommerceAccountGroupRel>
-		getCommerceDiscountCommerceAccountGroupRels(
-			long commerceDiscountId, String name, int start, int end) {
-
-		return getService().getCommerceDiscountCommerceAccountGroupRels(
-			commerceDiscountId, name, start, end);
-	}
-
 	/**
 	 * Returns the number of commerce discount commerce account group rels.
 	 *
@@ -338,13 +331,6 @@ public class CommerceDiscountCommerceAccountGroupRelLocalServiceUtil {
 
 		return getService().getCommerceDiscountCommerceAccountGroupRelsCount(
 			commerceDiscountId);
-	}
-
-	public static int getCommerceDiscountCommerceAccountGroupRelsCount(
-		long commerceDiscountId, String name) {
-
-		return getService().getCommerceDiscountCommerceAccountGroupRelsCount(
-			commerceDiscountId, name);
 	}
 
 	public static
@@ -404,4 +390,4 @@ public class CommerceDiscountCommerceAccountGroupRelLocalServiceUtil {
 				CommerceDiscountCommerceAccountGroupRelLocalService.class);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:91104054
+// LIFERAY-SERVICE-BUILDER-HASH:1895733331

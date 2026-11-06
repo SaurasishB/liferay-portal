@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLField;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLName;
@@ -22,6 +23,8 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 
 import java.io.Serializable;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -34,11 +37,11 @@ import java.util.function.Supplier;
  */
 @Generated("")
 @GraphQLName(
-	description = "An Analytics Cloud workspace synced from a Liferay site. Each workspace owns its own channels, individuals, accounts, segments, and asset analytics. Workspaces are scoped to the Liferay group identified by `groupId`.",
+	description = "An LDP workspace synced from a Liferay site. Each workspace owns its own channels, individuals, accounts, segments, and asset analytics. Workspaces are scoped to the Liferay group identified by `groupId`.",
 	value = "Workspace"
 )
 @io.swagger.v3.oas.annotations.media.Schema(
-	description = "An Analytics Cloud workspace synced from a Liferay site. Each workspace owns its own channels, individuals, accounts, segments, and asset analytics. Workspaces are scoped to the Liferay group identified by `groupId`."
+	description = "An LDP workspace synced from a Liferay site. Each workspace owns its own channels, individuals, accounts, segments, and asset analytics. Workspaces are scoped to the Liferay group identified by `groupId`."
 )
 @JsonFilter("Liferay.Vulcan")
 @XmlRootElement(name = "Workspace")
@@ -53,7 +56,7 @@ public class Workspace implements Serializable {
 	}
 
 	@io.swagger.v3.oas.annotations.media.Schema(
-		description = "ID of the Liferay site that owns the Analytics Cloud workspace. Use this with other endpoints to scope requests to this workspace."
+		description = "ID of the Liferay site that owns the LDP workspace. Use this with other endpoints to scope requests to this workspace."
 	)
 	public Long getGroupId() {
 		if (_groupIdSupplier != null) {
@@ -89,7 +92,7 @@ public class Workspace implements Serializable {
 	}
 
 	@GraphQLField(
-		description = "ID of the Liferay site that owns the Analytics Cloud workspace. Use this with other endpoints to scope requests to this workspace."
+		description = "ID of the Liferay site that owns the LDP workspace. Use this with other endpoints to scope requests to this workspace."
 	)
 	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
 	protected Long groupId;
@@ -286,6 +289,27 @@ public class Workspace implements Serializable {
 		return sb.toString();
 	}
 
+	private static String _toJSON(Object value) {
+		if (value instanceof Collection) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray((Collection<?>)value));
+		}
+		else if (value instanceof Map) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONObject((Map<?, ?>)value));
+		}
+		else if (value instanceof Object[]) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray(
+					Arrays.asList((Object[])value)));
+		}
+		else if (value instanceof String) {
+			return StringBundler.concat("\"", _escape(value), "\"");
+		}
+
+		return String.valueOf(value);
+	}
+
 	private static final String[][] _JSON_ESCAPE_STRINGS = {
 		{"\\", "\"", "\b", "\f", "\n", "\r", "\t"},
 		{"\\\\", "\\\"", "\\b", "\\f", "\\n", "\\r", "\\t"}
@@ -294,4 +318,4 @@ public class Workspace implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:932538794
+// LIFERAY-REST-BUILDER-HASH:-269593647

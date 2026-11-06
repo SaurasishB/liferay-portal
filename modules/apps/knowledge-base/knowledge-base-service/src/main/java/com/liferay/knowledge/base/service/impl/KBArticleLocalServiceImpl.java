@@ -569,11 +569,13 @@ public class KBArticleLocalServiceImpl extends KBArticleLocalServiceBaseImpl {
 					WorkflowConstants.STATUS_ANY, QueryUtil.ALL_POS,
 					QueryUtil.ALL_POS, null)) {
 
-			if (includeTrashedEntries ||
-				!_trashHelper.isInTrashExplicitly(kbArticle)) {
+			if (!includeTrashedEntries &&
+				_trashHelper.isInTrashExplicitly(kbArticle)) {
 
-				kbArticleLocalService.deleteKBArticle(kbArticle);
+				continue;
 			}
+
+			kbArticleLocalService.deleteKBArticle(kbArticle);
 		}
 
 		for (KBArticle kbArticle :
@@ -582,11 +584,13 @@ public class KBArticleLocalServiceImpl extends KBArticleLocalServiceBaseImpl {
 					WorkflowConstants.STATUS_IN_TRASH, QueryUtil.ALL_POS,
 					QueryUtil.ALL_POS, null)) {
 
-			if (includeTrashedEntries ||
-				!_trashHelper.isInTrashExplicitly(kbArticle)) {
+			if (!includeTrashedEntries &&
+				_trashHelper.isInTrashExplicitly(kbArticle)) {
 
-				kbArticleLocalService.deleteKBArticle(kbArticle);
+				continue;
 			}
+
+			kbArticleLocalService.deleteKBArticle(kbArticle);
 		}
 	}
 
@@ -729,7 +733,7 @@ public class KBArticleLocalServiceImpl extends KBArticleLocalServiceBaseImpl {
 
 		return kbArticlePersistence.fetchByG_ERC_First(
 			groupId, externalReferenceCode,
-			KBArticleVersionComparator.getInstance(true));
+			KBArticleVersionComparator.getInstance(false));
 	}
 
 	@Override
@@ -738,7 +742,7 @@ public class KBArticleLocalServiceImpl extends KBArticleLocalServiceBaseImpl {
 
 		KBArticle latestKBArticle = kbArticlePersistence.fetchByG_ERC_First(
 			groupId, externalReferenceCode,
-			KBArticleVersionComparator.getInstance(true));
+			KBArticleVersionComparator.getInstance(false));
 
 		if ((latestKBArticle == null) ||
 			(status == WorkflowConstants.STATUS_ANY) ||
@@ -802,40 +806,6 @@ public class KBArticleLocalServiceImpl extends KBArticleLocalServiceBaseImpl {
 
 		return _getAllDescendantKBArticles(
 			resourcePrimKey, status, orderByComparator, false);
-	}
-
-	@Override
-	public List<KBArticle> getCompanyKBArticles(
-		long companyId, int status, int start, int end,
-		OrderByComparator<KBArticle> orderByComparator) {
-
-		if (status == WorkflowConstants.STATUS_ANY) {
-			return kbArticlePersistence.findByC_L_NotS(
-				companyId, true, WorkflowConstants.STATUS_IN_TRASH, start, end,
-				orderByComparator);
-		}
-		else if (status == WorkflowConstants.STATUS_APPROVED) {
-			return kbArticlePersistence.findByC_M_NotS(
-				companyId, true, WorkflowConstants.STATUS_IN_TRASH, start, end,
-				orderByComparator);
-		}
-
-		return kbArticlePersistence.findByC_S(
-			companyId, status, start, end, orderByComparator);
-	}
-
-	@Override
-	public int getCompanyKBArticlesCount(long companyId, int status) {
-		if (status == WorkflowConstants.STATUS_ANY) {
-			return kbArticlePersistence.countByC_L_NotS(
-				companyId, true, WorkflowConstants.STATUS_IN_TRASH);
-		}
-		else if (status == WorkflowConstants.STATUS_APPROVED) {
-			return kbArticlePersistence.countByC_M_NotS(
-				companyId, true, WorkflowConstants.STATUS_IN_TRASH);
-		}
-
-		return kbArticlePersistence.countByC_S(companyId, status);
 	}
 
 	@Override
@@ -1037,22 +1007,6 @@ public class KBArticleLocalServiceImpl extends KBArticleLocalServiceBaseImpl {
 
 		return kbArticlePersistence.countByG_P_S(
 			groupId, parentResourcePrimKey, status);
-	}
-
-	@Override
-	public List<KBArticle> getKBFolderKBArticles(
-		long groupId, long kbFolderId) {
-
-		return kbArticlePersistence.findByG_KBFI_L_NotS(
-			groupId, kbFolderId, true, WorkflowConstants.STATUS_IN_TRASH);
-	}
-
-	@Override
-	public int getKBFolderKBArticlesCount(
-		long groupId, long kbFolderId, int status) {
-
-		return kbArticlePersistence.countByG_KBFI_S(
-			groupId, kbFolderId, status);
 	}
 
 	@Override

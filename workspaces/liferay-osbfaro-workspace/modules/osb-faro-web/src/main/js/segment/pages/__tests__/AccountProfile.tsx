@@ -1,3 +1,4 @@
+import * as API from 'shared/api';
 import AccountProfile from '../AccountProfile';
 import DataSourcesProvider from 'shared/context/dataSources';
 import mockStore from 'test/mock-store';
@@ -131,8 +132,10 @@ describe('AccountProfile', () => {
 		).toMatch(/\/segments\/0\/edit$/);
 	});
 
-	it('should list the accounts matching the segment', () => {
+	it('should list the accounts matching the segment', async () => {
 		renderAccountProfile();
+
+		await screen.findByTestId('fds-component');
 
 		expect(screen.getByText('SEGMENT MEMBERSHIP')).toBeTruthy();
 		expect(lastApiURL).toBe(
@@ -141,8 +144,29 @@ describe('AccountProfile', () => {
 		expect(lastDataSetId).toBe('segment-accounts-dataset');
 	});
 
-	it('should list the accounts matching the segment without any filter applied', () => {
+	it('should send the default lifecycle to the accounts endpoint', async () => {
+		(API.lifecycle.fetchLifecycles as jest.Mock).mockResolvedValueOnce([
+			{id: '55'},
+		]);
+
 		renderAccountProfile();
+
+		await screen.findByTestId('fds-component');
+
+		expect(API.lifecycle.fetchLifecycles).toHaveBeenCalledWith({
+			channelId: '123',
+			defaultAccountLifecycle: true,
+			groupId: '23',
+		});
+		expect(lastApiURL).toBe(
+			'/o/faro/contacts/23/account/search?accountLifecycleId=55&channelId=123&segmentId=0'
+		);
+	});
+
+	it('should list the accounts matching the segment without any filter applied', async () => {
+		renderAccountProfile();
+
+		await screen.findByTestId('fds-component');
 
 		const preloadedFilters = lastFilters?.filter(
 			({preloadedData}) => preloadedData
@@ -170,5 +194,24 @@ describe('AccountProfile', () => {
 		expect(screen.getByText('Industry')).toBeTruthy();
 		expect(screen.getByText('Segment Criteria')).toBeTruthy();
 		expect(screen.getByText('"Technology"')).toBeTruthy();
+	});
+
+	it('should open the manage notifications modal with the workspace and segment IDs', async () => {
+		renderAccountProfile({id: '456'});
+
+		fireEvent.click(screen.getByRole('button', {name: 'Menu'}));
+
+		fireEvent.click(
+			screen.getByRole('menuitem', {name: 'Manage Notifications'})
+		);
+
+		expect(
+			await screen.findByText('Manage Segment Notifications')
+		).toBeInTheDocument();
+
+		expect(API.preferences.fetchSegmentNotifications).toHaveBeenCalledWith({
+			groupId: '23',
+			segmentId: '456',
+		});
 	});
 });

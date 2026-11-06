@@ -14,6 +14,7 @@ import {
 	render,
 	waitFor,
 } from '@testing-library/react';
+import faker from 'faker';
 import fetchMock from 'fetch-mock';
 import React from 'react';
 
@@ -177,6 +178,92 @@ describe('AccountSelector', () => {
 				fireEvent.click(accountsListItem.querySelector('button'));
 			});
 		});
+
+		it('does not display the create new account button when the user is not allowed to create an account', async () => {
+			await act(async () => {
+				fireEvent.click(
+					renderedComponent.baseElement.querySelector(
+						'.btn-account-selector'
+					)
+				);
+			});
+
+			await waitFor(() =>
+				expect(
+					renderedComponent.baseElement.querySelectorAll(
+						'.accounts-list li'
+					).length
+				).toBe(11)
+			);
+
+			expect(
+				renderedComponent.queryByText('create-new-account')
+			).not.toBeInTheDocument();
+		});
+
+		it('closes the account list when the user clicks outside of it', async () => {
+			await act(async () => {
+				fireEvent.click(
+					renderedComponent.baseElement.querySelector(
+						'.btn-account-selector'
+					)
+				);
+			});
+
+			const accountSelectorDropdownMenu =
+				renderedComponent.baseElement.querySelector(
+					'.account-selector-dropdown-menu'
+				);
+
+			expect(accountSelectorDropdownMenu).toHaveClass('show');
+
+			await act(async () => {
+				fireEvent.mouseDown(document.body);
+				fireEvent.mouseUp(document.body);
+			});
+
+			expect(accountSelectorDropdownMenu).not.toHaveClass('show');
+		});
+
+		it('searches the accounts by the typed text', async () => {
+			await act(async () => {
+				fireEvent.click(
+					renderedComponent.baseElement.querySelector(
+						'.btn-account-selector'
+					)
+				);
+			});
+
+			await waitFor(() =>
+				expect(
+					renderedComponent.queryByText(/loading/i)
+				).not.toBeInTheDocument()
+			);
+
+			const search = faker.lorem.word();
+
+			await act(async () => {
+				fireEvent.change(
+					renderedComponent.getByPlaceholderText('search'),
+					{target: {value: search}}
+				);
+			});
+
+			await waitFor(() => {
+				const calls = fetchMock.callHistory.calls();
+
+				const searches = calls.map(({url}) => {
+					const {searchParams} = new URL(
+						url,
+						Liferay.ThemeDisplay.getPortalURL()
+					);
+
+					return searchParams.get('search');
+				});
+
+				expect(searches).toContain(search);
+			});
+		});
 	});
 
 	describe('When the user is allowed to create an account', () => {
@@ -261,6 +348,87 @@ describe('AccountSelector', () => {
 			expect(tabEvent.defaultPrevented).toBe(false);
 			expect(accountNameInput).toHaveFocus();
 		});
+
+		it('marks the new account form as invalid until the account name is filled', async () => {
+			const newAccountForm = renderedComponent.baseElement.querySelector(
+				'.commerce-modal form'
+			);
+
+			expect(newAccountForm).toBeInvalid();
+
+			const accountNameInput =
+				renderedComponent.baseElement.querySelector(
+					'.commerce-modal input[name="accountName"]'
+				);
+
+			await act(async () => {
+				fireEvent.change(accountNameInput, {
+					target: {value: faker.company.companyName()},
+				});
+			});
+
+			expect(newAccountForm).toBeValid();
+		});
+	});
+
+	describe('When the page is refreshed on account selection', () => {
+		const {location} = window;
+
+		let renderedComponent;
+
+		beforeEach(async () => {
+			Object.defineProperty(window, 'location', {
+				configurable: true,
+				value: {origin: location.origin, reload: jest.fn()},
+			});
+
+			fetchMock.route(
+				new RegExp('account-selector/setCurrentAccounts'),
+				200
+			);
+
+			renderedComponent = render(
+				<AccountSelector
+					createNewOrderURL="/order-link"
+					refreshPageOnAccountSelected={true}
+					selectOrderURL="/test-url/{id}"
+					setCurrentAccountURL="/account-selector/setCurrentAccounts"
+				/>
+			);
+
+			await act(async () => {
+				fireEvent.click(
+					renderedComponent.baseElement.querySelector(
+						'.btn-account-selector'
+					)
+				);
+			});
+
+			await waitFor(() =>
+				expect(
+					renderedComponent.getByText(accountTemplate.name)
+				).toBeInTheDocument()
+			);
+		});
+
+		afterEach(() => {
+			Object.defineProperty(window, 'location', {
+				configurable: true,
+				value: location,
+			});
+		});
+
+		it('reloads the page after setting the clicked account as the current account', async () => {
+			await act(async () => {
+				fireEvent.click(
+					renderedComponent.getByText(accountTemplate.name)
+				);
+			});
+
+			await waitFor(() =>
+				expect(window.location.reload).toHaveBeenCalled()
+			);
+		});
 	});
 
 	describe('When account is selected', () => {
@@ -306,6 +474,22 @@ describe('AccountSelector', () => {
 			expect(currentAccountName).toBe('My Account Name');
 		});
 
+		it('displays the current account name in the orders list header', async () => {
+			await act(async () => {
+				fireEvent.click(
+					renderedComponent.baseElement.querySelector(
+						'.btn-account-selector'
+					)
+				);
+			});
+
+			expect(
+				renderedComponent.baseElement.querySelector(
+					'.orders-list-container .item-list-head .text-truncate'
+				)
+			).toHaveTextContent('My Account Name');
+		});
+
 		it('must display an order placeholder"', () => {
 			const orderPlaceholder =
 				renderedComponent.getByText(/no-order-selected/i);
@@ -332,6 +516,39 @@ describe('AccountSelector', () => {
 			);
 
 			expect(orders.length).toBe(10);
+		});
+
+		it('displays the account list when the back to accounts button is clicked', async () => {
+			await act(async () => {
+				fireEvent.click(
+					renderedComponent.baseElement.querySelector(
+						'.btn-account-selector'
+					)
+				);
+			});
+
+			await act(async () => {
+				fireEvent.click(
+					renderedComponent.getByLabelText('back-to-accounts')
+				);
+			});
+
+			await waitFor(() =>
+				expect(
+					renderedComponent.queryByText(/loading/i)
+				).not.toBeInTheDocument()
+			);
+
+			expect(
+				renderedComponent.baseElement.querySelector(
+					'.orders-list-container'
+				)
+			).not.toBeInTheDocument();
+			expect(
+				renderedComponent.baseElement.querySelectorAll(
+					'.accounts-list li'
+				).length
+			).toBe(11);
 		});
 	});
 

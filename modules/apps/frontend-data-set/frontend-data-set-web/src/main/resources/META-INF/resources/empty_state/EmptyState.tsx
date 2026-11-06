@@ -5,11 +5,12 @@
 
 import ClayButton from '@clayui/button';
 import ClayEmptyState from '@clayui/empty-state';
+import ClayIcon from '@clayui/icon';
 import React, {useContext} from 'react';
 
 import FrontendDataSetContext from '../FrontendDataSetContext';
 import CreationMenu from '../management_bar/controls/CreationMenu';
-import {IFrontendDataSetProps} from '../utils/types';
+import {IEmptyState, IFrontendDataSetProps} from '../utils/types';
 
 interface IEmptyStateProps {
 	creationMenu?: IFrontendDataSetProps['creationMenu'];
@@ -18,12 +19,33 @@ interface IEmptyStateProps {
 	onClearFilters: () => void;
 }
 
-const DEFAULT_SEARCH_STATE_IMAGE = '/states/search_state.svg';
-const DEFAULT_SEARCH_STATE_REDUCED_MOTION_IMAGE =
-	'/states/search_state_reduced_motion.svg';
+const DEFAULT_SEARCH_STATE_SYMBOL = 'search-state';
 
 const getImgSrc = (image: string) =>
 	`${Liferay.ThemeDisplay.getPathThemeImages()}${image}`;
+
+const getImageProps = (config?: IEmptyState) => {
+	if (config?.image && !config.symbol) {
+		return {
+			imgSrc: getImgSrc(config.image),
+			imgSrcReducedMotion: config.imageReducedMotion
+				? getImgSrc(config.imageReducedMotion)
+				: null,
+		};
+	}
+
+	const symbol = config?.symbol ?? DEFAULT_SEARCH_STATE_SYMBOL;
+
+	return {
+		image: (
+			<ClayIcon
+				className={`c-empty-state-icon c-empty-state-icon-${symbol}`}
+				illustration
+				symbol={symbol}
+			/>
+		),
+	};
+};
 
 const EmptyState = ({
 	creationMenu,
@@ -49,11 +71,7 @@ const EmptyState = ({
 						'review-your-filters-or-search-and-try-again'
 					)
 				}
-				imgSrc={getImgSrc(config?.image ?? DEFAULT_SEARCH_STATE_IMAGE)}
-				imgSrcReducedMotion={getImgSrc(
-					config?.imageReducedMotion ??
-						DEFAULT_SEARCH_STATE_REDUCED_MOTION_IMAGE
-				)}
+				{...getImageProps(config)}
 				title={
 					config?.title ?? Liferay.Language.get('no-results-found')
 				}
@@ -73,11 +91,7 @@ const EmptyState = ({
 					config?.description ??
 					Liferay.Language.get('review-your-filters-and-try-again')
 				}
-				imgSrc={getImgSrc(config?.image ?? DEFAULT_SEARCH_STATE_IMAGE)}
-				imgSrcReducedMotion={getImgSrc(
-					config?.imageReducedMotion ??
-						DEFAULT_SEARCH_STATE_REDUCED_MOTION_IMAGE
-				)}
+				{...getImageProps(config)}
 				title={
 					config?.title ?? Liferay.Language.get('no-results-found')
 				}
@@ -97,11 +111,7 @@ const EmptyState = ({
 					config?.description ??
 					Liferay.Language.get('review-your-search-and-try-again')
 				}
-				imgSrc={getImgSrc(config?.image ?? DEFAULT_SEARCH_STATE_IMAGE)}
-				imgSrcReducedMotion={getImgSrc(
-					config?.imageReducedMotion ??
-						DEFAULT_SEARCH_STATE_REDUCED_MOTION_IMAGE
-				)}
+				{...getImageProps(config)}
 				title={
 					config?.title ?? Liferay.Language.get('no-results-found')
 				}
@@ -119,13 +129,7 @@ const EmptyState = ({
 				emptyStateConfiguration?.description ??
 				Liferay.Language.get('sorry,-no-results-were-found')
 			}
-			imgSrc={getImgSrc(
-				emptyStateConfiguration?.image ?? DEFAULT_SEARCH_STATE_IMAGE
-			)}
-			imgSrcReducedMotion={getImgSrc(
-				emptyStateConfiguration?.imageReducedMotion ??
-					DEFAULT_SEARCH_STATE_REDUCED_MOTION_IMAGE
-			)}
+			{...getImageProps(emptyStateConfiguration)}
 			title={
 				emptyStateConfiguration?.title ??
 				Liferay.Language.get('no-results-found')

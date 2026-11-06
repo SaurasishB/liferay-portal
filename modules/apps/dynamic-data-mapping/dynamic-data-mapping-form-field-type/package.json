@@ -23,14 +23,14 @@
 		"@liferay/map-google-maps": "*",
 		"@liferay/map-openstreetmap": "*",
 		"@liferay/object-js-components-web": "*",
-		"ckeditor5": "46.0.3",
+		"ckeditor5": "49.0.0",
 		"classnames": "2.3.1",
 		"data-engine-js-components-web": "*",
 		"frontend-editor-ckeditor-web": "*",
 		"frontend-js-components-web": "*",
 		"frontend-js-web": "*",
 		"leaflet": "1.7.1",
-		"moment": "2.29.4",
+		"moment": "2.31.0",
 		"react": "18.2.0",
 		"react-dnd": "11.1.1",
 		"react-dnd-html5-backend": "11.1.1",
@@ -60,5 +60,5 @@
 		"format": "node-scripts format",
 		"test": "USE_REACT_16=true node-scripts test"
 	},
-	"version": "6.0.219"
+	"version": "6.0.220"
 }

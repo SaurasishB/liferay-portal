@@ -25,6 +25,8 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.http.client.utils.URIBuilder;
+
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
@@ -61,9 +63,11 @@ public class DXPCloudClientTestrayImporter {
 			Element testCaseFailureElement = _getTestCaseFailureElement(
 				testCaseResultElement);
 
-			if (testCaseFailureElement != null) {
-				testCaseElement.add(testCaseFailureElement);
+			if (testCaseFailureElement == null) {
+				continue;
 			}
+
+			testCaseElement.add(testCaseFailureElement);
 		}
 
 		TestrayBuild testrayBuild = _getTestrayBuild();
@@ -244,12 +248,16 @@ public class DXPCloudClientTestrayImporter {
 		Element attachmentElement = Dom4JUtil.getNewElement("file");
 
 		attachmentElement.addAttribute("name", "Poshi Log");
-		attachmentElement.addAttribute(
-			"url",
+
+		URIBuilder uriBuilder = JenkinsResultsParserUtil.newURIBuilder(
 			JenkinsResultsParserUtil.combine(
-				_testrayCloudBucket.getTestrayCloudBaseURL(), "/", key,
-				"?authuser=0"));
-		attachmentElement.addAttribute("value", key + "?authuser=0");
+				_testrayCloudBucket.getTestrayCloudBaseURL(), "/", key));
+
+		uriBuilder.addParameter("authuser", "0");
+
+		attachmentElement.addAttribute("url", uriBuilder.toString());
+
+		attachmentElement.addAttribute("value", key);
 
 		return attachmentElement;
 	}
@@ -393,12 +401,15 @@ public class DXPCloudClientTestrayImporter {
 
 			attachmentElement.addAttribute("name", attachmentName);
 
-			attachmentElement.addAttribute(
-				"url",
+			URIBuilder uriBuilder = JenkinsResultsParserUtil.newURIBuilder(
 				JenkinsResultsParserUtil.combine(
-					_testrayCloudBucket.getTestrayCloudBaseURL(), "/", key,
-					"?authuser=0"));
-			attachmentElement.addAttribute("value", key + "?authuser=0");
+					_testrayCloudBucket.getTestrayCloudBaseURL(), "/", key));
+
+			uriBuilder.addParameter("authuser", "0");
+
+			attachmentElement.addAttribute("url", uriBuilder.toString());
+
+			attachmentElement.addAttribute("value", key);
 		}
 
 		if (_testType.equals("poshi")) {
@@ -510,36 +521,36 @@ public class DXPCloudClientTestrayImporter {
 			for (File childFile : parentDir.listFiles()) {
 				String childFileName = childFile.getName();
 
-				if (childFileName.endsWith(".xml")) {
-					try {
-						Document document = Dom4JUtil.parse(
-							JenkinsResultsParserUtil.read(childFile));
+				if (!childFileName.endsWith(".xml")) {
+					continue;
+				}
 
-						Element rootElement = document.getRootElement();
+				try {
+					Document document = Dom4JUtil.parse(
+						JenkinsResultsParserUtil.read(childFile));
 
-						for (Element testCaseElement :
-								rootElement.elements("testcase")) {
+					Element rootElement = document.getRootElement();
 
-							testCaseElements.add(testCaseElement);
-						}
+					for (Element testCaseElement :
+							rootElement.elements("testcase")) {
+
+						testCaseElements.add(testCaseElement);
 					}
-					catch (Exception exception) {
-						if (childFile.exists()) {
-							File xmlGzipFile = new File(
-								childFile.getParentFile(),
-								childFile.getName() + ".gz");
+				}
+				catch (Exception exception) {
+					if (childFile.exists()) {
+						File xmlGzipFile = new File(
+							childFile.getParentFile(),
+							childFile.getName() + ".gz");
 
-							JenkinsResultsParserUtil.gzip(
-								childFile, xmlGzipFile);
+						JenkinsResultsParserUtil.gzip(childFile, xmlGzipFile);
 
-							_testrayCloudBucket.createTestrayCloudObject(
-								_getRelativeURLPath() + "/" +
-									xmlGzipFile.getName(),
-								xmlGzipFile);
-						}
-
-						throw new RuntimeException(exception);
+						_testrayCloudBucket.createTestrayCloudObject(
+							_getRelativeURLPath() + "/" + xmlGzipFile.getName(),
+							xmlGzipFile);
 					}
+
+					throw new RuntimeException(exception);
 				}
 			}
 

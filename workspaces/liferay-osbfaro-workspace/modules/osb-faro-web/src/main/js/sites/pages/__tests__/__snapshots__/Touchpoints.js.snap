@@ -27,7 +27,7 @@ exports[`Sites Dashboard Touchpoints Page render 1`] = `
                   class="container-fluid"
                 >
                   <ul
-                    class="nav-root front-nav navbar-nav"
+                    class="nav-root front-nav mr-auto navbar-nav"
                     role="tablist"
                   />
                   <div
@@ -76,11 +76,11 @@ exports[`Sites Dashboard Touchpoints Page render 1`] = `
                       type="button"
                     >
                       <svg
-                        class="lexicon-icon lexicon-icon-filter icon-root mr-2"
+                        class="lexicon-icon lexicon-icon-calendar icon-root mr-2"
                         role="presentation"
                       >
                         <use
-                          href="#filter"
+                          href="#calendar"
                         />
                       </svg>
                       Last 30 days
@@ -104,7 +104,7 @@ exports[`Sites Dashboard Touchpoints Page render 1`] = `
                 class="no-results-content"
               >
                 <div
-                  class="h4 no-results-title"
+                  class="h4 mb-3 no-results-title"
                 >
                   An unexpected error occurred.
                 </div>

@@ -7,10 +7,6 @@
 		flex-grow: 1;
 		min-height: 10rem;
 		position: relative;
-
-		&.flex-row {
-			flex-direction: row;
-		}
 	}
 
 	.header-container,
@@ -35,21 +31,12 @@
 			top: 0;
 			z-index: 10;
 		}
-
-		> .children-wrapper {
-			padding-top: 16px;
-		}
 	}
 
 	.header-root {
 		background-color: $white;
 		border-bottom: 1px solid $mainLighten74;
 		padding-top: 16px;
-
-		.breadcrumbs-root {
-			margin-bottom: 8px;
-			padding: 0;
-		}
 
 		.header-actions {
 			bottom: 0;
@@ -59,10 +46,6 @@
 			position: absolute;
 			right: 0;
 			top: 0;
-		}
-
-		.header-content {
-			width: 100%;
 		}
 
 		.header-section {
@@ -76,19 +59,11 @@
 		}
 
 		.title-section {
-			&.subtitle {
-				margin-bottom: 0;
-			}
-
 			.page-actions-toolbar {
 				background-color: transparent;
 				border: 0;
 				min-height: 0;
 				padding: 0;
-
-				.tbar-item {
-					padding: 0;
-				}
 			}
 
 			.subtitle,
@@ -112,23 +87,39 @@
 		padding: 16px 0;
 	}
 
-	.fluid-body-root {
-		display: flex;
+	.fluid-body-root .card-root {
+		width: 100%;
+	}
 
-		&.sidebar-opened .card-root {
-			max-width: calc(100% - 488px - 1rem);
-		}
+	&.c-slideout-push-end {
+		padding-right: var(--base-page-sidebar-width);
+	}
 
-		.card-root {
-			margin: 1rem;
-			width: 100%;
-		}
+	&.c-slideout-push-start {
+		padding-left: var(--base-page-sidebar-width);
+	}
 
-		.info-panel-root {
-			height: calc(100vh - #{$toolbarHeight});
-			position: fixed;
-			top: $toolbarHeight;
-			transform: translateY(-1px);
+	&.base-page-sidebar-overlay {
+		padding-left: 0;
+		padding-right: 0;
+	}
+
+	.base-page-sidebar-backdrop {
+		z-index: calc(#{$cadmin-zindex-c-slideout} - 1);
+	}
+
+	.sidebar.base-page-sidebar {
+		border-left: 1px solid $cadmin-secondary-l2;
+		box-shadow: none;
+
+		.pagination-bar {
+			.pagination {
+				margin-top: $cadmin-pagination-margin-top-mobile;
+			}
+
+			.pagination-results {
+				margin-left: auto;
+			}
 		}
 	}
 }

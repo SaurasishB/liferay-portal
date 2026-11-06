@@ -331,15 +331,6 @@ public class FragmentEntryLinkPersistenceTest {
 	}
 
 	@Test
-	public void testCountByRendererKey() throws Exception {
-		_persistence.countByRendererKey("");
-
-		_persistence.countByRendererKey("null");
-
-		_persistence.countByRendererKey((String)null);
-	}
-
-	@Test
 	public void testCountByType() throws Exception {
 		_persistence.countByType(RandomTestUtil.nextInt());
 
@@ -370,15 +361,6 @@ public class FragmentEntryLinkPersistenceTest {
 			new String[] {
 				RandomTestUtil.randomString(), "", "null", null, null
 			});
-	}
-
-	@Test
-	public void testCountByFEERC_FESERC() throws Exception {
-		_persistence.countByFEERC_FESERC("", "");
-
-		_persistence.countByFEERC_FESERC("null", "null");
-
-		_persistence.countByFEERC_FESERC((String)null, (String)null);
 	}
 
 	@Test
@@ -448,28 +430,6 @@ public class FragmentEntryLinkPersistenceTest {
 	}
 
 	@Test
-	public void testCountByG_FEERC_FESERC_C() throws Exception {
-		_persistence.countByG_FEERC_FESERC_C(
-			RandomTestUtil.nextLong(), "", "", RandomTestUtil.nextLong());
-
-		_persistence.countByG_FEERC_FESERC_C(0L, "null", "null", 0L);
-
-		_persistence.countByG_FEERC_FESERC_C(
-			0L, (String)null, (String)null, 0L);
-	}
-
-	@Test
-	public void testCountByG_FEERC_FESERC_P() throws Exception {
-		_persistence.countByG_FEERC_FESERC_P(
-			RandomTestUtil.nextLong(), "", "", RandomTestUtil.nextLong());
-
-		_persistence.countByG_FEERC_FESERC_P(0L, "null", "null", 0L);
-
-		_persistence.countByG_FEERC_FESERC_P(
-			0L, (String)null, (String)null, 0L);
-	}
-
-	@Test
 	public void testCountByG_FEERC_FESERC_D() throws Exception {
 		_persistence.countByG_FEERC_FESERC_D(
 			RandomTestUtil.nextLong(), "", "", RandomTestUtil.randomBoolean());
@@ -479,15 +439,6 @@ public class FragmentEntryLinkPersistenceTest {
 
 		_persistence.countByG_FEERC_FESERC_D(
 			0L, (String)null, (String)null, RandomTestUtil.randomBoolean());
-	}
-
-	@Test
-	public void testCountByG_S_C_C() throws Exception {
-		_persistence.countByG_S_C_C(
-			RandomTestUtil.nextLong(), RandomTestUtil.nextLong(),
-			RandomTestUtil.nextLong(), RandomTestUtil.nextLong());
-
-		_persistence.countByG_S_C_C(0L, 0L, 0L, 0L);
 	}
 
 	@Test
@@ -516,18 +467,6 @@ public class FragmentEntryLinkPersistenceTest {
 		_persistence.countByG_S_P_R(0L, 0L, 0L, "null");
 
 		_persistence.countByG_S_P_R(0L, 0L, 0L, (String)null);
-	}
-
-	@Test
-	public void testCountByG_FEERC_FESERC_C_C() throws Exception {
-		_persistence.countByG_FEERC_FESERC_C_C(
-			RandomTestUtil.nextLong(), "", "", RandomTestUtil.nextLong(),
-			RandomTestUtil.nextLong());
-
-		_persistence.countByG_FEERC_FESERC_C_C(0L, "null", "null", 0L, 0L);
-
-		_persistence.countByG_FEERC_FESERC_C_C(
-			0L, (String)null, (String)null, 0L, 0L);
 	}
 
 	@Test
@@ -946,4 +885,4 @@ public class FragmentEntryLinkPersistenceTest {
 	private ClassLoader _dynamicQueryClassLoader;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1288998044
+// LIFERAY-SERVICE-BUILDER-HASH:856081217

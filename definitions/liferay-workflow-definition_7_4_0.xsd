@@ -94,10 +94,11 @@
 	</xs:complexType>
 	<xs:complexType name="role-complex-type">
 		<xs:sequence>
+			<xs:element minOccurs="0" name="role-external-reference-code" type="xs:string" />
+			<xs:element default="regular" minOccurs="0" name="role-type" type="role-type" />
 			<xs:choice>
 				<xs:element minOccurs="0" name="role-id" type="xs:long" />
 				<xs:sequence>
-					<xs:element default="regular" minOccurs="0" name="role-type" type="role-type" />
 					<xs:element minOccurs="0" name="name" type="xs:string" />
 					<xs:element default="true" minOccurs="0" name="auto-create" type="xs:boolean" />
 				</xs:sequence>
@@ -190,11 +191,14 @@
 		</xs:complexContent>
 	</xs:complexType>
 	<xs:complexType name="user-complex-type">
-		<xs:choice>
-			<xs:element minOccurs="0" name="user-id" type="xs:long" />
-			<xs:element minOccurs="0" name="screen-name" type="xs:string" />
-			<xs:element minOccurs="0" name="email-address" type="email-address-type" />
-		</xs:choice>
+		<xs:sequence>
+			<xs:element minOccurs="0" name="user-external-reference-code" type="xs:string" />
+			<xs:choice>
+				<xs:element minOccurs="0" name="user-id" type="xs:long" />
+				<xs:element minOccurs="0" name="screen-name" type="xs:string" />
+				<xs:element minOccurs="0" name="email-address" type="email-address-type" />
+			</xs:choice>
+		</xs:sequence>
 	</xs:complexType>
 	<xs:element name="ai-decision">
 		<xs:complexType>

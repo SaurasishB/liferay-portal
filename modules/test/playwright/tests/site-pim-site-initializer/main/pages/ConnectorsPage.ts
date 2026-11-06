@@ -47,9 +47,11 @@ export class ConnectorsPage {
 	}
 
 	async createConnector({
+		active = false,
 		connector,
 		name,
 	}: {
+		active?: boolean;
 		connector: string;
 		name: string;
 	}) {
@@ -59,7 +61,7 @@ export class ConnectorsPage {
 
 		const editConnectorPage = new EditConnectorPage(this.page);
 
-		await editConnectorPage.createConnector({connector, name});
+		await editConnectorPage.createConnector({active, connector, name});
 
 		await expect(this.getConnector(name)).toBeVisible();
 	}
@@ -82,8 +84,37 @@ export class ConnectorsPage {
 		return this.dataSetFragmentPage.getRow(name).getByRole('link', {name});
 	}
 
+	getConnectorLastExecutionStatus(name: string) {
+		return this.dataSetFragmentPage
+			.getRow(name)
+			.locator('.cell-lastExecutionStatus .label');
+	}
+
+	getConnectorLastExecutionDate(name: string) {
+		return this.dataSetFragmentPage
+			.getRow(name)
+			.locator('.cell-lastExecutionDate');
+	}
+
+	getConnectorMappingStatus(name: string) {
+		return this.dataSetFragmentPage
+			.getRow(name)
+			.locator('.cell-mappingStatus .label');
+	}
+
 	getConnectorStatus(name: string) {
-		return this.dataSetFragmentPage.getRow(name).locator('.label');
+		return this.dataSetFragmentPage
+			.getRow(name)
+			.locator('.cell-active .label');
+	}
+
+	async openConnectorSchedule(name: string) {
+		await this.dataSetFragmentPage.execItemAction({
+			action: 'Schedule',
+			filter: name,
+		});
+
+		await this.page.waitForURL(/edit_dispatch_trigger/);
 	}
 
 	async openDeleteConfirmation(name: string) {

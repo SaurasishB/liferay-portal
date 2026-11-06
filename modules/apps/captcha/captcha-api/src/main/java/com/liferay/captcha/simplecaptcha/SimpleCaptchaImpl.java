@@ -16,6 +16,7 @@ import com.liferay.portal.kernel.model.Release;
 import com.liferay.portal.kernel.security.RandomUtil;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.LRUMap;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.PropsUtil;
@@ -183,13 +184,11 @@ public class SimpleCaptchaImpl implements Captcha {
 			return;
 		}
 
-		String key = captchaId + WebKeys.CAPTCHA_TEXT;
-
 		nl.captcha.Captcha simpleCaptcha = getSimpleCaptcha();
 
-		HttpSession httpSession = _getHttpSession(httpServletRequest);
-
-		httpSession.setAttribute(key, simpleCaptcha.getAnswer());
+		_setCaptchaText(
+			captchaId, simpleCaptcha.getAnswer(),
+			_getHttpSession(httpServletRequest));
 
 		httpServletResponse.setContentType(ContentTypes.IMAGE_PNG);
 
@@ -342,12 +341,9 @@ public class SimpleCaptchaImpl implements Captcha {
 	protected boolean validateChallenge(HttpServletRequest httpServletRequest)
 		throws CaptchaException {
 
-		HttpSession httpSession = _getHttpSession(httpServletRequest);
-
-		String httpSessionKey = _getHttpSessionKey(
-			WebKeys.CAPTCHA_TEXT, httpServletRequest);
-
-		String captchaText = (String)httpSession.getAttribute(httpSessionKey);
+		String captchaText = _removeCaptchaText(
+			ParamUtil.getString(httpServletRequest, "captchaId"),
+			_getHttpSession(httpServletRequest));
 
 		if (captchaText == null) {
 			_log.error(
@@ -357,8 +353,6 @@ public class SimpleCaptchaImpl implements Captcha {
 
 			throw new CaptchaTextException();
 		}
-
-		httpSession.removeAttribute(httpSessionKey);
 
 		return captchaText.equals(
 			ParamUtil.getString(httpServletRequest, "captchaText"));
@@ -394,10 +388,10 @@ public class SimpleCaptchaImpl implements Captcha {
 	private String _getHttpSessionKey(
 		String key, HttpServletRequest httpServletRequest) {
 
-		String captchaId = ParamUtil.getString(httpServletRequest, "captchaId");
+		String portletId = portal.getPortletId(httpServletRequest);
 
-		if (Validator.isNotNull(captchaId)) {
-			return captchaId + key;
+		if (Validator.isNotNull(portletId)) {
+			return portal.getPortletNamespace(portletId) + key;
 		}
 
 		return key;
@@ -450,8 +444,51 @@ public class SimpleCaptchaImpl implements Captcha {
 		return classLoader.loadClass(className);
 	}
 
+	@SuppressWarnings("unchecked")
+	private String _removeCaptchaText(
+		String captchaId, HttpSession httpSession) {
+
+		synchronized (httpSession) {
+			Map<String, String> captchaTexts =
+				(Map<String, String>)httpSession.getAttribute(_CAPTCHA_TEXTS);
+
+			if (captchaTexts == null) {
+				return null;
+			}
+
+			String captchaText = captchaTexts.remove(captchaId);
+
+			httpSession.setAttribute(_CAPTCHA_TEXTS, captchaTexts);
+
+			return captchaText;
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private void _setCaptchaText(
+		String captchaId, String captchaText, HttpSession httpSession) {
+
+		synchronized (httpSession) {
+			Map<String, String> captchaTexts =
+				(Map<String, String>)httpSession.getAttribute(_CAPTCHA_TEXTS);
+
+			if (captchaTexts == null) {
+				captchaTexts = new LRUMap<>(_CAPTCHA_MAX_TEXTS);
+			}
+
+			captchaTexts.put(captchaId, captchaText);
+
+			httpSession.setAttribute(_CAPTCHA_TEXTS, captchaTexts);
+		}
+	}
+
 	private static final String _CAPTCHA_MAX_CHALLENGES =
 		SimpleCaptchaImpl.class.getName() + "#CAPTCHA_MAX_CHALLENGES";
+
+	private static final int _CAPTCHA_MAX_TEXTS = 50;
+
+	private static final String _CAPTCHA_TEXTS =
+		SimpleCaptchaImpl.class.getName() + "#CAPTCHA_TEXTS";
 
 	private static final String _TAGLIB_PATH = "/captcha/simplecaptcha.jsp";
 

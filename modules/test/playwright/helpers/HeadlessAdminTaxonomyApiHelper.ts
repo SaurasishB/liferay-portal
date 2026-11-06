@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+import {expect} from '@playwright/test';
+
 import {ApiHelpers, DataApiHelpers} from './ApiHelpers';
 
 interface postSiteTaxonomyVocabularyProps {
@@ -17,6 +19,7 @@ interface postSiteTaxonomyVocabularyProps {
 }
 
 export interface postTaxonomyCategoryTaxonomyCategory {
+	description?: string;
 	name: string;
 	name_i18n?: {[key: string]: string};
 	parentTaxonomyCategoryId: number;
@@ -31,6 +34,7 @@ export interface postTaxonomyVocabularyProps {
 }
 
 export interface postTaxonomyVocabularyTaxonomyCategoryProps {
+	description?: string;
 	name: string;
 	name_i18n?: {[key: string]: string};
 	system?: boolean;
@@ -83,15 +87,64 @@ export class HeadlessAdminTaxonomyApiHelper {
 		this.basePath = 'headless-admin-taxonomy/v1.0';
 	}
 
+	async deleteTaxonomyCategory(taxonomyCategoryId: number) {
+		return this.apiHelpers.delete(
+			`${this.apiHelpers.baseUrl}${this.basePath}/taxonomy-categories/${taxonomyCategoryId}`
+		);
+	}
+
+	/**
+	 * It allows deleting a tag.
+	 *
+	 * @param id the id of the tag
+	 */
+	async deleteKeyword({id}: {id: number}) {
+		return this.apiHelpers.delete(
+			`${this.apiHelpers.baseUrl}${this.basePath}/keywords/${id}`
+		);
+	}
+
 	/**
 	 * It allows deleting a vocabulary.
 	 *
 	 * @param vocabularyId the vocabulary id
 	 */
-
 	async deleteTaxonomyVocabulary(vocabularyId: number) {
 		return this.apiHelpers.delete(
 			`${this.apiHelpers.baseUrl}${this.basePath}/taxonomy-vocabularies/${vocabularyId}`
+		);
+	}
+
+	async getSiteTaxonomyVocabularyByExternalReferenceCode(
+		siteId: string,
+		externalReferenceCode: string
+	) {
+		return this.apiHelpers.get(
+			`${this.apiHelpers.baseUrl}${this.basePath}/sites/${siteId}/taxonomy-vocabularies/by-external-reference-code/${externalReferenceCode}`
+		);
+	}
+
+	/**
+	 * It allows finding the tags of a site.
+	 *
+	 * @param siteId the id of the site
+	 * @param filter an OData filter, such as name eq 'Tag1'
+	 */
+	async getSiteKeywords({
+		filter,
+		siteId,
+	}: {
+		filter?: string;
+		siteId: string;
+	}): Promise<{items: Keyword[]}> {
+		const url = `${this.apiHelpers.baseUrl}${this.basePath}/sites/${siteId}/keywords`;
+
+		if (!filter) {
+			return this.apiHelpers.get(url);
+		}
+
+		return this.apiHelpers.get(
+			`${url}?filter=${encodeURIComponent(filter)}`
 		);
 	}
 
@@ -101,7 +154,6 @@ export class HeadlessAdminTaxonomyApiHelper {
 	 * @param name the name of the category
 	 * @param vocabularyId the parent vocabulary id
 	 */
-
 	async getTaxonomyCategoryByVocabularyId(vocabularyId: number) {
 		return this.apiHelpers.get(
 			`${this.apiHelpers.baseUrl}${this.basePath}/taxonomy-vocabularies/${vocabularyId}/taxonomy-categories`
@@ -113,10 +165,42 @@ export class HeadlessAdminTaxonomyApiHelper {
 	 *
 	 * @param siteId the id of the site in which the vocabulary will be created
 	 */
-
 	async getTaxonomyVocabularyBySiteId(siteId: string) {
 		return this.apiHelpers.get(
 			`${this.apiHelpers.baseUrl}${this.basePath}/sites/${siteId}/taxonomy-vocabularies`
+		);
+	}
+
+	/**
+	 * It allows partially update a category name
+	 *
+	 * @param name the new name of the category
+	 * @param id the category id
+	 */
+	async patchTaxonomyCategory({
+		friendlyUrlPath,
+		id,
+		name,
+	}: patchTaxonomyCategoryProps): Promise<{id: number}> {
+		return this.apiHelpers.patch(
+			`${this.apiHelpers.baseUrl}${this.basePath}/taxonomy-categories/${id}`,
+			{friendlyUrlPath, name}
+		);
+	}
+
+	/**
+	 * It allows creating a tag inside an asset library
+	 *
+	 * @param name the name of the tag
+	 * @param assetLibraryId the id of the asset library in which the tag will be created
+	 */
+	async postAssetLibraryKeyword({
+		depotEntryId,
+		name,
+	}: postAssetLibraryKeywordProps): Promise<{id: number}> {
+		return this.apiHelpers.post(
+			`${this.apiHelpers.baseUrl}${this.basePath}/asset-libraries/${depotEntryId}/keywords`,
+			{data: {name}}
 		);
 	}
 
@@ -127,7 +211,6 @@ export class HeadlessAdminTaxonomyApiHelper {
 	 * vocabulary will be created
 	 * @param name the name of the vocabulary
 	 */
-
 	async postAssetLibraryTaxonomyVocabulary({
 		assetLibraryId,
 		name,
@@ -151,13 +234,43 @@ export class HeadlessAdminTaxonomyApiHelper {
 	}
 
 	/**
+	 * It allows creating a tag inside a site.
+	 *
+	 * @param name the name of the tag
+	 * @param siteId the id of the site in which the tag will be created
+	 * @param assetLibraries the spaces the tag is scoped to (CMS only); omit to
+	 * make the tag available in all spaces
+	 */
+	async postSiteKeyword({
+		assetLibraries,
+		name,
+		siteId,
+	}: postSiteKeywordProps): Promise<{
+		externalReferenceCode: string;
+		id: number;
+	}> {
+		const keyword = await this.apiHelpers.post(
+			`${this.apiHelpers.baseUrl}${this.basePath}/sites/${siteId}/keywords`,
+			{data: {assetLibraries, name}}
+		);
+
+		if (this.apiHelpers instanceof DataApiHelpers) {
+			this.apiHelpers.data.push({
+				id: keyword.id,
+				type: 'keyword',
+			});
+		}
+
+		return keyword;
+	}
+
+	/**
 	 * It allows creating a vocabulary inside a site.
 	 *
 	 * @param siteId the id of the site in which the vocabulary will be created
 	 * @param name the name of the vocabulary
 	 * @param [assetTypes] the asset types to which the vocabulary can be used
 	 */
-
 	async postSiteTaxonomyVocabulary({
 		assetLibraries,
 		assetTypes,
@@ -203,16 +316,50 @@ export class HeadlessAdminTaxonomyApiHelper {
 	 * @param name the name of the subcategory
 	 * @param vocabularyId the parent vocabulary id
 	 */
-
 	async postTaxonomyCategoryTaxonomyCategory({
+		description,
 		name,
 		name_i18n,
 		parentTaxonomyCategoryId,
 	}: postTaxonomyCategoryTaxonomyCategory): Promise<{id: number}> {
 		return this.apiHelpers.post(
 			`${this.apiHelpers.baseUrl}${this.basePath}/taxonomy-categories/${parentTaxonomyCategoryId}/taxonomy-categories`,
-			{data: {name, name_i18n}}
+			{data: {description, name, name_i18n}}
 		);
+	}
+
+	/**
+	 * It allows creating many categories inside a vocabulary with a single
+	 * batch request, and waits until the import task completes.
+	 *
+	 * @param names the names of the categories
+	 * @param vocabularyId the parent vocabulary id
+	 */
+	async postTaxonomyVocabularyTaxonomyCategoriesBatch({
+		names,
+		vocabularyId,
+	}: {
+		names: string[];
+		vocabularyId: number;
+	}) {
+		const importTask = await this.apiHelpers.post(
+			`${this.apiHelpers.baseUrl}${this.basePath}/taxonomy-vocabularies/${vocabularyId}/taxonomy-categories/batch`,
+			{data: names.map((name) => ({name}))}
+		);
+
+		await expect
+			.poll(
+				async () => {
+					const currentImportTask =
+						await this.apiHelpers.headlessBatchEngine.getImportTask(
+							importTask.id
+						);
+
+					return currentImportTask.executeStatus;
+				},
+				{intervals: [500], timeout: 60_000}
+			)
+			.toBe('COMPLETED');
 	}
 
 	/**
@@ -221,8 +368,8 @@ export class HeadlessAdminTaxonomyApiHelper {
 	 * @param name the name of the category
 	 * @param vocabularyId the parent vocabulary id
 	 */
-
 	async postTaxonomyVocabularyTaxonomyCategory({
+		description,
 		name,
 		name_i18n,
 		system,
@@ -230,77 +377,11 @@ export class HeadlessAdminTaxonomyApiHelper {
 	}: postTaxonomyVocabularyTaxonomyCategoryProps): Promise<{
 		externalReferenceCode: string;
 		id: number;
+		name: string;
 	}> {
 		return this.apiHelpers.post(
 			`${this.apiHelpers.baseUrl}${this.basePath}/taxonomy-vocabularies/${vocabularyId}/taxonomy-categories`,
-			{data: {name, name_i18n, system}}
-		);
-	}
-
-	/**
-	 * It allows partially update a category name
-	 *
-	 * @param name the new name of the category
-	 * @param id the category id
-	 */
-
-	async patchTaxonomyCategory({
-		friendlyUrlPath,
-		id,
-		name,
-	}: patchTaxonomyCategoryProps): Promise<{id: number}> {
-		return this.apiHelpers.patch(
-			`${this.apiHelpers.baseUrl}${this.basePath}/taxonomy-categories/${id}`,
-			{friendlyUrlPath, name}
-		);
-	}
-
-	/**
-	 * It allows creating a tag inside a site.
-	 *
-	 * @param name the name of the tag
-	 * @param siteId the id of the site in which the tag will be created
-	 * @param assetLibraries the spaces the tag is scoped to (CMS only); omit to
-	 * make the tag available in all spaces
-	 */
-
-	async postSiteKeyword({
-		assetLibraries,
-		name,
-		siteId,
-	}: postSiteKeywordProps): Promise<{
-		externalReferenceCode: string;
-		id: number;
-	}> {
-		const keyword = await this.apiHelpers.post(
-			`${this.apiHelpers.baseUrl}${this.basePath}/sites/${siteId}/keywords`,
-			{data: {assetLibraries, name}}
-		);
-
-		if (this.apiHelpers instanceof DataApiHelpers) {
-			this.apiHelpers.data.push({
-				id: keyword.id,
-				type: 'keyword',
-			});
-		}
-
-		return keyword;
-	}
-
-	/**
-	 * It allows creating a tag inside an asset library
-	 *
-	 * @param name the name of the tag
-	 * @param assetLibraryId the id of the asset library in which the tag will be created
-	 */
-
-	async postAssetLibraryKeyword({
-		depotEntryId,
-		name,
-	}: postAssetLibraryKeywordProps): Promise<{id: number}> {
-		return this.apiHelpers.post(
-			`${this.apiHelpers.baseUrl}${this.basePath}/asset-libraries/${depotEntryId}/keywords`,
-			{data: {name}}
+			{data: {description, name, name_i18n, system}}
 		);
 	}
 
@@ -310,23 +391,10 @@ export class HeadlessAdminTaxonomyApiHelper {
 	 * @param id the id of the tag
 	 * @param name the new name of the tag
 	 */
-
 	async putKeyword({id, name}: {id: number; name: string}) {
 		return this.apiHelpers.put(
 			`${this.apiHelpers.baseUrl}${this.basePath}/keywords/${id}`,
 			{data: {name}}
-		);
-	}
-
-	/**
-	 * It allows deleting a tag.
-	 *
-	 * @param id the id of the tag
-	 */
-
-	async deleteKeyword({id}: {id: number}) {
-		return this.apiHelpers.delete(
-			`${this.apiHelpers.baseUrl}${this.basePath}/keywords/${id}`
 		);
 	}
 
@@ -337,7 +405,6 @@ export class HeadlessAdminTaxonomyApiHelper {
 	 * @param actionIds the actionIds of the user
 	 * @param roleName the roleName of the user
 	 */
-
 	async putTaxonomyCategoriesTaxonomyCategoryPermissions(
 		id: number,
 		{actionIds, roleName}: putTaxonomyCategoriesTaxonomyCategoryPermissions
@@ -362,7 +429,6 @@ export class HeadlessAdminTaxonomyApiHelper {
 	 * @param actionIds the actionIds of the user
 	 * @param roleName the roleName of the user
 	 */
-
 	async putTaxonomyVocabulariesTaxonomyVocabularyPermissions(
 		id: number,
 		{

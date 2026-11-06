@@ -4,34 +4,35 @@
  */
 
 import ClayButton from '@clayui/button';
+import {Text} from '@clayui/core';
 import ClayLayout from '@clayui/layout';
 import {sub} from 'frontend-js-web';
 import React, {useId, useState} from 'react';
 
-import {PreviewSite} from '../../../types/exportImportPreview';
+import {Site} from '../../../types/exportImportPreview';
 import {ExportImportProcess} from '../../../types/exportImportProcess';
 import SectionTags from '../content_selector/SectionTags';
 import SiteSelectorModal from './SiteSelectorModal';
 
-function toEntries(sites: PreviewSite[]) {
+function toEntries(sites: Site[]) {
 	return sites.map(
-		(site) => [site.externalReferenceCode, site] as [string, PreviewSite]
+		(site) => [site.externalReferenceCode, site] as [string, Site]
 	);
 }
 
 export default function SitesControl({
 	apiURL,
 	onChange,
-	previewSites,
 	process = 'export',
 	selectedExternalReferenceCodes,
+	sites,
 	totalCount,
 }: {
 	apiURL?: string;
 	onChange: (externalReferenceCodes: string[]) => void;
-	previewSites?: PreviewSite[];
 	process?: ExportImportProcess;
 	selectedExternalReferenceCodes: string[];
+	sites?: Site[];
 	totalCount?: number;
 }) {
 	const descriptionId = useId();
@@ -41,7 +42,7 @@ export default function SitesControl({
 	const [
 		knownSitesByExternalReferenceCode,
 		setKnownSitesByExternalReferenceCode,
-	] = useState(() => new Map(toEntries(previewSites ?? [])));
+	] = useState(() => new Map(toEntries(sites ?? [])));
 
 	const selectedSites = selectedExternalReferenceCodes.map(
 		(externalReferenceCode) =>
@@ -64,37 +65,27 @@ export default function SitesControl({
 
 	return (
 		<>
-			<ClayLayout.ContentRow className="align-items-center">
-				<ClayLayout.ContentCol expand>
-					<span className="align-items-center d-inline-flex">
-						<span className="font-weight-semi-bold text-dark">
-							{Liferay.Language.get('sites')}
-						</span>
+			<ClayLayout.ContentRow verticalAlign="center">
+				<Text size={6} weight="bold">
+					{Liferay.Language.get('sites')}
+				</Text>
 
-						<SectionTags additionCount={totalCount} />
-					</span>
-
-					<span
-						className="d-block small text-secondary text-truncate"
-						id={descriptionId}
-						title={description}
-					>
-						{description}
-					</span>
-				</ClayLayout.ContentCol>
-
-				<ClayLayout.ContentCol expand={false}>
-					<ClayButton
-						aria-describedby={descriptionId}
-						className="font-weight-semi-bold"
-						displayType="link"
-						onClick={() => setShowModal(true)}
-						size="sm"
-					>
-						{Liferay.Language.get('select-sites')}
-					</ClayButton>
-				</ClayLayout.ContentCol>
+				<SectionTags additionCount={totalCount} />
 			</ClayLayout.ContentRow>
+
+			<Text as="p" color="secondary" id={descriptionId} size={3} truncate>
+				{description}
+			</Text>
+
+			<ClayButton
+				aria-describedby={descriptionId}
+				displayType="primary"
+				onClick={() => setShowModal(true)}
+				outline
+				size="sm"
+			>
+				{Liferay.Language.get('select-sites')}
+			</ClayButton>
 
 			{showModal && (
 				<SiteSelectorModal
@@ -116,9 +107,9 @@ export default function SitesControl({
 							)
 						);
 					}}
-					previewSites={previewSites}
 					process={process}
 					selectedSites={selectedSites}
+					sites={sites}
 				/>
 			)}
 		</>

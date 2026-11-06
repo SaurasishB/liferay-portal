@@ -8,14 +8,19 @@ package com.liferay.depot.web.internal.util.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.depot.constants.DepotConstants;
 import com.liferay.depot.model.DepotEntry;
+import com.liferay.depot.model.DepotEntryGroupRel;
 import com.liferay.depot.search.DepotEntrySearch;
 import com.liferay.depot.service.DepotEntryGroupRelLocalService;
 import com.liferay.depot.service.DepotEntryLocalService;
+import com.liferay.depot.test.util.DepotTestUtil;
 import com.liferay.item.selector.criteria.group.criterion.GroupItemSelectorCriterion;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCRenderCommand;
+import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.service.CompanyLocalService;
+import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.portlet.MockLiferayPortletActionRequest;
 import com.liferay.portal.kernel.test.portlet.MockLiferayPortletRenderRequest;
@@ -28,11 +33,13 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
+import com.liferay.site.search.GroupSearch;
 
 import jakarta.portlet.PortletRequest;
 import jakarta.portlet.PortletResponse;
@@ -103,6 +110,70 @@ public class DepotEntryAdminSearchProviderTest {
 	}
 
 	@Test
+	public void testGetDepotEntrySearchWithViewPermission() throws Exception {
+		DepotEntry depotEntry = _initialDepotEntries.get(0);
+
+		DepotTestUtil.withRegularUser(
+			(user, role) -> {
+				_resourcePermissionLocalService.setResourcePermissions(
+					TestPropsValues.getCompanyId(), DepotEntry.class.getName(),
+					ResourceConstants.SCOPE_INDIVIDUAL,
+					String.valueOf(depotEntry.getDepotEntryId()),
+					role.getRoleId(), new String[] {ActionKeys.VIEW});
+
+				GroupItemSelectorCriterion groupItemSelectorCriterion =
+					new GroupItemSelectorCriterion();
+
+				groupItemSelectorCriterion.setIncludeAllVisibleGroups(false);
+
+				MockLiferayPortletActionRequest
+					mockLiferayPortletActionRequest =
+						new MockLiferayPortletActionRequest();
+
+				mockLiferayPortletActionRequest.setAttribute(
+					WebKeys.THEME_DISPLAY, _getThemeDisplay());
+				mockLiferayPortletActionRequest.setParameter(
+					"keywords", _keywords);
+
+				_assertDepotEntries(
+					1,
+					ReflectionTestUtil.invoke(
+						_depotEntryAdminSearchProvider, "getDepotEntrySearch",
+						new Class<?>[] {
+							GroupItemSelectorCriterion.class,
+							PortletRequest.class, PortletResponse.class,
+							PortletURL.class
+						},
+						groupItemSelectorCriterion,
+						mockLiferayPortletActionRequest,
+						new MockLiferayPortletRenderResponse(),
+						new MockLiferayPortletURL()));
+			});
+	}
+
+	@Test
+	public void testGetGroupSearch() throws Exception {
+		DepotEntry depotEntry = _initialDepotEntries.get(0);
+
+		List<DepotEntryGroupRel> depotEntryGroupRels =
+			_depotEntryGroupRelLocalService.getDepotEntryGroupRels(depotEntry);
+
+		_depotEntryGroupRelLocalService.deleteDepotEntryGroupRel(
+			depotEntryGroupRels.get(0));
+
+		_addDepotEntry(false, RandomTestUtil.randomString());
+
+		GroupItemSelectorCriterion groupItemSelectorCriterion =
+			new GroupItemSelectorCriterion();
+
+		groupItemSelectorCriterion.setIncludeAllVisibleGroups(false);
+
+		_assertGroups(
+			_initialDepotEntries.subList(1, 5),
+			_getGroupSearch(groupItemSelectorCriterion));
+	}
+
+	@Test
 	public void testGetGroupSearchWithKeywords() throws Exception {
 		GroupItemSelectorCriterion groupItemSelectorCriterion =
 			new GroupItemSelectorCriterion();
@@ -134,18 +205,20 @@ public class DepotEntryAdminSearchProviderTest {
 		_keywords = RandomTestUtil.randomString();
 
 		for (int i = 0; i < 3; i++) {
-			_addDepotEntry(_keywords + i);
+			_addDepotEntry(true, _keywords + i);
 		}
 
-		_addDepotEntry(RandomTestUtil.randomString());
+		_addDepotEntry(true, RandomTestUtil.randomString());
 
 		DepotEntry stagedDepotEntry = _addDepotEntry(
-			RandomTestUtil.randomString());
+			true, RandomTestUtil.randomString());
 
 		GroupTestUtil.enableLocalStaging(stagedDepotEntry.getGroup());
 	}
 
-	private DepotEntry _addDepotEntry(String depotEntryName) throws Exception {
+	private DepotEntry _addDepotEntry(boolean connected, String depotEntryName)
+		throws Exception {
+
 		DepotEntry depotEntry = _depotEntryLocalService.addDepotEntry(
 			Collections.singletonMap(LocaleUtil.getDefault(), depotEntryName),
 			Collections.singletonMap(
@@ -155,8 +228,10 @@ public class DepotEntryAdminSearchProviderTest {
 
 		_initialDepotEntries.add(depotEntry);
 
-		_depotEntryGroupRelLocalService.addDepotEntryGroupRel(
-			depotEntry.getDepotEntryId(), _group.getGroupId());
+		if (connected) {
+			_depotEntryGroupRelLocalService.addDepotEntryGroupRel(
+				depotEntry.getDepotEntryId(), _group.getGroupId());
+		}
 
 		return depotEntry;
 	}
@@ -178,6 +253,15 @@ public class DepotEntryAdminSearchProviderTest {
 		}
 	}
 
+	private void _assertGroups(
+		List<DepotEntry> depotEntries, GroupSearch groupSearch) {
+
+		Assert.assertEquals(depotEntries.size(), groupSearch.getTotal());
+		Assert.assertEquals(
+			ListUtil.toList(depotEntries, DepotEntry::getGroupId),
+			ListUtil.toList(groupSearch.getResults(), Group.GROUP_ID_ACCESSOR));
+	}
+
 	private Object _getDepotEntryAdminSearchProvider() throws Exception {
 		MockLiferayPortletRenderRequest mockLiferayPortletRenderRequest =
 			new MockLiferayPortletRenderRequest(_getMockHttpServletRequest());
@@ -189,6 +273,27 @@ public class DepotEntryAdminSearchProviderTest {
 		return mockLiferayPortletRenderRequest.getAttribute(
 			"com.liferay.depot.web.internal.util." +
 				"DepotEntryAdminSearchProvider");
+	}
+
+	private GroupSearch _getGroupSearch(
+			GroupItemSelectorCriterion groupItemSelectorCriterion)
+		throws Exception {
+
+		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
+			new MockLiferayPortletActionRequest();
+
+		mockLiferayPortletActionRequest.setAttribute(
+			WebKeys.THEME_DISPLAY, _getThemeDisplay());
+
+		return ReflectionTestUtil.invoke(
+			_depotEntryAdminSearchProvider, "getGroupSearch",
+			new Class<?>[] {
+				GroupItemSelectorCriterion.class, PortletRequest.class,
+				PortletResponse.class, PortletURL.class
+			},
+			groupItemSelectorCriterion, mockLiferayPortletActionRequest,
+			new MockLiferayPortletRenderResponse(),
+			new MockLiferayPortletURL());
 	}
 
 	private MockHttpServletRequest _getMockHttpServletRequest()
@@ -239,5 +344,8 @@ public class DepotEntryAdminSearchProviderTest {
 		filter = "component.name=com.liferay.depot.web.internal.portlet.action.ViewMVCRenderCommand"
 	)
 	private MVCRenderCommand _mvcRenderCommand;
+
+	@Inject
+	private ResourcePermissionLocalService _resourcePermissionLocalService;
 
 }

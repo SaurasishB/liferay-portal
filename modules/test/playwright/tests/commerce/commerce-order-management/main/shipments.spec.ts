@@ -18,7 +18,11 @@ import {
 	userData,
 } from '../../../../utils/performLogin';
 import {waitForAlert} from '../../../../utils/waitForAlert';
-import {createAccountWithBuyerUser, miniumSetUp} from '../../utils/commerce';
+import {
+	activateChannelPaymentMethod,
+	createAccountWithBuyerUser,
+	miniumSetUp,
+} from '../../utils/commerce';
 import {
 	acceptOrderAndCreateShipment,
 	acceptOrderAndCreateShipmentWithItem,
@@ -47,6 +51,12 @@ test.beforeAll(async ({browser}) => {
 	const apiHelpers = new DataApiHelpers(page);
 
 	const miniumResult = await miniumSetUp(apiHelpers);
+
+	await activateChannelPaymentMethod(
+		apiHelpers,
+		miniumResult.channel.id,
+		'money-order'
+	);
 
 	miniumCatalog = miniumResult.catalog;
 	miniumChannel = miniumResult.channel;
@@ -852,6 +862,11 @@ test(
 	}) => {
 		const trackingURL = 'www.methodcarriersite.com/';
 
+		const {account, buyerUser} = await createAccountWithBuyerUser(
+			apiHelpers,
+			site.id
+		);
+
 		try {
 			await commerceAdminChannelsPage.goto();
 
@@ -865,11 +880,6 @@ test(
 				'Flat Rate',
 				trackingURL,
 				'Shipping Methods'
-			);
-
-			const {account, buyerUser} = await createAccountWithBuyerUser(
-				apiHelpers,
-				site.id
 			);
 
 			await performUserSwitch(page, buyerUser.alternateName);
@@ -893,7 +903,7 @@ test(
 			await checkoutPage.continueButton.click();
 			await checkoutPage.continueButton.click();
 
-			await expect(checkoutPage.orderSuccessMessage).toBeVisible();
+			await expect(checkoutPage.orderNotCompletedMessage).toBeVisible();
 
 			await performLoginViaApi({page, screenName: 'test'});
 
@@ -932,6 +942,24 @@ test(
 		}
 		finally {
 			await performLoginViaApi({page, screenName: 'test'});
+
+			const orders =
+				await apiHelpers.headlessCommerceAdminOrder.getOrdersPage();
+
+			for (const order of orders.items ?? []) {
+				if (order.accountId === account.id) {
+					apiHelpers.data.push({id: order.id, type: 'order'});
+				}
+			}
+
+			const shipments =
+				await apiHelpers.headlessCommerceAdminShipment.getShipments();
+
+			for (const shipment of shipments.items ?? []) {
+				if (shipment.accountId === account.id) {
+					apiHelpers.data.push({id: shipment.id, type: 'shipment'});
+				}
+			}
 
 			await commerceAdminChannelsPage.goto();
 

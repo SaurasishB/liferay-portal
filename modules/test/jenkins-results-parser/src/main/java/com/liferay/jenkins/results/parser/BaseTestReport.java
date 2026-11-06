@@ -58,8 +58,17 @@ public class BaseTestReport implements TestReport {
 	public String getTestClassName() {
 		String testClassName = _jsonObject.optString("testClassName");
 
-		if (!JenkinsResultsParserUtil.isNullOrEmpty(testClassName)) {
+		if (!JenkinsResultsParserUtil.isNullOrEmpty(testClassName) &&
+			!testClassName.equals("com.liferay.poshi.runner.PoshiRunner")) {
+
 			return testClassName;
+		}
+
+		Matcher matcher = _jUnitTestNamePattern.matcher(
+			_jsonObject.getString("name"));
+
+		if (matcher.matches()) {
+			return matcher.group("testClassName");
 		}
 
 		return getTestName();
@@ -105,6 +114,8 @@ public class BaseTestReport implements TestReport {
 		_jsonObject = jsonObject;
 	}
 
+	private static final Pattern _jUnitTestNamePattern = Pattern.compile(
+		"(?<testClassName>([\\w$]+\\.)+[\\w$]*Test)\\.(?<testName>[\\w$]+)");
 	private static final Pattern _moduleAppPathPattern = Pattern.compile(
 		"(?<moduleAppPath>(:dxp)?:apps:[^:]+):.*");
 

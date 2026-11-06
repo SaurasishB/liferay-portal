@@ -266,14 +266,6 @@ public class PatcherFixLocalServiceImpl extends PatcherFixLocalServiceBaseImpl {
 			PatcherFixKeyVersionComparator.getInstance(true));
 	}
 
-	@Override
-	public int getPatcherFixesCountByPatcherProjectVersionId(
-		long patcherProjectVersionId) {
-
-		return patcherFixPersistence.countByPatcherProjectVersionId(
-			patcherProjectVersionId);
-	}
-
 	@Indexable(type = IndexableType.REINDEX)
 	@Override
 	public PatcherFix updateComments(long patcherFixId, String comments)
@@ -565,9 +557,11 @@ public class PatcherFixLocalServiceImpl extends PatcherFixLocalServiceBaseImpl {
 
 			Matcher matcher = _patcherFixNamePattern.matcher(patcherFixName);
 
-			if (!matcher.matches()) {
-				invalidPatcherFixNames.add(patcherFixName);
+			if (matcher.matches()) {
+				continue;
 			}
+
+			invalidPatcherFixNames.add(patcherFixName);
 		}
 
 		if (!invalidPatcherFixNames.isEmpty()) {

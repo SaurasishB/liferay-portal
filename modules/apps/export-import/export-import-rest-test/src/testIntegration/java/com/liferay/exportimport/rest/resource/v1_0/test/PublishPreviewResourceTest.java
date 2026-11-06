@@ -6,19 +6,22 @@
 package com.liferay.exportimport.rest.resource.v1_0.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
-import com.liferay.exportimport.rest.client.dto.v1_0.PreviewPortletDataHandlerSection;
+import com.liferay.exportimport.rest.client.dto.v1_0.DateFilter;
+import com.liferay.exportimport.rest.client.dto.v1_0.PortletDataHandler;
 import com.liferay.exportimport.rest.client.dto.v1_0.PublishPreview;
-import com.liferay.exportimport.rest.client.dto.v1_0.PublishProcessRequest;
 import com.liferay.layout.test.util.LayoutTestUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
+import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.test.log.LogCapture;
 import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.staging.StagingGroupHelper;
+
+import java.util.Date;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -56,11 +59,22 @@ public class PublishPreviewResourceTest
 				assertHttpResponseStatusCode(
 					400,
 					publishPreviewResource.getSitePublishPreviewHttpResponse(
-						group.getExternalReferenceCode(), null, null, null));
+						group.getExternalReferenceCode(), null, null, null,
+						null));
 			}
 			finally {
 				GroupTestUtil.deleteGroup(group);
 			}
+
+			long time = System.currentTimeMillis();
+
+			assertHttpResponseStatusCode(
+				400,
+				publishPreviewResource.getSitePublishPreviewHttpResponse(
+					testGroup.getExternalReferenceCode(),
+					String.valueOf(DateFilter.Type.DATE_RANGE),
+					new Date(time + (2 * Time.HOUR)), null,
+					new Date(time + Time.HOUR)));
 		}
 
 		LayoutTestUtil.addTypePortletLayout(
@@ -71,20 +85,19 @@ public class PublishPreviewResourceTest
 
 		PublishPreview publishPreview =
 			publishPreviewResource.getSitePublishPreview(
-				testGroup.getExternalReferenceCode(), null, null, null);
+				testGroup.getExternalReferenceCode(), null, null, null, null);
 
 		Assert.assertNotNull(publishPreview.getAdditionCount());
 
-		PreviewPortletDataHandlerSection[] previewPortletDataHandlerSections =
-			publishPreview.getPreviewPortletDataHandlerSections();
+		PortletDataHandler[] portletDataHandlers =
+			publishPreview.getPortletDataHandlers();
 
-		Assert.assertTrue(previewPortletDataHandlerSections.length > 0);
+		Assert.assertTrue(portletDataHandlers.length > 0);
 
 		PublishPreview lastPublishDatePublishPreview =
 			publishPreviewResource.getSitePublishPreview(
 				testGroup.getExternalReferenceCode(),
-				String.valueOf(
-					PublishProcessRequest.DateRangeType.FROM_LAST_PUBLISH_DATE),
+				String.valueOf(DateFilter.Type.FROM_LAST_PUBLISH_DATE), null,
 				null, null);
 
 		Assert.assertNotNull(lastPublishDatePublishPreview.getAdditionCount());

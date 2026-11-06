@@ -550,20 +550,23 @@ public class LayoutSetLocalServiceImpl extends LayoutSetLocalServiceBaseImpl {
 					"Invalid host name {" + curVirtualHostname + "}");
 			}
 
-			if (!StringUtil.isLowerCase(curVirtualHostname)) {
-				virtualHostnames.putIfAbsent(
-					StringUtil.toLowerCase(curVirtualHostname),
-					virtualHostnames.remove(curVirtualHostname));
+			if (StringUtil.isLowerCase(curVirtualHostname)) {
+				continue;
 			}
+
+			virtualHostnames.putIfAbsent(
+				StringUtil.toLowerCase(curVirtualHostname),
+				virtualHostnames.remove(curVirtualHostname));
 		}
 
 		LayoutSet layoutSet = layoutSetPersistence.findByG_P(
 			groupId, privateLayout);
 
 		if (!virtualHostnames.isEmpty()) {
-			long virtualHostsCount = _virtualHostPersistence.countByNotL_H(
-				layoutSet.getLayoutSetId(),
-				ArrayUtil.toStringArray(virtualHostnames.keySet()));
+			long virtualHostsCount =
+				_virtualHostLocalService.getVirtualHostsCount(
+					layoutSet.getLayoutSetId(),
+					ArrayUtil.toStringArray(virtualHostnames.keySet()));
 
 			if (virtualHostsCount > 0) {
 				throw new LayoutSetVirtualHostException();

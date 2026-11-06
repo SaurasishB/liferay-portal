@@ -6,13 +6,17 @@
 package com.liferay.portal.kernel.audit;
 
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONException;
 import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.CompanyConstants;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.security.auth.PrincipalThreadLocal;
+import com.liferay.portal.kernel.service.UserLocalServiceUtil;
 import com.liferay.portal.kernel.util.DateFormatFactoryUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.PortalRunMode;
@@ -49,12 +53,26 @@ public class AuditMessage implements Serializable {
 		JSONObject additionalInfoJSONObject, String className, String classPK,
 		String contextName, String eventType, String message) {
 
+		this(
+			groupId, companyId, userId, userName, timestampDate, accountEntryId,
+			null, additionalInfoJSONObject, className, classPK, contextName,
+			eventType, message, null);
+	}
+
+	public AuditMessage(
+		long groupId, long companyId, long userId, String userName,
+		Date timestampDate, long accountEntryId, String action,
+		JSONObject additionalInfoJSONObject, String className, String classPK,
+		String contextName, String eventType, String message,
+		String resourceType) {
+
 		_groupId = groupId;
 		_companyId = companyId;
 		_userId = userId;
 		_userName = userName;
 		_timestampDate = (timestampDate != null) ? timestampDate : new Date();
 		_accountEntryId = accountEntryId;
+		_action = action;
 		_additionalInfoJSONObject =
 			(additionalInfoJSONObject != null) ? additionalInfoJSONObject :
 				JSONFactoryUtil.createJSONObject();
@@ -63,44 +81,66 @@ public class AuditMessage implements Serializable {
 		_contextName = contextName;
 		_eventType = eventType;
 		_message = message;
+		_resourceType = resourceType;
 
-		AuditRequestThreadLocal auditRequestThreadLocal =
-			AuditRequestThreadLocal.getAuditThreadLocal();
+		AuditRequestContext auditRequestContext =
+			AuditRequestContextThreadLocal.getAuditRequestContext();
 
-		_clientHost = auditRequestThreadLocal.getClientHost();
-		_clientIP = auditRequestThreadLocal.getClientIP();
-		_correlationId = auditRequestThreadLocal.getCorrelationId();
-		_requestId = auditRequestThreadLocal.getRequestId();
-		_requestIdGenerated = auditRequestThreadLocal.isRequestIdGenerated();
-		_serverName = auditRequestThreadLocal.getServerName();
-		_serverPort = auditRequestThreadLocal.getServerPort();
-		_sessionID = auditRequestThreadLocal.getSessionID();
-		_userEmailAddress = auditRequestThreadLocal.getRealUserEmailAddress();
+		_clientHost = auditRequestContext.getClientHost();
+		_clientIP = auditRequestContext.getClientIP();
+		_correlationId = auditRequestContext.getCorrelationId();
 
-		long realUserId = auditRequestThreadLocal.getRealUserId();
+		if ((companyId > CompanyConstants.SYSTEM) &&
+			FeatureFlagManagerUtil.isEnabled(companyId, "LPD-6417")) {
 
-		long doAsUserId = 0;
-
-		if (PrincipalThreadLocal.getName() != null) {
-			doAsUserId = GetterUtil.getLong(PrincipalThreadLocal.getName());
+			_requestId = auditRequestContext.getRequestId();
+			_requestIdGenerated = auditRequestContext.isRequestIdGenerated();
 		}
 
-		if ((realUserId > 0) && (doAsUserId != realUserId) &&
-			!_additionalInfoJSONObject.has("doAsUserId")) {
+		_serverName = auditRequestContext.getServerName();
+		_serverPort = auditRequestContext.getServerPort();
+		_sessionID = auditRequestContext.getSessionID();
+		_userEmailAddress = auditRequestContext.getRealUserEmailAddress();
 
-			_additionalInfoJSONObject.put(
-				"doAsUserEmailAddress",
-				PortalUtil.getUserEmailAddress(doAsUserId)
-			).put(
-				"doAsUserId", String.valueOf(doAsUserId)
-			).put(
-				"doAsUserName",
-				PortalUtil.getUserName(doAsUserId, StringPool.BLANK)
-			);
+		long realUserId = auditRequestContext.getRealUserId();
+
+		long impersonatedUserId = 0;
+
+		if (PrincipalThreadLocal.getName() != null) {
+			impersonatedUserId = GetterUtil.getLong(
+				PrincipalThreadLocal.getName());
+		}
+
+		if ((realUserId > 0) && (impersonatedUserId != realUserId)) {
+			if (FeatureFlagManagerUtil.isEnabled(companyId, "LPD-6417")) {
+				User impersonatedUser = UserLocalServiceUtil.fetchUser(
+					impersonatedUserId);
+
+				if ((impersonatedUser != null) &&
+					!impersonatedUser.isGuestUser()) {
+
+					_impersonated = true;
+					_impersonatedUserEmailAddress =
+						impersonatedUser.getEmailAddress();
+					_impersonatedUserId = impersonatedUserId;
+					_impersonatedUserName = impersonatedUser.getFullName();
+				}
+			}
+			else if (!_additionalInfoJSONObject.has("doAsUserId")) {
+				_additionalInfoJSONObject.put(
+					"doAsUserEmailAddress",
+					PortalUtil.getUserEmailAddress(impersonatedUserId)
+				).put(
+					"doAsUserId", String.valueOf(impersonatedUserId)
+				).put(
+					"doAsUserName",
+					PortalUtil.getUserName(impersonatedUserId, StringPool.BLANK)
+				);
+			}
 		}
 
 		if (userId == realUserId) {
-			_userLogin = auditRequestThreadLocal.getRealUserLogin();
+			_userLogin = auditRequestContext.getRealUserLogin();
 		}
 
 		// LPS-172507
@@ -141,6 +181,17 @@ public class AuditMessage implements Serializable {
 	}
 
 	public AuditMessage(
+		long companyId, long userId, String userName, String action,
+		JSONObject additionalInfoJSONObject, String className, String classPK,
+		String eventType, String message, String resourceType) {
+
+		this(
+			0, companyId, userId, userName, null, 0, action,
+			additionalInfoJSONObject, className, classPK, null, eventType,
+			message, resourceType);
+	}
+
+	public AuditMessage(
 		long companyId, long userId, String userName, String className,
 		String classPK, String eventType) {
 
@@ -162,6 +213,11 @@ public class AuditMessage implements Serializable {
 		JSONObject jsonObject = JSONFactoryUtil.createJSONObject(message);
 
 		_accountEntryId = jsonObject.getLong(_ACCOUNT_ENTRY_ID);
+
+		if (jsonObject.has(_ACTION)) {
+			_action = jsonObject.getString(_ACTION);
+		}
+
 		_additionalInfoJSONObject = jsonObject.getJSONObject(_ADDITIONAL_INFO);
 		_className = jsonObject.getString(_CLASS_NAME);
 		_classPK = jsonObject.getString(_CLASS_PK);
@@ -262,6 +318,10 @@ public class AuditMessage implements Serializable {
 
 	public long getAccountEntryId() {
 		return _accountEntryId;
+	}
+
+	public String getAction() {
+		return _action;
 	}
 
 	public JSONObject getAdditionalInfo() {
@@ -390,6 +450,10 @@ public class AuditMessage implements Serializable {
 
 	public void setAccountEntryId(long accountEntryId) {
 		_accountEntryId = accountEntryId;
+	}
+
+	public void setAction(String action) {
+		_action = action;
 	}
 
 	public void setAdditionalInfo(JSONObject additionalInfoJSONObject) {
@@ -528,6 +592,8 @@ public class AuditMessage implements Serializable {
 		return JSONUtil.put(
 			_ACCOUNT_ENTRY_ID, _accountEntryId
 		).put(
+			_ACTION, _action
+		).put(
 			_ADDITIONAL_INFO, _additionalInfoJSONObject
 		).put(
 			_CLASS_NAME, _className
@@ -600,6 +666,8 @@ public class AuditMessage implements Serializable {
 
 	private static final String _ACCOUNT_ENTRY_ID = "accountEntryId";
 
+	private static final String _ACTION = "action";
+
 	private static final String _ADDITIONAL_INFO = "additionalInfo";
 
 	private static final String _CLASS_NAME = "className";
@@ -669,6 +737,7 @@ public class AuditMessage implements Serializable {
 	private static final Log _log = LogFactoryUtil.getLog(AuditMessage.class);
 
 	private long _accountEntryId;
+	private String _action;
 	private JSONObject _additionalInfoJSONObject;
 	private String _className;
 	private String _classPK;

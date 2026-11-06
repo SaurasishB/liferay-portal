@@ -9,6 +9,7 @@ import com.liferay.item.selector.provider.GroupItemSelectorProvider;
 import com.liferay.osgi.service.tracker.collections.map.ServiceReferenceMapperFactory;
 import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMap;
 import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMapFactory;
+import com.liferay.portal.kernel.model.Group;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -21,6 +22,22 @@ import org.osgi.framework.FrameworkUtil;
  * @author Cristina González
  */
 public class GroupItemSelectorProviderRegistryUtil {
+
+	public static GroupItemSelectorProvider getGroupItemSelectorProvider(
+		Group group) {
+
+		for (GroupItemSelectorProvider groupItemSelectorProvider :
+				_serviceTrackerMap.values()) {
+
+			if (groupItemSelectorProvider.isEnabled() &&
+				groupItemSelectorProvider.isGroupType(group)) {
+
+				return groupItemSelectorProvider;
+			}
+		}
+
+		return null;
+	}
 
 	public static GroupItemSelectorProvider getGroupItemSelectorProvider(
 		String groupType) {
@@ -43,9 +60,11 @@ public class GroupItemSelectorProviderRegistryUtil {
 		for (GroupItemSelectorProvider groupItemSelectorProvider :
 				_serviceTrackerMap.values()) {
 
-			if (groupItemSelectorProvider.isEnabled()) {
-				types.add(groupItemSelectorProvider.getGroupType());
+			if (!groupItemSelectorProvider.isEnabled()) {
+				continue;
 			}
+
+			types.add(groupItemSelectorProvider.getGroupType());
 		}
 
 		return types;

@@ -5,8 +5,14 @@
 
 package com.liferay.portal.workflow.kaleo.definition.internal.parser;
 
+import com.liferay.petra.function.transform.TransformUtil;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONFactory;
+import com.liferay.portal.kernel.model.Role;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.role.RoleConstants;
+import com.liferay.portal.kernel.service.RoleLocalService;
+import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
@@ -91,6 +97,88 @@ public class XMLWorkflowModelParser implements WorkflowModelParser {
 	}
 
 	@Override
+	public Definition parse(long companyId, InputStream inputStream)
+		throws WorkflowException {
+
+		if (!FeatureFlagManagerUtil.isEnabled(companyId, "LPD-49856")) {
+			return parse(inputStream);
+		}
+
+		try {
+			Document document = SAXReaderUtil.read(
+				WorkflowDefinitionContentUtil.toXML(
+					StringUtil.read(inputStream)),
+				_validate);
+
+			for (Element element :
+					TransformUtil.transform(
+						document.selectNodes("//*[local-name()='role']"),
+						node -> (Element)node)) {
+
+				if (Validator.isNotNull(
+						element.elementTextTrim(
+							"role-external-reference-code"))) {
+
+					continue;
+				}
+
+				long roleId = GetterUtil.getLong(
+					element.elementTextTrim("role-id"));
+
+				Role role = _roleLocalService.fetchRole(roleId);
+
+				if ((role == null) || (role.getCompanyId() != companyId)) {
+					continue;
+				}
+
+				element.clearContent();
+
+				_addTextElement(
+					element, "role-external-reference-code",
+					role.getExternalReferenceCode());
+				_addTextElement(element, "role-type", role.getTypeLabel());
+
+				_addTextElement(element, "role-id", String.valueOf(roleId));
+			}
+
+			for (Element element :
+					TransformUtil.transform(
+						document.selectNodes("//*[local-name()='user']"),
+						node -> (Element)node)) {
+
+				if (Validator.isNotNull(
+						element.elementTextTrim(
+							"user-external-reference-code"))) {
+
+					continue;
+				}
+
+				long userId = GetterUtil.getLong(
+					element.elementTextTrim("user-id"));
+
+				User user = _userLocalService.fetchUser(userId);
+
+				if ((user == null) || (user.getCompanyId() != companyId)) {
+					continue;
+				}
+
+				element.clearContent();
+
+				_addTextElement(
+					element, "user-external-reference-code",
+					user.getExternalReferenceCode());
+				_addTextElement(element, "user-id", String.valueOf(userId));
+			}
+
+			return _parse(document);
+		}
+		catch (Exception exception) {
+			throw new WorkflowDefinitionFileException(
+				"Unable to parse definition", exception);
+		}
+	}
+
+	@Override
 	public Definition parse(String content) throws WorkflowException {
 		try {
 			Document document = SAXReaderUtil.read(
@@ -112,6 +200,14 @@ public class XMLWorkflowModelParser implements WorkflowModelParser {
 	@Activate
 	protected void activate(Map<String, Object> properties) {
 		_validate = GetterUtil.getBoolean(properties.get("validating"), true);
+	}
+
+	private void _addTextElement(
+		Element element, String elementName, String text) {
+
+		Element childElement = element.addElement(elementName);
+
+		childElement.addText(text);
 	}
 
 	private String _normalizeJSONArrayJSON(String json) throws Exception {
@@ -381,12 +477,14 @@ public class XMLWorkflowModelParser implements WorkflowModelParser {
 			for (Element resourceActionElement : resourceActionElements) {
 				String actionId = resourceActionElement.getTextTrim();
 
-				if (Validator.isNotNull(actionId)) {
-					ResourceActionAssignment resourceActionAssignment =
-						new ResourceActionAssignment(actionId);
-
-					assignments.add(resourceActionAssignment);
+				if (Validator.isNull(actionId)) {
+					continue;
 				}
+
+				ResourceActionAssignment resourceActionAssignment =
+					new ResourceActionAssignment(actionId);
+
+				assignments.add(resourceActionAssignment);
 			}
 		}
 
@@ -397,16 +495,24 @@ public class XMLWorkflowModelParser implements WorkflowModelParser {
 				"role");
 
 			for (Element roleAssignmentElement : roleAssignmentElements) {
+				String name = roleAssignmentElement.elementTextTrim("name");
+				String roleExternalReferenceCode =
+					roleAssignmentElement.elementTextTrim(
+						"role-external-reference-code");
 				long roleId = GetterUtil.getLong(
 					roleAssignmentElement.elementTextTrim("role-id"));
 				String roleType = GetterUtil.getString(
 					roleAssignmentElement.elementTextTrim("role-type"),
 					RoleConstants.TYPE_REGULAR_LABEL);
-				String name = roleAssignmentElement.elementTextTrim("name");
 
 				RoleAssignment roleAssignment = null;
 
-				if (Validator.isNotNull(name)) {
+				if (Validator.isNotNull(roleExternalReferenceCode)) {
+					roleAssignment = new RoleAssignment(
+						roleExternalReferenceCode, roleId, name,
+						roleAssignmentElement.elementTextTrim("role-type"));
+				}
+				else if (Validator.isNotNull(name)) {
 					roleAssignment = new RoleAssignment(name, roleType);
 
 					roleAssignment.setAutoCreate(
@@ -445,15 +551,13 @@ public class XMLWorkflowModelParser implements WorkflowModelParser {
 			"user");
 
 		for (Element userAssignmentElement : userAssignmentElements) {
-			long userId = GetterUtil.getLong(
-				userAssignmentElement.elementTextTrim("user-id"));
-			String screenName = userAssignmentElement.elementTextTrim(
-				"screen-name");
-			String emailAddress = userAssignmentElement.elementTextTrim(
-				"email-address");
-
 			UserAssignment userAssignment = new UserAssignment(
-				userId, screenName, emailAddress);
+				userAssignmentElement.elementTextTrim(
+					"user-external-reference-code"),
+				GetterUtil.getLong(
+					userAssignmentElement.elementTextTrim("user-id")),
+				userAssignmentElement.elementTextTrim("screen-name"),
+				userAssignmentElement.elementTextTrim("email-address"));
 
 			assignments.add(userAssignment);
 		}
@@ -794,6 +898,9 @@ public class XMLWorkflowModelParser implements WorkflowModelParser {
 				"role");
 
 			for (Element roleReceipientElement : roleReceipientElements) {
+				String roleExternalReferenceCode =
+					roleReceipientElement.elementTextTrim(
+						"role-external-reference-code");
 				long roleId = GetterUtil.getLong(
 					roleReceipientElement.elementTextTrim("role-id"));
 				String roleType = GetterUtil.getString(
@@ -802,7 +909,13 @@ public class XMLWorkflowModelParser implements WorkflowModelParser {
 
 				RoleRecipient roleRecipient = null;
 
-				if (roleId > 0) {
+				if (Validator.isNotNull(roleExternalReferenceCode)) {
+					roleRecipient = new RoleRecipient(
+						roleExternalReferenceCode, roleId,
+						roleReceipientElement.elementTextTrim("name"),
+						roleReceipientElement.elementTextTrim("role-type"));
+				}
+				else if (roleId > 0) {
 					roleRecipient = new RoleRecipient(roleId, roleType);
 				}
 				else {
@@ -848,15 +961,13 @@ public class XMLWorkflowModelParser implements WorkflowModelParser {
 			"user");
 
 		for (Element userRecipientElement : userRecipientElements) {
-			long userId = GetterUtil.getLong(
-				userRecipientElement.elementTextTrim("user-id"));
-			String screenName = userRecipientElement.elementTextTrim(
-				"screen-name");
-			String emailAddress = userRecipientElement.elementTextTrim(
-				"email-address");
-
 			UserRecipient userRecipient = new UserRecipient(
-				userId, screenName, emailAddress);
+				userRecipientElement.elementTextTrim(
+					"user-external-reference-code"),
+				GetterUtil.getLong(
+					userRecipientElement.elementTextTrim("user-id")),
+				userRecipientElement.elementTextTrim("screen-name"),
+				userRecipientElement.elementTextTrim("email-address"));
 
 			userRecipient.setNotificationReceptionType(
 				notificationReceptionType);
@@ -1165,9 +1276,11 @@ public class XMLWorkflowModelParser implements WorkflowModelParser {
 
 			sourceNode.addOutgoingTransition(transition);
 
-			if (targetNode != null) {
-				targetNode.addIncomingTransition(transition);
+			if (targetNode == null) {
+				continue;
 			}
+
+			targetNode.addIncomingTransition(transition);
 		}
 	}
 
@@ -1227,6 +1340,12 @@ public class XMLWorkflowModelParser implements WorkflowModelParser {
 
 	@Reference
 	private JSONFactory _jsonFactory;
+
+	@Reference
+	private RoleLocalService _roleLocalService;
+
+	@Reference
+	private UserLocalService _userLocalService;
 
 	private boolean _validate;
 

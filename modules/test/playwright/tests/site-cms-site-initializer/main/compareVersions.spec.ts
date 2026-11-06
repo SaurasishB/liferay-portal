@@ -138,10 +138,8 @@ test(
 		const secondRelatedTitle = `second reference ${getRandomString()}`;
 
 		await test.step('Create a space with two contents to reference', async () => {
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+			await apiHelpers.headlessAssetLibrary.createSpace({
 				name: spaceName,
-				settings: {},
-				type: 'Space',
 			});
 
 			for (const title of [firstRelatedTitle, secondRelatedTitle]) {
@@ -517,10 +515,8 @@ test(
 		const spaceName = `Space ${getRandomString()}`;
 
 		await test.step('Create a space and a structure with a text field', async () => {
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+			await apiHelpers.headlessAssetLibrary.createSpace({
 				name: spaceName,
-				settings: {},
-				type: 'Space',
 			});
 
 			await structureBuilderPage.createStructureFromData({
@@ -661,10 +657,8 @@ test(
 		const spaceName = `Space ${getRandomString()}`;
 
 		await test.step('Create a space and a structure with a repeatable group', async () => {
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+			await apiHelpers.headlessAssetLibrary.createSpace({
 				name: spaceName,
-				settings: {},
-				type: 'Space',
 			});
 
 			await structureBuilderPage.createStructureFromData({
@@ -846,10 +840,8 @@ test(
 		const spaceName = `Space ${getRandomString()}`;
 
 		await test.step('Create a space and a structure with a rich text field', async () => {
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+			await apiHelpers.headlessAssetLibrary.createSpace({
 				name: spaceName,
-				settings: {},
-				type: 'Space',
 			});
 
 			await structureBuilderPage.createStructureFromData({
@@ -944,10 +936,8 @@ test(
 		const spaceName = `Space ${getRandomString()}`;
 
 		await test.step('Create a space and a structure with a text field', async () => {
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+			await apiHelpers.headlessAssetLibrary.createSpace({
 				name: spaceName,
-				settings: {},
-				type: 'Space',
 			});
 
 			await structureBuilderPage.createStructureFromData({
@@ -1052,38 +1042,33 @@ test(
 		const firstFileName = `compare_v1_${getRandomString()}.jpg`;
 		const secondFileName = `compare_v2_${getRandomString()}.jpg`;
 
-		const objectEntry =
-			await test.step('Publish two file versions', async () => {
-				const entry = await apiHelpers.objectEntry.postObjectEntry(
-					{
-						file: {
-							fileBase64: readImageBase64(
-								'file_upload_image_1.jpg'
-							),
-							name: firstFileName,
-						},
-						objectEntryFolderExternalReferenceCode: 'L_FILES',
-						title,
+		await test.step('Publish two file versions', async () => {
+			const entry = await apiHelpers.objectEntry.postObjectEntry(
+				{
+					file: {
+						fileBase64: readImageBase64('file_upload_image_1.jpg'),
+						name: firstFileName,
 					},
-					'cms/basic-documents',
-					'Default'
-				);
+					objectEntryFolderExternalReferenceCode: 'L_FILES',
+					title,
+				},
+				'cms/basic-documents',
+				'Default'
+			);
 
-				await apiHelpers.objectEntry.patchObjectEntry(
-					{
-						file: {
-							fileBase64: readImageBase64(
-								'sample_small_wide_400x300.jpg'
-							),
-							name: secondFileName,
-						},
+			await apiHelpers.objectEntry.patchObjectEntry(
+				{
+					file: {
+						fileBase64: readImageBase64(
+							'sample_small_wide_400x300.jpg'
+						),
+						name: secondFileName,
 					},
-					'cms/basic-documents',
-					entry.id
-				);
-
-				return entry;
-			});
+				},
+				'cms/basic-documents',
+				entry.id
+			);
+		});
 
 		await test.step('Open the file version history', async () => {
 			await assetsPage.gotoFiles();
@@ -1129,11 +1114,6 @@ test(
 				);
 			}
 		});
-
-		await apiHelpers.objectEntry.deleteObjectEntry(
-			'cms/basic-documents',
-			String(objectEntry.id)
-		);
 	}
 );
 
@@ -1145,37 +1125,34 @@ test(
 
 		const fileName = `compare_${getRandomString()}.jpg`;
 
-		const objectEntry =
-			await test.step('Publish a second version keeping the same file', async () => {
-				const entry = await apiHelpers.objectEntry.postObjectEntry(
-					{
-						file: {
-							fileBase64: fs
-								.readFileSync(
-									path.join(
-										__dirname,
-										'dependencies',
-										'file_upload_image_1.jpg'
-									)
+		await test.step('Publish a second version keeping the same file', async () => {
+			const entry = await apiHelpers.objectEntry.postObjectEntry(
+				{
+					file: {
+						fileBase64: fs
+							.readFileSync(
+								path.join(
+									__dirname,
+									'dependencies',
+									'file_upload_image_1.jpg'
 								)
-								.toString('base64'),
-							name: fileName,
-						},
-						objectEntryFolderExternalReferenceCode: 'L_FILES',
-						title,
+							)
+							.toString('base64'),
+						name: fileName,
 					},
-					'cms/basic-documents',
-					'Default'
-				);
+					objectEntryFolderExternalReferenceCode: 'L_FILES',
+					title,
+				},
+				'cms/basic-documents',
+				'Default'
+			);
 
-				await apiHelpers.objectEntry.patchObjectEntry(
-					{title: `${title} revised`},
-					'cms/basic-documents',
-					entry.id
-				);
-
-				return entry;
-			});
+			await apiHelpers.objectEntry.patchObjectEntry(
+				{title: `${title} revised`},
+				'cms/basic-documents',
+				entry.id
+			);
+		});
 
 		await test.step('Compare both versions from the version history', async () => {
 			await assetsPage.gotoFiles();
@@ -1223,11 +1200,6 @@ test(
 				await expect(image).not.toHaveClass(/border-(danger|success)/);
 			}
 		});
-
-		await apiHelpers.objectEntry.deleteObjectEntry(
-			'cms/basic-documents',
-			String(objectEntry.id)
-		);
 	}
 );
 
@@ -1246,10 +1218,8 @@ test(
 		const spaceName = `Space ${getRandomString()}`;
 
 		await test.step('Create a space and a structure with a repeatable group', async () => {
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+			await apiHelpers.headlessAssetLibrary.createSpace({
 				name: spaceName,
-				settings: {},
-				type: 'Space',
 			});
 
 			await structureBuilderPage.createStructureFromData({

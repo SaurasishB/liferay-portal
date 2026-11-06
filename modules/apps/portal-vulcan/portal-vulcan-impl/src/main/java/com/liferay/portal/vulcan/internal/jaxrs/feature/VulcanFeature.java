@@ -9,7 +9,9 @@ import com.fasterxml.jackson.jakarta.rs.json.JacksonJsonProvider;
 import com.fasterxml.jackson.jakarta.rs.xml.JacksonXMLProvider;
 
 import com.liferay.depot.service.DepotEntryLocalService;
+import com.liferay.oauth2.provider.scope.ScopeChecker;
 import com.liferay.portal.kernel.language.Language;
+import com.liferay.portal.kernel.module.service.Snapshot;
 import com.liferay.portal.kernel.search.filter.Filter;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ResourceActionLocalService;
@@ -22,9 +24,11 @@ import com.liferay.portal.odata.sort.SortParserProvider;
 import com.liferay.portal.vulcan.batch.engine.resource.VulcanBatchEngineExportTaskResourceFactory;
 import com.liferay.portal.vulcan.batch.engine.resource.VulcanBatchEngineImportTaskResourceFactory;
 import com.liferay.portal.vulcan.extension.ExtensionProviderRegistry;
+import com.liferay.portal.vulcan.feature.flag.FeatureFlagChecker;
 import com.liferay.portal.vulcan.internal.configuration.admin.service.HeadlessAPICacheManagedServiceFactory;
 import com.liferay.portal.vulcan.internal.jaxrs.container.request.filter.CTContainerRequestFilter;
 import com.liferay.portal.vulcan.internal.jaxrs.container.request.filter.ContextContainerRequestFilter;
+import com.liferay.portal.vulcan.internal.jaxrs.container.request.filter.FeatureFlagContainerRequestFilter;
 import com.liferay.portal.vulcan.internal.jaxrs.container.request.filter.LogContainerRequestFilter;
 import com.liferay.portal.vulcan.internal.jaxrs.container.request.filter.NestedFieldsContainerRequestFilter;
 import com.liferay.portal.vulcan.internal.jaxrs.container.request.filter.TransactionContainerRequestFilter;
@@ -83,14 +87,10 @@ import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.core.Feature;
 import jakarta.ws.rs.core.FeatureContext;
 
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.ServiceReference;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.cm.ManagedServiceFactory;
-import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ServiceScope;
 import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
 
 /**
@@ -106,7 +106,7 @@ import org.osgi.service.jaxrs.whiteboard.JaxrsWhiteboardConstants;
 		JaxrsWhiteboardConstants.JAX_RS_EXTENSION + "=true",
 		JaxrsWhiteboardConstants.JAX_RS_NAME + "=Liferay.Vulcan"
 	},
-	scope = ServiceScope.PROTOTYPE, service = Feature.class
+	service = Feature.class
 )
 public class VulcanFeature implements Feature {
 
@@ -174,7 +174,7 @@ public class VulcanFeature implements Feature {
 				_expressionConvert, _filterParserProvider, _groupLocalService,
 				_language, _portal, _resourceActionLocalService,
 				_resourcePermissionLocalService, _roleLocalService,
-				_getScopeChecker(), _sortParserProvider,
+				_scopeCheckerSnapshot.get(), _sortParserProvider,
 				_vulcanBatchEngineExportTaskResourceFactory,
 				_vulcanBatchEngineImportTaskResourceFactory));
 		featureContext.register(
@@ -182,11 +182,14 @@ public class VulcanFeature implements Feature {
 		featureContext.register(
 			new EntityExtensionHandlerContextResolver(
 				_extensionProviderRegistry));
+		featureContext.register(
+			new FeatureFlagContainerRequestFilter(_featureFlagChecker, _portal),
+			Priorities.USER - 20);
 		featureContext.register(new MultipartBodyMessageBodyReader());
 		featureContext.register(
 			new NestedFieldsWriterInterceptor(
 				_contextDataInjectorBuilderFactory, _language, _portal,
-				_getScopeChecker()),
+				_scopeCheckerSnapshot.get()),
 			Priorities.USER - 10);
 		featureContext.register(
 			new PaginationContextProvider(_paginationProvider, _portal));
@@ -200,24 +203,8 @@ public class VulcanFeature implements Feature {
 		return false;
 	}
 
-	@Activate
-	protected void activate(BundleContext bundleContext) {
-		_bundleContext = bundleContext;
-	}
-
-	private Object _getScopeChecker() {
-		ServiceReference<?> serviceReference =
-			_bundleContext.getServiceReference(
-				"com.liferay.oauth2.provider.scope.ScopeChecker");
-
-		if (serviceReference != null) {
-			return _bundleContext.getService(serviceReference);
-		}
-
-		return null;
-	}
-
-	private BundleContext _bundleContext;
+	private static final Snapshot<ScopeChecker> _scopeCheckerSnapshot =
+		new Snapshot<>(VulcanFeature.class, ScopeChecker.class);
 
 	@Reference
 	private ConfigurationAdmin _configurationAdmin;
@@ -236,6 +223,9 @@ public class VulcanFeature implements Feature {
 
 	@Reference
 	private ExtensionProviderRegistry _extensionProviderRegistry;
+
+	@Reference
+	private FeatureFlagChecker _featureFlagChecker;
 
 	@Reference
 	private FilterParserProvider _filterParserProvider;

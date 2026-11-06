@@ -317,20 +317,6 @@ public class CPDefinitionOptionRelPersistenceTest {
 	}
 
 	@Test
-	public void testCountByGroupId() throws Exception {
-		_persistence.countByGroupId(RandomTestUtil.nextLong());
-
-		_persistence.countByGroupId(0L);
-	}
-
-	@Test
-	public void testCountByCompanyId() throws Exception {
-		_persistence.countByCompanyId(RandomTestUtil.nextLong());
-
-		_persistence.countByCompanyId(0L);
-	}
-
-	@Test
 	public void testCountByCPDefinitionId() throws Exception {
 		_persistence.countByCPDefinitionId(RandomTestUtil.nextLong());
 
@@ -833,4 +819,4 @@ public class CPDefinitionOptionRelPersistenceTest {
 	private ClassLoader _dynamicQueryClassLoader;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:879753978
+// LIFERAY-SERVICE-BUILDER-HASH:-1575654448

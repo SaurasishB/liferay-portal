@@ -69,58 +69,6 @@ public class MicroblogsEntryLocalServiceImpl
 
 	@Override
 	public MicroblogsEntry addMicroblogsEntry(
-			long userId, long creatorClassNameId, long creatorClassPK,
-			String content, int type, long parentMicroblogsEntryId,
-			int socialRelationType, ServiceContext serviceContext)
-		throws PortalException {
-
-		// Microblogs entry
-
-		User user = _userLocalService.getUser(userId);
-
-		Date date = new Date();
-
-		_validate(type, parentMicroblogsEntryId);
-
-		long microblogsEntryId = counterLocalService.increment();
-
-		if (parentMicroblogsEntryId == 0) {
-			parentMicroblogsEntryId = microblogsEntryId;
-		}
-
-		MicroblogsEntry microblogsEntry = microblogsEntryPersistence.create(
-			microblogsEntryId);
-
-		microblogsEntry.setCompanyId(user.getCompanyId());
-		microblogsEntry.setUserId(user.getUserId());
-		microblogsEntry.setUserName(user.getFullName());
-		microblogsEntry.setCreateDate(date);
-		microblogsEntry.setModifiedDate(date);
-		microblogsEntry.setCreatorClassNameId(creatorClassNameId);
-		microblogsEntry.setCreatorClassPK(creatorClassPK);
-		microblogsEntry.setContent(content);
-		microblogsEntry.setType(type);
-		microblogsEntry.setParentMicroblogsEntryId(parentMicroblogsEntryId);
-		microblogsEntry.setSocialRelationType(socialRelationType);
-
-		microblogsEntry = microblogsEntryPersistence.update(microblogsEntry);
-
-		// Resources
-
-		_resourceLocalService.addModelResources(
-			microblogsEntry, serviceContext);
-
-		// Asset
-
-		updateAsset(
-			microblogsEntry, serviceContext.getAssetCategoryIds(),
-			serviceContext.getAssetTagNames());
-
-		return microblogsEntry;
-	}
-
-	@Override
-	public MicroblogsEntry addMicroblogsEntry(
 			long userId, String content, int type, long parentMicroblogsEntryId,
 			int socialRelationType, ServiceContext serviceContext)
 		throws PortalException {
@@ -199,15 +147,6 @@ public class MicroblogsEntryLocalServiceImpl
 	}
 
 	@Override
-	public void deleteMicroblogsEntries(
-			long creatorClassNameId, long creatorClassPK)
-		throws PortalException {
-
-		microblogsEntryPersistence.removeByCCNI_CCPK(
-			creatorClassNameId, creatorClassPK);
-	}
-
-	@Override
 	public MicroblogsEntry deleteMicroblogsEntry(long microblogsEntryId)
 		throws PortalException {
 
@@ -262,103 +201,6 @@ public class MicroblogsEntryLocalServiceImpl
 	}
 
 	@Override
-	public void deleteUserMicroblogsEntries(long userId)
-		throws PortalException {
-
-		List<MicroblogsEntry> microblogsEntries =
-			microblogsEntryPersistence.findByUserId(userId);
-
-		for (MicroblogsEntry microblogsEntry : microblogsEntries) {
-			deleteMicroblogsEntry(microblogsEntry);
-		}
-	}
-
-	@Override
-	public List<MicroblogsEntry> getCompanyMicroblogsEntries(
-		long companyId, int start, int end) {
-
-		return microblogsEntryPersistence.findByCompanyId(
-			companyId, start, end);
-	}
-
-	@Override
-	public int getCompanyMicroblogsEntriesCount(long companyId) {
-		return microblogsEntryPersistence.countByCompanyId(companyId);
-	}
-
-	@Override
-	public List<MicroblogsEntry> getMicroblogsEntries(
-		long companyId, long creatorClassNameId, int type, int start, int end,
-		OrderByComparator<MicroblogsEntry> orderByComparator) {
-
-		return microblogsEntryPersistence.findByC_CCNI_T(
-			companyId, creatorClassNameId, type, start, end, orderByComparator);
-	}
-
-	@Override
-	public List<MicroblogsEntry> getMicroblogsEntries(
-		long companyId, long creatorClassNameId, long creatorClassPK, int start,
-		int end) {
-
-		return microblogsEntryPersistence.findByC_CCNI_CCPK(
-			companyId, creatorClassNameId, creatorClassPK, start, end);
-	}
-
-	@Override
-	public List<MicroblogsEntry> getMicroblogsEntries(
-		long companyId, long creatorClassNameId, long creatorClassPK, int type,
-		int start, int end) {
-
-		return microblogsEntryPersistence.findByC_CCNI_CCPK_T(
-			companyId, creatorClassNameId, creatorClassPK, type, start, end);
-	}
-
-	@Override
-	public List<MicroblogsEntry> getMicroblogsEntries(
-		long companyId, long creatorClassNameId, long creatorClassPK,
-		String assetTagName, boolean andOperator, int start, int end) {
-
-		return microblogsEntryFinder.findByC_CCNI_CCPK_ATN(
-			companyId, creatorClassNameId, creatorClassPK, assetTagName,
-			andOperator, start, end);
-	}
-
-	@Override
-	public int getMicroblogsEntriesCount(
-		long companyId, long creatorClassNameId, long creatorClassPK) {
-
-		return microblogsEntryPersistence.countByC_CCNI_CCPK(
-			companyId, creatorClassNameId, creatorClassPK);
-	}
-
-	@Override
-	public int getMicroblogsEntriesCount(
-		long companyId, long creatorClassNameId, long creatorClassPK,
-		int type) {
-
-		return microblogsEntryPersistence.countByC_CCNI_CCPK_T(
-			companyId, creatorClassNameId, creatorClassPK, type);
-	}
-
-	@Override
-	public int getMicroblogsEntriesCount(
-		long companyId, long creatorClassNameId, long creatorClassPK,
-		String assetTagName, boolean andOperator) {
-
-		return microblogsEntryFinder.countByC_CCNI_CCPK_ATN(
-			companyId, creatorClassNameId, creatorClassPK, assetTagName,
-			andOperator);
-	}
-
-	@Override
-	public int getMicroblogsEntriesCount(
-		long companyId, long creatorClassNameId, String assetTagName) {
-
-		return microblogsEntryFinder.countByC_CCNI_ATN(
-			companyId, creatorClassNameId, assetTagName);
-	}
-
-	@Override
 	public MicroblogsEntry getMicroblogsEntry(long microblogsEntryId)
 		throws PortalException {
 
@@ -408,11 +250,6 @@ public class MicroblogsEntryLocalServiceImpl
 	@Override
 	public int getUserMicroblogsEntriesCount(long userId) {
 		return microblogsEntryPersistence.countByUserId(userId);
-	}
-
-	@Override
-	public int getUserMicroblogsEntriesCount(long userId, int type) {
-		return microblogsEntryPersistence.countByU_T(userId, type);
 	}
 
 	@Override
@@ -717,20 +554,22 @@ public class MicroblogsEntryLocalServiceImpl
 						microblogsEntry, receiverUserIds.get(j),
 						UserNotificationDeliveryConstants.TYPE_WEBSITE);
 
-					if (notificationType !=
+					if (notificationType ==
 							MicroblogsEntryConstants.
 								NOTIFICATION_TYPE_UNKNOWN) {
 
-						notificationEventJSONObject.put(
-							"notificationType", notificationType);
-
-						_userNotificationEventLocalService.
-							sendUserNotificationEvents(
-								receiverUserIds.get(j),
-								MicroblogsPortletKeys.MICROBLOGS,
-								UserNotificationDeliveryConstants.TYPE_WEBSITE,
-								notificationEventJSONObject);
+						continue;
 					}
+
+					notificationEventJSONObject.put(
+						"notificationType", notificationType);
+
+					_userNotificationEventLocalService.
+						sendUserNotificationEvents(
+							receiverUserIds.get(j),
+							MicroblogsPortletKeys.MICROBLOGS,
+							UserNotificationDeliveryConstants.TYPE_WEBSITE,
+							notificationEventJSONObject);
 				}
 			}
 		}

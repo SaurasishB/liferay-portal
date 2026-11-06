@@ -25,6 +25,7 @@ import com.liferay.gradle.plugins.defaults.internal.JSDocDefaultsPlugin;
 import com.liferay.gradle.plugins.defaults.internal.JaCoCoPlugin;
 import com.liferay.gradle.plugins.defaults.internal.LiferayRelengPlugin;
 import com.liferay.gradle.plugins.defaults.internal.PublishPluginDefaultsPlugin;
+import com.liferay.gradle.plugins.defaults.internal.SchemaManifestBuilderPlugin;
 import com.liferay.gradle.plugins.defaults.internal.SpotBugsDefaultsPlugin;
 import com.liferay.gradle.plugins.defaults.internal.WhipDefaultsPlugin;
 import com.liferay.gradle.plugins.defaults.internal.util.BackupFilesBuildAdapter;
@@ -209,6 +210,7 @@ import org.gradle.api.tasks.javadoc.Javadoc;
 import org.gradle.api.tasks.testing.JUnitXmlReport;
 import org.gradle.api.tasks.testing.Test;
 import org.gradle.api.tasks.testing.TestTaskReports;
+import org.gradle.api.tasks.util.PatternFilterable;
 import org.gradle.execution.ProjectConfigurer;
 import org.gradle.external.javadoc.CoreJavadocOptions;
 import org.gradle.external.javadoc.StandardJavadocDocletOptions;
@@ -345,6 +347,16 @@ public class LiferayOSGiDefaultsPlugin implements Plugin<Project> {
 		_applyConfigScripts(project);
 
 		_addDependenciesPmd(project);
+
+		if (_hasUpgradeStepRegistrator(project)) {
+			SchemaManifestBuilderPlugin.INSTANCE.apply(project);
+
+			_configureLocalPortalTool(
+				project, portalRootDir,
+				SchemaManifestBuilderPlugin.
+					SCHEMA_MANIFEST_BUILDER_CONFIGURATION_NAME,
+				_SCHEMA_MANIFEST_BUILDER_PORTAL_TOOL_NAME);
+		}
 
 		if (testProject || _hasTests(project)) {
 			GradleUtil.applyPlugin(project, WhipPlugin.class);
@@ -1714,9 +1726,11 @@ public class LiferayOSGiDefaultsPlugin implements Plugin<Project> {
 			ProjectInternal dependencyProject =
 				(ProjectInternal)project.findProject(value);
 
-			if (dependencyProject != null) {
-				projectConfigurer.configure(dependencyProject);
+			if (dependencyProject == null) {
+				continue;
 			}
+
+			projectConfigurer.configure(dependencyProject);
 		}
 
 		// Package versions
@@ -2642,11 +2656,13 @@ public class LiferayOSGiDefaultsPlugin implements Plugin<Project> {
 						File archetypeResourcesDir = new File(
 							sourceFolder.getDir(), "archetype-resources");
 
-						if (archetypeResourcesDir.isDirectory()) {
-							List<String> excludes = sourceFolder.getExcludes();
-
-							excludes.add("**/*.java");
+						if (!archetypeResourcesDir.isDirectory()) {
+							continue;
 						}
+
+						List<String> excludes = sourceFolder.getExcludes();
+
+						excludes.add("**/*.java");
 					}
 				}
 
@@ -2753,6 +2769,8 @@ public class LiferayOSGiDefaultsPlugin implements Plugin<Project> {
 			int length = portalToolName.length();
 
 			String taskNameSuffix = portalToolName.substring(25, length - 8);
+
+			taskNameSuffix = taskNameSuffix.replace(".", "");
 
 			String buildTaskName = "build" + taskNameSuffix;
 
@@ -3174,12 +3192,14 @@ public class LiferayOSGiDefaultsPlugin implements Plugin<Project> {
 
 					String key = (String)entry.getKey();
 
-					if (Objects.equals(
+					if (!Objects.equals(
 							entry.getValue(),
 							otherProperties.getProperty(key))) {
 
-						iterator.remove();
+						continue;
 					}
+
+					iterator.remove();
 				}
 			}
 
@@ -3374,11 +3394,13 @@ public class LiferayOSGiDefaultsPlugin implements Plugin<Project> {
 						dependencyProject = project.findProject(
 							path.substring(0, path.length() - 3) + "impl");
 
-						if (dependencyProject != null) {
-							deployTask.finalizedBy(
-								dependencyProject.getPath() + ':' +
-									LiferayBasePlugin.DEPLOY_TASK_NAME);
+						if (dependencyProject == null) {
+							continue;
 						}
+
+						deployTask.finalizedBy(
+							dependencyProject.getPath() + ':' +
+								LiferayBasePlugin.DEPLOY_TASK_NAME);
 					}
 				}
 
@@ -3778,11 +3800,12 @@ public class LiferayOSGiDefaultsPlugin implements Plugin<Project> {
 
 			File file = project.file(fileName);
 
-			if (file.exists()) {
-				replaceRegexTask.match(
-					GradlePluginsDefaultsUtil.jsonVersionPattern.pattern(),
-					file);
+			if (!file.exists()) {
+				continue;
 			}
+
+			replaceRegexTask.match(
+				GradlePluginsDefaultsUtil.jsonVersionPattern.pattern(), file);
 		}
 	}
 
@@ -4662,6 +4685,26 @@ public class LiferayOSGiDefaultsPlugin implements Plugin<Project> {
 		return !sourceDirectorySet.isEmpty();
 	}
 
+	private boolean _hasUpgradeStepRegistrator(Project project) {
+		SourceSet sourceSet = GradleUtil.getSourceSet(
+			project, SourceSet.MAIN_SOURCE_SET_NAME);
+
+		SourceDirectorySet sourceDirectorySet = sourceSet.getJava();
+
+		FileTree fileTree = sourceDirectorySet.matching(
+			new Action<PatternFilterable>() {
+
+				@Override
+				public void execute(PatternFilterable patternFilterable) {
+					patternFilterable.include(
+						"**/upgrade/registry/*UpgradeStepRegistrator.java");
+				}
+
+			});
+
+		return !fileTree.isEmpty();
+	}
+
 	private boolean _isPublishing(Project project) {
 		Gradle gradle = project.getGradle();
 
@@ -4883,9 +4926,11 @@ public class LiferayOSGiDefaultsPlugin implements Plugin<Project> {
 				Version version = Version.parseVersion(
 					versions.getProperty(key));
 
-				if (releaseVersion.compareTo(version) > 0) {
-					versions.setProperty(key, releaseVersion.toString());
+				if (releaseVersion.compareTo(version) <= 0) {
+					continue;
 				}
+
+				versions.setProperty(key, releaseVersion.toString());
 			}
 
 			_saveVersions(
@@ -4932,6 +4977,9 @@ public class LiferayOSGiDefaultsPlugin implements Plugin<Project> {
 
 	private static final String _REST_BUILDER_PORTAL_TOOL_NAME =
 		"com.liferay.portal.tools.rest.builder";
+
+	private static final String _SCHEMA_MANIFEST_BUILDER_PORTAL_TOOL_NAME =
+		"com.liferay.portal.tools.schema.manifest.builder";
 
 	private static final String _SERVICE_BUILDER_PORTAL_TOOL_NAME =
 		"com.liferay.portal.tools.service.builder";

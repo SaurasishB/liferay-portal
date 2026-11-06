@@ -24,13 +24,9 @@ import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.model.impl.PortletPreferencesImpl;
 import com.liferay.util.dao.orm.CustomSQLUtil;
 
-import java.io.Serializable;
-
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * @author Brian Wing Shun Chan
@@ -137,9 +133,11 @@ public class PortletPreferencesFinderImpl
 			while (iterator.hasNext()) {
 				Long l = iterator.next();
 
-				if (l != null) {
-					count += l.intValue();
+				if (l == null) {
+					continue;
 				}
+
+				count += l.intValue();
 			}
 
 			return count;
@@ -150,17 +148,6 @@ public class PortletPreferencesFinderImpl
 		finally {
 			closeSession(session);
 		}
-	}
-
-	/**
-	 * @deprecated As of Cavanaugh (7.4.x), with no direct replacement
-	 */
-	@Deprecated
-	@Override
-	public Map<Serializable, PortletPreferences> fetchByPrimaryKeys(
-		Set<Serializable> primaryKeys) {
-
-		return PortletPreferencesUtil.fetchByPrimaryKeys(primaryKeys);
 	}
 
 	@Override

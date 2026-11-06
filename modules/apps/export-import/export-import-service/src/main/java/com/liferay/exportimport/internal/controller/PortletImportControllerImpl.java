@@ -16,6 +16,8 @@ import com.liferay.exportimport.changeset.constants.ChangesetPortletKeys;
 import com.liferay.exportimport.configuration.ExportImportServiceConfiguration;
 import com.liferay.exportimport.constants.ExportImportConstants;
 import com.liferay.exportimport.controller.PortletImportController;
+import com.liferay.exportimport.internal.lar.PortletDataContextThreadLocal;
+import com.liferay.exportimport.internal.lar.PortletLayoutListenerHelper;
 import com.liferay.exportimport.kernel.controller.ExportImportController;
 import com.liferay.exportimport.kernel.exception.ExportImportDocumentException;
 import com.liferay.exportimport.kernel.exception.LARFileException;
@@ -50,6 +52,7 @@ import com.liferay.exportimport.portlet.element.handler.PortletElementHandlerFac
 import com.liferay.exportimport.portlet.preferences.processor.Capability;
 import com.liferay.exportimport.portlet.preferences.processor.ExportImportPortletPreferencesProcessor;
 import com.liferay.exportimport.portlet.preferences.processor.ExportImportPortletPreferencesProcessorRegistryUtil;
+import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
@@ -620,20 +623,28 @@ public class PortletImportControllerImpl implements PortletImportController {
 								PortletIdCodec.decodePortletName(curPortletId));
 
 				if (exportImportPortletPreferencesProcessor != null) {
-					List<Capability> importCapabilities =
-						exportImportPortletPreferencesProcessor.
-							getImportCapabilities();
+					try (SafeCloseable safeCloseable =
+							PortletDataContextThreadLocal.
+								setPortletDataContextWithSafeCloseable(
+									portletDataContext)) {
 
-					if (ListUtil.isNotEmpty(importCapabilities)) {
-						for (Capability importCapability : importCapabilities) {
-							importCapability.process(
-								portletDataContext, jxPortletPreferences);
+						List<Capability> importCapabilities =
+							exportImportPortletPreferencesProcessor.
+								getImportCapabilities();
+
+						if (ListUtil.isNotEmpty(importCapabilities)) {
+							for (Capability importCapability :
+									importCapabilities) {
+
+								importCapability.process(
+									portletDataContext, jxPortletPreferences);
+							}
 						}
-					}
 
-					exportImportPortletPreferencesProcessor.
-						processImportPortletPreferences(
-							portletDataContext, jxPortletPreferences);
+						exportImportPortletPreferencesProcessor.
+							processImportPortletPreferences(
+								portletDataContext, jxPortletPreferences);
+					}
 				}
 			}
 			finally {
@@ -803,12 +814,14 @@ public class PortletImportControllerImpl implements PortletImportController {
 
 			Lock lock = (Lock)portletDataContext.getZipEntryAsObject(path);
 
-			if (lock != null) {
-				String className = assetElement.attributeValue("class-name");
-				String key = assetElement.attributeValue("key");
-
-				portletDataContext.addLocks(className, key, lock);
+			if (lock == null) {
+				continue;
 			}
+
+			String className = assetElement.attributeValue("class-name");
+			String key = assetElement.attributeValue("key");
+
+			portletDataContext.addLocks(className, key, lock);
 		}
 	}
 
@@ -1369,6 +1382,16 @@ public class PortletImportControllerImpl implements PortletImportController {
 				portletDataContext, portletDataContext.getGroupId());
 		}
 
+		// Portlet layout listener
+
+		PortletLayoutListenerHelper portletLayoutListenerHelper =
+			new PortletLayoutListenerHelper(
+				_layoutLocalService, _portletLocalService,
+				_portletPreferencesLocalService);
+
+		portletLayoutListenerHelper.setUpPortlet(
+			layout, portletDataContext.getPortletId(), userId);
+
 		// Portlet permissions
 
 		if (importPermissions) {
@@ -1512,13 +1535,15 @@ public class PortletImportControllerImpl implements PortletImportController {
 
 			String scopeType = portletDataContext.getScopeType();
 
-			if (!ArrayUtil.contains(dataPortletPreferences, name) ||
-				(Validator.isNull(portletDataContext.getScopeLayoutUuid()) &&
-				 scopeType.equals("company"))) {
+			if (ArrayUtil.contains(dataPortletPreferences, name) &&
+				(Validator.isNotNull(portletDataContext.getScopeLayoutUuid()) ||
+				 !scopeType.equals("company"))) {
 
-				jxPortletPreferences.setValues(
-					name, newJXPortletPreferences.getValues(name, null));
+				continue;
 			}
+
+			jxPortletPreferences.setValues(
+				name, newJXPortletPreferences.getValues(name, null));
 		}
 
 		_portletPreferencesLocalService.updatePreferences(

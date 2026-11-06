@@ -353,6 +353,20 @@ public interface LayoutModel
 	public void setClassPK(long classPK);
 
 	/**
+	 * Returns the launch set ID of this layout.
+	 *
+	 * @return the launch set ID of this layout
+	 */
+	public long getLaunchSetId();
+
+	/**
+	 * Sets the launch set ID of this layout.
+	 *
+	 * @param launchSetId the launch set ID of this layout
+	 */
+	public void setLaunchSetId(long launchSetId);
+
+	/**
 	 * Returns the name of this layout.
 	 *
 	 * @return the name of this layout
@@ -1089,6 +1103,22 @@ public interface LayoutModel
 		String masterLayoutPageTemplateEntryERC);
 
 	/**
+	 * Returns the master layout page template entry scope erc of this layout.
+	 *
+	 * @return the master layout page template entry scope erc of this layout
+	 */
+	@AutoEscape
+	public String getMasterLayoutPageTemplateEntryScopeERC();
+
+	/**
+	 * Sets the master layout page template entry scope erc of this layout.
+	 *
+	 * @param masterLayoutPageTemplateEntryScopeERC the master layout page template entry scope erc of this layout
+	 */
+	public void setMasterLayoutPageTemplateEntryScopeERC(
+		String masterLayoutPageTemplateEntryScopeERC);
+
+	/**
 	 * Returns the portlet layout page template entry erc of this layout.
 	 *
 	 * @return the portlet layout page template entry erc of this layout
@@ -1354,4 +1384,4 @@ public interface LayoutModel
 	}
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1420689731
+// LIFERAY-SERVICE-BUILDER-HASH:-392741640

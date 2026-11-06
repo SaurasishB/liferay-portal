@@ -1334,16 +1334,17 @@ public class WebServerServlet extends HttpServlet {
 		List<Group> groups = WebDAVUtil.getGroups(user);
 
 		for (Group group : groups) {
-			if (_isDirectoryIndexingEnabled(group)) {
-				String name = HttpComponentsUtil.fixPath(
-					group.getFriendlyURL());
-
-				WebServerEntry webServerEntry = new WebServerEntry(
-					path, name + StringPool.SLASH, null, null,
-					group.getDescription(), 0);
-
-				webServerEntries.add(webServerEntry);
+			if (!_isDirectoryIndexingEnabled(group)) {
+				continue;
 			}
+
+			String name = HttpComponentsUtil.fixPath(group.getFriendlyURL());
+
+			WebServerEntry webServerEntry = new WebServerEntry(
+				path, name + StringPool.SLASH, null, null,
+				group.getDescription(), 0);
+
+			webServerEntries.add(webServerEntry);
 		}
 
 		sendHTML(httpServletResponse, path, webServerEntries);
@@ -1585,6 +1586,10 @@ public class WebServerServlet extends HttpServlet {
 		String path =
 			httpServletRequest.getContextPath() +
 				httpServletRequest.getServletPath();
+
+		if (requestURI.length() <= path.length()) {
+			return StringPool.BLANK;
+		}
 
 		return requestURI.substring(path.length() + 1);
 	}

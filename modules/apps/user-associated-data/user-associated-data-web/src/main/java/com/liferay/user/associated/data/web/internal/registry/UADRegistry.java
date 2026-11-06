@@ -23,7 +23,6 @@ import java.util.Set;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.FrameworkUtil;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -151,14 +150,11 @@ public class UADRegistry {
 
 		return ServiceTrackerMapFactory.openMultiValueMap(
 			bundleContext, clazz, null,
-			ServiceReferenceMapperFactory.create(
-				bundleContext,
-				(uadDisplay, emitter) -> {
-					Bundle bundle = FrameworkUtil.getBundle(
-						uadDisplay.getClass());
+			(serviceReference, emitter) -> {
+				Bundle bundle = serviceReference.getBundle();
 
-					emitter.emit(bundle.getSymbolicName());
-				}));
+				emitter.emit(bundle.getSymbolicName());
+			});
 	}
 
 	private Collection<UADAnonymizer<?>> _getNonreviewableUADAnonymizers(
@@ -175,9 +171,11 @@ public class UADRegistry {
 			uadAnonymizers);
 
 		for (UADAnonymizer<?> uadAnonymizer : uadAnonymizers) {
-			if (uadDisplayTypeKeys.contains(uadAnonymizer.getTypeKey())) {
-				nonreviewableUADAnonymizers.remove(uadAnonymizer);
+			if (!uadDisplayTypeKeys.contains(uadAnonymizer.getTypeKey())) {
+				continue;
 			}
+
+			nonreviewableUADAnonymizers.remove(uadAnonymizer);
 		}
 
 		return nonreviewableUADAnonymizers;
@@ -201,14 +199,11 @@ public class UADRegistry {
 
 		return ServiceTrackerMapFactory.openSingleValueMap(
 			bundleContext, clazz, null,
-			ServiceReferenceMapperFactory.create(
-				bundleContext,
-				(uadHierachyDeclaration, emitter) -> {
-					Bundle bundle = FrameworkUtil.getBundle(
-						uadHierachyDeclaration.getClass());
+			(serviceReference, emitter) -> {
+				Bundle bundle = serviceReference.getBundle();
 
-					emitter.emit(bundle.getSymbolicName());
-				}));
+				emitter.emit(bundle.getSymbolicName());
+			});
 	}
 
 	private UADHierarchyDeclaration _getUADHierarchyDeclaration(

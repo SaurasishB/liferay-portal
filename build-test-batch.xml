@@ -980,6 +980,10 @@ mariadb.executable=${mariadb.executable}]]></echo>
 					}
 
 					public List getTestUtilModules() {
+						String standaloneBuildProfile = project.getProperty("env.TEST_PORTAL_RELEASE_BUILD_PROFILE");
+
+						boolean standaloneRelease = StringUtils.isNotEmpty(standaloneBuildProfile);
+
 						List appBndFiles = findFiles(new File(projectDir, "modules/apps"), ".+/app.bnd");
 
 						File dxpAppsDir = new File(projectDir, "modules/dxp/apps");
@@ -999,11 +1003,12 @@ mariadb.executable=${mariadb.executable}]]></echo>
 						for (File appBndFile : appBndFiles) {
 							String fileContent = new String(Files.readAllBytes(appBndFile.toPath()));
 
-							if (fileContent.contains("Liferay-Releng-Bundle: true")) {
+							if (standaloneRelease || fileContent.contains("Liferay-Releng-Bundle: true")) {
 								releasedAppDirs.add(appBndFile.getParentFile());
 							}
 						}
 
+						boolean standaloneTestUtilModuleFound = false;
 						List testUtilModules = new ArrayList();
 
 						for (File releasedAppDir : releasedAppDirs) {
@@ -1011,6 +1016,18 @@ mariadb.executable=${mariadb.executable}]]></echo>
 
 							for (File testUtilModuleBuildGradleFile : testUtilModuleBuildGradleFiles) {
 								String testUtilModule = testUtilModuleBuildGradleFile.getParent();
+
+								if (standaloneRelease) {
+									File standaloneBuildProfileFile = new File(testUtilModule, ".lfrbuild-" + standaloneBuildProfile);
+
+									if (!standaloneBuildProfileFile.exists()) {
+										System.out.println("Ignoring " + testUtilModule.replace(projectDir + "/", ""));
+
+										continue;
+									}
+
+									standaloneTestUtilModuleFound = true;
+								}
 
 								File skipTestIntegrationCheckFile = new File(testUtilModule, ".lfrbuild-ci-skip-test-integration-check");
 
@@ -1036,6 +1053,10 @@ mariadb.executable=${mariadb.executable}]]></echo>
 
 								testUtilModules.add(testUtilModule);
 							}
+						}
+
+						if (standaloneRelease && !standaloneTestUtilModuleFound) {
+							throw new RuntimeException("No test util module is marked .lfrbuild-" + standaloneBuildProfile);
 						}
 
 						return testUtilModules;
@@ -3158,7 +3179,6 @@ ${poshi.runner.testsuite.testcase.name}</echo>
 								<matches pattern="(file|https?)://" string="${test.portal.bundle.war.url}" />
 								<matches pattern="(file|https?)://" string="${test.portal.bundle.zip.url}" />
 							</or>
-							<matches pattern="(file|https?)://" string="${test.sql.zip.url}" />
 							<contains string="${env.JOB_NAME}" substring="-release" />
 						</and>
 						<then>
@@ -3202,7 +3222,10 @@ ${poshi.runner.testsuite.testcase.name}</echo>
 							/>
 
 							<parallel failonany="true" threadcount="${parallel.thread.count}">
-								<ant dir="portal-test" inheritAll="false" target="jar" />
+								<ant dir="portal-test" inheritAll="false" target="jar">
+									<property name="baseline.jar.report.level" value="off" />
+								</ant>
+
 								<ant dir="support-tomcat" inheritAll="false" target="compile" />
 								<ant dir="util-bridges" inheritAll="false" target="compile" />
 
@@ -3836,7 +3859,6 @@ ${poshi.runner.testsuite.testcase.name}</echo>
 								<matches pattern="(file|https?)://" string="${test.portal.bundle.war.url}" />
 								<matches pattern="(file|https?)://" string="${test.portal.bundle.zip.url}" />
 							</or>
-							<matches pattern="(file|https?)://" string="${test.sql.zip.url}" />
 							<contains string="${env.JOB_NAME}" substring="-release" />
 						</and>
 						<then>
@@ -4714,38 +4736,55 @@ ${poshi.runner.testsuite.testcase.name}</echo>
 		<attribute default="" name="workspace.license.xml.url" />
 
 		<sequential>
-			<local name="workspace.dir" />
-			<local name="workspace.name" />
-			<local name="workspace.path" />
+			<fail message="Unable to select tests. &quot;test.task.group&quot; is empty.">
+				<condition>
+					<equals arg1="@{test.task.group}" arg2="" trim="true" />
+				</condition>
+			</fail>
 
-			<propertycopy from="workspaces.names[workspaces-integration][${env.CI_TEST_SUITE}]" name="workspace.name" silent="true" />
+			<for delimiter=";" list="@{test.task.group}" param="test.task" trim="true">
+				<sequential>
+					<local name="workspace.bundle.url" />
+					<local name="workspace.dir" />
+					<local name="workspace.path" />
 
-			<fail message="Unable to find a workspace for the &quot;workspaces-integration&quot; batch in the &quot;${env.CI_TEST_SUITE}&quot; suite." unless="workspace.name" />
+					<propertyregex
+						input="@{test.task}"
+						property="workspace.path"
+						regexp="^([^:\[]+):.*"
+						select="\1"
+					/>
 
-			<condition else="workspaces/${workspace.name}" property="workspace.path" value="${liferay.portal.private.dir}/workspaces/${workspace.name}">
-				<available file="${liferay.portal.private.dir}/workspaces/${workspace.name}" />
-			</condition>
+					<fail message="Unable to find a workspace in the test task &quot;@{test.task}&quot;" unless="workspace.path" />
 
-			<property location="${workspace.path}" name="workspace.dir" />
+					<property location="${workspace.path}" name="workspace.dir" />
 
-			<download-gradle-wrapper-binary workspace.dir="${workspace.dir}" />
+					<echo></echo>
+					<echo>##</echo>
+					<echo>## ${workspace.path}</echo>
+					<echo>##</echo>
+					<echo></echo>
 
-			<get-workspace-bundle-url mirror.dir="@{workspace.bundle.mirror.dir}" workspace.dir="${workspace.dir}" />
+					<download-gradle-wrapper-binary workspace.dir="${workspace.dir}" />
 
-			<mkdir dir="${workspace.dir}/build" />
+					<get-workspace-bundle-url mirror.dir="@{workspace.bundle.mirror.dir}" workspace.dir="${workspace.dir}" />
 
-			<mirrors-get
-				dest="${workspace.dir}/build/license.xml"
-				src="@{workspace.license.xml.url}"
-			/>
+					<mkdir dir="${workspace.dir}/build" />
 
-			<local name="gradle.args" />
+					<mirrors-get
+						dest="${workspace.dir}/build/license.xml"
+						src="@{workspace.license.xml.url}"
+					/>
 
-			<property name="gradle.args" value="--continue -Pintegration.test.target=bundle" />
+					<local name="gradle.args" />
 
-			<var if:set="workspace.bundle.url" name="gradle.args" value="${gradle.args} -Pliferay.workspace.bundle.url=${workspace.bundle.url}" />
+					<property name="gradle.args" value="--continue -Pintegration.test.target=bundle" />
 
-			<run-workspaces-junit-test gradle.target="gradle-execute-workspaces-integration" test.junit.args="${gradle.args}" test.task.group="@{test.task.group}" />
+					<var if:set="workspace.bundle.url" name="gradle.args" value="${gradle.args} -Pliferay.workspace.bundle.url=${workspace.bundle.url}" />
+
+					<run-workspaces-junit-test gradle.target="gradle-execute-workspaces-integration" test.junit.args="${gradle.args}" test.task.group="@{test.task}" />
+				</sequential>
+			</for>
 		</sequential>
 	</macrodef>
 
@@ -6043,6 +6082,10 @@ information. Make sure to commit in all format-javadoc results.
 		<run-functional-test app.server.type="tomcat" database.type="mysql" database.version="8.4" test.portal.log.assert="true" />
 	</target>
 
+	<target name="functional-debian13-tomcat101-mysql84">
+		<run-functional-test app.server.type="tomcat" database.type="mysql" database.version="8.4" test.portal.log.assert="true" />
+	</target>
+
 	<target name="functional-fedora35-tomcat101-mysql">
 		<run-functional-test app.server.type="tomcat" database.type="mysql" test.portal.log.assert="true" />
 	</target>
@@ -6251,24 +6294,24 @@ information. Make sure to commit in all format-javadoc results.
 		/>
 	</target>
 
-	<target name="functional-jboss80-mysql">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-jboss81-mysql">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="mysql" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="mysql" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-jboss80-mysql84">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-jboss81-mysql84">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="mysql" database.version="8.4" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="mysql" database.version="8.4" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-jboss80-mysql84-jdk21_zulu">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-jboss81-mysql84-jdk21_zulu">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
 		<run-functional-test
 			app.server.type="jboss"
-			app.server.version="8.0.0"
+			app.server.version="8.1.0"
 			database.type="mysql"
 			database.version="8.4"
 			test.build.fix.pack.zip.url="${test.build.fix.pack.zip.url}"
@@ -6289,24 +6332,24 @@ information. Make sure to commit in all format-javadoc results.
 		/>
 	</target>
 
-	<target name="functional-jboss80-postgresql">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-jboss81-postgresql">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="postgresql" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="postgresql" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-jboss80-postgresql155">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-jboss81-postgresql155">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="postgresql" database.version="15.5" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="postgresql" database.version="15.5" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-jboss80-postgresql155-jdk21_zulu">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-jboss81-postgresql155-jdk21_zulu">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
 		<run-functional-test
 			app.server.type="jboss"
-			app.server.version="8.0.0"
+			app.server.version="8.1.0"
 			database.type="postgresql"
 			database.version="15.5"
 			test.build.fix.pack.zip.url="${test.build.fix.pack.zip.url}"
@@ -6523,6 +6566,10 @@ information. Make sure to commit in all format-javadoc results.
 		<run-functional-test app.server.type="tomcat" database.type="mysql" database.version="8.4" test.portal.log.assert="true" />
 	</target>
 
+	<target name="functional-smoke-debian13-tomcat101-mysql84">
+		<run-functional-test app.server.type="tomcat" database.type="mysql" database.version="8.4" test.portal.log.assert="true" />
+	</target>
+
 	<target name="functional-smoke-jboss-mysql">
 		<run-functional-test
 			app.server.type="jboss"
@@ -6711,64 +6758,64 @@ information. Make sure to commit in all format-javadoc results.
 		/>
 	</target>
 
-	<target name="functional-smoke-jboss80-mysql">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-smoke-jboss81-mysql">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="mysql" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="mysql" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-smoke-jboss80-mysql-jdk21_zulu">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-smoke-jboss81-mysql-jdk21_zulu">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="mysql" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="mysql" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-smoke-jboss80-mysql80">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-smoke-jboss81-mysql80">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="mysql" database.version="8.0" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="mysql" database.version="8.0" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-smoke-jboss80-mysql80-jdk21_zulu">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-smoke-jboss81-mysql80-jdk21_zulu">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="mysql" database.version="8.0" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="mysql" database.version="8.0" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-smoke-jboss80-mysql84">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-smoke-jboss81-mysql84">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="mysql" database.version="8.4" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="mysql" database.version="8.4" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-smoke-jboss80-mysql84-jdk21_zulu">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-smoke-jboss81-mysql84-jdk21_zulu">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="mysql" database.version="8.4" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="mysql" database.version="8.4" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-smoke-jboss80-postgresql">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-smoke-jboss81-postgresql">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="postgresql" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="postgresql" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-smoke-jboss80-postgresql-jdk21_zulu">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-smoke-jboss81-postgresql-jdk21_zulu">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="postgresql" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="postgresql" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-smoke-jboss80-postgresql155">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-smoke-jboss81-postgresql155">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="postgresql" database.version="15.5" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="postgresql" database.version="15.5" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-smoke-jboss80-postgresql155-jdk21_zulu">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-smoke-jboss81-postgresql155-jdk21_zulu">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="postgresql" database.version="15.5" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="postgresql" database.version="15.5" test.portal.log.assert="true" />
 	</target>
 
 	<target name="functional-smoke-redhat10-tomcat101-postgresql155">
@@ -7425,66 +7472,66 @@ information. Make sure to commit in all format-javadoc results.
 		/>
 	</target>
 
-	<target name="functional-smoke-wildfly300-mariadb">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-smoke-wildfly410-mariadb">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="mariadb" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="mariadb" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-smoke-wildfly300-mariadb-jdk21_zulu">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-smoke-wildfly410-mariadb-jdk21_zulu">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="mariadb" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="mariadb" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-smoke-wildfly300-mariadb104">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-smoke-wildfly410-mariadb104">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="mariadb" database.version="10.4" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="mariadb" database.version="10.4" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-smoke-wildfly300-mariadb106">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-smoke-wildfly410-mariadb106">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="mariadb" database.version="10.6" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="mariadb" database.version="10.6" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-smoke-wildfly300-mariadb106-jdk21_zulu">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-smoke-wildfly410-mariadb106-jdk21_zulu">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="mariadb" database.version="10.6" test.portal.log.assert="true" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="mariadb" database.version="10.6" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-smoke-wildfly300-mysql">
-		<antcall target="functional-wildfly300-mysql" />
+	<target name="functional-smoke-wildfly410-mysql">
+		<antcall target="functional-wildfly410-mysql" />
 	</target>
 
-	<target name="functional-smoke-wildfly300-mysql-jdk21_zulu">
-		<antcall target="functional-wildfly300-mysql-jdk21_zulu" />
+	<target name="functional-smoke-wildfly410-mysql-jdk21_zulu">
+		<antcall target="functional-wildfly410-mysql-jdk21_zulu" />
 	</target>
 
-	<target name="functional-smoke-wildfly300-mysql80">
-		<antcall target="functional-wildfly300-mysql80" />
+	<target name="functional-smoke-wildfly410-mysql80">
+		<antcall target="functional-wildfly410-mysql80" />
 	</target>
 
-	<target name="functional-smoke-wildfly300-mysql80-jdk21_zulu">
-		<antcall target="functional-wildfly300-mysql80-jdk21_zulu" />
+	<target name="functional-smoke-wildfly410-mysql80-jdk21_zulu">
+		<antcall target="functional-wildfly410-mysql80-jdk21_zulu" />
 	</target>
 
-	<target name="functional-smoke-wildfly300-mysql84">
-		<antcall target="functional-wildfly300-mysql84" />
+	<target name="functional-smoke-wildfly410-mysql84">
+		<antcall target="functional-wildfly410-mysql84" />
 	</target>
 
-	<target name="functional-smoke-wildfly300-mysql84-jdk21_zulu">
-		<antcall target="functional-wildfly300-mysql84-jdk21_zulu" />
+	<target name="functional-smoke-wildfly410-mysql84-jdk21_zulu">
+		<antcall target="functional-wildfly410-mysql84-jdk21_zulu" />
 	</target>
 
-	<target name="functional-smoke-wildfly300-postgresql-jdk21_zulu">
-		<antcall target="functional-wildfly300-postgresql-jdk21_zulu" />
+	<target name="functional-smoke-wildfly410-postgresql-jdk21_zulu">
+		<antcall target="functional-wildfly410-postgresql-jdk21_zulu" />
 	</target>
 
-	<target name="functional-smoke-wildfly300-postgresql155-jdk21_zulu">
-		<antcall target="functional-wildfly300-postgresql155-jdk21_zulu" />
+	<target name="functional-smoke-wildfly410-postgresql155-jdk21_zulu">
+		<antcall target="functional-wildfly410-postgresql155-jdk21_zulu" />
 	</target>
 
 	<target name="functional-suse15-tomcat101-mysql">
@@ -7985,28 +8032,28 @@ information. Make sure to commit in all format-javadoc results.
 		<run-functional-test app.server.type="tomcat" database.type="postgresql" database.version="15.5" test.portal.log.assert="true" />
 	</target>
 
-	<target name="functional-upgrade-jboss80-mysql">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-upgrade-jboss81-mysql">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="mysql" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="mysql" />
 	</target>
 
-	<target name="functional-upgrade-jboss80-mysql84">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-upgrade-jboss81-mysql84">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="mysql" database.version="8.4" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="mysql" database.version="8.4" />
 	</target>
 
-	<target name="functional-upgrade-jboss80-postgresql">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-upgrade-jboss81-postgresql">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="postgresql" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="postgresql" />
 	</target>
 
-	<target name="functional-upgrade-jboss80-postgresql155">
-		<set-app-server-version-number app.server.type="jboss" app.server.version="8.0.0" />
+	<target name="functional-upgrade-jboss81-postgresql155">
+		<set-app-server-version-number app.server.type="jboss" app.server.version="8.1.0" />
 
-		<run-functional-test app.server.type="jboss" app.server.version="8.0.0" database.type="postgresql" database.version="15.5" />
+		<run-functional-test app.server.type="jboss" app.server.version="8.1.0" database.type="postgresql" database.version="15.5" />
 	</target>
 
 	<target name="functional-upgrade-tomcat101-db2">
@@ -8165,10 +8212,10 @@ information. Make sure to commit in all format-javadoc results.
 		<run-functional-test app.server.type="weblogic" database.type="postgresql" database.version="16.3" />
 	</target>
 
-	<target name="functional-upgrade-wildfly300-mariadb">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-upgrade-wildfly410-mariadb">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="mariadb" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="mariadb" />
 	</target>
 
 	<target name="functional-weblogic151-mysql">
@@ -8490,82 +8537,82 @@ information. Make sure to commit in all format-javadoc results.
 		/>
 	</target>
 
-	<target name="functional-wildfly300-mariadb">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-wildfly410-mariadb">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="mariadb" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="mariadb" />
 	</target>
 
-	<target name="functional-wildfly300-mariadb104">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-wildfly410-mariadb104">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="mariadb" database.version="10.4" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="mariadb" database.version="10.4" />
 	</target>
 
-	<target name="functional-wildfly300-mariadb106">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-wildfly410-mariadb106">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="mariadb" database.version="10.6" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="mariadb" database.version="10.6" />
 	</target>
 
-	<target name="functional-wildfly300-mysql">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-wildfly410-mysql">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="mysql" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="mysql" />
 	</target>
 
-	<target name="functional-wildfly300-mysql-jdk21_zulu">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-wildfly410-mysql-jdk21_zulu">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="mysql" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="mysql" />
 	</target>
 
-	<target name="functional-wildfly300-mysql80">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-wildfly410-mysql80">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="mysql" database.version="8.0" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="mysql" database.version="8.0" />
 	</target>
 
-	<target name="functional-wildfly300-mysql80-jdk21_zulu">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-wildfly410-mysql80-jdk21_zulu">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="mysql" database.version="8.0" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="mysql" database.version="8.0" />
 	</target>
 
-	<target name="functional-wildfly300-mysql84">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-wildfly410-mysql84">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="mysql" database.version="8.4" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="mysql" database.version="8.4" />
 	</target>
 
-	<target name="functional-wildfly300-mysql84-jdk21_zulu">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-wildfly410-mysql84-jdk21_zulu">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="mysql" database.version="8.4" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="mysql" database.version="8.4" />
 	</target>
 
-	<target name="functional-wildfly300-postgresql">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-wildfly410-postgresql">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="postgresql" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="postgresql" />
 	</target>
 
-	<target name="functional-wildfly300-postgresql-jdk21_zulu">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-wildfly410-postgresql-jdk21_zulu">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="postgresql" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="postgresql" />
 	</target>
 
-	<target name="functional-wildfly300-postgresql155">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-wildfly410-postgresql155">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="postgresql" database.version="15.5" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="postgresql" database.version="15.5" />
 	</target>
 
-	<target name="functional-wildfly300-postgresql155-jdk21_zulu">
-		<set-app-server-version-number app.server.type="wildfly" app.server.version="30.0.0" />
+	<target name="functional-wildfly410-postgresql155-jdk21_zulu">
+		<set-app-server-version-number app.server.type="wildfly" app.server.version="41.0.1" />
 
-		<run-functional-test app.server.type="wildfly" app.server.version="30.0.0" database.type="postgresql" database.version="15.5" />
+		<run-functional-test app.server.type="wildfly" app.server.version="41.0.1" database.type="postgresql" database.version="15.5" />
 	</target>
 
 	<target name="functional-workspaces-mysql">
@@ -9381,6 +9428,14 @@ information. Make sure to commit in all format-javadoc results.
 		/>
 	</target>
 
+	<target name="modules-integration-db-partition-mysql80">
+		<run-modules-integration-test
+			database.partition.enabled="true"
+			database.type="mysql"
+			database.version="8.0"
+		/>
+	</target>
+
 	<target name="modules-integration-db-partition-mysql84">
 		<run-modules-integration-test
 			database.partition.enabled="true"
@@ -9904,7 +9959,7 @@ ${output.content}</echo>
 		<run-playwright-js-test database.type="postgresql" />
 	</target>
 
-	<target name="playwright-js-smoke-jboss80-postgresql155">
+	<target name="playwright-js-smoke-jboss81-postgresql155">
 		<run-playwright-js-test app.server.type="jboss" database.type="postgresql" />
 	</target>
 
@@ -9936,7 +9991,7 @@ ${output.content}</echo>
 		<run-playwright-js-test database.type="sqlserver" />
 	</target>
 
-	<target name="playwright-js-smoke-wildfly300-mariadb106">
+	<target name="playwright-js-smoke-wildfly410-mariadb106">
 		<run-playwright-js-test app.server.type="wildfly" database.type="mariadb" />
 	</target>
 
@@ -9985,10 +10040,6 @@ ${output.content}</echo>
 	</target>
 
 	<target name="playwright-js-upgrade-tomcat101-db2111">
-		<run-playwright-js-test database.type="db2" />
-	</target>
-
-	<target name="playwright-js-upgrade-tomcat101-db2115">
 		<run-playwright-js-test database.type="db2" />
 	</target>
 
@@ -10517,20 +10568,58 @@ ${output.content}</echo>
 				</beanshell>
 			</try>
 			<catch>
-				<echo>Unable to find cached source-formatter. Building from source.</echo>
+				<local name="source.formatter.released.source.match" />
+				<local name="source.formatter.released.source.match.failure" />
 
-				<antcall target="compile" />
+				<trycatch property="source.formatter.released.source.match.failure">
+					<try>
+						<beanshell>
+							<![CDATA[
+								import com.liferay.jenkins.results.parser.GitWorkingDirectory;
+								import com.liferay.jenkins.results.parser.GitWorkingDirectoryFactory;
+								import com.liferay.jenkins.results.parser.SourceFormatterReleaseUtil;
 
-				<antcall target="install-portal-snapshots" />
+								import java.io.File;
+
+								File baseDir = project.getBaseDir();
+
+								GitWorkingDirectory gitWorkingDirectory = GitWorkingDirectoryFactory.newGitWorkingDirectory(project.getProperty("liferay.portal.branch"), baseDir.getCanonicalPath(), "liferay-portal");
+
+								if (SourceFormatterReleaseUtil.isReleasedSourceMatch(gitWorkingDirectory, "HEAD")) {
+									project.setProperty("source.formatter.released.source.match", "true");
+								}
+							]]>
+						</beanshell>
+					</try>
+					<catch>
+						<echo>Unable to compare source-formatter with the released version: ${source.formatter.released.source.match.failure}</echo>
+					</catch>
+				</trycatch>
 
 				<if>
-					<available file="modules/util/source-formatter" />
+					<equals arg1="${source.formatter.released.source.match}" arg2="true" />
 					<then>
-						<gradle-execute dir="modules/util/source-formatter" task="deploy" />
-					</then>
-				</if>
+						<echo>Unable to find cached source-formatter. Using the released source-formatter.</echo>
 
-				<antcall target="publish-source-formatter" />
+						<antcall inheritAll="false" target="setup-sdk" />
+					</then>
+					<else>
+						<echo>Unable to find cached source-formatter. Building from source.</echo>
+
+						<antcall target="compile" />
+
+						<antcall target="install-portal-snapshots" />
+
+						<if>
+							<available file="modules/util/source-formatter" />
+							<then>
+								<gradle-execute dir="modules/util/source-formatter" task="deploy" />
+							</then>
+						</if>
+
+						<antcall target="publish-source-formatter" />
+					</else>
+				</if>
 			</catch>
 		</trycatch>
 	</target>

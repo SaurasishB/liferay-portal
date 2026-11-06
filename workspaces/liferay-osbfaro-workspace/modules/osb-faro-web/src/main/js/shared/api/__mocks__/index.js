@@ -7,7 +7,6 @@ import * as campaigns from './campaigns';
 import * as catalog from './catalog';
 import * as categories from './categories';
 import * as channels from './channels';
-import * as contactsCards from './contacts-cards';
 import * as csv from './csv';
 import * as dataSource from './data-source';
 import * as definitions from './definitions';
@@ -22,6 +21,7 @@ import * as notifications from './notifications';
 import * as pagesVisited from './pages-visited';
 import * as preferences from './preferences';
 import * as projects from './projects';
+import * as session from './session';
 import * as tags from './tags';
 import * as user from './user';
 import * as vocabularies from './vocabularies';
@@ -36,7 +36,6 @@ export {
 	catalog,
 	categories,
 	channels,
-	contactsCards,
 	csv,
 	dataSource,
 	definitions,
@@ -51,6 +50,7 @@ export {
 	pagesVisited,
 	preferences,
 	projects,
+	session,
 	tags,
 	user,
 	vocabularies,

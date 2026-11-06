@@ -82,6 +82,18 @@ test(
 );
 
 test(
+	'Verify that a cell renderer is not marked as beta',
+	{tag: '@LPD-107931'},
+	async ({editFDSCellRendererPage, page}) => {
+		await editFDSCellRendererPage.goto();
+
+		await expect(editFDSCellRendererPage.nameInput).toBeVisible();
+
+		await expect(page.getByText('Beta', {exact: true})).toHaveCount(0);
+	}
+);
+
+test(
 	`Verify that the Additional Resources group can be hidden`,
 	{tag: '@LPS-175155'},
 	async ({editFDSCellRendererPage, page}) => {
@@ -134,7 +146,7 @@ test(
 			'http://www.myplace.com/mycellrenderer.js'
 		);
 
-		await editFDSCellRendererPage.publish(WaitAction.ERROR);
+		await editFDSCellRendererPage.publish(WaitAction.MISSING_NAME);
 	}
 );
 

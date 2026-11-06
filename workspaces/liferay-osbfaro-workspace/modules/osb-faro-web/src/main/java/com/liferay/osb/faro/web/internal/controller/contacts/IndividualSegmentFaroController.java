@@ -5,7 +5,7 @@
 
 package com.liferay.osb.faro.web.internal.controller.contacts;
 
-import com.liferay.osb.faro.contacts.model.constants.JSONConstants;
+import com.liferay.osb.faro.constants.JSONConstants;
 import com.liferay.osb.faro.engine.client.model.IndividualSegment;
 import com.liferay.osb.faro.engine.client.model.IndividualSegmentMembership;
 import com.liferay.osb.faro.engine.client.model.IndividualSegmentMembershipChange;
@@ -19,6 +19,7 @@ import com.liferay.osb.faro.web.internal.controller.BaseFaroController;
 import com.liferay.osb.faro.web.internal.controller.FaroController;
 import com.liferay.osb.faro.web.internal.controller.main.PreferencesFaroController;
 import com.liferay.osb.faro.web.internal.exception.FaroException;
+import com.liferay.osb.faro.web.internal.helper.NotificationPreferencesHelper;
 import com.liferay.osb.faro.web.internal.model.display.FaroFDSResultsDisplay;
 import com.liferay.osb.faro.web.internal.model.display.FaroResultsDisplay;
 import com.liferay.osb.faro.web.internal.model.display.contacts.IndividualSegmentActivationDisplay;
@@ -129,6 +130,9 @@ public class IndividualSegmentFaroController extends BaseFaroController {
 		_preferencesFaroController.removeIndividualSegmentsPreferences(
 			groupId, idsFaroParam.getValue(),
 			FaroPreferencesConstants.SCOPE_GROUP);
+
+		_notificationPreferencesHelper.removeSegmentNotificationPreferences(
+			groupId, idsFaroParam.getValue());
 	}
 
 	@GET
@@ -428,12 +432,6 @@ public class IndividualSegmentFaroController extends BaseFaroController {
 				segmentTypes, state, IndividualSegment.Status.ACTIVE.name(),
 				cur, delta, orderByFields);
 		}
-		else if (contactsEntityType == FaroConstants.TYPE_ACCOUNT) {
-			results = contactsEngineClient.getAccountIndividualSegments(
-				faroProject, contactsEntityId, channelId, query,
-				IndividualSegment.Status.ACTIVE.name(), cur, delta,
-				orderByFields);
-		}
 		else if (contactsEntityType == FaroConstants.TYPE_INDIVIDUAL) {
 			results = contactsEngineClient.getIndividualIndividualSegments(
 				faroProject, channelId, contactsEntityId, query,
@@ -570,6 +568,9 @@ public class IndividualSegmentFaroController extends BaseFaroController {
 	private static final int[] _ENTITY_TYPES = {
 		FaroConstants.TYPE_SEGMENT_INDIVIDUALS
 	};
+
+	@Reference
+	private NotificationPreferencesHelper _notificationPreferencesHelper;
 
 	@Reference
 	private PreferencesFaroController _preferencesFaroController;

@@ -363,21 +363,6 @@ public class FragmentEntryVersionPersistenceTest {
 	}
 
 	@Test
-	public void testCountByGroupId() throws Exception {
-		_persistence.countByGroupId(RandomTestUtil.nextLong());
-
-		_persistence.countByGroupId(0L);
-	}
-
-	@Test
-	public void testCountByGroupId_Version() throws Exception {
-		_persistence.countByGroupId_Version(
-			RandomTestUtil.nextLong(), RandomTestUtil.nextInt());
-
-		_persistence.countByGroupId_Version(0L, 0);
-	}
-
-	@Test
 	public void testCountByFragmentCollectionId() throws Exception {
 		_persistence.countByFragmentCollectionId(RandomTestUtil.nextLong());
 
@@ -390,21 +375,6 @@ public class FragmentEntryVersionPersistenceTest {
 			RandomTestUtil.nextLong(), RandomTestUtil.nextInt());
 
 		_persistence.countByFragmentCollectionId_Version(0L, 0);
-	}
-
-	@Test
-	public void testCountByType() throws Exception {
-		_persistence.countByType(RandomTestUtil.nextInt());
-
-		_persistence.countByType(0);
-	}
-
-	@Test
-	public void testCountByType_Version() throws Exception {
-		_persistence.countByType_Version(
-			RandomTestUtil.nextInt(), RandomTestUtil.nextInt());
-
-		_persistence.countByType_Version(0, 0);
 	}
 
 	@Test
@@ -966,4 +936,4 @@ public class FragmentEntryVersionPersistenceTest {
 	private ClassLoader _dynamicQueryClassLoader;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-2101270754
+// LIFERAY-SERVICE-BUILDER-HASH:-1212360402

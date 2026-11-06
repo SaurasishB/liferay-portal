@@ -65,7 +65,10 @@ import org.osgi.service.component.annotations.Reference;
 /**
  * @author Adolfo Pérez
  */
-@Component(service = DynamicInclude.class)
+@Component(
+	property = "dynamic.include.key=com.liferay.product.navigation.taglib#/page.jsp#pre",
+	service = DynamicInclude.class
+)
 public class StagingIndicatorDynamicInclude extends BaseDynamicInclude {
 
 	@Override
@@ -96,19 +99,15 @@ public class StagingIndicatorDynamicInclude extends BaseDynamicInclude {
 		}
 	}
 
-	@Override
-	public void register(DynamicIncludeRegistry dynamicIncludeRegistry) {
-		dynamicIncludeRegistry.register(
-			"com.liferay.product.navigation.taglib#/page.jsp#pre");
-	}
-
 	private <T> JSONArray _createJSONArray(T... values) {
 		JSONArray jsonArray = _jsonFactory.createJSONArray();
 
 		for (T value : values) {
-			if (value != null) {
-				jsonArray.put(value);
+			if (value == null) {
+				continue;
 			}
+
+			jsonArray.put(value);
 		}
 
 		return jsonArray;

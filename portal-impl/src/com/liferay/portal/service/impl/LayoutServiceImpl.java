@@ -45,6 +45,7 @@ import com.liferay.portal.kernel.scheduler.TriggerFactoryUtil;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
+import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.PluginSettingLocalService;
 import com.liferay.portal.kernel.service.PortletLocalService;
@@ -159,6 +160,8 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 				permissionChecker, groupId, privateLayout, parentLayoutId,
 				ActionKeys.ADD_LAYOUT);
 		}
+
+		_checkLayoutPermission(classNameId, classPK, groupId);
 
 		Layout layout = layoutLocalService.addLayout(
 			externalReferenceCode, getUserId(), groupId, privateLayout,
@@ -383,8 +386,12 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 			ServiceContext serviceContext)
 		throws Exception {
 
+		Layout layout = layoutLocalService.getLayout(plid);
+
 		LayoutPermissionUtil.checkLayoutUpdatePermission(
-			getPermissionChecker(), layoutLocalService.getLayout(plid));
+			getPermissionChecker(), layout);
+
+		_checkLayoutPermission(classNameId, classPK, layout.getGroupId());
 
 		return layoutLocalService.convertEmptyLayout(
 			getUserId(), plid, nameMap, type, classNameId, classPK,
@@ -424,8 +431,12 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 	public Layout copyLayoutContent(Layout sourceLayout, Layout targetLayout)
 		throws Exception {
 
+		sourceLayout = layoutLocalService.getLayout(sourceLayout.getPlid());
+
 		LayoutPermissionUtil.check(
 			getPermissionChecker(), sourceLayout, ActionKeys.VIEW);
+
+		targetLayout = layoutLocalService.getLayout(targetLayout.getPlid());
 
 		LayoutPermissionUtil.checkLayoutUpdatePermission(
 			getPermissionChecker(), targetLayout);
@@ -439,8 +450,12 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 			long targetSegmentsExperienceId, Layout targetLayout)
 		throws Exception {
 
+		sourceLayout = layoutLocalService.getLayout(sourceLayout.getPlid());
+
 		LayoutPermissionUtil.check(
 			getPermissionChecker(), sourceLayout, ActionKeys.VIEW);
+
+		targetLayout = layoutLocalService.getLayout(targetLayout.getPlid());
 
 		LayoutPermissionUtil.checkLayoutUpdatePermission(
 			getPermissionChecker(), targetLayout);
@@ -1871,12 +1886,37 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 			Portlet portlet = _portletLocalService.fetchPortletById(
 				layout.getCompanyId(), portletId);
 
-			if (portlet != null) {
-				portletIds.add(portletId);
+			if (portlet == null) {
+				continue;
 			}
+
+			portletIds.add(portletId);
 		}
 
 		return portletIds;
+	}
+
+	private void _checkLayoutPermission(
+			long classNameId, long classPK, long groupId)
+		throws PortalException {
+
+		if (classNameId != _classNameLocalService.getClassNameId(
+				Layout.class)) {
+
+			return;
+		}
+
+		Layout layout = layoutLocalService.getLayout(classPK);
+
+		if (layout.getGroupId() != groupId) {
+			throw new NoSuchLayoutException(
+				StringBundler.concat(
+					"No layout exists with primary key ", classPK, " in group ",
+					groupId));
+		}
+
+		LayoutPermissionUtil.checkLayoutUpdatePermission(
+			getPermissionChecker(), layout);
 	}
 
 	private Layout _getFirstLayout(
@@ -1905,9 +1945,11 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 
 			start = start + interval;
 
-			if (layouts.size() < interval) {
-				hasNext = false;
+			if (layouts.size() >= interval) {
+				continue;
 			}
+
+			hasNext = false;
 		}
 
 		return null;
@@ -1932,6 +1974,9 @@ public class LayoutServiceImpl extends LayoutServiceBaseImpl {
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		LayoutServiceImpl.class);
+
+	@BeanReference(type = ClassNameLocalService.class)
+	private ClassNameLocalService _classNameLocalService;
 
 	@BeanReference(type = ExportImportConfigurationLocalService.class)
 	private ExportImportConfigurationLocalService

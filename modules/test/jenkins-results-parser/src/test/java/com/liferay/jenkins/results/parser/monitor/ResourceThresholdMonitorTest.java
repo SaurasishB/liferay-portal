@@ -5,9 +5,9 @@
 
 package com.liferay.jenkins.results.parser.monitor;
 
+import com.liferay.jenkins.results.parser.JenkinsMasterTestUtil;
 import com.liferay.jenkins.results.parser.JenkinsResultsParserUtil;
 import com.liferay.jenkins.results.parser.RandomTestUtil;
-import com.liferay.jenkins.results.parser.UrlReader;
 
 import java.io.IOException;
 
@@ -39,7 +39,7 @@ public class ResourceThresholdMonitorTest
 		_testExecuteCapacityBound(
 			"1.125899906842623E15", MonitorResult.Status.OK);
 		_testExecuteCapacityBound(
-			"1.125899906842624E15", MonitorResult.Status.UNKNOWN);
+			"1.125899906842624E15", MonitorResult.Status.WARN);
 	}
 
 	@Test
@@ -101,7 +101,7 @@ public class ResourceThresholdMonitorTest
 
 		monitorProperties.setProperty("monitor[a].threshold[warn]", "1");
 
-		_assertUnknown(monitorProperties);
+		_assertIndeterminate(monitorProperties);
 	}
 
 	@Test
@@ -160,6 +160,27 @@ public class ResourceThresholdMonitorTest
 	}
 
 	@Test
+	public void testExecuteIndeterminateMessage() throws Exception {
+		String label = RandomTestUtil.randomString();
+
+		Properties monitorProperties = _newScrapeProperties(
+			"queue.depth",
+			MonitorTestUtil.newScrape(MonitorTestUtil.newMetricName() + " 1.0"),
+			"label", label);
+
+		monitorProperties.setProperty("monitor[a].threshold[warn]", "25");
+
+		MonitorResult monitorResult = _execute(monitorProperties);
+
+		testEquals(MonitorResult.Status.WARN, monitorResult.getStatus());
+
+		String message = monitorResult.getMessage();
+
+		Assert.assertTrue(message, message.contains("queue depth metric"));
+		Assert.assertTrue(message, message.contains(label));
+	}
+
+	@Test
 	public void testExecuteMetricAbsent() throws Exception {
 		Properties monitorProperties = _newScrapeProperties(
 			"queue.depth",
@@ -171,21 +192,21 @@ public class ResourceThresholdMonitorTest
 
 		monitorProperties.setProperty("monitor[a].threshold[warn]", "25");
 
-		_assertUnknown(monitorProperties);
+		_assertIndeterminate(monitorProperties);
 	}
 
 	@Test
 	public void testExecuteMetricAbsentPartial() throws Exception {
 		String label = RandomTestUtil.randomString();
 
-		_assertUnknownWithThreshold(
+		_assertIndeterminateWithThreshold(
 			_newDiskProperties(
 				MonitorTestUtil.newScrape(
 					MonitorTestUtil.newSample(
 						"file_store", MonitorTestUtil.FILE_STORE,
 						"default_jenkins_file_store_capacity_bytes",
 						"7.7849452544E10"))));
-		_assertUnknownWithThreshold(
+		_assertIndeterminateWithThreshold(
 			_newScrapeProperties(
 				"executor.utilization",
 				MonitorTestUtil.newScrape(
@@ -350,34 +371,13 @@ public class ResourceThresholdMonitorTest
 	}
 
 	@Test
-	public void testExecuteUnknownMessage() throws Exception {
-		String label = RandomTestUtil.randomString();
-
-		Properties monitorProperties = _newScrapeProperties(
-			"queue.depth",
-			MonitorTestUtil.newScrape(MonitorTestUtil.newMetricName() + " 1.0"),
-			"label", label);
-
-		monitorProperties.setProperty("monitor[a].threshold[warn]", "25");
-
-		MonitorResult monitorResult = _execute(monitorProperties);
-
-		testEquals(MonitorResult.Status.UNKNOWN, monitorResult.getStatus());
-
-		String message = monitorResult.getMessage();
-
-		Assert.assertTrue(message, message.contains("queue depth metric"));
-		Assert.assertTrue(message, message.contains(label));
-	}
-
-	@Test
 	public void testExecuteZeroDenominator() throws Exception {
-		_assertUnknownWithThreshold(
+		_assertIndeterminateWithThreshold(
 			_newDiskProperties(_newFileStoreScrape("0.0", "0.0")));
 
 		String label = RandomTestUtil.randomString();
 
-		_assertUnknownWithThreshold(
+		_assertIndeterminateWithThreshold(
 			_newScrapeProperties(
 				"executor.utilization",
 				MonitorTestUtil.newScrape(
@@ -390,6 +390,26 @@ public class ResourceThresholdMonitorTest
 				"label", label));
 
 		_assertRAMUnavailable(MonitorTestUtil.newMemoryInfo(0L, 0L));
+	}
+
+	@Test
+	public void testGetLinkURLs() {
+		String masterName = RandomTestUtil.randomString();
+
+		String masterRemoteURL = JenkinsResultsParserUtil.combine(
+			"https://", masterName, ".liferay.com/");
+
+		JenkinsMasterTestUtil.getJenkinsMaster(
+			masterName, masterRemoteURL, "http://" + masterName);
+
+		Properties monitorProperties = _newMonitorProperties(masterName, "ram");
+
+		monitorProperties.setProperty("monitor[a].threshold[warn]", "50");
+
+		Monitor monitor = _newMonitor(monitorProperties);
+
+		testEquals(
+			Collections.singletonList(masterRemoteURL), monitor.getLinkURLs());
 	}
 
 	@Test
@@ -448,6 +468,34 @@ public class ResourceThresholdMonitorTest
 		}
 	}
 
+	@Test
+	public void testNewMonitorUnknownMaster() {
+		Properties monitorProperties = _newMonitorProperties(
+			RandomTestUtil.randomString(), "ram");
+
+		monitorProperties.setProperty("monitor[a].threshold[warn]", "50");
+
+		_newMonitor(monitorProperties);
+	}
+
+	private void _assertIndeterminate(Properties monitorProperties) {
+		MonitorResult monitorResult = _execute(monitorProperties);
+
+		testEquals(MonitorResult.Status.WARN, monitorResult.getStatus());
+
+		Map<String, String> metrics = monitorResult.getMetrics();
+
+		Assert.assertTrue(metrics.isEmpty());
+	}
+
+	private void _assertIndeterminateWithThreshold(
+		Properties monitorProperties) {
+
+		monitorProperties.setProperty("monitor[a].threshold[warn]", "50");
+
+		_assertIndeterminate(monitorProperties);
+	}
+
 	private void _assertRAMUnavailable(String memoryInfo) throws Exception {
 		_mockMemoryInfo(memoryInfo);
 
@@ -457,29 +505,13 @@ public class ResourceThresholdMonitorTest
 
 		monitorProperties.setProperty("monitor[a].threshold[warn]", "50");
 
-		_assertUnknown(monitorProperties);
+		_assertIndeterminate(monitorProperties);
 
 		MonitorResult monitorResult = _execute(monitorProperties);
 
 		testEquals(
 			"Unable to determine the RAM metric for " + masterName,
 			monitorResult.getMessage());
-	}
-
-	private void _assertUnknown(Properties monitorProperties) {
-		MonitorResult monitorResult = _execute(monitorProperties);
-
-		testEquals(MonitorResult.Status.UNKNOWN, monitorResult.getStatus());
-
-		Map<String, String> metrics = monitorResult.getMetrics();
-
-		Assert.assertTrue(metrics.isEmpty());
-	}
-
-	private void _assertUnknownWithThreshold(Properties monitorProperties) {
-		monitorProperties.setProperty("monitor[a].threshold[warn]", "50");
-
-		_assertUnknown(monitorProperties);
 	}
 
 	private MonitorResult _execute(Properties monitorProperties) {
@@ -535,9 +567,9 @@ public class ResourceThresholdMonitorTest
 			String selectorValue)
 		throws Exception {
 
-		UrlReader urlReader = mockUrlReader();
+		mockURLReaders();
 
-		setUrlReaderOutput(scrape, "/prometheus", urlReader);
+		setURLReaderOutput(scrape, "/prometheus");
 
 		String masterName = MonitorTestUtil.newJenkinsMasterName();
 
@@ -595,9 +627,9 @@ public class ResourceThresholdMonitorTest
 			String metricDescription)
 		throws Exception {
 
-		UrlReader urlReader = mockUrlReader();
+		mockURLReaders();
 
-		setUrlReaderException(ioException, "/prometheus", urlReader);
+		setURLReaderException(ioException, "/prometheus");
 
 		String masterName = MonitorTestUtil.newJenkinsMasterName();
 

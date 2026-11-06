@@ -104,13 +104,9 @@ const renderComponent = (state: MockState) => {
 
 describe('StructureBuilderToolbar', () => {
 	beforeAll(() => {
-		StructureService.createStructure = jest
+		StructureService.saveStructure = jest
 			.fn()
-			.mockResolvedValue({error: null});
-
-		StructureService.updateStructure = jest
-			.fn()
-			.mockResolvedValue({error: null});
+			.mockResolvedValue({data: {id: 1}, error: null});
 
 		SpaceService.getSpaceContents = jest
 			.fn()
@@ -142,75 +138,33 @@ describe('StructureBuilderToolbar', () => {
 		expect(screen.queryByText('save')).not.toBeInTheDocument();
 	});
 
-	it('Save button calls correct endpoint when status is new', async () => {
-		renderComponent({structure: {status: 'new'}});
+	it.each(['draft', 'new'] as const)(
+		'Save button saves the structure when status is %s',
+		async (status) => {
+			renderComponent({structure: {status}});
 
-		const saveButton = screen.getByText('save');
+			await userEvent.click(screen.getByText('save'));
 
-		await userEvent.click(saveButton);
+			await waitFor(() => {
+				expect(StructureService.saveStructure).toHaveBeenCalled();
+			});
+		}
+	);
 
-		await waitFor(() => {
-			expect(StructureService.createStructure).toBeCalled();
-		});
+	it.each(['draft', 'new', 'published'] as const)(
+		'Publish button saves the structure when status is %s',
+		async (status) => {
+			renderComponent({structure: {status}});
 
-		expect(StructureService.updateStructure).not.toBeCalled();
-	});
+			await userEvent.click(
+				screen.getByRole('button', {name: 'publish'})
+			);
 
-	it('Save button calls correct endpoint when status is draft', async () => {
-		renderComponent({structure: {status: 'draft'}});
-
-		const saveButton = screen.getByText('save');
-
-		await userEvent.click(saveButton);
-
-		await waitFor(() => {
-			expect(StructureService.updateStructure).toBeCalled();
-		});
-
-		expect(StructureService.createStructure).not.toBeCalled();
-	});
-
-	it('Publish button calls correct endpoint when status is new', async () => {
-		renderComponent({structure: {status: 'new'}});
-
-		const publishButton = screen.getByRole('button', {name: 'publish'});
-
-		await userEvent.click(publishButton);
-
-		await waitFor(() => {
-			expect(StructureService.createStructure).toBeCalled();
-		});
-
-		expect(StructureService.updateStructure).not.toBeCalled();
-	});
-
-	it('Publish button calls correct endpoint when status is draft', async () => {
-		renderComponent({structure: {status: 'draft'}});
-
-		const publishButton = screen.getByText('publish');
-
-		await userEvent.click(publishButton);
-
-		await waitFor(() => {
-			expect(StructureService.updateStructure).toBeCalled();
-		});
-
-		expect(StructureService.createStructure).not.toBeCalled();
-	});
-
-	it('Publish button calls correct endpoint when status is published', async () => {
-		renderComponent({structure: {status: 'published'}});
-
-		const publishButton = screen.getByText('publish');
-
-		await userEvent.click(publishButton);
-
-		await waitFor(() => {
-			expect(StructureService.updateStructure).toBeCalled();
-		});
-
-		expect(StructureService.createStructure).not.toBeCalled();
-	});
+			await waitFor(() => {
+				expect(StructureService.saveStructure).toHaveBeenCalled();
+			});
+		}
+	);
 
 	it('Shows warning modal when a published field has been deleted', async () => {
 		renderComponent({
@@ -231,15 +185,14 @@ describe('StructureBuilderToolbar', () => {
 		await waitFor(() => {
 			expect(
 				require('@liferay/layout-js-components-web').openConfirmModal
-			).toBeCalledWith(
+			).toHaveBeenCalledWith(
 				expect.objectContaining({
 					text: 'you-have-made-changes-to-the-content-structure-that-may-impact-existing-stored-data-once-published',
 				})
 			);
 		});
 
-		expect(StructureService.createStructure).not.toBeCalled();
-		expect(StructureService.updateStructure).not.toBeCalled();
+		expect(StructureService.saveStructure).not.toHaveBeenCalled();
 	});
 
 	it('Shows modal to publish when trying to customize editor and the structure is not published', async () => {
@@ -256,7 +209,7 @@ describe('StructureBuilderToolbar', () => {
 		await waitFor(() => {
 			expect(
 				require('@liferay/layout-js-components-web').openConfirmModal
-			).toBeCalledWith(
+			).toHaveBeenCalledWith(
 				expect.objectContaining({
 					text: 'to-customize-the-editor-you-need-to-publish-the-content-structure-first',
 				})
@@ -281,7 +234,7 @@ describe('StructureBuilderToolbar', () => {
 		await waitFor(() => {
 			expect(
 				require('@liferay/layout-js-components-web').openConfirmModal
-			).toBeCalledWith(
+			).toHaveBeenCalledWith(
 				expect.objectContaining({
 					text: 'to-customize-the-editor-you-need-to-publish-the-content-structure-first',
 				})
@@ -312,7 +265,7 @@ describe('StructureBuilderToolbar', () => {
 		await waitFor(() => {
 			expect(
 				require('@liferay/layout-js-components-web').openConfirmModal
-			).toBeCalledWith(
+			).toHaveBeenCalledWith(
 				expect.objectContaining({
 					text: 'to-customize-the-editor-you-need-to-publish-the-content-structure-first.-you-have-made-changes-to-the-content-structure-that-may-impact-existing-stored-data-once-published',
 				})
@@ -337,7 +290,7 @@ describe('StructureBuilderToolbar', () => {
 		await userEvent.click(customizeEditorButton);
 
 		await waitFor(() => {
-			expect(mockNavigate).toBeCalledWith(
+			expect(mockNavigate).toHaveBeenCalledWith(
 				expect.stringContaining(expectedUrl)
 			);
 		});
@@ -368,14 +321,14 @@ describe('StructureBuilderToolbar', () => {
 		await userEvent.click(publishButton);
 
 		await waitFor(() => {
-			expect(SpaceService.getSpaceContents).toBeCalledWith({
+			expect(SpaceService.getSpaceContents).toHaveBeenCalledWith({
 				path: '/my-structure',
 				siteId: MOCK_SPACE_2.siteId,
 			});
 		});
 
 		await waitFor(() => {
-			expect(StructureService.updateStructure).toBeCalledWith(
+			expect(StructureService.saveStructure).toHaveBeenCalledWith(
 				expect.objectContaining({
 					spaces: [
 						MOCK_SPACE_1.externalReferenceCode,

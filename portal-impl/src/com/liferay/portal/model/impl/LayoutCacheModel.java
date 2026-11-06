@@ -67,7 +67,7 @@ public class LayoutCacheModel
 
 	@Override
 	public String toString() {
-		StringBundler sb = new StringBundler(95);
+		StringBundler sb = new StringBundler(99);
 
 		sb.append("{mvccVersion=");
 		sb.append(mvccVersion);
@@ -103,6 +103,8 @@ public class LayoutCacheModel
 		sb.append(classNameId);
 		sb.append(", classPK=");
 		sb.append(classPK);
+		sb.append(", launchSetId=");
+		sb.append(launchSetId);
 		sb.append(", name=");
 		sb.append(name);
 		sb.append(", title=");
@@ -143,6 +145,8 @@ public class LayoutCacheModel
 		sb.append(faviconFileEntryScopeERC);
 		sb.append(", masterLayoutPageTemplateEntryERC=");
 		sb.append(masterLayoutPageTemplateEntryERC);
+		sb.append(", masterLayoutPageTemplateEntryScopeERC=");
+		sb.append(masterLayoutPageTemplateEntryScopeERC);
 		sb.append(", portletLayoutPageTemplateEntryERC=");
 		sb.append(portletLayoutPageTemplateEntryERC);
 		sb.append(", portletLayoutPageTemplateEntryScopeERC=");
@@ -221,6 +225,7 @@ public class LayoutCacheModel
 		layoutImpl.setParentLayoutId(parentLayoutId);
 		layoutImpl.setClassNameId(classNameId);
 		layoutImpl.setClassPK(classPK);
+		layoutImpl.setLaunchSetId(launchSetId);
 
 		if (name == null) {
 			layoutImpl.setName("");
@@ -342,6 +347,14 @@ public class LayoutCacheModel
 				masterLayoutPageTemplateEntryERC);
 		}
 
+		if (masterLayoutPageTemplateEntryScopeERC == null) {
+			layoutImpl.setMasterLayoutPageTemplateEntryScopeERC("");
+		}
+		else {
+			layoutImpl.setMasterLayoutPageTemplateEntryScopeERC(
+				masterLayoutPageTemplateEntryScopeERC);
+		}
+
 		if (portletLayoutPageTemplateEntryERC == null) {
 			layoutImpl.setPortletLayoutPageTemplateEntryERC("");
 		}
@@ -437,7 +450,9 @@ public class LayoutCacheModel
 		classNameId = objectInput.readLong();
 
 		classPK = objectInput.readLong();
-		name = objectInput.readUTF();
+
+		launchSetId = objectInput.readLong();
+		name = (String)objectInput.readObject();
 		title = (String)objectInput.readObject();
 		description = (String)objectInput.readObject();
 		keywords = objectInput.readUTF();
@@ -461,6 +476,7 @@ public class LayoutCacheModel
 		faviconFileEntryERC = objectInput.readUTF();
 		faviconFileEntryScopeERC = objectInput.readUTF();
 		masterLayoutPageTemplateEntryERC = objectInput.readUTF();
+		masterLayoutPageTemplateEntryScopeERC = objectInput.readUTF();
 		portletLayoutPageTemplateEntryERC = objectInput.readUTF();
 		portletLayoutPageTemplateEntryScopeERC = objectInput.readUTF();
 
@@ -526,11 +542,13 @@ public class LayoutCacheModel
 
 		objectOutput.writeLong(classPK);
 
+		objectOutput.writeLong(launchSetId);
+
 		if (name == null) {
-			objectOutput.writeUTF("");
+			objectOutput.writeObject("");
 		}
 		else {
-			objectOutput.writeUTF(name);
+			objectOutput.writeObject(name);
 		}
 
 		if (title == null) {
@@ -646,6 +664,13 @@ public class LayoutCacheModel
 			objectOutput.writeUTF(masterLayoutPageTemplateEntryERC);
 		}
 
+		if (masterLayoutPageTemplateEntryScopeERC == null) {
+			objectOutput.writeUTF("");
+		}
+		else {
+			objectOutput.writeUTF(masterLayoutPageTemplateEntryScopeERC);
+		}
+
 		if (portletLayoutPageTemplateEntryERC == null) {
 			objectOutput.writeUTF("");
 		}
@@ -703,6 +728,7 @@ public class LayoutCacheModel
 	public long parentLayoutId;
 	public long classNameId;
 	public long classPK;
+	public long launchSetId;
 	public String name;
 	public String title;
 	public String description;
@@ -723,6 +749,7 @@ public class LayoutCacheModel
 	public String faviconFileEntryERC;
 	public String faviconFileEntryScopeERC;
 	public String masterLayoutPageTemplateEntryERC;
+	public String masterLayoutPageTemplateEntryScopeERC;
 	public String portletLayoutPageTemplateEntryERC;
 	public String portletLayoutPageTemplateEntryScopeERC;
 	public boolean portletLayoutPageTemplateEntryLinkEnabled;
@@ -735,4 +762,4 @@ public class LayoutCacheModel
 	public long statusDate;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1701508329
+// LIFERAY-SERVICE-BUILDER-HASH:-1215066771

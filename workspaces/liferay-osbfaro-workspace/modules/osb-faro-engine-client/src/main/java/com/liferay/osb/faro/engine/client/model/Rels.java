@@ -12,14 +12,15 @@ public interface Rels {
 
 	public static final String ACCOUNT = "account";
 
-	public static final String ACCOUNT_DETAILS = "account-details";
-
 	public static final String ACCOUNT_INDIVIDUALS = "account-individuals";
 
 	public static final String ACCOUNT_LIFECYCLE = "account-lifecycle";
 
 	public static final String ACCOUNT_LIFECYCLE_ACCOUNTS =
 		"account-lifecycle-accounts";
+
+	public static final String ACCOUNT_LIFECYCLE_NEW_ACCOUNTS =
+		"account-lifecycle-new-accounts";
 
 	public static final String ACCOUNT_LIFECYCLE_OVERVIEW =
 		"account-lifecycle-overview";
@@ -33,6 +34,9 @@ public interface Rels {
 	public static final String ACCOUNT_LIFECYCLE_STAGES =
 		"account-lifecycle-stages";
 
+	public static final String ACCOUNT_LIFECYCLE_STALLED_ACCOUNTS =
+		"account-lifecycle-stalled-accounts";
+
 	public static final String ACCOUNT_LIFECYCLE_STATUS =
 		"account-lifecycle-status";
 
@@ -44,11 +48,6 @@ public interface Rels {
 
 	public static final String ACCOUNTS = "accounts";
 
-	public static final String ACCOUNTS_DISTRIBUTION = "accounts-distribution";
-
-	public static final String ACCOUNTS_INDIVIDUAL_SEGMENTS =
-		"accounts-individual-segments";
-
 	public static final String ACCOUNTS_METRICS = "accounts-metrics";
 
 	public static final String ACTIVITIES = "activities";
@@ -56,13 +55,6 @@ public interface Rels {
 	public static final String ACTIVITY = "activity";
 
 	public static final String ACTIVITY_ASSETS = "activity-assets";
-
-	public static final String ACTIVITY_GROUP = "activity-group";
-
-	public static final String ACTIVITY_GROUPS = "activity-groups";
-
-	public static final String ACTIVITY_TRANSFORMATIONS =
-		"activity-transformations";
 
 	public static final String ADMIN_DATA = "admin-data";
 
@@ -104,6 +96,8 @@ public interface Rels {
 
 	public static final String CAMPAIGN_ACCOUNTS = "campaign-accounts";
 
+	public static final String CAMPAIGN_INDIVIDUALS = "campaign-individuals";
+
 	public static final String CAMPAIGNS = "campaigns";
 
 	public static final String CAMPAIGNS_METRICS = "campaigns-metrics";
@@ -131,25 +125,13 @@ public interface Rels {
 	public static final String DATA_SOURCE_DISCONNECT_ALL =
 		"data-source-disconnect-all";
 
-	public static final String DATA_SOURCE_DXP_GROUPS =
-		"data-source-dxp-groups";
-
-	public static final String DATA_SOURCE_DXP_ORGANIZATIONS =
-		"data-source-dxp-organizations";
-
-	public static final String DATA_SOURCE_DXP_USER_GROUPS =
-		"data-source-dxp-user-groups";
-
-	public static final String DATA_SOURCE_DXP_USERS_FIELDS =
-		"data-source-dxp-users-fields";
-
-	public static final String DATA_SOURCE_DXP_USERS_TOTAL =
-		"data-source-dxp-users-total";
-
 	public static final String DATA_SOURCE_FIELDS = "data-source-fields";
 
 	public static final String DATA_SOURCE_METRICS_ACCOUNTS_COUNT =
 		"data-source-metrics-accounts-count";
+
+	public static final String DATA_SOURCE_METRICS_CAMPAIGNS_COUNT =
+		"data-source-metrics-campaigns-count";
 
 	public static final String DATA_SOURCE_METRICS_EVENTS_COUNT =
 		"data-source-metrics-events-count";
@@ -160,15 +142,6 @@ public interface Rels {
 	public static final String DATA_SOURCE_PROGRESS = "data-source-progress";
 
 	public static final String DATA_SOURCE_RECONNECT = "data-source-reconnect";
-
-	public static final String DATA_SOURCE_REFRESH_LIFERAY =
-		"data-source-refresh-liferay";
-
-	public static final String DATA_SOURCE_SALESFORCE_ACCOUNTS_FIELDS =
-		"data-source-salesforce-accounts-fields";
-
-	public static final String DATA_SOURCE_SALESFORCE_USERS_FIELDS =
-		"data-source-salesforce-users-fields";
 
 	public static final String DATA_SOURCE_USAGE_METRICS =
 		"data-source-usage-metrics";
@@ -222,12 +195,6 @@ public interface Rels {
 
 	public static final String INDIVIDUAL_SEGMENTS = "individual-segments";
 
-	public static final String INDIVIDUAL_TRANSFORMATION =
-		"individual-transformation";
-
-	public static final String INDIVIDUAL_TRANSFORMATIONS =
-		"individual-transformations";
-
 	public static final String INDIVIDUALS = "individuals";
 
 	public static final String INDIVIDUALS_COUNT = "individuals-count";
@@ -244,37 +211,13 @@ public interface Rels {
 	public static final String INDIVIDUALS_ENRICHED_PROFILES_COUNT =
 		"individuals-enriched-profiles-count";
 
-	public static final String INTEREST = "interest";
-
 	public static final String INTEREST_KEYWORDS = "interest-keywords";
 
-	public static final String INTEREST_TRANSFORMATION =
-		"interest-transformation";
-
-	public static final String INTEREST_TRANSFORMATIONS =
-		"interest-transformations";
-
 	public static final String INTERESTS = "interests";
-
-	public static final String MEMBERSHIP = "membership";
-
-	public static final String MEMBERSHIP_CHANGE = "membership-change";
-
-	public static final String MEMBERSHIP_CHANGES = "membership-changes";
-
-	public static final String MEMBERSHIP_CHANGES_TRANSFORMATION =
-		"membership-changes-transformation";
-
-	public static final String MEMBERSHIP_CHANGES_TRANSFORMATIONS =
-		"membership-changes-transformations";
-
-	public static final String MEMBERSHIPS = "memberships";
 
 	public static final String ORGANIZATIONS = "organizations";
 
 	public static final String PAGE_EXPERIENCES = "page-experiences";
-
-	public static final String PAGE_VISIT = "page-visited";
 
 	public static final String PAGE_VISITED = "page-visited";
 
@@ -290,15 +233,13 @@ public interface Rels {
 
 	public static final String PROJECTS_METRICS = "projects-metrics";
 
-	public static final String REPORTS_EXPORT_CSV_COUNT =
-		"reports-export-csv-count";
+	public static final String SEGMENT_NEW_MEMBERS_COUNT =
+		"segment-new-members-count";
 
 	public static final String SESSION_ACQUISITION_PROPERTIES =
 		"session-acquisition-properties";
 
 	public static final String SESSION_VALUES = "session-values";
-
-	public static final String WORKSPACE = "workspace";
 
 	public interface Interests {
 

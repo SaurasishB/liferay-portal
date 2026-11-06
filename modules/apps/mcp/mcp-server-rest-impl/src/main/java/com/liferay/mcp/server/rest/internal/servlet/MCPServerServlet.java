@@ -63,9 +63,11 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.osgi.service.component.annotations.Component;
@@ -92,12 +94,14 @@ public class MCPServerServlet extends HttpServlet {
 			String companyIdString = String.valueOf(companyId);
 
 			for (String servletKey : new ArrayList<>(_servlets.keySet())) {
-				if (servletKey.equals(companyIdString) ||
-					servletKey.startsWith(
+				if (!servletKey.equals(companyIdString) &&
+					!servletKey.startsWith(
 						companyIdString + StringPool.UNDERLINE)) {
 
-					_destroy(servletKey);
+					continue;
 				}
+
+				_destroy(servletKey);
 			}
 		}
 	}
@@ -190,6 +194,8 @@ public class MCPServerServlet extends HttpServlet {
 		List<ObjectEntry> mcpServerProfileToolObjectEntries =
 			_getMCPServerProfileToolObjectEntries(mcpServerProfileObjectEntry);
 
+		Set<String> allowedToolKeys = _getAllowedToolKeys(
+			mcpServerProfileToolObjectEntries);
 		Map<String, String> restrictFieldsMap = _getRestrictFieldsMap(
 			mcpServerProfileToolObjectEntries);
 
@@ -213,7 +219,8 @@ public class MCPServerServlet extends HttpServlet {
 									toolName, toolSetName),
 								(mcpTransportContext, callToolRequest) -> _call(
 									mcpTransportContext,
-									callToolRequest.arguments(), companyId,
+									callToolRequest.arguments(),
+									allowedToolKeys, companyId,
 									mcpServerProfileExternalReferenceCode,
 									restrictFieldsMap, toolName, toolSetName));
 					}
@@ -240,7 +247,7 @@ public class MCPServerServlet extends HttpServlet {
 		).immediateExecution(
 			true
 		).instructions(
-			(String)values.get("instructions")
+			MapUtil.getString(values, "instructions", null)
 		).prompts(
 			_getSyncPromptSpecifications(companyId)
 		).tools(
@@ -285,7 +292,8 @@ public class MCPServerServlet extends HttpServlet {
 
 	private McpSchema.CallToolResult _call(
 		McpTransportContext mcpTransportContext, Object inputObject,
-		long companyId, String mcpServerProfileExternalReferenceCode,
+		Set<String> allowedToolKeys, long companyId,
+		String mcpServerProfileExternalReferenceCode,
 		Map<String, String> restrictFieldsMap, String toolName,
 		String toolSetName) {
 
@@ -294,6 +302,7 @@ public class MCPServerServlet extends HttpServlet {
 
 		try {
 			Response response = ToolSetUtil.invokeTool(
+				allowedToolKeys,
 				_getDataMaskExternalReferenceCodes(
 					companyId, mcpServerProfileExternalReferenceCode),
 				httpServletRequest, inputObject, restrictFieldsMap, toolName,
@@ -319,7 +328,9 @@ public class MCPServerServlet extends HttpServlet {
 				StringBundler.concat(
 					"Status code: ", responseCode, ", Content:\n", content));
 		}
-		catch (InvalidFilterException | InvalidSortException exception) {
+		catch (IllegalArgumentException | InvalidFilterException |
+			   InvalidSortException exception) {
+
 			if (_log.isDebugEnabled()) {
 				_log.debug(exception);
 			}
@@ -339,6 +350,40 @@ public class MCPServerServlet extends HttpServlet {
 		if (servlet != null) {
 			servlet.destroy();
 		}
+	}
+
+	private Set<String> _getAllowedToolKeys(
+		List<ObjectEntry> mcpServerProfileToolObjectEntries) {
+
+		Set<String> allowedToolKeys = new HashSet<>();
+
+		for (ObjectEntry mcpServerProfileToolObjectEntry :
+				mcpServerProfileToolObjectEntries) {
+
+			Map<String, Serializable> values =
+				mcpServerProfileToolObjectEntry.getValues();
+
+			String toolName = MapUtil.getString(values, "toolName");
+			String toolSetName = MapUtil.getString(values, "toolSetName");
+
+			if (Objects.equals(toolSetName, ToolSetUtil.TOOL_SET_NAME)) {
+				if (Objects.equals(
+						toolName, "postToolSetToolSetNameToolInvoke")) {
+
+					return null;
+				}
+
+				continue;
+			}
+
+			allowedToolKeys.add(ToolSetUtil.getToolKey(toolName, toolSetName));
+		}
+
+		if (allowedToolKeys.isEmpty()) {
+			return null;
+		}
+
+		return allowedToolKeys;
 	}
 
 	private List<String> _getDataMaskExternalReferenceCodes(

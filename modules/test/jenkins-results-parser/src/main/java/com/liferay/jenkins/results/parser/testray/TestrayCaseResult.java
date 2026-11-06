@@ -268,14 +268,16 @@ public class TestrayCaseResult {
 					TestrayFactory.newJSONObjectTestrayCaseResult(
 						testrayServer, entityJSONObject);
 
-				if (!Objects.equals(
-						testrayCaseResult.getPortalSHA(), getPortalSHA()) &&
-					!Objects.equals(
+				if (Objects.equals(
+						testrayCaseResult.getPortalSHA(), getPortalSHA()) ||
+					Objects.equals(
 						testrayCaseResult.getPullRequestSenderUsername(),
 						getPullRequestSenderUsername())) {
 
-					testrayCaseResults.add(testrayCaseResult);
+					continue;
 				}
+
+				testrayCaseResults.add(testrayCaseResult);
 			}
 		}
 		catch (IOException ioException) {
@@ -425,6 +427,10 @@ public class TestrayCaseResult {
 		_testrayCase = testrayCase;
 	}
 
+	public synchronized void setTestrayCaseResultURL(URL testrayCaseResultURL) {
+		_testrayCaseResultURL = testrayCaseResultURL;
+	}
+
 	public void setTestrayComponent(TestrayComponent testrayComponent) {
 		_testrayComponent = testrayComponent;
 	}
@@ -548,7 +554,7 @@ public class TestrayCaseResult {
 
 		testrayAttachments = new TreeMap<>();
 
-		String attachments = _jsonObject.getString("attachments");
+		String attachments = _jsonObject.optString("attachments");
 
 		if (JenkinsResultsParserUtil.isNullOrEmpty(attachments)) {
 			return;

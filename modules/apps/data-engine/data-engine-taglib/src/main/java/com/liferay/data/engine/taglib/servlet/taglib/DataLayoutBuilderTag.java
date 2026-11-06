@@ -57,6 +57,7 @@ import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.MVCCModel;
 import com.liferay.portal.kernel.module.service.Snapshot;
 import com.liferay.portal.kernel.servlet.taglib.aui.ESImport;
 import com.liferay.portal.kernel.util.ArrayUtil;
@@ -457,6 +458,8 @@ public class DataLayoutBuilderTag extends BaseDataLayoutBuilderTag {
 			DDMStructure ddmStructure = ddmStructureLocalService.getStructure(
 				_dataLayout.getDataDefinitionId());
 
+			ddmStructure = MVCCModel.scratchClone(ddmStructure);
+
 			String dataDefinitionJSON = ddmStructure.getDefinition();
 
 			JSONObject jsonObject = JSONFactoryUtil.createJSONObject(
@@ -721,8 +724,7 @@ public class DataLayoutBuilderTag extends BaseDataLayoutBuilderTag {
 				contentType);
 
 		if (dataLayoutBuilderDefinition == null) {
-			return _dataLayoutBuilderDefinitionserviceTrackerMap.getService(
-				"default");
+			return _defaultDataLayoutBuilderDefinition;
 		}
 
 		return dataLayoutBuilderDefinition;
@@ -1049,6 +1051,10 @@ public class DataLayoutBuilderTag extends BaseDataLayoutBuilderTag {
 	private static final Snapshot<DDMStructureLocalService>
 		_ddmStructureLocalServiceSnapshot = new Snapshot<>(
 			DataLayoutBuilderTag.class, DDMStructureLocalService.class);
+	private static final DataLayoutBuilderDefinition
+		_defaultDataLayoutBuilderDefinition =
+			new DataLayoutBuilderDefinition() {
+			};
 	private static final Snapshot<DDMFormLayoutDeserializer>
 		_jsonDDMFormLayoutDeserializerSnapshot = new Snapshot<>(
 			DataLayoutBuilderTag.class, DDMFormLayoutDeserializer.class,

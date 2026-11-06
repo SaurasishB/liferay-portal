@@ -5,162 +5,150 @@
 
 import {expect, mergeTests} from '@playwright/test';
 
-import {apiHelpersTest} from '../../../fixtures/apiHelpersTest';
+import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
 import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
+import {fragmentsPagesTest} from '../../../fixtures/fragmentPagesTest';
 import {loginTest} from '../../../fixtures/loginTest';
+import {clickAndExpectToBeVisible} from '../../../utils/clickAndExpectToBeVisible';
 import getRandomString from '../../../utils/getRandomString';
 import {designLibrariesPageTest} from './fixtures/designLibrariesPageTest';
 
 const test = mergeTests(
-	apiHelpersTest,
+	dataApiHelpersTest,
 	designLibrariesPageTest,
 	featureFlagsTest({
 		'LPD-11235': {enabled: true},
 		'LPD-57283': {enabled: true},
 		'LPD-76864': {enabled: true},
 	}),
+	fragmentsPagesTest,
 	loginTest()
 );
 
 test(
-	'Editing a Design Library fragment set redirects back to the resources listing',
-	{tag: ['@LPD-97638', '@LPD-102114']},
-	async ({apiHelpers, designLibrariesPage, page}) => {
-		const designLibraryName = getRandomString();
+	'Publishing a new Design Library fragment returns to its fragment set',
+	{tag: ['@LPD-102114', '@LPD-110093']},
+	async ({apiHelpers, designLibrariesPage, fragmentEditorPage, page}) => {
+
+		// Create a design library
+
+		const designLibrary =
+			await apiHelpers.headlessAssetLibrary.createDesignLibrary();
+
+		// Add a fragment in a new fragment set
+
+		await designLibrariesPage.goToDesignLibrary(designLibrary.name);
+
+		await designLibrariesPage.clickNewMenuItem('New Basic Fragment');
+
+		const fragmentEntryName = getRandomString();
+		const modal = page.getByRole('dialog', {name: 'Add Fragment'});
+
+		await modal.getByLabel('Fragment Name').fill(fragmentEntryName);
+
 		const fragmentSetName = getRandomString();
 
-		const createdDesignLibrary =
-			await test.step('Create a design library via headless', async () => {
-				return await apiHelpers.headlessAssetLibrary.createAssetLibrary(
-					{
-						name: designLibraryName,
-						settings: {},
-						type: 'DesignLibrary',
-					}
-				);
-			});
+		await modal.getByLabel('Fragment Set Name').fill(fragmentSetName);
 
-		try {
-			const modal = page.getByRole('dialog', {name: 'Add Fragment Set'});
+		await modal.getByRole('button', {name: 'Save'}).click();
 
-			await test.step('Create a fragment set from the design library resources view', async () => {
-				await designLibrariesPage.goToDesignLibrary(designLibraryName);
+		await expect(page).toHaveURL(/fragment_entry/);
 
-				await page
-					.getByRole('button', {name: 'New Fragment Set'})
-					.or(page.getByRole('button', {exact: true, name: 'New'}))
-					.first()
-					.click();
+		// Publish and check the fragment set
 
-				const newFragmentSetMenuItem = page.getByRole('menuitem', {
-					name: 'New Fragment Set',
-				});
+		await fragmentEditorPage.publish();
 
-				if (await newFragmentSetMenuItem.isVisible()) {
-					await newFragmentSetMenuItem.click();
-				}
+		await expect(page).not.toHaveURL(/view_resources_design_library/);
 
-				await expect(modal).toBeVisible();
+		await expect(
+			page.getByRole('link', {exact: true, name: fragmentEntryName})
+		).toBeVisible();
 
-				await modal.getByLabel('Name').fill(fragmentSetName);
+		// Check the back link
 
-				await modal.getByRole('button', {name: 'Save'}).click();
+		const backLink = page.locator(
+			'.control-menu-nav-item a.control-menu-nav-link'
+		);
 
-				await expect(modal).toBeHidden();
-			});
+		await expect(backLink).toHaveAttribute(
+			'href',
+			/view_resources_design_library/
+		);
 
-			const contentTable = page.locator(
-				'.design-library-fds-wrapper--resources table'
-			);
+		// Go back and check the listing
 
-			const fragmentSetRow = contentTable.getByRole('row', {
+		await clickAndExpectToBeVisible({
+			target: designLibrariesPage.resourcesTable.getByRole('link', {
 				name: fragmentSetName,
-			});
+			}),
+			trigger: backLink,
+		});
 
-			await test.step('The new fragment set appears in the resources listing', async () => {
-				await expect(fragmentSetRow).toBeVisible();
-			});
+		await expect(page).toHaveURL(/view_resources_design_library/);
+	}
+);
 
-			await test.step('Open the fragment set editor from the row actions menu', async () => {
-				await fragmentSetRow
-					.getByRole('button', {name: /Actions$/})
-					.click();
+test(
+	'Editing a Design Library fragment set redirects back to the resources listing',
+	{tag: '@LPD-97638'},
+	async ({apiHelpers, designLibrariesPage, page}) => {
 
-				await page
-					.getByRole('menuitem', {exact: true, name: 'Edit'})
-					.click();
+		// Create a design library
 
-				await expect(page).toHaveURL(/fragment_collection/);
-				await expect(page).toHaveURL(/redirect=/);
-			});
+		const designLibrary =
+			await apiHelpers.headlessAssetLibrary.createDesignLibrary();
 
-			const editedFragmentSetName = getRandomString();
+		// Add a fragment set
 
-			await test.step('Saving the edited fragment set returns to the resources listing', async () => {
-				await page
-					.getByRole('textbox', {name: 'Name'})
-					.fill(editedFragmentSetName);
+		await designLibrariesPage.goToDesignLibrary(designLibrary.name);
 
-				await page.getByRole('button', {name: 'Save'}).click();
+		await designLibrariesPage.clickNewMenuItem('New Fragment Set');
 
-				await expect(page).toHaveURL(/view_resources_design_library/);
+		const fragmentSetName = getRandomString();
+		const modal = page.getByRole('dialog', {name: 'Add Fragment Set'});
 
-				await expect(
-					contentTable.getByRole('row', {
-						name: editedFragmentSetName,
-					})
-				).toBeVisible();
-			});
+		await modal.getByLabel('Name').fill(fragmentSetName);
 
-			await test.step('Open the fragment set from the resources listing row link', async () => {
-				await contentTable
-					.getByRole('row', {name: editedFragmentSetName})
-					.getByRole('link')
-					.first()
-					.click();
+		await modal.getByRole('button', {name: 'Save'}).click();
 
-				await expect(page).toHaveURL(/fragment_collection/);
-			});
+		await expect(modal).toBeHidden();
 
-			await test.step('Reload the fragment set without the back parameters, as when returning from the fragment editor', async () => {
-				const url = new URL(page.url());
+		// Check the fragment set in the listing
 
-				for (const key of [...url.searchParams.keys()]) {
-					if (key.endsWith('_backURL') || key.endsWith('_redirect')) {
-						url.searchParams.delete(key);
-					}
-				}
+		const fragmentSetRow = designLibrariesPage.resourcesTable.getByRole(
+			'row',
+			{
+				name: fragmentSetName,
+			}
+		);
 
-				await page.goto(url.toString());
-			});
+		await expect(fragmentSetRow).toBeVisible();
 
-			const backLink = page.locator(
-				'.control-menu-nav-item a.control-menu-nav-link'
-			);
+		// Edit the fragment set
 
-			await test.step('The back button does not point at the fragment set itself', async () => {
-				await expect(backLink).toHaveAttribute(
-					'href',
-					/view_resources_design_library/
-				);
-			});
+		await fragmentSetRow.getByRole('button', {name: /Actions$/}).click();
 
-			await test.step('Clicking the back button returns to the resources listing', async () => {
-				await backLink.click();
+		await page.getByRole('menuitem', {exact: true, name: 'Edit'}).click();
 
-				await expect(
-					page.getByRole('link', {name: editedFragmentSetName})
-				).toBeVisible();
+		await expect(page).toHaveURL(/fragment_collection/);
+		await expect(page).toHaveURL(/redirect=/);
 
-				await expect(page).toHaveURL(/view_resources_design_library/);
-			});
-		}
-		finally {
-			await test.step('Remove the design library', async () => {
-				await apiHelpers.headlessAssetLibrary.deleteAssetLibrary(
-					createdDesignLibrary.externalReferenceCode
-				);
-			});
-		}
+		// Save and check the listing
+
+		const editedFragmentSetName = getRandomString();
+
+		await page
+			.getByRole('textbox', {name: 'Name'})
+			.fill(editedFragmentSetName);
+
+		await page.getByRole('button', {name: 'Save'}).click();
+
+		await expect(page).toHaveURL(/view_resources_design_library/);
+
+		await expect(
+			designLibrariesPage.resourcesTable.getByRole('row', {
+				name: editedFragmentSetName,
+			})
+		).toBeVisible();
 	}
 );

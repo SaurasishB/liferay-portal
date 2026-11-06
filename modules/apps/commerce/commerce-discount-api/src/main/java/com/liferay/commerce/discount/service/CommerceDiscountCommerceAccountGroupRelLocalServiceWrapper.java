@@ -159,8 +159,9 @@ public class CommerceDiscountCommerceAccountGroupRelLocalServiceWrapper
 	@Deprecated
 	@Override
 	public void
-		deleteCommerceDiscountCommerceAccountGroupRelsBycommerceAccountGroupId(
-			long commerceAccountGroupId) {
+			deleteCommerceDiscountCommerceAccountGroupRelsBycommerceAccountGroupId(
+				long commerceAccountGroupId)
+		throws com.liferay.portal.kernel.exception.PortalException {
 
 		_commerceDiscountCommerceAccountGroupRelLocalService.
 			deleteCommerceDiscountCommerceAccountGroupRelsBycommerceAccountGroupId(
@@ -388,18 +389,6 @@ public class CommerceDiscountCommerceAccountGroupRelLocalServiceWrapper
 				commerceDiscountId, start, end, orderByComparator);
 	}
 
-	@Override
-	public java.util.List
-		<com.liferay.commerce.discount.model.
-			CommerceDiscountCommerceAccountGroupRel>
-				getCommerceDiscountCommerceAccountGroupRels(
-					long commerceDiscountId, String name, int start, int end) {
-
-		return _commerceDiscountCommerceAccountGroupRelLocalService.
-			getCommerceDiscountCommerceAccountGroupRels(
-				commerceDiscountId, name, start, end);
-	}
-
 	/**
 	 * Returns the number of commerce discount commerce account group rels.
 	 *
@@ -418,15 +407,6 @@ public class CommerceDiscountCommerceAccountGroupRelLocalServiceWrapper
 		return _commerceDiscountCommerceAccountGroupRelLocalService.
 			getCommerceDiscountCommerceAccountGroupRelsCount(
 				commerceDiscountId);
-	}
-
-	@Override
-	public int getCommerceDiscountCommerceAccountGroupRelsCount(
-		long commerceDiscountId, String name) {
-
-		return _commerceDiscountCommerceAccountGroupRelLocalService.
-			getCommerceDiscountCommerceAccountGroupRelsCount(
-				commerceDiscountId, name);
 	}
 
 	@Override
@@ -510,4 +490,4 @@ public class CommerceDiscountCommerceAccountGroupRelLocalServiceWrapper
 		_commerceDiscountCommerceAccountGroupRelLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-588175492
+// LIFERAY-SERVICE-BUILDER-HASH:-1192109441

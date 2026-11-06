@@ -93,12 +93,6 @@ public class DBPartitionUtilTest extends BaseDBPartitionTestCase {
 
 	@Before
 	public void setUp() throws Exception {
-		for (long companyId : COMPANY_IDS) {
-			db.runSQL(
-				dbPartitionDB.getCreatePartitionSQL(
-					connection, getPartitionName(companyId)));
-		}
-
 		_scheduleJob(PortalInstancePool.getDefaultCompanyId(), _JOB_NAME_1);
 		_scheduleJob(PortalInstancePool.getDefaultCompanyId(), _JOB_NAME_2);
 	}
@@ -114,6 +108,10 @@ public class DBPartitionUtilTest extends BaseDBPartitionTestCase {
 	@TestInfo("LPS-198239")
 	public void testAccessCompanyByCompanyThreadLocal() throws Exception {
 		for (long companyId : COMPANY_IDS) {
+			db.runSQL(
+				dbPartitionDB.getCreatePartitionSQL(
+					connection, getPartitionName(companyId)));
+
 			try (SafeCloseable safeCloseable =
 					CompanyThreadLocal.setRawCompanyIdWithSafeCloseable(
 						companyId);
@@ -316,6 +314,19 @@ public class DBPartitionUtilTest extends BaseDBPartitionTestCase {
 
 			removeDBPartitions();
 		}
+	}
+
+	@Test
+	@TestInfo("LPD-93376")
+	public void testExistsExportedPartition() throws Exception {
+		long companyId = RandomTestUtil.randomLong();
+
+		Assert.assertFalse(DBPartitionUtil.existsExportedPartition(companyId));
+
+		_assertConnectionClosed(
+			DBPartitionUtil.getExportedPartitionName(companyId),
+			() -> Assert.assertTrue(
+				DBPartitionUtil.existsExportedPartition(companyId)));
 	}
 
 	@Test
@@ -749,9 +760,11 @@ public class DBPartitionUtilTest extends BaseDBPartitionTestCase {
 		}
 		finally {
 			for (Connection connection : connections) {
-				if (!connection.isClosed()) {
-					connection.close();
+				if (connection.isClosed()) {
+					continue;
 				}
+
+				connection.close();
 			}
 
 			db.runSQL(dbPartitionDB.getDropPartitionSQL(partitionName));

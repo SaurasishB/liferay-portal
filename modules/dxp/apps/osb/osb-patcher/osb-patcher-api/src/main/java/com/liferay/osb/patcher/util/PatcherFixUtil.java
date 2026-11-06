@@ -31,9 +31,6 @@ import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.UserLocalServiceUtil;
-import com.liferay.portal.kernel.transaction.Isolation;
-import com.liferay.portal.kernel.transaction.Propagation;
-import com.liferay.portal.kernel.transaction.Transactional;
 import com.liferay.portal.kernel.util.BigDecimalUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.Validator;
@@ -194,11 +191,13 @@ public class PatcherFixUtil {
 		for (PatcherFix patcherFix : patcherFixes) {
 			List<String> tickets = PatcherUtil.getTickets(patcherFix.getName());
 
-			if (longestTicketSize < tickets.size()) {
-				longestTicketSize = tickets.size();
-
-				longestTicketPatcherFix = patcherFix;
+			if (longestTicketSize >= tickets.size()) {
+				continue;
 			}
+
+			longestTicketSize = tickets.size();
+
+			longestTicketPatcherFix = patcherFix;
 		}
 
 		return longestTicketPatcherFix;
@@ -340,9 +339,11 @@ public class PatcherFixUtil {
 		List<PatcherFix> patcherFixes = toPatcherFixes(fixIds);
 
 		for (PatcherFix patcherFix : patcherFixes) {
-			if (patcherFix.getStatus() == patcherFixStatus) {
-				patcherFixIds.add(patcherFix.getPatcherFixId());
+			if (patcherFix.getStatus() != patcherFixStatus) {
+				continue;
 			}
+
+			patcherFixIds.add(patcherFix.getPatcherFixId());
 		}
 
 		if (patcherFixIds.size() > 1) {
@@ -682,10 +683,6 @@ public class PatcherFixUtil {
 		}
 	}
 
-	@Transactional(
-		isolation = Isolation.PORTAL, propagation = Propagation.REQUIRES_NEW,
-		rollbackFor = Exception.class
-	)
 	public static void processOSBPatcherFixAddJenkinsStatus(
 			long patcherFixId, String servletStatus, User user)
 		throws Exception {

@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.apache.http.client.utils.URIBuilder;
+
 import org.json.JSONObject;
 
 /**
@@ -184,9 +186,11 @@ public class BuildQueueRebalancer {
 		int count = 0;
 
 		for (RebalanceAction rebalanceAction : _rebalanceActions) {
-			if (rebalanceAction.getType() == type) {
-				count++;
+			if (rebalanceAction.getType() != type) {
+				continue;
 			}
+
+			count++;
 		}
 
 		return count;
@@ -241,12 +245,14 @@ public class BuildQueueRebalancer {
 			for (JenkinsMaster jenkinsMaster : _jenkinsMasters) {
 				int queueSize = _jenkinsMasterQueueSizes.get(jenkinsMaster);
 
-				if ((mostAvailableJenkinsMaster == null) ||
-					(queueSize < smallestQueueSize)) {
+				if ((mostAvailableJenkinsMaster != null) &&
+					(queueSize >= smallestQueueSize)) {
 
-					mostAvailableJenkinsMaster = jenkinsMaster;
-					smallestQueueSize = queueSize;
+					continue;
 				}
+
+				mostAvailableJenkinsMaster = jenkinsMaster;
+				smallestQueueSize = queueSize;
 			}
 
 			if (mostAvailableJenkinsMaster == null) {
@@ -313,11 +319,13 @@ public class BuildQueueRebalancer {
 				for (JenkinsMaster.QueueItem queueItem :
 						availableJenkinsMaster.getQueueItems()) {
 
-					if (Objects.equals(
+					if (!Objects.equals(
 							queueItem.getPrimaryLabel(), _primaryLabel)) {
 
-						queueSize++;
+						continue;
 					}
+
+					queueSize++;
 				}
 
 				_jenkinsMasterQueueSizes.put(availableJenkinsMaster, queueSize);
@@ -458,11 +466,14 @@ public class BuildQueueRebalancer {
 
 		private boolean _isBuildInProgress(String buildURL) {
 			try {
+				URIBuilder uriBuilder = JenkinsResultsParserUtil.newURIBuilder(
+					JenkinsResultsParserUtil.getLocalURL(buildURL) +
+						"/api/json");
+
+				uriBuilder.addParameter("tree", "result");
+
 				JSONObject jsonObject = JenkinsResultsParserUtil.toJSONObject(
-					JenkinsResultsParserUtil.combine(
-						JenkinsResultsParserUtil.getLocalURL(buildURL),
-						"/api/json?tree=result"),
-					false, 5000);
+					uriBuilder.toString(), false, 5000);
 
 				String result = jsonObject.optString("result");
 

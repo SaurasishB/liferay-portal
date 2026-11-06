@@ -1,4 +1,4 @@
-import ClayIcon from '@clayui/icon';
+import ClayIcon from 'shared/components/Icon';
 import getCN from 'classnames';
 import React from 'react';
 import {Sizes} from 'shared/util/constants';
@@ -69,10 +69,14 @@ const NoResultsDisplay: React.FC<INoResultsDisplayProps> = ({
 			<div className={getCN('no-results-content', {spacer})}>
 				{icon && <NoResultsDisplayIcon {...icon} />}
 
-				{title && <div className="h4 no-results-title">{title}</div>}
+				{title && (
+					<div className="h4 mb-3 no-results-title">{title}</div>
+				)}
 
 				{description && (
-					<div className="no-results-description">{description}</div>
+					<div className="mb-3 no-results-description">
+						{description}
+					</div>
 				)}
 
 				{children}

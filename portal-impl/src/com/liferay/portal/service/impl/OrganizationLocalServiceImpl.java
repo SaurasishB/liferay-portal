@@ -12,7 +12,6 @@ import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.bean.BeanReference;
-import com.liferay.portal.kernel.dao.orm.QueryDefinition;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.DuplicateOrganizationException;
 import com.liferay.portal.kernel.exception.OrganizationCommentsException;
@@ -503,6 +502,36 @@ public class OrganizationLocalServiceImpl
 			passwordPolicyId, Organization.class.getName(), organizationIds);
 	}
 
+	/**
+	 * Adds the organization to the user.
+	 *
+	 * @param userId the primary key of the user
+	 * @param organizationId the primary key of the organization
+	 * @return <code>true</code> if the association between the ${userId} and ${organizationId} is added; <code>false</code> if it was already added
+	 */
+	@Override
+	public boolean addUserOrganization(long userId, long organizationId) {
+		if (!super.addUserOrganization(userId, organizationId)) {
+			return false;
+		}
+
+		_reindexUser(userId);
+
+		return true;
+	}
+
+	/**
+	 * Adds the organization to the user.
+	 *
+	 * @param userId the primary key of the user
+	 * @param organization the organization
+	 * @return <code>true</code> if the association between the ${userId} and ${organization} is added; <code>false</code> if it was already added
+	 */
+	@Override
+	public boolean addUserOrganization(long userId, Organization organization) {
+		return addUserOrganization(userId, organization.getOrganizationId());
+	}
+
 	@Override
 	public void addUserOrganizationByEmailAddress(
 			String emailAddress, long organizationId)
@@ -515,6 +544,123 @@ public class OrganizationLocalServiceImpl
 			organization.getCompanyId(), emailAddress);
 
 		_userLocalService.addOrganizationUser(organizationId, user);
+	}
+
+	/**
+	 * Adds the organizations to the user.
+	 *
+	 * @param userId the primary key of the user
+	 * @param organizations the organizations
+	 * @return <code>true</code> if at least an association between the ${userId} and the ${organizations} is added; <code>false</code> if all were already added
+	 */
+	@Override
+	public boolean addUserOrganizations(
+		long userId, List<Organization> organizations) {
+
+		return addUserOrganizations(
+			userId,
+			ListUtil.toLongArray(
+				organizations, Organization.ORGANIZATION_ID_ACCESSOR));
+	}
+
+	/**
+	 * Adds the organizations to the user.
+	 *
+	 * @param userId the primary key of the user
+	 * @param organizationIds the primary keys of the organizations
+	 * @return <code>true</code> if at least an association between the ${userId} and the ${organizationIds} is added; <code>false</code> if all were already added
+	 */
+	@Override
+	public boolean addUserOrganizations(long userId, long[] organizationIds) {
+		if (!super.addUserOrganizations(userId, organizationIds)) {
+			return false;
+		}
+
+		_reindexUser(userId);
+
+		return true;
+	}
+
+	/**
+	 * Clears the organizations from the group.
+	 *
+	 * @param groupId the primary key of the group
+	 */
+	@Override
+	public void clearGroupOrganizations(long groupId) {
+		long[] organizationIds = groupPersistence.getOrganizationPrimaryKeys(
+			groupId);
+
+		super.clearGroupOrganizations(groupId);
+
+		_reindexUsers(organizationIds);
+	}
+
+	/**
+	 * Clears the organizations from the user.
+	 *
+	 * @param userId the primary key of the user
+	 */
+	@Override
+	public void clearUserOrganizations(long userId) {
+		super.clearUserOrganizations(userId);
+
+		_reindexUser(userId);
+	}
+
+	/**
+	 * Deletes the organization from the group.
+	 *
+	 * @param groupId the primary key of the group
+	 * @param organizationId the primary key of the organization
+	 */
+	@Override
+	public void deleteGroupOrganization(long groupId, long organizationId) {
+		super.deleteGroupOrganization(groupId, organizationId);
+
+		_reindexUsers(new long[] {organizationId});
+	}
+
+	/**
+	 * Deletes the organization from the group.
+	 *
+	 * @param groupId the primary key of the group
+	 * @param organization the organization
+	 */
+	@Override
+	public void deleteGroupOrganization(
+		long groupId, Organization organization) {
+
+		deleteGroupOrganization(groupId, organization.getOrganizationId());
+	}
+
+	/**
+	 * Deletes the organizations from the group.
+	 *
+	 * @param groupId the primary key of the group
+	 * @param organizations the organizations
+	 */
+	@Override
+	public void deleteGroupOrganizations(
+		long groupId, List<Organization> organizations) {
+
+		deleteGroupOrganizations(
+			groupId,
+			ListUtil.toLongArray(
+				organizations, Organization.ORGANIZATION_ID_ACCESSOR));
+	}
+
+	/**
+	 * Deletes the organizations from the group.
+	 *
+	 * @param groupId the primary key of the group
+	 * @param organizationIds the primary keys of the organizations
+	 */
+	@Override
+	public void deleteGroupOrganizations(long groupId, long[] organizationIds) {
+		super.deleteGroupOrganizations(groupId, organizationIds);
+
+		_reindexUsers(organizationIds);
 	}
 
 	/**
@@ -631,9 +777,43 @@ public class OrganizationLocalServiceImpl
 
 		// Organization
 
+		List<User> users = organizationPersistence.getUsers(
+			organization.getOrganizationId());
+
 		organizationPersistence.remove(organization);
 
+		// Indexer
+
+		Indexer<User> indexer = IndexerRegistryUtil.nullSafeGetIndexer(
+			User.class);
+
+		indexer.reindex(users);
+
 		return organization;
+	}
+
+	/**
+	 * Deletes the organization from the user.
+	 *
+	 * @param userId the primary key of the user
+	 * @param organizationId the primary key of the organization
+	 */
+	@Override
+	public void deleteUserOrganization(long userId, long organizationId) {
+		super.deleteUserOrganization(userId, organizationId);
+
+		_reindexUser(userId);
+	}
+
+	/**
+	 * Deletes the organization from the user.
+	 *
+	 * @param userId the primary key of the user
+	 * @param organization the organization
+	 */
+	@Override
+	public void deleteUserOrganization(long userId, Organization organization) {
+		deleteUserOrganization(userId, organization.getOrganizationId());
 	}
 
 	@Override
@@ -649,6 +829,35 @@ public class OrganizationLocalServiceImpl
 
 		_userLocalService.unsetOrganizationUsers(
 			organizationId, new long[] {user.getUserId()});
+	}
+
+	/**
+	 * Deletes the organizations from the user.
+	 *
+	 * @param userId the primary key of the user
+	 * @param organizations the organizations
+	 */
+	@Override
+	public void deleteUserOrganizations(
+		long userId, List<Organization> organizations) {
+
+		deleteUserOrganizations(
+			userId,
+			ListUtil.toLongArray(
+				organizations, Organization.ORGANIZATION_ID_ACCESSOR));
+	}
+
+	/**
+	 * Deletes the organizations from the user.
+	 *
+	 * @param userId the primary key of the user
+	 * @param organizationIds the primary keys of the organizations
+	 */
+	@Override
+	public void deleteUserOrganizations(long userId, long[] organizationIds) {
+		super.deleteUserOrganizations(userId, organizationIds);
+
+		_reindexUser(userId);
 	}
 
 	/**
@@ -798,9 +1007,11 @@ public class OrganizationLocalServiceImpl
 		while (iterator.hasNext()) {
 			Organization organization = iterator.next();
 
-			if (organization.getCompanyId() != user.getCompanyId()) {
-				iterator.remove();
+			if (organization.getCompanyId() == user.getCompanyId()) {
+				continue;
 			}
+
+			iterator.remove();
 		}
 
 		if (organizations.isEmpty()) {
@@ -925,58 +1136,6 @@ public class OrganizationLocalServiceImpl
 		}
 
 		return organizations;
-	}
-
-	/**
-	 * Returns all the organizations and users belonging to the parent
-	 * organization.
-	 *
-	 * @param  companyId the primary key of the organization and user's company
-	 * @param  parentOrganizationId the primary key of the organization and
-	 *         user's parent organization
-	 * @param  status the user's workflow status
-	 * @param  start the lower bound of the range of organizations and users to
-	 *         return
-	 * @param  end the upper bound of the range of organizations and users to
-	 *         return (not inclusive)
-	 * @param  orderByComparator the comparator to order the organizations and
-	 *         users (optionally <code>null</code>)
-	 * @return the organizations and users belonging to the parent organization
-	 */
-	@Override
-	public List<Object> getOrganizationsAndUsers(
-		long companyId, long parentOrganizationId, int status, int start,
-		int end, OrderByComparator<?> orderByComparator) {
-
-		QueryDefinition<?> queryDefinition = new QueryDefinition<>(
-			status, false, 0, false, start, end,
-			(OrderByComparator<Object>)orderByComparator);
-
-		return organizationFinder.findO_U_ByC_P(
-			companyId, parentOrganizationId, queryDefinition);
-	}
-
-	/**
-	 * Returns the number of organizations and users belonging to the parent
-	 * organization.
-	 *
-	 * @param  companyId the primary key of the organization and user's company
-	 * @param  parentOrganizationId the primary key of the organization and
-	 *         user's parent organization
-	 * @param  status the user's workflow status
-	 * @return the number of organizations and users belonging to the parent
-	 *         organization
-	 */
-	@Override
-	public int getOrganizationsAndUsersCount(
-		long companyId, long parentOrganizationId, int status) {
-
-		QueryDefinition<?> queryDefinition = new QueryDefinition<>(
-			status, false, 0, false, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
-			null);
-
-		return organizationFinder.countO_U_ByC_P(
-			companyId, parentOrganizationId, queryDefinition);
 	}
 
 	public List<Organization> getOrganizationsByLogoId(long logoId) {
@@ -1174,13 +1333,15 @@ public class OrganizationLocalServiceImpl
 
 			String roleName = role.getName();
 
-			if (roleName.equals(RoleConstants.ORGANIZATION_ADMINISTRATOR) ||
-				roleName.equals(RoleConstants.ORGANIZATION_OWNER)) {
+			if (!roleName.equals(RoleConstants.ORGANIZATION_ADMINISTRATOR) &&
+				!roleName.equals(RoleConstants.ORGANIZATION_OWNER)) {
 
-				Group group = userGroupRole.getGroup();
-
-				organizationIds.add(group.getOrganizationId());
+				continue;
 			}
+
+			Group group = userGroupRole.getGroup();
+
+			organizationIds.add(group.getOrganizationId());
 		}
 
 		return ArrayUtil.toLongArray(organizationIds);
@@ -1225,17 +1386,19 @@ public class OrganizationLocalServiceImpl
 
 			String roleName = role.getName();
 
-			if (roleName.equals(RoleConstants.ORGANIZATION_ADMINISTRATOR) ||
-				roleName.equals(RoleConstants.ORGANIZATION_OWNER)) {
+			if (!roleName.equals(RoleConstants.ORGANIZATION_ADMINISTRATOR) &&
+				!roleName.equals(RoleConstants.ORGANIZATION_OWNER)) {
 
-				Group group = userGroupRole.getGroup();
-
-				Organization organization =
-					organizationPersistence.findByPrimaryKey(
-						group.getOrganizationId());
-
-				organizations.add(organization);
+				continue;
 			}
+
+			Group group = userGroupRole.getGroup();
+
+			Organization organization =
+				organizationPersistence.findByPrimaryKey(
+					group.getOrganizationId());
+
+			organizations.add(organization);
 		}
 
 		return new ArrayList<>(organizations);
@@ -1398,75 +1561,11 @@ public class OrganizationLocalServiceImpl
 	}
 
 	/**
-	 * Returns an ordered range of all the organizations that match the
-	 * keywords, using the indexer. It is preferable to use this method instead
-	 * of the non-indexed version whenever possible for performance reasons.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end -
-	 * start</code> instances. <code>start</code> and <code>end</code> are not
-	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
-	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
-	 * result set.
-	 * </p>
-	 *
-	 * @param  companyId the primary key of the organization's company
-	 * @param  parentOrganizationId the primary key of the organization's parent
-	 *         organization
-	 * @param  keywords the keywords (space separated), which may occur in the
-	 *         organization's name, street, city, zipcode, type, region or
-	 *         country (optionally <code>null</code>)
-	 * @param  params the finder parameters (optionally <code>null</code>).
-	 * @param  start the lower bound of the range of organizations to return
-	 * @param  end the upper bound of the range of organizations to return (not
-	 *         inclusive)
-	 * @param  sort the field and direction by which to sort (optionally
-	 *         <code>null</code>)
-	 * @return the matching organizations ordered by name
-	 */
-	@Override
-	public Hits search(
-		long companyId, long parentOrganizationId, String keywords,
-		LinkedHashMap<String, Object> params, int start, int end, Sort sort) {
-
-		String name = null;
-		String type = null;
-		String street = null;
-		String city = null;
-		String zip = null;
-		String region = null;
-		String country = null;
-		boolean andOperator = false;
-
-		if (Validator.isNotNull(keywords)) {
-			name = keywords;
-			type = keywords;
-			street = keywords;
-			city = keywords;
-			zip = keywords;
-			region = keywords;
-			country = keywords;
-		}
-		else {
-			andOperator = true;
-		}
-
-		if (params != null) {
-			params.put("keywords", keywords);
-		}
-
-		return search(
-			companyId, parentOrganizationId, name, type, street, city, zip,
-			region, country, params, andOperator, start, end, sort);
-	}
-
-	/**
 	 * Returns a name ordered range of all the organizations that match the
 	 * keywords, type, region, and country, without using the indexer. It is
-	 * preferable to use the indexed version {@link #search(long, long, String,
-	 * LinkedHashMap, int, int, Sort)} instead of this method wherever possible
-	 * for performance reasons.
+	 * preferable to use the indexed version {@link #searchOrganizations(long,
+	 * long, String, LinkedHashMap, int, int, Sort)} instead of this method
+	 * wherever possible for performance reasons.
 	 *
 	 * <p>
 	 * Useful when paginating results. Returns a maximum of <code>end -
@@ -1565,128 +1664,6 @@ public class OrganizationLocalServiceImpl
 			companyId, parentOrganizationId, parentOrganizationIdComparator,
 			keywords, type, regionId, countryId, params, start, end,
 			orderByComparator);
-	}
-
-	/**
-	 * Returns a name ordered range of all the organizations with the type,
-	 * region, and country, and whose name, street, city, and zipcode match the
-	 * keywords specified for them, without using the indexer. It is preferable
-	 * to use the indexed version {@link #search(long, long, String, String,
-	 * String, String, String, String, String, LinkedHashMap, boolean, int, int,
-	 * Sort)} instead of this method wherever possible for performance reasons.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end -
-	 * start</code> instances. <code>start</code> and <code>end</code> are not
-	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
-	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
-	 * result set.
-	 * </p>
-	 *
-	 * @param  companyId the primary key of the organization's company
-	 * @param  parentOrganizationId the primary key of the organization's parent
-	 * @param  name the name keywords (space separated, optionally
-	 *         <code>null</code>)
-	 * @param  type the organization's type (optionally <code>null</code>)
-	 * @param  street the street keywords (optionally <code>null</code>)
-	 * @param  city the city keywords (optionally <code>null</code>)
-	 * @param  zip the zipcode keywords (optionally <code>null</code>)
-	 * @param  regionId the primary key of the organization's region (optionally
-	 *         <code>null</code>)
-	 * @param  countryId the primary key of the organization's country
-	 *         (optionally <code>null</code>)
-	 * @param  params the finder parameters (optionally <code>null</code>). For
-	 *         more information see {@link
-	 *         com.liferay.portal.kernel.service.persistence.OrganizationFinder}
-	 * @param  andOperator whether every field must match its keywords, or just
-	 *         one field. For example, &quot;organizations with the name
-	 *         'Employees' and city 'Chicago'&quot; vs &quot;organizations with
-	 *         the name 'Employees' or the city 'Chicago'&quot;.
-	 * @param  start the lower bound of the range of organizations to return
-	 * @param  end the upper bound of the range of organizations to return (not
-	 *         inclusive)
-	 * @return the matching organizations ordered by name
-	 * @see    com.liferay.portal.kernel.service.persistence.OrganizationFinder
-	 */
-	@Override
-	public List<Organization> search(
-		long companyId, long parentOrganizationId, String name, String type,
-		String street, String city, String zip, Long regionId, Long countryId,
-		LinkedHashMap<String, Object> params, boolean andOperator, int start,
-		int end) {
-
-		return search(
-			companyId, parentOrganizationId, name, type, street, city, zip,
-			regionId, countryId, params, andOperator, start, end,
-			OrganizationNameComparator.getInstance(true));
-	}
-
-	/**
-	 * Returns an ordered range of all the organizations with the type, region,
-	 * and country, and whose name, street, city, and zipcode match the keywords
-	 * specified for them, without using the indexer. It is preferable to use
-	 * the indexed version {@link #search(long, long, String, String, String,
-	 * String, String, String, String, LinkedHashMap, boolean, int, int, Sort)}
-	 * instead of this method wherever possible for performance reasons.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end -
-	 * start</code> instances. <code>start</code> and <code>end</code> are not
-	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
-	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
-	 * result set.
-	 * </p>
-	 *
-	 * @param  companyId the primary key of the organization's company
-	 * @param  parentOrganizationId the primary key of the organization's parent
-	 *         organization
-	 * @param  name the name keywords (space separated, optionally
-	 *         <code>null</code>)
-	 * @param  type the organization's type (optionally <code>null</code>)
-	 * @param  street the street keywords (optionally <code>null</code>)
-	 * @param  city the city keywords (optionally <code>null</code>)
-	 * @param  zip the zipcode keywords (optionally <code>null</code>)
-	 * @param  regionId the primary key of the organization's region (optionally
-	 *         <code>null</code>)
-	 * @param  countryId the primary key of the organization's country
-	 *         (optionally <code>null</code>)
-	 * @param  params the finder parameters (optionally <code>null</code>). For
-	 *         more information see {@link
-	 *         com.liferay.portal.kernel.service.persistence.OrganizationFinder}
-	 * @param  andOperator whether every field must match its keywords, or just
-	 *         one field. For example, &quot;organizations with the name
-	 *         'Employees' and city 'Chicago'&quot; vs &quot;organizations with
-	 *         the name 'Employees' or the city 'Chicago'&quot;.
-	 * @param  start the lower bound of the range of organizations to return
-	 * @param  end the upper bound of the range of organizations to return (not
-	 *         inclusive)
-	 * @param  orderByComparator the comparator to order the organizations
-	 *         (optionally <code>null</code>)
-	 * @return the matching organizations ordered by comparator
-	 *         <code>orderByComparator</code>
-	 * @see    com.liferay.portal.kernel.service.persistence.OrganizationFinder
-	 */
-	@Override
-	public List<Organization> search(
-		long companyId, long parentOrganizationId, String name, String type,
-		String street, String city, String zip, Long regionId, Long countryId,
-		LinkedHashMap<String, Object> params, boolean andOperator, int start,
-		int end, OrderByComparator<Organization> orderByComparator) {
-
-		String parentOrganizationIdComparator = StringPool.EQUAL;
-
-		if (parentOrganizationId ==
-				OrganizationConstants.ANY_PARENT_ORGANIZATION_ID) {
-
-			parentOrganizationIdComparator = StringPool.NOT_EQUAL;
-		}
-
-		return organizationFinder.findO_ByC_PO_N_T_S_C_Z_R_C(
-			companyId, parentOrganizationId, parentOrganizationIdComparator,
-			name, type, street, city, zip, regionId, countryId, params,
-			andOperator, start, end, orderByComparator);
 	}
 
 	/**
@@ -1814,74 +1791,6 @@ public class OrganizationLocalServiceImpl
 				params.put("keywords", keywords);
 			}
 
-			SearchContext searchContext = buildSearchContext(
-				companyId, parentOrganizationId, name, type, street, city, zip,
-				regionId, countryId, params, andOperator, QueryUtil.ALL_POS,
-				QueryUtil.ALL_POS, null);
-
-			return (int)indexer.searchCount(searchContext);
-		}
-		catch (Exception exception) {
-			throw new SystemException(exception);
-		}
-	}
-
-	/**
-	 * Returns the number of organizations with the type, region, and country,
-	 * and whose name, street, city, and zipcode match the keywords specified
-	 * for them.
-	 *
-	 * @param  companyId the primary key of the organization's company
-	 * @param  parentOrganizationId the primary key of the organization's parent
-	 *         organization
-	 * @param  name the name keywords (space separated, optionally
-	 *         <code>null</code>)
-	 * @param  type the organization's type (optionally <code>null</code>)
-	 * @param  street the street keywords (optionally <code>null</code>)
-	 * @param  city the city keywords (optionally <code>null</code>)
-	 * @param  zip the zipcode keywords (optionally <code>null</code>)
-	 * @param  regionId the primary key of the organization's region (optionally
-	 *         <code>null</code>)
-	 * @param  countryId the primary key of the organization's country
-	 *         (optionally <code>null</code>)
-	 * @param  params the finder parameters (optionally <code>null</code>). For
-	 *         more information see {@link
-	 *         com.liferay.portal.kernel.service.persistence.OrganizationFinder}
-	 * @param  andOperator whether every field must match its keywords, or just
-	 *         one field. For example, &quot;organizations with the name
-	 *         'Employees' and city 'Chicago'&quot; vs &quot;organizations with
-	 *         the name 'Employees' or the city 'Chicago'&quot;.
-	 * @return the number of matching organizations
-	 * @see    com.liferay.portal.kernel.service.persistence.OrganizationFinder
-	 */
-	@Override
-	public int searchCount(
-		long companyId, long parentOrganizationId, String name, String type,
-		String street, String city, String zip, Long regionId, Long countryId,
-		LinkedHashMap<String, Object> params, boolean andOperator) {
-
-		Indexer<?> indexer = IndexerRegistryUtil.nullSafeGetIndexer(
-			Organization.class);
-
-		if (!indexer.isIndexerEnabled() ||
-			!PropsValues.ORGANIZATIONS_SEARCH_WITH_INDEX ||
-			isUseCustomSQL(params)) {
-
-			String parentOrganizationIdComparator = StringPool.EQUAL;
-
-			if (parentOrganizationId ==
-					OrganizationConstants.ANY_PARENT_ORGANIZATION_ID) {
-
-				parentOrganizationIdComparator = StringPool.NOT_EQUAL;
-			}
-
-			return organizationFinder.countO_ByC_PO_N_T_S_C_Z_R_C(
-				companyId, parentOrganizationId, parentOrganizationIdComparator,
-				name, type, street, city, zip, regionId, countryId, params,
-				andOperator);
-		}
-
-		try {
 			SearchContext searchContext = buildSearchContext(
 				companyId, parentOrganizationId, name, type, street, city, zip,
 				regionId, countryId, params, andOperator, QueryUtil.ALL_POS,
@@ -2027,6 +1936,40 @@ public class OrganizationLocalServiceImpl
 		Hits hits = indexer.search(searchContext);
 
 		return hits.getLength();
+	}
+
+	/**
+	 * Sets the organizations in the group, removing and adding organizations to
+	 * the group as necessary.
+	 *
+	 * @param groupId the primary key of the group
+	 * @param organizationIds the primary keys of the organizations
+	 */
+	@Override
+	public void setGroupOrganizations(long groupId, long[] organizationIds) {
+		long[] oldOrganizationIds = groupPersistence.getOrganizationPrimaryKeys(
+			groupId);
+
+		super.setGroupOrganizations(groupId, organizationIds);
+
+		_reindexUsers(
+			ArrayUtil.toLongArray(
+				SetUtil.symmetricDifference(
+					organizationIds, oldOrganizationIds)));
+	}
+
+	/**
+	 * Sets the organizations in the user, removing and adding organizations to
+	 * the user as necessary.
+	 *
+	 * @param userId the primary key of the user
+	 * @param organizationIds the primary keys of the organizations
+	 */
+	@Override
+	public void setUserOrganizations(long userId, long[] organizationIds) {
+		super.setUserOrganizations(userId, organizationIds);
+
+		_reindexUser(userId);
 	}
 
 	/**
@@ -2248,14 +2191,16 @@ public class OrganizationLocalServiceImpl
 			for (Organization childOrganization : childOrganizations) {
 				Group childGroup = childOrganization.getGroup();
 
-				if (childGroup.isSite() &&
-					(childGroup.getParentGroupId() ==
+				if (!childGroup.isSite() ||
+					(childGroup.getParentGroupId() !=
 						GroupConstants.DEFAULT_PARENT_GROUP_ID)) {
 
-					childGroup.setParentGroupId(group.getGroupId());
-
-					_groupLocalService.updateGroup(childGroup);
+					continue;
 				}
+
+				childGroup.setParentGroupId(group.getGroupId());
+
+				_groupLocalService.updateGroup(childGroup);
 			}
 		}
 
@@ -2303,16 +2248,18 @@ public class OrganizationLocalServiceImpl
 		List<Organization> organizations) {
 
 		for (Organization organization : organizations) {
-			if (!allSuborganizations.contains(organization)) {
-				allSuborganizations.add(organization);
-
-				List<Organization> suborganizations =
-					organizationPersistence.findByC_P(
-						organization.getCompanyId(),
-						organization.getOrganizationId());
-
-				addSuborganizations(allSuborganizations, suborganizations);
+			if (allSuborganizations.contains(organization)) {
+				continue;
 			}
+
+			allSuborganizations.add(organization);
+
+			List<Organization> suborganizations =
+				organizationPersistence.findByC_P(
+					organization.getCompanyId(),
+					organization.getOrganizationId());
+
+			addSuborganizations(allSuborganizations, suborganizations);
 		}
 	}
 
@@ -2737,6 +2684,27 @@ public class OrganizationLocalServiceImpl
 		}
 
 		return sorts;
+	}
+
+	private void _reindexUser(long userId) {
+		Indexer<User> indexer = IndexerRegistryUtil.nullSafeGetIndexer(
+			User.class);
+
+		try {
+			indexer.reindex(User.class.getName(), userId);
+		}
+		catch (SearchException searchException) {
+			throw new SystemException(searchException);
+		}
+	}
+
+	private void _reindexUsers(long[] organizationIds) {
+		try {
+			reindexUsers(organizationIds);
+		}
+		catch (PortalException portalException) {
+			throw new SystemException(portalException);
+		}
 	}
 
 	private static final String _TYPE_FIELD_NAME = Field.getSortableFieldName(

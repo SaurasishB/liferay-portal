@@ -38,7 +38,7 @@ A session can hold runs of several branches, so use the Results Summary whose te
 
 ### Posted Comment
 
-Post a fresh comment on each run rather than editing a prior one, so the PR keeps a chronological record. The comment body is the Results Summary verbatim, a blank line, then the marker — an HTML comment, invisible in rendered Markdown, whose payload is a JSON object of the form `<!-- pr-check {"result": "<state>", "sha": "<tested-SHA>"} -->`, where `<state>` is `success` when the overall state is `PASS` and `failure` when it is `FAIL`, so a run carrying `NOT VERIFIED` rows records `success`, and `<tested-SHA>` is the full 40-character SHA from the Results Summary:
+Post a fresh comment on each run rather than editing a prior one, so the PR keeps a chronological record. The comment body is the Results Summary verbatim, a blank line, then the marker — an HTML comment, invisible in rendered Markdown, whose payload is a JSON object of the form `<!-- pr-check {"result": "<state>", "sha": "<tested-SHA>"} -->`, where `<state>` is `success` when the overall state is `PASS` and `failure` when it is `FAIL`, so a run carrying `NO COVERAGE` or `NOT VERIFIED` rows records `success`, and `<tested-SHA>` is the full 40-character SHA from the Results Summary:
 
 ```markdown
 **pr-check: PASS** — tested on `<tested-SHA>`
@@ -51,6 +51,8 @@ Post a fresh comment on each run rather than editing a prior one, so the PR keep
 
 <!-- pr-check {"result": "success", "sha": "<tested-SHA>"} -->
 ```
+
+When `build/test-plan/result.json` exists and its `head` is the tested SHA, add a `Test plan: <count> run, <passed> passed.` line between the Results Summary block and the marker. Leave it out otherwise. Put a blank line before and after it. `<count>` is the number of entries in `tests`. `<passed>` is the number of those entries whose `result` is `passed`.
 
 Post the body with `--body-file`, or with `--body` from a quoted-heredoc variable; either keeps the marker's literal `!` off the command line, where it could otherwise trigger history expansion and corrupt the marker. Use `mktemp` for the file so it stays out of the working tree, and remove it afterward.
 

@@ -730,7 +730,7 @@ test.skip(
 
 			await expect(
 				page.getByText(
-					'There are no results found.Please try a different search term.'
+					'No results were found.Please try a different search term.'
 				)
 			).toBeVisible();
 		});
@@ -1682,7 +1682,7 @@ test(
 			});
 
 			await expect(
-				page.getByText('There are no results found.')
+				page.getByText('No results were found.')
 			).toBeVisible();
 
 			// Sort by Name ascending then toggle to descending
@@ -1793,9 +1793,7 @@ test(
 
 		// The cancelled segment is not persisted to the list
 
-		await expect(
-			page.getByText('There are no segments found.')
-		).toBeVisible();
+		await expect(page.getByText('No segments were found.')).toBeVisible();
 	}
 );
 
@@ -1856,7 +1854,7 @@ test(
 
 		await clickAndExpectToBeVisible({
 			target: page.getByText('Known Segment Members'),
-			trigger: page.getByTitle('View Members'),
+			trigger: page.getByRole('button', {name: 'View Members'}),
 		});
 
 		await viewNameOnTableList({
@@ -2228,7 +2226,7 @@ test(
 
 		await clickAndExpectToBeVisible({
 			target: page.getByText('Known Segment Members'),
-			trigger: page.getByTitle('View Members'),
+			trigger: page.getByRole('button', {name: 'View Members'}),
 		});
 
 		await viewNameOnTableList({
@@ -2263,7 +2261,7 @@ test(
 
 		await clickAndExpectToBeVisible({
 			target: page.getByText('Known Segment Members'),
-			trigger: page.getByTitle('View Members'),
+			trigger: page.getByRole('button', {name: 'View Members'}),
 		});
 
 		await viewNameOnTableList({
@@ -2568,9 +2566,7 @@ test(
 			autoClose: false,
 		});
 
-		await expect(
-			page.getByText('There are no segments found.')
-		).toBeVisible();
+		await expect(page.getByText('No segments were found.')).toBeVisible();
 	}
 );
 
@@ -2834,9 +2830,7 @@ test(
 			autoClose: false,
 		});
 
-		await expect(
-			page.getByText('There are no segments found.')
-		).toBeVisible();
+		await expect(page.getByText('No segments were found.')).toBeVisible();
 	}
 );
 
@@ -2897,7 +2891,7 @@ test(
 
 		await clickAndExpectToBeVisible({
 			target: page.getByText('Known Segment Members'),
-			trigger: page.getByTitle('View Members'),
+			trigger: page.getByRole('button', {name: 'View Members'}),
 		});
 
 		await viewNameOnTableList({

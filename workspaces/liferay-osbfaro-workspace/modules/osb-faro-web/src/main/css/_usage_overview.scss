@@ -2,7 +2,6 @@
 	background: $primaryLighten33;
 	border-radius: 4px;
 	flex: none;
-	flex-grow: 0;
 	height: 24px;
 	order: 0;
 	width: 203px;
@@ -34,7 +33,6 @@
 	.generic-pie-label {
 		fill: var(--cadmin-dark-l1);
 		font-size: 1.75rem;
-		font-weight: bold;
 	}
 }
 
@@ -47,7 +45,7 @@
 }
 
 .saas-banner {
-	background-image: url(/o/osb-faro-web/dist/sprite.svg#ac_banner-usage);
+	background-image: url(../images/backgrounds/ac_banner.svg);
 	background-position: center;
 	background-repeat: no-repeat;
 	background-size: cover;

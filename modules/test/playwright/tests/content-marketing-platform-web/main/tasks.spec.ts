@@ -65,13 +65,6 @@ test.beforeEach(async ({apiHelpers}) => {
 });
 
 test.afterEach(async ({apiHelpers}) => {
-	if (project) {
-		await apiHelpers.objectEntry.deleteObjectEntry(
-			cmpProject,
-			String(project.id)
-		);
-	}
-
 	const bulkActionTasks = 'cms/bulk-action-tasks';
 
 	const bulkTasks =
@@ -94,11 +87,7 @@ test(
 	{tag: ['@LPD-99451']},
 	async ({apiHelpers, page, tasksPage}) => {
 		const defaultSpace =
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-				name: `Space ${getRandomString()}`,
-				settings: {},
-				type: 'Space',
-			});
+			await apiHelpers.headlessAssetLibrary.createSpace();
 
 		const user = await addSpaceUser(
 			apiHelpers,

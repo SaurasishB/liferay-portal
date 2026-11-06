@@ -17,6 +17,7 @@ import com.liferay.object.service.ObjectFieldLocalServiceUtil;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.json.JSONArray;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.language.LanguageUtil;
@@ -120,16 +121,17 @@ public class LiferayCommercePIMConnectorTest {
 	}
 
 	@Test
-	public void testCreateProductJSONObject() throws Exception {
-		_testCreateProductJSONObject();
-		_testCreateProductJSONObjectWithBooleanProductType();
-		_testCreateProductJSONObjectWithForeignStructureFixedValue();
-		_testCreateProductJSONObjectWithInvalidStructureFieldMapping();
-		_testCreateProductJSONObjectWithJoinedValues();
-		_testCreateProductJSONObjectWithPicklistProductSpecification();
-		_testCreateProductJSONObjectWithProductOptions();
-		_testCreateProductJSONObjectWithProductSpecifications();
-		_testCreateProductJSONObjectWithoutUnitOfMeasure();
+	public void testExecute() throws Exception {
+		_testExecute();
+		_testExecuteWithBooleanProductType();
+		_testExecuteWithForeignStructureFixedValue();
+		_testExecuteWithInvalidStructureFieldMapping();
+		_testExecuteWithJoinedValues();
+		_testExecuteWithPicklistProductSpecification();
+		_testExecuteWithProductOptions();
+		_testExecuteWithProductSpecifications();
+		_testExecuteWithVariantPIMLinks();
+		_testExecuteWithoutUnitOfMeasure();
 	}
 
 	@Test
@@ -204,7 +206,16 @@ public class LiferayCommercePIMConnectorTest {
 				}));
 	}
 
-	private JSONObject _createProductJSONObject(
+	@Test
+	public void testGetPIMConnectorConfigurationObjectDefinitionExternalReferenceCode() {
+		Assert.assertEquals(
+			"L_PIM_CONNECTOR_CONFIGURATION_LIFERAY_COMMERCE",
+			_liferayCommercePIMConnector.
+				getPIMConnectorConfigurationObjectDefinitionExternalReferenceCode());
+	}
+
+	private JSONObject _execute(
+			String externalReferenceCode,
 			List<ObjectEntry> pimFieldMappingObjectEntries,
 			ObjectEntry... pimProductObjectEntries)
 		throws Exception {
@@ -219,8 +230,18 @@ public class LiferayCommercePIMConnectorTest {
 			objectEntries.add(objectEntry);
 		}
 
-		return _liferayCommercePIMConnector.createProductJSONObject(
-			objectEntriesMap, Arrays.asList(pimProductObjectEntries));
+		JSONArray jsonArray = JSONFactoryUtil.createJSONArray(
+			_liferayCommercePIMConnector.doExecute(
+				Collections.emptyMap(), _pimConnectorObjectEntry,
+				objectEntriesMap,
+				HashMapBuilder.put(
+					externalReferenceCode,
+					Arrays.asList(pimProductObjectEntries)
+				).build()));
+
+		Assert.assertEquals(jsonArray.toString(), 1, jsonArray.length());
+
+		return jsonArray.getJSONObject(0);
 	}
 
 	private List<ObjectEntry> _getRequiredObjectEntries(
@@ -231,13 +252,13 @@ public class LiferayCommercePIMConnectorTest {
 				"catalogId", StringPool.BLANK, StringPool.BLANK,
 				PIMConnectorFieldMappingsUtil.TYPE_FIXED_VALUE, "1"),
 			_mockFieldMapping(
-				"name", StringPool.BLANK, "name", "dynamicValue",
+				"name", StringPool.BLANK, "title", "dynamicValue",
 				StringPool.BLANK),
 			_mockFieldMapping(
 				"productType", StringPool.BLANK, StringPool.BLANK,
 				PIMConnectorFieldMappingsUtil.TYPE_FIXED_VALUE, "simple"),
 			_mockFieldMapping(
-				"skus[].sku", StringPool.BLANK, "code", "dynamicValue",
+				"skus[].sku", StringPool.BLANK, "sku", "dynamicValue",
 				StringPool.BLANK));
 
 		Collections.addAll(requiredObjectEntries, objectEntries);
@@ -296,7 +317,7 @@ public class LiferayCommercePIMConnectorTest {
 	}
 
 	private ObjectEntry _mockProductObjectEntry(
-			String code, Map<String, Serializable> values)
+			String sku, Map<String, Serializable> values)
 		throws Exception {
 
 		ObjectEntry objectEntry = Mockito.mock(ObjectEntry.class);
@@ -304,7 +325,7 @@ public class LiferayCommercePIMConnectorTest {
 		Mockito.when(
 			objectEntry.getExternalReferenceCode()
 		).thenReturn(
-			code
+			sku
 		);
 
 		Mockito.when(
@@ -317,9 +338,9 @@ public class LiferayCommercePIMConnectorTest {
 			_objectEntryLocalService.getValues(objectEntry)
 		).thenReturn(
 			HashMapBuilder.<String, Serializable>put(
-				"code", code
+				"sku", sku
 			).put(
-				"name", code + " name"
+				"title", sku + " title"
 			).put(
 				"unitOfMeasureKey", "box"
 			).putAll(
@@ -330,9 +351,9 @@ public class LiferayCommercePIMConnectorTest {
 		return objectEntry;
 	}
 
-	private void _testCreateProductJSONObject() throws Exception {
-		JSONObject jsonObject = _createProductJSONObject(
-			_getRequiredObjectEntries(),
+	private void _testExecute() throws Exception {
+		JSONObject jsonObject = _execute(
+			"SKU-1", _getRequiredObjectEntries(),
 			_mockProductObjectEntry(
 				"SKU-1", Collections.<String, Serializable>emptyMap()));
 
@@ -351,10 +372,12 @@ public class LiferayCommercePIMConnectorTest {
 
 		JSONObject nameJSONObject = jsonObject.getJSONObject("name");
 
-		Assert.assertEquals("SKU-1 name", nameJSONObject.getString("en_US"));
+		Assert.assertEquals("SKU-1 title", nameJSONObject.getString("en_US"));
 
 		JSONObject skuJSONObject = _getSkuJSONObject(0, jsonObject);
 
+		Assert.assertEquals(
+			"SKU-1", skuJSONObject.getString("externalReferenceCode"));
 		Assert.assertTrue(skuJSONObject.getBoolean("published"));
 		Assert.assertTrue(skuJSONObject.getBoolean("purchasable"));
 		Assert.assertEquals("SKU-1", skuJSONObject.getString("sku"));
@@ -362,25 +385,23 @@ public class LiferayCommercePIMConnectorTest {
 			skuJSONObject.toString(), skuJSONObject.has("skuOptions"));
 	}
 
-	private void _testCreateProductJSONObjectWithBooleanProductType()
-		throws Exception {
-
+	private void _testExecuteWithBooleanProductType() throws Exception {
 		List<ObjectEntry> objectEntries = ListUtil.fromArray(
 			_mockFieldMapping(
 				"catalogId", StringPool.BLANK, StringPool.BLANK,
 				PIMConnectorFieldMappingsUtil.TYPE_FIXED_VALUE, "1"),
 			_mockFieldMapping(
-				"name", StringPool.BLANK, "name", "dynamicValue",
+				"name", StringPool.BLANK, "title", "dynamicValue",
 				StringPool.BLANK),
 			_mockFieldMapping(
 				"productType", StringPool.BLANK, "virtual", "dynamicValue",
 				StringPool.BLANK),
 			_mockFieldMapping(
-				"skus[].sku", StringPool.BLANK, "code", "dynamicValue",
+				"skus[].sku", StringPool.BLANK, "sku", "dynamicValue",
 				StringPool.BLANK));
 
-		JSONObject jsonObject = _createProductJSONObject(
-			objectEntries,
+		JSONObject jsonObject = _execute(
+			"SKU-1", objectEntries,
 			_mockProductObjectEntry(
 				"SKU-1",
 				HashMapBuilder.<String, Serializable>put(
@@ -389,8 +410,8 @@ public class LiferayCommercePIMConnectorTest {
 
 		Assert.assertEquals("simple", jsonObject.getString("productType"));
 
-		jsonObject = _createProductJSONObject(
-			objectEntries,
+		jsonObject = _execute(
+			"SKU-2", objectEntries,
 			_mockProductObjectEntry(
 				"SKU-2",
 				HashMapBuilder.<String, Serializable>put(
@@ -400,10 +421,9 @@ public class LiferayCommercePIMConnectorTest {
 		Assert.assertEquals("virtual", jsonObject.getString("productType"));
 	}
 
-	private void _testCreateProductJSONObjectWithForeignStructureFixedValue()
-		throws Exception {
-
-		JSONObject jsonObject = _createProductJSONObject(
+	private void _testExecuteWithForeignStructureFixedValue() throws Exception {
+		JSONObject jsonObject = _execute(
+			"SKU-1",
 			_getRequiredObjectEntries(
 				_mockFieldMapping(
 					"description", RandomTestUtil.randomString(),
@@ -416,10 +436,11 @@ public class LiferayCommercePIMConnectorTest {
 			jsonObject.toString(), jsonObject.has("description"));
 	}
 
-	private void _testCreateProductJSONObjectWithInvalidStructureFieldMapping()
+	private void _testExecuteWithInvalidStructureFieldMapping()
 		throws Exception {
 
-		JSONObject jsonObject = _createProductJSONObject(
+		JSONObject jsonObject = _execute(
+			"SKU-1",
 			_getRequiredObjectEntries(
 				_mockFieldMapping(
 					"description", RandomTestUtil.randomString(), "description",
@@ -434,13 +455,12 @@ public class LiferayCommercePIMConnectorTest {
 			jsonObject.toString(), jsonObject.has("description"));
 	}
 
-	private void _testCreateProductJSONObjectWithJoinedValues()
-		throws Exception {
-
-		JSONObject jsonObject = _createProductJSONObject(
+	private void _testExecuteWithJoinedValues() throws Exception {
+		JSONObject jsonObject = _execute(
+			"SKU-1",
 			_getRequiredObjectEntries(
 				_mockFieldMapping(
-					"name", _CLASS_NAME, "code", "dynamicValue",
+					"name", _CLASS_NAME, "sku", "dynamicValue",
 					StringPool.BLANK)),
 			_mockProductObjectEntry(
 				"SKU-1", Collections.<String, Serializable>emptyMap()));
@@ -450,7 +470,7 @@ public class LiferayCommercePIMConnectorTest {
 		Assert.assertEquals("SKU-1", nameJSONObject.getString("en_US"));
 	}
 
-	private void _testCreateProductJSONObjectWithPicklistProductSpecification()
+	private void _testExecuteWithPicklistProductSpecification()
 		throws Exception {
 
 		ObjectField objectField = Mockito.mock(ObjectField.class);
@@ -496,7 +516,8 @@ public class LiferayCommercePIMConnectorTest {
 			listTypeEntry
 		);
 
-		JSONObject jsonObject = _createProductJSONObject(
+		JSONObject jsonObject = _execute(
+			"SKU-1",
 			_getRequiredObjectEntries(
 				_mockFieldMapping(
 					"productSpecifications", StringPool.BLANK, "size",
@@ -518,12 +539,11 @@ public class LiferayCommercePIMConnectorTest {
 		Assert.assertEquals("Small", valueJSONObject.getString("en_US"));
 	}
 
-	private void _testCreateProductJSONObjectWithProductOptions()
-		throws Exception {
-
+	private void _testExecuteWithProductOptions() throws Exception {
 		_mockObjectField("Color", "color");
 
-		JSONObject jsonObject = _createProductJSONObject(
+		JSONObject jsonObject = _execute(
+			"SKU-1",
 			_getRequiredObjectEntries(
 				_mockFieldMapping(
 					"productOptions", StringPool.BLANK, "color", "dynamicValue",
@@ -587,12 +607,11 @@ public class LiferayCommercePIMConnectorTest {
 		Assert.assertEquals("red", skuOptionJSONObject.getString("value"));
 	}
 
-	private void _testCreateProductJSONObjectWithProductSpecifications()
-		throws Exception {
-
+	private void _testExecuteWithProductSpecifications() throws Exception {
 		_mockObjectField("Color", "color");
 
-		JSONObject jsonObject = _createProductJSONObject(
+		JSONObject jsonObject = _execute(
+			"SKU-1",
 			_getRequiredObjectEntries(
 				_mockFieldMapping(
 					"productSpecifications", StringPool.BLANK, "color",
@@ -627,11 +646,33 @@ public class LiferayCommercePIMConnectorTest {
 		Assert.assertEquals("Color", labelJSONObject.getString("en_US"));
 	}
 
-	private void _testCreateProductJSONObjectWithoutUnitOfMeasure()
-		throws Exception {
+	private void _testExecuteWithVariantPIMLinks() throws Exception {
+		JSONObject jsonObject = _execute(
+			"CLUSTER-1", _getRequiredObjectEntries(),
+			_mockProductObjectEntry(
+				"SKU-1", Collections.<String, Serializable>emptyMap()),
+			_mockProductObjectEntry(
+				"SKU-2", Collections.<String, Serializable>emptyMap()));
 
-		JSONObject jsonObject = _createProductJSONObject(
-			_getRequiredObjectEntries(),
+		Assert.assertEquals(
+			"CLUSTER-1", jsonObject.getString("externalReferenceCode"));
+
+		JSONObject skuJSONObject = _getSkuJSONObject(0, jsonObject);
+
+		Assert.assertEquals(
+			"SKU-1", skuJSONObject.getString("externalReferenceCode"));
+		Assert.assertEquals("SKU-1", skuJSONObject.getString("sku"));
+
+		skuJSONObject = _getSkuJSONObject(1, jsonObject);
+
+		Assert.assertEquals(
+			"SKU-2", skuJSONObject.getString("externalReferenceCode"));
+		Assert.assertEquals("SKU-2", skuJSONObject.getString("sku"));
+	}
+
+	private void _testExecuteWithoutUnitOfMeasure() throws Exception {
+		JSONObject jsonObject = _execute(
+			"SKU-1", _getRequiredObjectEntries(),
 			_mockProductObjectEntry(
 				"SKU-1", Collections.<String, Serializable>emptyMap()));
 
@@ -642,7 +683,7 @@ public class LiferayCommercePIMConnectorTest {
 	}
 
 	private static final String _CLASS_NAME =
-		"com.liferay.object.model.ObjectDefinition#PIMBaseSku";
+		"com.liferay.object.model.ObjectDefinition#PIMBasicProduct";
 
 	private static final long _LIST_TYPE_DEFINITION_ID =
 		RandomTestUtil.randomLong();
@@ -654,7 +695,7 @@ public class LiferayCommercePIMConnectorTest {
 		FriendlyURLNormalizer.class);
 	private final Language _language = Mockito.mock(Language.class);
 	private final LiferayCommercePIMConnector _liferayCommercePIMConnector =
-		new LiferayCommercePIMConnector();
+		Mockito.spy(new LiferayCommercePIMConnector());
 	private final MockedStatic<ListTypeEntryLocalServiceUtil>
 		_listTypeEntryLocalServiceUtilMockedStatic = Mockito.mockStatic(
 			ListTypeEntryLocalServiceUtil.class);
@@ -667,5 +708,7 @@ public class LiferayCommercePIMConnectorTest {
 	private final MockedStatic<ObjectFieldLocalServiceUtil>
 		_objectFieldLocalServiceUtilMockedStatic = Mockito.mockStatic(
 			ObjectFieldLocalServiceUtil.class);
+	private final ObjectEntry _pimConnectorObjectEntry = Mockito.mock(
+		ObjectEntry.class);
 
 }

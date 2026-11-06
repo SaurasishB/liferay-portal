@@ -516,18 +516,18 @@ public class LayoutRevisionLocalServiceImpl
 						removePortletIdsArray);
 
 					for (PortletPreferences portletPreferences :
-							_portletPreferencesLocalService.
-								getPortletPreferencesByPlid(
-									layoutRevision.getLayoutRevisionId())) {
+							_portletPreferencesPersistence.findByPlid(
+								layoutRevision.getLayoutRevisionId())) {
 
-						if (removePortletIds.contains(
+						if (!removePortletIds.contains(
 								portletPreferences.getPortletId())) {
 
-							_portletPreferencesLocalService.
-								deletePortletPreferences(
-									portletPreferences.
-										getPortletPreferencesId());
+							continue;
 						}
+
+						_portletPreferencesLocalService.
+							deletePortletPreferences(
+								portletPreferences.getPortletPreferencesId());
 					}
 				}
 			}
@@ -628,13 +628,15 @@ public class LayoutRevisionLocalServiceImpl
 					layoutRevision.getPlid());
 
 			for (LayoutRevision curLayoutRevision : layoutRevisions) {
-				if (curLayoutRevision.getLayoutRevisionId() !=
+				if (curLayoutRevision.getLayoutRevisionId() ==
 						layoutRevision.getLayoutRevisionId()) {
 
-					curLayoutRevision.setHead(false);
-
-					layoutRevisionPersistence.update(curLayoutRevision);
+					continue;
 				}
+
+				curLayoutRevision.setHead(false);
+
+				layoutRevisionPersistence.update(curLayoutRevision);
 			}
 		}
 		else if (head) {

@@ -1,7 +1,5 @@
 {{- $storage := $xr.spec.storage -}}
 
-{{- $storageRegion := $storage.region | default $env.region }}
-
 {{- range $i, $dataPlane := list "blue" "green" }}
 {{- if $i }}
 ---
@@ -10,7 +8,6 @@ apiVersion: s3.aws.m.upbound.io/v1beta1
 kind: Bucket
 metadata:
     annotations:
-        crossplane.io/external-name: {{ $storageName }}-{{ $dataPlane }}
         gotemplating.fn.crossplane.io/composition-resource-name: storage-{{ $dataPlane }}
     labels:
         app: liferay
@@ -23,21 +20,20 @@ metadata:
 spec:
     forProvider:
         forceDestroy: {{ $forceDestroy }}
-        region: {{ $storageRegion }}
+        region: {{ $env.region }}
         tags:
-            Active: {{ printf "%t" (eq $dataPlane $activeDataPlane) | quote }}
-            Backup: "true"
-            Name: {{ $storageName }}-{{ $dataPlane }}
             {{- with $storage.tags }}
             {{- . | toYaml | nindent 12 }}
             {{- end }}
+            Active: {{ printf "%t" (eq $dataPlane $activeDataPlane) | quote }}
+            Backup: "true"
+            Name: {{ $storageName }}-{{ $dataPlane }}
     managementPolicies: {{ $managementPolicies }}
 ---
 apiVersion: s3.aws.m.upbound.io/v1beta1
 kind: BucketLifecycleConfiguration
 metadata:
     annotations:
-        crossplane.io/external-name: {{ $storageName }}-lifecycle-{{ $dataPlane }}
         gotemplating.fn.crossplane.io/composition-resource-name: storage-lifecycle-{{ $dataPlane }}
     labels:
         environmentId: {{ $environmentId }}
@@ -52,7 +48,7 @@ spec:
                 dataPlane: {{ $dataPlane }}
                 environmentId: {{ $environmentId }}
                 projectId: {{ $projectId }}
-        region: {{ $storageRegion }}
+        region: {{ $env.region }}
         rule:
             -   abortIncompleteMultipartUpload:
                     -   daysAfterInitiation: 7
@@ -68,7 +64,6 @@ apiVersion: s3.aws.m.upbound.io/v1beta1
 kind: BucketOwnershipControls
 metadata:
     annotations:
-        crossplane.io/external-name: {{ $storageName }}-ownership-controls-{{ $dataPlane }}
         gotemplating.fn.crossplane.io/composition-resource-name: storage-ownership-controls-{{ $dataPlane }}
     labels:
         app: liferay
@@ -86,7 +81,7 @@ spec:
                 dataPlane: {{ $dataPlane }}
                 environmentId: {{ $environmentId }}
                 projectId: {{ $projectId }}
-        region: {{ $storageRegion }}
+        region: {{ $env.region }}
         rule:
             objectOwnership: BucketOwnerPreferred
     managementPolicies: {{ $managementPolicies }}
@@ -95,7 +90,6 @@ apiVersion: s3.aws.m.upbound.io/v1beta1
 kind: BucketPublicAccessBlock
 metadata:
     annotations:
-        crossplane.io/external-name: {{ $storageName }}-public-access-block-{{ $dataPlane }}
         gotemplating.fn.crossplane.io/composition-resource-name: storage-public-access-block-{{ $dataPlane }}
     labels:
         app: liferay
@@ -116,7 +110,7 @@ spec:
                 environmentId: {{ $environmentId }}
                 projectId: {{ $projectId }}
         ignorePublicAcls: true
-        region: {{ $storageRegion }}
+        region: {{ $env.region }}
         restrictPublicBuckets: true
     managementPolicies: {{ $managementPolicies }}
 ---
@@ -124,7 +118,6 @@ apiVersion: s3.aws.m.upbound.io/v1beta1
 kind: BucketVersioning
 metadata:
     annotations:
-        crossplane.io/external-name: {{ $storageName }}-versioning-{{ $dataPlane }}
         gotemplating.fn.crossplane.io/composition-resource-name: storage-versioning-{{ $dataPlane }}
     labels:
         app: liferay
@@ -144,7 +137,7 @@ spec:
                 environmentId: {{ $environmentId }}
                 projectId: {{ $projectId }}
             namespace: {{ $namespace }}
-        region: {{ $storageRegion }}
+        region: {{ $env.region }}
         versioningConfiguration:
             status: Enabled
     managementPolicies: {{ $managementPolicies }}

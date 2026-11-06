@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLField;
 import com.liferay.portal.vulcan.graphql.annotation.GraphQLName;
@@ -24,6 +25,8 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 
 import java.io.Serializable;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -147,7 +150,7 @@ public class Metric implements Serializable {
 	private Supplier<Double> _previousValueSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema(
-		description = "Direction of the change from the previous range (e.g. POSITIVE, NEGATIVE, NEUTRAL). The set of values is defined by the analytics engine."
+		description = "Direction of the change from the previous range: POSITIVE, NEGATIVE or NEUTRAL."
 	)
 	public String getTrendClassification() {
 		if (_trendClassificationSupplier != null) {
@@ -183,7 +186,7 @@ public class Metric implements Serializable {
 	}
 
 	@GraphQLField(
-		description = "Direction of the change from the previous range (e.g. POSITIVE, NEGATIVE, NEUTRAL). The set of values is defined by the analytics engine."
+		description = "Direction of the change from the previous range: POSITIVE, NEGATIVE or NEUTRAL."
 	)
 	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
 	protected String trendClassification;
@@ -473,6 +476,27 @@ public class Metric implements Serializable {
 		return sb.toString();
 	}
 
+	private static String _toJSON(Object value) {
+		if (value instanceof Collection) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray((Collection<?>)value));
+		}
+		else if (value instanceof Map) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONObject((Map<?, ?>)value));
+		}
+		else if (value instanceof Object[]) {
+			return String.valueOf(
+				JSONFactoryUtil.createJSONArray(
+					Arrays.asList((Object[])value)));
+		}
+		else if (value instanceof String) {
+			return StringBundler.concat("\"", _escape(value), "\"");
+		}
+
+		return String.valueOf(value);
+	}
+
 	private static final String[][] _JSON_ESCAPE_STRINGS = {
 		{"\\", "\"", "\b", "\f", "\n", "\r", "\t"},
 		{"\\\\", "\\\"", "\\b", "\\f", "\\n", "\\r", "\\t"}
@@ -481,4 +505,4 @@ public class Metric implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:1665257887
+// LIFERAY-REST-BUILDER-HASH:-575800180

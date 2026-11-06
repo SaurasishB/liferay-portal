@@ -25,18 +25,17 @@ import com.liferay.portal.kernel.util.HttpComponentsUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.security.key.secret.SecretResolverUtil;
 import com.liferay.segments.asah.connector.internal.client.constants.FilterConstants;
 import com.liferay.segments.asah.connector.internal.client.data.binding.ExperimentJSONObjectMapper;
 import com.liferay.segments.asah.connector.internal.client.data.binding.IndividualJSONObjectMapper;
 import com.liferay.segments.asah.connector.internal.client.data.binding.IndividualSegmentJSONObjectMapper;
-import com.liferay.segments.asah.connector.internal.client.data.binding.InterestTermsJSONObjectMapper;
 import com.liferay.segments.asah.connector.internal.client.model.DXPVariants;
 import com.liferay.segments.asah.connector.internal.client.model.Experiment;
 import com.liferay.segments.asah.connector.internal.client.model.ExperimentSettings;
 import com.liferay.segments.asah.connector.internal.client.model.Individual;
 import com.liferay.segments.asah.connector.internal.client.model.IndividualSegment;
 import com.liferay.segments.asah.connector.internal.client.model.Results;
-import com.liferay.segments.asah.connector.internal.client.model.Topic;
 import com.liferay.segments.asah.connector.internal.client.util.FilterBuilder;
 import com.liferay.segments.asah.connector.internal.client.util.OrderByField;
 
@@ -246,23 +245,6 @@ public class AsahFaroBackendClientImpl implements AsahFaroBackendClient {
 	}
 
 	@Override
-	public Results<Topic> getInterestTermsResults(
-		long companyId, String userId) {
-
-		try {
-			return _get(
-				companyId, new MultivaluedHashMap<>(),
-				StringUtil.replace(_PATH_INTERESTS_TERMS, "{userId}", userId),
-				_interestTermsJSONObjectMapper::mapToResults);
-		}
-		catch (Exception exception) {
-			throw new NestableRuntimeException(
-				"Unable to handle JSON response: " + exception.getMessage(),
-				exception);
-		}
-	}
-
-	@Override
 	public void updateExperiment(long companyId, Experiment experiment) {
 		if (Validator.isNull(experiment.getId())) {
 			throw new IllegalArgumentException("Experiment ID is null");
@@ -328,7 +310,7 @@ public class AsahFaroBackendClientImpl implements AsahFaroBackendClient {
 	}
 
 	private Map<String, String> _getHeaders(
-		AnalyticsConfiguration analyticsConfiguration) {
+		AnalyticsConfiguration analyticsConfiguration, long companyId) {
 
 		return HashMapBuilder.put(
 			"Accept", "application/json"
@@ -336,8 +318,10 @@ public class AsahFaroBackendClientImpl implements AsahFaroBackendClient {
 			"Content-Type", "application/json"
 		).put(
 			"OSB-Asah-Faro-Backend-Security-Signature",
-			analyticsConfiguration.
-				liferayAnalyticsFaroBackendSecuritySignature()
+			SecretResolverUtil.resolve(
+				companyId,
+				analyticsConfiguration.
+					liferayAnalyticsFaroBackendSecuritySignature())
 		).put(
 			"OSB-Asah-Project-ID",
 			analyticsConfiguration.liferayAnalyticsProjectId()
@@ -354,7 +338,7 @@ public class AsahFaroBackendClientImpl implements AsahFaroBackendClient {
 		AnalyticsConfiguration analyticsConfiguration =
 			_analyticsSettingsManager.getAnalyticsConfiguration(companyId);
 
-		httpOptions.setHeaders(_getHeaders(analyticsConfiguration));
+		httpOptions.setHeaders(_getHeaders(analyticsConfiguration, companyId));
 
 		String url = StringBundler.concat(
 			analyticsConfiguration.liferayAnalyticsFaroBackendURL(),
@@ -527,9 +511,6 @@ public class AsahFaroBackendClientImpl implements AsahFaroBackendClient {
 
 	private static final String _PATH_INDIVIDUALS = "api/1.0/individuals";
 
-	private static final String _PATH_INTERESTS_TERMS =
-		"api/1.0/interests/terms/{userId}";
-
 	private static final Log _log = LogFactoryUtil.getLog(
 		AsahFaroBackendClientImpl.class);
 
@@ -540,8 +521,6 @@ public class AsahFaroBackendClientImpl implements AsahFaroBackendClient {
 	private static final IndividualSegmentJSONObjectMapper
 		_individualSegmentJSONObjectMapper =
 			new IndividualSegmentJSONObjectMapper();
-	private static final InterestTermsJSONObjectMapper
-		_interestTermsJSONObjectMapper = new InterestTermsJSONObjectMapper();
 	private static final ObjectMapper _objectMapper = new ObjectMapper() {
 		{
 			configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);

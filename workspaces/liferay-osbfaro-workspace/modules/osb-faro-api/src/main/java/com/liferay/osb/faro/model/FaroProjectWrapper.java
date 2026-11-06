@@ -52,6 +52,7 @@ public class FaroProjectWrapper
 			"incidentReportEmailAddresses", getIncidentReportEmailAddresses());
 		attributes.put("lastAccessTime", getLastAccessTime());
 		attributes.put("recommendationsEnabled", isRecommendationsEnabled());
+		attributes.put("salesforceAccountId", getSalesforceAccountId());
 		attributes.put("serverLocation", getServerLocation());
 		attributes.put("services", getServices());
 		attributes.put("state", getState());
@@ -177,6 +178,13 @@ public class FaroProjectWrapper
 			setRecommendationsEnabled(recommendationsEnabled);
 		}
 
+		String salesforceAccountId = (String)attributes.get(
+			"salesforceAccountId");
+
+		if (salesforceAccountId != null) {
+			setSalesforceAccountId(salesforceAccountId);
+		}
+
 		String serverLocation = (String)attributes.get("serverLocation");
 
 		if (serverLocation != null) {
@@ -276,6 +284,11 @@ public class FaroProjectWrapper
 		return model.getCorpProjectUuid();
 	}
 
+	@Override
+	public Date getCreateDate() {
+		return model.getCreateDate();
+	}
+
 	/**
 	 * Returns the create time of this faro project.
 	 *
@@ -326,6 +339,21 @@ public class FaroProjectWrapper
 		return model.getIncidentReportEmailAddresses();
 	}
 
+	@Override
+	public long getIndividualsCountSinceLastAnniversary() throws Exception {
+		return model.getIndividualsCountSinceLastAnniversary();
+	}
+
+	@Override
+	public long getIndividualsLimit() throws Exception {
+		return model.getIndividualsLimit();
+	}
+
+	@Override
+	public double getIndividualsUsage() throws Exception {
+		return model.getIndividualsUsage();
+	}
+
 	/**
 	 * Returns the ip addresses of this faro project.
 	 *
@@ -334,6 +362,11 @@ public class FaroProjectWrapper
 	@Override
 	public String getIpAddresses() {
 		return model.getIpAddresses();
+	}
+
+	@Override
+	public Date getLastAccessDate() {
+		return model.getLastAccessDate();
 	}
 
 	/**
@@ -381,6 +414,21 @@ public class FaroProjectWrapper
 		return model.getName();
 	}
 
+	@Override
+	public long getPageViewsCountSinceLastAnniversary() throws Exception {
+		return model.getPageViewsCountSinceLastAnniversary();
+	}
+
+	@Override
+	public long getPageViewsLimit() throws Exception {
+		return model.getPageViewsLimit();
+	}
+
+	@Override
+	public double getPageViewsUsage() throws Exception {
+		return model.getPageViewsUsage();
+	}
+
 	/**
 	 * Returns the primary key of this faro project.
 	 *
@@ -407,6 +455,16 @@ public class FaroProjectWrapper
 	}
 
 	/**
+	 * Returns the salesforce account ID of this faro project.
+	 *
+	 * @return the salesforce account ID of this faro project
+	 */
+	@Override
+	public String getSalesforceAccountId() {
+		return model.getSalesforceAccountId();
+	}
+
+	/**
 	 * Returns the server location of this faro project.
 	 *
 	 * @return the server location of this faro project
@@ -424,6 +482,11 @@ public class FaroProjectWrapper
 	@Override
 	public String getServices() {
 		return model.getServices();
+	}
+
+	@Override
+	public String getShortSubscriptionName() throws Exception {
+		return model.getShortSubscriptionName();
 	}
 
 	@Override
@@ -534,6 +597,11 @@ public class FaroProjectWrapper
 	@Override
 	public boolean isDataSourceConnected() {
 		return model.isDataSourceConnected();
+	}
+
+	@Override
+	public boolean isOffline() {
+		return model.isOffline();
 	}
 
 	/**
@@ -729,6 +797,16 @@ public class FaroProjectWrapper
 	}
 
 	/**
+	 * Sets the salesforce account ID of this faro project.
+	 *
+	 * @param salesforceAccountId the salesforce account ID of this faro project
+	 */
+	@Override
+	public void setSalesforceAccountId(String salesforceAccountId) {
+		model.setSalesforceAccountId(salesforceAccountId);
+	}
+
+	/**
 	 * Sets the server location of this faro project.
 	 *
 	 * @param serverLocation the server location of this faro project
@@ -839,4 +917,4 @@ public class FaroProjectWrapper
 	}
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:461860127
+// LIFERAY-SERVICE-BUILDER-HASH:115260971

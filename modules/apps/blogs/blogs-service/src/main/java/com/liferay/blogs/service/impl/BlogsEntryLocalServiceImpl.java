@@ -955,44 +955,12 @@ public class BlogsEntryLocalServiceImpl extends BlogsEntryLocalServiceBaseImpl {
 	}
 
 	@Override
-	public int getGroupUserEntriesCount(
-		long groupId, long userId, Date displayDate,
-		QueryDefinition<BlogsEntry> queryDefinition) {
-
-		if (queryDefinition.isExcludeStatus()) {
-			return blogsEntryPersistence.countByG_U_LtD_NotS(
-				groupId, userId, displayDate, queryDefinition.getStatus());
-		}
-
-		return blogsEntryPersistence.countByG_U_LtD_S(
-			groupId, userId, displayDate, queryDefinition.getStatus());
-	}
-
-	@Override
 	public List<BlogsEntry> getGroupsEntries(
 		long companyId, long groupId, Date displayDate,
 		QueryDefinition<BlogsEntry> queryDefinition) {
 
 		return blogsEntryFinder.findByGroupIds(
 			companyId, groupId, displayDate, queryDefinition);
-	}
-
-	@Override
-	public List<BlogsEntry> getOrganizationEntries(
-		long organizationId, Date displayDate,
-		QueryDefinition<BlogsEntry> queryDefinition) {
-
-		return blogsEntryFinder.findByOrganizationId(
-			organizationId, displayDate, queryDefinition);
-	}
-
-	@Override
-	public int getOrganizationEntriesCount(
-		long organizationId, Date displayDate,
-		QueryDefinition<BlogsEntry> queryDefinition) {
-
-		return blogsEntryFinder.countByOrganizationId(
-			organizationId, displayDate, queryDefinition);
 	}
 
 	@Override
@@ -2227,14 +2195,16 @@ public class BlogsEntryLocalServiceImpl extends BlogsEntryLocalServiceBaseImpl {
 		for (StartTag startTag : startTags) {
 			String targetUri = startTag.getAttributeValue("href");
 
-			if (Validator.isNotNull(targetUri)) {
-				try {
-					LinkbackProducerUtil.sendPingback(sourceUri, targetUri);
-				}
-				catch (Exception exception) {
-					_log.error(
-						"Error while sending pingback " + targetUri, exception);
-				}
+			if (Validator.isNull(targetUri)) {
+				continue;
+			}
+
+			try {
+				LinkbackProducerUtil.sendPingback(sourceUri, targetUri);
+			}
+			catch (Exception exception) {
+				_log.error(
+					"Error while sending pingback " + targetUri, exception);
 			}
 		}
 	}

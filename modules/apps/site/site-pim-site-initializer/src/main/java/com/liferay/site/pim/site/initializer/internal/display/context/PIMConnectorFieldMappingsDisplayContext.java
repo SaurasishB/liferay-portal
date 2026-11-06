@@ -10,6 +10,7 @@ import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
@@ -19,6 +20,8 @@ import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.URLCodec;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
+import com.liferay.site.pim.site.initializer.connector.PIMConnectorRegistry;
+import com.liferay.site.pim.site.initializer.internal.util.PIMConnectorFieldMappingsUtil;
 import com.liferay.site.pim.site.initializer.internal.util.PIMURLUtil;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,19 +37,25 @@ public class PIMConnectorFieldMappingsDisplayContext {
 	public PIMConnectorFieldMappingsDisplayContext(
 		HttpServletRequest httpServletRequest,
 		ObjectDefinition objectDefinition,
-		ObjectEntryLocalService objectEntryLocalService) {
+		ObjectEntryLocalService objectEntryLocalService,
+		PIMConnectorRegistry pimConnectorRegistry) {
 
 		_httpServletRequest = httpServletRequest;
 		_objectDefinition = objectDefinition;
 		_objectEntryLocalService = objectEntryLocalService;
+		_pimConnectorRegistry = pimConnectorRegistry;
 
 		_objectEntryId = ParamUtil.getLong(httpServletRequest, "objectEntryId");
 		_themeDisplay = (ThemeDisplay)httpServletRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
 	}
 
-	public Map<String, Object> getBreadcrumbProps() {
-		String name = _getName();
+	public Map<String, Object> getBreadcrumbProps() throws PortalException {
+		ObjectEntry objectEntry = _objectEntryLocalService.fetchObjectEntry(
+			_objectEntryId);
+
+		boolean mappingComplete = _isMappingComplete(objectEntry);
+		String name = _getName(objectEntry);
 
 		return HashMapBuilder.<String, Object>put(
 			"actionItems",
@@ -57,7 +66,50 @@ public class PIMConnectorFieldMappingsDisplayContext {
 						String.valueOf(_objectEntryId), _themeDisplay)
 				).put(
 					"label", LanguageUtil.get(_httpServletRequest, "edit")
-				),
+				).put(
+					"symbolLeft", "pencil"
+				)
+			).put(
+				() -> {
+					if (!mappingComplete ||
+						!MapUtil.getBoolean(
+							objectEntry.getValues(), "active")) {
+
+						return null;
+					}
+
+					return JSONUtil.put(
+						"href",
+						PIMURLUtil.getConnectorExecuteURL(
+							String.valueOf(_objectEntryId))
+					).put(
+						"id", "execute"
+					).put(
+						"label",
+						LanguageUtil.get(_httpServletRequest, "execute")
+					).put(
+						"successMessage",
+						LanguageUtil.get(
+							_httpServletRequest,
+							"execution-has-started-successfully-and-will-" +
+								"continue-in-the-background")
+					).put(
+						"symbolLeft", "play"
+					).put(
+						"target", "asyncPost"
+					);
+				}
+			).put(
+				JSONUtil.put(
+					"href",
+					PIMURLUtil.getConnectorScheduleURL(
+						String.valueOf(_objectEntryId), _themeDisplay)
+				).put(
+					"label", LanguageUtil.get(_httpServletRequest, "schedule")
+				).put(
+					"symbolLeft", "date-time"
+				)
+			).put(
 				JSONUtil.put(
 					"className", "text-danger"
 				).put(
@@ -85,8 +137,11 @@ public class PIMConnectorFieldMappingsDisplayContext {
 				).put(
 					"redirect", PIMURLUtil.getConnectorsURL(_themeDisplay)
 				).put(
+					"symbolLeft", "trash"
+				).put(
 					"target", "asyncDelete"
-				))
+				)
+			)
 		).put(
 			"breadcrumbItems",
 			JSONUtil.putAll(
@@ -106,6 +161,15 @@ public class PIMConnectorFieldMappingsDisplayContext {
 				))
 		).put(
 			"hideSpace", true
+		).put(
+			"mappingStatus",
+			() -> {
+				if (mappingComplete) {
+					return "complete";
+				}
+
+				return "incomplete";
+			}
 		).put(
 			"size", "lg"
 		).build();
@@ -134,10 +198,7 @@ public class PIMConnectorFieldMappingsDisplayContext {
 		).build();
 	}
 
-	private String _getName() {
-		ObjectEntry objectEntry = _objectEntryLocalService.fetchObjectEntry(
-			_objectEntryId);
-
+	private String _getName(ObjectEntry objectEntry) {
 		if (objectEntry == null) {
 			return LanguageUtil.get(_httpServletRequest, "field-mappings");
 		}
@@ -151,10 +212,24 @@ public class PIMConnectorFieldMappingsDisplayContext {
 		return LanguageUtil.get(_httpServletRequest, "field-mappings");
 	}
 
+	private boolean _isMappingComplete(ObjectEntry objectEntry)
+		throws PortalException {
+
+		if (objectEntry == null) {
+			return false;
+		}
+
+		return PIMConnectorFieldMappingsUtil.isMappingComplete(
+			objectEntry,
+			_pimConnectorRegistry.getPIMConnector(
+				MapUtil.getString(objectEntry.getValues(), "key")));
+	}
+
 	private final HttpServletRequest _httpServletRequest;
 	private final ObjectDefinition _objectDefinition;
 	private final long _objectEntryId;
 	private final ObjectEntryLocalService _objectEntryLocalService;
+	private final PIMConnectorRegistry _pimConnectorRegistry;
 	private final ThemeDisplay _themeDisplay;
 
 }

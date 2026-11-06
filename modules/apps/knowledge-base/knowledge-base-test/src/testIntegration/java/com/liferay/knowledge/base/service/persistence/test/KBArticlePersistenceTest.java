@@ -304,14 +304,6 @@ public class KBArticlePersistenceTest {
 	}
 
 	@Test
-	public void testCountByR_G() throws Exception {
-		_persistence.countByR_G(
-			RandomTestUtil.nextLong(), RandomTestUtil.nextLong());
-
-		_persistence.countByR_G(0L, 0L);
-	}
-
-	@Test
 	public void testCountByR_V() throws Exception {
 		_persistence.countByR_V(
 			RandomTestUtil.nextLong(), RandomTestUtil.nextInt());
@@ -371,14 +363,6 @@ public class KBArticlePersistenceTest {
 		_persistence.countByG_ERC(0L, "null");
 
 		_persistence.countByG_ERC(0L, (String)null);
-	}
-
-	@Test
-	public void testCountByG_L() throws Exception {
-		_persistence.countByG_L(
-			RandomTestUtil.nextLong(), RandomTestUtil.randomBoolean());
-
-		_persistence.countByG_L(0L, RandomTestUtil.randomBoolean());
 	}
 
 	@Test
@@ -464,14 +448,6 @@ public class KBArticlePersistenceTest {
 		_persistence.countByP_S(
 			new long[] {RandomTestUtil.nextLong(), 0L},
 			RandomTestUtil.nextInt());
-	}
-
-	@Test
-	public void testCountByLtD_S() throws Exception {
-		_persistence.countByLtD_S(
-			RandomTestUtil.nextDate(), RandomTestUtil.nextInt());
-
-		_persistence.countByLtD_S(RandomTestUtil.nextDate(), 0);
 	}
 
 	@Test
@@ -663,59 +639,6 @@ public class KBArticlePersistenceTest {
 	}
 
 	@Test
-	public void testCountByG_KBFI_S() throws Exception {
-		_persistence.countByG_KBFI_S(
-			RandomTestUtil.nextLong(), RandomTestUtil.nextLong(),
-			RandomTestUtil.nextInt());
-
-		_persistence.countByG_KBFI_S(0L, 0L, 0);
-	}
-
-	@Test
-	public void testCountByG_LikeS_L() throws Exception {
-		_persistence.countByG_LikeS_L(
-			RandomTestUtil.nextLong(), "", RandomTestUtil.randomBoolean());
-
-		_persistence.countByG_LikeS_L(
-			0L, "null", RandomTestUtil.randomBoolean());
-
-		_persistence.countByG_LikeS_L(
-			0L, (String)null, RandomTestUtil.randomBoolean());
-	}
-
-	@Test
-	public void testCountByG_LikeS_LArrayable() throws Exception {
-		_persistence.countByG_LikeS_L(
-			RandomTestUtil.nextLong(),
-			new String[] {
-				RandomTestUtil.randomString(), "", "null", null, null
-			},
-			RandomTestUtil.randomBoolean());
-	}
-
-	@Test
-	public void testCountByG_LikeS_M() throws Exception {
-		_persistence.countByG_LikeS_M(
-			RandomTestUtil.nextLong(), "", RandomTestUtil.randomBoolean());
-
-		_persistence.countByG_LikeS_M(
-			0L, "null", RandomTestUtil.randomBoolean());
-
-		_persistence.countByG_LikeS_M(
-			0L, (String)null, RandomTestUtil.randomBoolean());
-	}
-
-	@Test
-	public void testCountByG_LikeS_MArrayable() throws Exception {
-		_persistence.countByG_LikeS_M(
-			RandomTestUtil.nextLong(),
-			new String[] {
-				RandomTestUtil.randomString(), "", "null", null, null
-			},
-			RandomTestUtil.randomBoolean());
-	}
-
-	@Test
 	public void testCountByG_LikeS_S() throws Exception {
 		_persistence.countByG_LikeS_S(
 			RandomTestUtil.nextLong(), "", RandomTestUtil.nextInt());
@@ -751,24 +674,6 @@ public class KBArticlePersistenceTest {
 			RandomTestUtil.nextInt());
 
 		_persistence.countByG_M_NotS(0L, RandomTestUtil.randomBoolean(), 0);
-	}
-
-	@Test
-	public void testCountByC_L_NotS() throws Exception {
-		_persistence.countByC_L_NotS(
-			RandomTestUtil.nextLong(), RandomTestUtil.randomBoolean(),
-			RandomTestUtil.nextInt());
-
-		_persistence.countByC_L_NotS(0L, RandomTestUtil.randomBoolean(), 0);
-	}
-
-	@Test
-	public void testCountByC_M_NotS() throws Exception {
-		_persistence.countByC_M_NotS(
-			RandomTestUtil.nextLong(), RandomTestUtil.randomBoolean(),
-			RandomTestUtil.nextInt());
-
-		_persistence.countByC_M_NotS(0L, RandomTestUtil.randomBoolean(), 0);
 	}
 
 	@Test
@@ -937,16 +842,6 @@ public class KBArticlePersistenceTest {
 		_persistence.countByG_KBFI_UT_NotS(0L, 0L, "null", 0);
 
 		_persistence.countByG_KBFI_UT_NotS(0L, 0L, (String)null, 0);
-	}
-
-	@Test
-	public void testCountByG_KBFI_L_NotS() throws Exception {
-		_persistence.countByG_KBFI_L_NotS(
-			RandomTestUtil.nextLong(), RandomTestUtil.nextLong(),
-			RandomTestUtil.randomBoolean(), RandomTestUtil.nextInt());
-
-		_persistence.countByG_KBFI_L_NotS(
-			0L, 0L, RandomTestUtil.randomBoolean(), 0);
 	}
 
 	@Test
@@ -1427,4 +1322,4 @@ public class KBArticlePersistenceTest {
 	private ClassLoader _dynamicQueryClassLoader;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:275016910
+// LIFERAY-SERVICE-BUILDER-HASH:-586934749

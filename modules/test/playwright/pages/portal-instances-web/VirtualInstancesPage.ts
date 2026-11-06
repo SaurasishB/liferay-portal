@@ -3,12 +3,16 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {FrameLocator, Locator, Page, expect} from '@playwright/test';
+import {FrameLocator, Locator, Page, expect, request} from '@playwright/test';
 
 import {ApiHelpers} from '../../helpers/ApiHelpers';
+import {liferayConfig} from '../../liferay.config';
 import {clickAndExpectToBeVisible} from '../../utils/clickAndExpectToBeVisible';
 import {NotificationsPage} from '../notifications-web/NotificationsPage';
 import {GlobalMenuPage} from '../product-navigation-applications-menu/GlobalMenuPage';
+
+const DOCUMENT_LIBRARY_FILES_WARNING =
+	'Document Library files are not included and must be transferred separately.';
 
 export class VirtualInstancesPage {
 	private addInstanceFrame: FrameLocator;
@@ -27,14 +31,18 @@ export class VirtualInstancesPage {
 	readonly addInstanceWebIdField: Locator;
 	readonly copyInstanceCancelButton: Locator;
 	readonly copyInstanceDestinationCompanyIdField: Locator;
+	readonly copyInstanceDocumentLibraryFilesWarning: Locator;
 	readonly copyInstanceErrorMessage: Locator;
 	readonly copyInstanceNameField: Locator;
 	readonly copyInstanceSubmitButton: Locator;
 	readonly copyInstanceVirtualHostField: Locator;
 	readonly copyInstanceWebIdField: Locator;
 	readonly exportInstanceConfirmButton: Locator;
+	readonly exportInstanceDocumentLibraryFilesWarning: Locator;
+	readonly importInstanceDocumentLibraryFilesWarning: Locator;
 	readonly importInstanceErrorMessage: Locator;
 	readonly importInstanceNameField: Locator;
+	readonly importInstanceNonexistentSchemaErrorMessage: Locator;
 	readonly importInstanceSchemaNameField: Locator;
 	readonly importInstanceSubmitButton: Locator;
 	readonly importInstanceVirtualHostField: Locator;
@@ -82,6 +90,8 @@ export class VirtualInstancesPage {
 			.getByRole('button', {exact: true, name: 'Cancel'});
 		this.copyInstanceDestinationCompanyIdField =
 			this.copyInstanceFrame.getByLabel('Destination Company ID');
+		this.copyInstanceDocumentLibraryFilesWarning =
+			this.copyInstanceFrame.getByText(DOCUMENT_LIBRARY_FILES_WARNING);
 		this.copyInstanceErrorMessage = this.copyInstanceFrame.getByText(
 			'Please enter a valid destination company ID'
 		);
@@ -96,6 +106,11 @@ export class VirtualInstancesPage {
 		this.exportInstanceConfirmButton = page
 			.getByRole('dialog', {name: 'Export Instance'})
 			.getByRole('button', {exact: true, name: 'Export'});
+		this.exportInstanceDocumentLibraryFilesWarning = page
+			.getByRole('dialog', {name: 'Export Instance'})
+			.getByText(DOCUMENT_LIBRARY_FILES_WARNING);
+		this.importInstanceDocumentLibraryFilesWarning =
+			this.importInstanceFrame.getByText(DOCUMENT_LIBRARY_FILES_WARNING);
 		this.importInstanceErrorMessage = this.importInstanceFrame.getByText(
 			'Please enter a valid schema name'
 		);
@@ -103,6 +118,10 @@ export class VirtualInstancesPage {
 			'Name',
 			{exact: true}
 		);
+		this.importInstanceNonexistentSchemaErrorMessage =
+			this.importInstanceFrame.getByText(
+				'The exported schema does not exist.'
+			);
 		this.importInstanceSchemaNameField =
 			this.importInstanceFrame.getByLabel('Schema Name');
 		this.importInstanceSubmitButton = page
@@ -156,15 +175,19 @@ export class VirtualInstancesPage {
 
 		await this.submitAddInstanceForm();
 
-		// Only wait for Virtual Instance creation if there are no errors
-
-		if (await this.errorMessage.isHidden()) {
-			await expect(this.creationStartedMessage(name)).toBeVisible();
-
-			await this.waitForCreationNotification(name);
-
-			await this.goto();
+		if (await this.errorMessage.isVisible()) {
+			throw new Error(
+				`Unable to add virtual instance ${name}: ${await this.errorMessage.innerText()}`
+			);
 		}
+
+		await expect(this.creationStartedMessage(name)).toBeVisible();
+
+		await this.waitForCreationNotification(name);
+
+		await this.waitForVirtualInstanceToBeReady(name);
+
+		await this.goto();
 	}
 
 	async addNewVirtualInstanceAndSetupAdminUser(
@@ -207,6 +230,8 @@ export class VirtualInstancesPage {
 		await expect(this.creationStartedMessage(name)).toBeVisible();
 
 		await this.waitForCreationNotification(name);
+
+		await this.waitForVirtualInstanceToBeReady(name);
 	}
 
 	private async clickAddInstance() {
@@ -240,6 +265,12 @@ export class VirtualInstancesPage {
 	deletionStartedMessage(name: string) {
 		return this.page.getByText(
 			`The instance ${name} is being deleted. You will be notified when it finishes.`
+		);
+	}
+
+	exportedSchemaExistsMessage(schemaName: string) {
+		return this.page.getByText(
+			`The exported schema ${schemaName} already exists.`
 		);
 	}
 
@@ -301,7 +332,8 @@ export class VirtualInstancesPage {
 			await notificationsPage.goto();
 
 			await expect(
-				notificationsPage.getNotificationByTitle(
+				notificationsPage.getNotification(
+					DOCUMENT_LIBRARY_FILES_WARNING,
 					`The instance ${sourceName} was copied to ${webId}.`
 				)
 			).toBeVisible({timeout: 10 * 1000});
@@ -315,9 +347,9 @@ export class VirtualInstancesPage {
 			await notificationsPage.goto();
 
 			await expect(
-				notificationsPage.getNotificationByTitle(
-					`The instance ${name} was created.`
-				)
+				notificationsPage
+					.getNotificationByTitle(`The instance ${name} was created.`)
+					.first()
 			).toBeVisible({timeout: 10 * 1000});
 		}).toPass({timeout: 300 * 1000});
 	}
@@ -330,7 +362,8 @@ export class VirtualInstancesPage {
 		await expect(async () => {
 			await notificationsPage.goto();
 
-			const notification = notificationsPage.getNotificationByTitle(
+			const notification = notificationsPage.getNotification(
+				DOCUMENT_LIBRARY_FILES_WARNING,
 				`The instance ${name} was exported.`
 			);
 
@@ -356,7 +389,8 @@ export class VirtualInstancesPage {
 			await notificationsPage.goto();
 
 			await expect(
-				notificationsPage.getNotificationByTitle(
+				notificationsPage.getNotification(
+					DOCUMENT_LIBRARY_FILES_WARNING,
 					`The instance ${name} was imported.`
 				)
 			).toBeVisible({timeout: 10 * 1000});
@@ -384,7 +418,72 @@ export class VirtualInstancesPage {
 			.toBe(exists);
 	}
 
-	async startVirtualInstanceExport(name: string) {
+	async waitForVirtualInstanceToBeReady(name: string) {
+		const apiHelpers = new ApiHelpers(this.page);
+
+		// The creation notification is sent before the virtual instance
+		// finishes initializing its sites, and the default instance answers
+		// for the virtual host until the new one is registered, so wait for
+		// the new instance itself to render its guest site. CI cannot resolve
+		// arbitrary virtual instance names, so the requests go to the portal
+		// URL with the virtual host in the Host header, and redirects such as
+		// the locale prepend one are followed the same way. A separate request
+		// context keeps the new instance's cookies out of the page's session.
+
+		await expect(async () => {
+			const portalInstances =
+				await apiHelpers.headlessPortalInstance.getVirtualInstances();
+
+			const portalInstance = portalInstances.find(
+				(portalInstance) => portalInstance.portalInstanceId === name
+			);
+
+			expect(portalInstance).toBeTruthy();
+
+			const requestContext = await request.newContext();
+
+			try {
+				let path = '/web/guest';
+				let response;
+
+				for (let i = 0; i < 5; i++) {
+					response = await requestContext.get(
+						`${liferayConfig.environment.baseUrl}${path}`,
+						{
+							headers: {
+								Host: `${name}:${liferayConfig.environment.port}`,
+							},
+							maxRedirects: 0,
+							timeout: 10 * 1000,
+						}
+					);
+
+					const headers = response.headers();
+
+					if (!headers.location) {
+						break;
+					}
+
+					const locationURL = new URL(
+						headers.location,
+						liferayConfig.environment.baseUrl
+					);
+
+					path = locationURL.pathname + locationURL.search;
+				}
+
+				expect(response.status()).toBe(200);
+				expect(await response.text()).toContain(
+					`getCompanyId: () => '${portalInstance.companyId}'`
+				);
+			}
+			finally {
+				await requestContext.dispose();
+			}
+		}).toPass({intervals: [1000], timeout: 300 * 1000});
+	}
+
+	async submitExportVirtualInstance(name: string) {
 		await this.goto();
 
 		const row = this.page.getByRole('row').filter({hasText: name});
@@ -398,13 +497,17 @@ export class VirtualInstancesPage {
 			trigger: row.getByRole('button', {name: 'Show Actions'}),
 		});
 
-		await this.exportInstanceConfirmButton.click();
+		await expect(
+			this.exportInstanceDocumentLibraryFilesWarning
+		).toBeVisible();
 
-		await expect(this.exportStartedMessage(name)).toBeVisible();
+		await this.exportInstanceConfirmButton.click();
 	}
 
 	async exportVirtualInstance(name: string) {
-		await this.startVirtualInstanceExport(name);
+		await this.submitExportVirtualInstance(name);
+
+		await expect(this.exportStartedMessage(name)).toBeVisible();
 
 		return this.waitForExportNotification(name);
 	}

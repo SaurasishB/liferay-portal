@@ -63,10 +63,6 @@ public class AnnouncementsEntryLocalServiceUtil {
 			displayDate, expirationDate, priority, alert);
 	}
 
-	public static void checkEntries() throws PortalException {
-		getService().checkEntries();
-	}
-
 	public static void checkEntries(
 			java.util.Date startDate, java.util.Date endDate)
 		throws PortalException {
@@ -135,13 +131,6 @@ public class AnnouncementsEntryLocalServiceUtil {
 		throws PortalException {
 
 		getService().deleteEntries(classNameId, classPK);
-	}
-
-	public static void deleteEntries(
-			long companyId, long classNameId, long classPK)
-		throws PortalException {
-
-		getService().deleteEntries(companyId, classNameId, classPK);
 	}
 
 	public static void deleteEntry(AnnouncementsEntry entry)
@@ -369,22 +358,6 @@ public class AnnouncementsEntryLocalServiceUtil {
 			orderByComparator);
 	}
 
-	public static List<AnnouncementsEntry> getEntries(
-		long userId, long classNameId, long[] classPKs, int displayDateMonth,
-		int displayDateDay, int displayDateYear, int displayDateHour,
-		int displayDateMinute, int expirationDateMonth, int expirationDateDay,
-		int expirationDateYear, int expirationDateHour,
-		int expirationDateMinute, boolean alert, int flagValue, int start,
-		int end) {
-
-		return getService().getEntries(
-			userId, classNameId, classPKs, displayDateMonth, displayDateDay,
-			displayDateYear, displayDateHour, displayDateMinute,
-			expirationDateMonth, expirationDateDay, expirationDateYear,
-			expirationDateHour, expirationDateMinute, alert, flagValue, start,
-			end);
-	}
-
 	public static int getEntriesCount(
 		long userId, java.util.LinkedHashMap<Long, long[]> scopes,
 		boolean alert, int flagValue) {
@@ -411,28 +384,6 @@ public class AnnouncementsEntryLocalServiceUtil {
 
 		return getService().getEntriesCount(
 			companyId, classNameId, classPK, alert);
-	}
-
-	public static int getEntriesCount(
-		long userId, long classNameId, long[] classPKs, boolean alert,
-		int flagValue) {
-
-		return getService().getEntriesCount(
-			userId, classNameId, classPKs, alert, flagValue);
-	}
-
-	public static int getEntriesCount(
-		long userId, long classNameId, long[] classPKs, int displayDateMonth,
-		int displayDateDay, int displayDateYear, int displayDateHour,
-		int displayDateMinute, int expirationDateMonth, int expirationDateDay,
-		int expirationDateYear, int expirationDateHour,
-		int expirationDateMinute, boolean alert, int flagValue) {
-
-		return getService().getEntriesCount(
-			userId, classNameId, classPKs, displayDateMonth, displayDateDay,
-			displayDateYear, displayDateHour, displayDateMinute,
-			expirationDateMonth, expirationDateDay, expirationDateYear,
-			expirationDateHour, expirationDateMinute, alert, flagValue);
 	}
 
 	public static AnnouncementsEntry getEntry(long entryId)
@@ -474,16 +425,6 @@ public class AnnouncementsEntryLocalServiceUtil {
 		return getService().getPersistedModel(primaryKeyObj);
 	}
 
-	public static List<AnnouncementsEntry> getUserEntries(
-		long userId, int start, int end) {
-
-		return getService().getUserEntries(userId, start, end);
-	}
-
-	public static int getUserEntriesCount(long userId) {
-		return getService().getUserEntriesCount(userId);
-	}
-
 	/**
 	 * Updates the announcements entry in the database or adds it if it does not yet exist. Also notifies the appropriate model listeners.
 	 *
@@ -522,4 +463,4 @@ public class AnnouncementsEntryLocalServiceUtil {
 	private static volatile AnnouncementsEntryLocalService _service;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:306442597
+// LIFERAY-SERVICE-BUILDER-HASH:234281842

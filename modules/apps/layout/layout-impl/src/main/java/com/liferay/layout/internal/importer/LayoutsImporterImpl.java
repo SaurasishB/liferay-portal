@@ -51,6 +51,7 @@ import com.liferay.layout.importer.LayoutsImportStrategy;
 import com.liferay.layout.importer.LayoutsImporter;
 import com.liferay.layout.importer.LayoutsImporterResultEntry;
 import com.liferay.layout.importer.PortletPermissionsImporter;
+import com.liferay.layout.importer.PortletPreferencesPortletConfigurationImporter;
 import com.liferay.layout.internal.importer.exception.DropzoneLayoutStructureItemException;
 import com.liferay.layout.internal.importer.helper.PortletConfigurationImporterHelper;
 import com.liferay.layout.internal.importer.structure.util.CollectionItemLayoutStructureItemImporter;
@@ -372,6 +373,12 @@ public class LayoutsImporterImpl implements LayoutsImporter {
 			new FormStepItemLayoutStructureItemImporter());
 		_addLayoutStructureItemImporter(
 			new FragmentDropZoneLayoutStructureItemImporter());
+
+		PortletConfigurationImporterHelper portletConfigurationImporterHelper =
+			new PortletConfigurationImporterHelper(
+				_layoutLocalService, _portletLocalService,
+				_portletPreferencesPortletConfigurationImporter);
+
 		_addLayoutStructureItemImporter(
 			new FragmentLayoutStructureItemImporter(
 				_companyLocalService, _depotEntryGroupRelLocalService,
@@ -379,14 +386,15 @@ public class LayoutsImporterImpl implements LayoutsImporter {
 				_fragmentCollectionService, _fragmentEntryLinkLocalService,
 				_fragmentEntryLocalService, _fragmentEntryProcessorRegistry,
 				_fragmentEntryValidator, _fragmentRendererRegistry,
-				_portletConfigurationImporterHelper, _portletFileRepository,
+				portletConfigurationImporterHelper, _portletFileRepository,
 				_portletLocalService, _portletPermissionsImporter,
 				_segmentsExperienceLocalService));
+
 		_addLayoutStructureItemImporter(new RowLayoutStructureItemImporter());
 		_addLayoutStructureItemImporter(
 			new WidgetLayoutStructureItemImporter(
 				_fragmentEntryLinkLocalService, _fragmentEntryProcessorRegistry,
-				_portletConfigurationImporterHelper, _portletLocalService,
+				portletConfigurationImporterHelper, _portletLocalService,
 				_portletPermissionsImporter, _portletRegistry));
 	}
 
@@ -409,12 +417,14 @@ public class LayoutsImporterImpl implements LayoutsImporter {
 		for (ClientExtensionEntryRel clientExtensionEntryRel :
 				clientExtensionEntryRels) {
 
-			if (cetExternalReferenceCode.equals(
+			if (!cetExternalReferenceCode.equals(
 					clientExtensionEntryRel.getCETExternalReferenceCode())) {
 
-				_clientExtensionEntryRelLocalService.
-					deleteClientExtensionEntryRel(clientExtensionEntryRel);
+				continue;
 			}
+
+			_clientExtensionEntryRelLocalService.deleteClientExtensionEntryRel(
+				clientExtensionEntryRel);
 		}
 
 		UnicodeProperties unicodeProperties = new UnicodeProperties(true);
@@ -1990,7 +2000,7 @@ public class LayoutsImporterImpl implements LayoutsImporter {
 				for (PageElement childPageElement :
 						pageElement.getPageElements()) {
 
-					if (_processPageElement(
+					if (!_processPageElement(
 							new ArrayList<>(), draftLayout, layoutStructure,
 							pageDefinitionVersion, childPageElement,
 							rootLayoutStructureItem.getItemId(), position,
@@ -2000,8 +2010,10 @@ public class LayoutsImporterImpl implements LayoutsImporter {
 									draftLayout.getPlid()),
 							warningMessages)) {
 
-						position++;
+						continue;
 					}
+
+					position++;
 				}
 			}
 
@@ -2078,14 +2090,16 @@ public class LayoutsImporterImpl implements LayoutsImporter {
 		int childPosition = 0;
 
 		for (PageElement childPageElement : pageElement.getPageElements()) {
-			if (_processPageElement(
+			if (!_processPageElement(
 					fragmentEntryLinks, layout, layoutStructure,
 					pageDefinitionVersion, childPageElement,
 					layoutStructureItem.getItemId(), childPosition,
 					preserveItemIds, segmentsExperienceId, warningMessages)) {
 
-				childPosition++;
+				continue;
 			}
+
+			childPosition++;
 		}
 
 		return true;
@@ -2563,10 +2577,6 @@ public class LayoutsImporterImpl implements LayoutsImporter {
 	private Portal _portal;
 
 	@Reference
-	private PortletConfigurationImporterHelper
-		_portletConfigurationImporterHelper;
-
-	@Reference
 	private PortletFileRepository _portletFileRepository;
 
 	@Reference
@@ -2577,6 +2587,10 @@ public class LayoutsImporterImpl implements LayoutsImporter {
 
 	@Reference
 	private PortletPreferencesLocalService _portletPreferencesLocalService;
+
+	@Reference
+	private PortletPreferencesPortletConfigurationImporter
+		_portletPreferencesPortletConfigurationImporter;
 
 	@Reference
 	private PortletRegistry _portletRegistry;

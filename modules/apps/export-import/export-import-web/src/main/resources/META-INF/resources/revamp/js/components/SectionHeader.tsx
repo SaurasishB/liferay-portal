@@ -7,26 +7,30 @@ import classNames from 'classnames';
 import React from 'react';
 
 interface SectionHeaderProps {
-	className?: string;
+	first?: boolean;
 	id?: string;
 	subtitle?: string;
+	subtitleId?: string;
 	title: string;
 }
 
 export default function SectionHeader({
-	className,
+	first,
 	id,
 	subtitle,
+	subtitleId,
 	title,
 }: SectionHeaderProps) {
 	return (
-		<div className={classNames('mb-1 sheet-header', className)}>
+		<div className={classNames('mb-4 sheet-header', {'mt-5': !first})}>
 			<div className="font-weight-bold mb-1 text-7" id={id}>
 				{title}
 			</div>
 
 			{subtitle && (
-				<p className="sheet-text text-secondary">{subtitle}</p>
+				<p className="sheet-text text-secondary" id={subtitleId}>
+					{subtitle}
+				</p>
 			)}
 		</div>
 	);

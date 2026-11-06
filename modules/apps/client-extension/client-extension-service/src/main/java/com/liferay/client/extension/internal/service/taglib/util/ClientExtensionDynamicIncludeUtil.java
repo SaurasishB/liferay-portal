@@ -38,7 +38,7 @@ public class ClientExtensionDynamicIncludeUtil {
 		for (ClientExtensionEntryRel layoutSetClientExtensionEntryRel :
 				layoutSetClientExtensionEntryRels) {
 
-			if (!ListUtil.exists(
+			if (ListUtil.exists(
 					clientExtensionEntryRels,
 					clientExtensionEntryRel -> Objects.equals(
 						layoutSetClientExtensionEntryRel.
@@ -46,12 +46,19 @@ public class ClientExtensionDynamicIncludeUtil {
 						clientExtensionEntryRel.
 							getCETExternalReferenceCode()))) {
 
-				clientExtensionEntryRels.add(layoutSetClientExtensionEntryRel);
+				continue;
 			}
+
+			clientExtensionEntryRels.add(layoutSetClientExtensionEntryRel);
 		}
 
-		Layout masterLayout = LayoutLocalServiceUtil.fetchLayout(
-			layout.getMasterLayoutPlid());
+		Layout masterLayout = null;
+
+		long masterLayoutPlid = layout.getMasterLayoutPlid();
+
+		if (masterLayoutPlid > 0) {
+			masterLayout = LayoutLocalServiceUtil.fetchLayout(masterLayoutPlid);
+		}
 
 		if (masterLayout != null) {
 			List<ClientExtensionEntryRel> masterLayoutClientExtensionEntryRels =
@@ -63,7 +70,7 @@ public class ClientExtensionDynamicIncludeUtil {
 			for (ClientExtensionEntryRel masterLayoutClientExtensionEntryRel :
 					masterLayoutClientExtensionEntryRels) {
 
-				if (!ListUtil.exists(
+				if (ListUtil.exists(
 						clientExtensionEntryRels,
 						clientExtensionEntryRel -> Objects.equals(
 							masterLayoutClientExtensionEntryRel.
@@ -71,9 +78,11 @@ public class ClientExtensionDynamicIncludeUtil {
 							clientExtensionEntryRel.
 								getCETExternalReferenceCode()))) {
 
-					clientExtensionEntryRels.add(
-						masterLayoutClientExtensionEntryRel);
+					continue;
 				}
+
+				clientExtensionEntryRels.add(
+					masterLayoutClientExtensionEntryRel);
 			}
 		}
 
@@ -87,7 +96,7 @@ public class ClientExtensionDynamicIncludeUtil {
 		for (ClientExtensionEntryRel layoutClientExtensionEntryRel :
 				layoutClientExtensionEntryRels) {
 
-			if (!ListUtil.exists(
+			if (ListUtil.exists(
 					clientExtensionEntryRels,
 					clientExtensionEntryRel -> Objects.equals(
 						layoutClientExtensionEntryRel.
@@ -95,8 +104,10 @@ public class ClientExtensionDynamicIncludeUtil {
 						clientExtensionEntryRel.
 							getCETExternalReferenceCode()))) {
 
-				clientExtensionEntryRels.add(layoutClientExtensionEntryRel);
+				continue;
 			}
+
+			clientExtensionEntryRels.add(layoutClientExtensionEntryRel);
 		}
 
 		return clientExtensionEntryRels;

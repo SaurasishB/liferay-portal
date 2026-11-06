@@ -25,9 +25,9 @@ const highlithKeywordInText = (text, keyword) => {
 
 	return (
 		<span>
-			{parts.map((part) =>
+			{parts.map((part, index) =>
 				part.toLowerCase() === keyword.toLowerCase() ? (
-					<b>{part}</b>
+					<b key={index}>{part}</b>
 				) : (
 					part
 				)
@@ -82,7 +82,13 @@ const SearchResult = ({filteredItems, handleOnclickItem, keyword}) => {
 				),
 				[keyword]
 			)}
-			imgSrc={`${themeDisplay.getPathThemeImages()}/states/search_state.svg`}
+			image={
+				<ClayIcon
+					className="c-empty-state-icon c-empty-state-icon-search-state"
+					illustration
+					symbol="search-state"
+				/>
+			}
 			small
 			title={Liferay.Language.get('no-results-found')}
 		/>

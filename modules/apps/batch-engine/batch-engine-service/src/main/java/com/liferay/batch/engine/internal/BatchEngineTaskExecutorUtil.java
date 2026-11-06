@@ -11,7 +11,8 @@ import com.liferay.batch.engine.internal.util.ItemIndexThreadLocal;
 import com.liferay.batch.engine.jaxrs.uri.BatchEngineUriInfo;
 import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.lang.SafeCloseable;
-import com.liferay.portal.kernel.audit.AuditRequestThreadLocal;
+import com.liferay.portal.kernel.audit.AuditRequestContext;
+import com.liferay.portal.kernel.audit.AuditRequestContextThreadLocal;
 import com.liferay.portal.kernel.backgroundtask.BackgroundTaskStatusMessageSender;
 import com.liferay.portal.kernel.backgroundtask.BackgroundTaskThreadLocal;
 import com.liferay.portal.kernel.backgroundtask.constants.BackgroundTaskConstants;
@@ -38,30 +39,37 @@ public class BatchEngineTaskExecutorUtil {
 			UnsafeSupplier<T, Throwable> unsafeSupplier, User user)
 		throws Throwable {
 
-		AuditRequestThreadLocal auditRequestThreadLocal =
-			AuditRequestThreadLocal.getAuditThreadLocal();
-
-		auditRequestThreadLocal.setRealUserEmailAddress(user.getEmailAddress());
-		auditRequestThreadLocal.setRealUserId(user.getUserId());
-
 		PermissionChecker permissionChecker =
 			PermissionThreadLocal.getPermissionChecker();
 
-		if (checkPermissions) {
-			PermissionThreadLocal.setPermissionChecker(
-				PermissionCheckerFactoryUtil.create(user));
-		}
-		else {
-			PermissionThreadLocal.setPermissionChecker(
-				new LiberalPermissionChecker(user));
-		}
-
 		String name = PrincipalThreadLocal.getName();
 
-		PrincipalThreadLocal.setName(user.getUserId());
+		AuditRequestContext currentAuditRequestContext =
+			AuditRequestContextThreadLocal.getAuditRequestContext();
 
-		try (SafeCloseable safeCloseable =
+		AuditRequestContext auditRequestContext =
+			currentAuditRequestContext.clone();
+
+		auditRequestContext.setRealUserEmailAddress(user.getEmailAddress());
+		auditRequestContext.setRealUserId(user.getUserId());
+
+		try (SafeCloseable safeCloseable1 =
+				AuditRequestContextThreadLocal.
+					setAuditRequestContextWithSafeCloseable(
+						auditRequestContext);
+			SafeCloseable safeCloseable2 =
 				ItemIndexThreadLocal.pushIndexQueueWithSafeCloseable()) {
+
+			if (checkPermissions) {
+				PermissionThreadLocal.setPermissionChecker(
+					PermissionCheckerFactoryUtil.create(user));
+			}
+			else {
+				PermissionThreadLocal.setPermissionChecker(
+					new LiberalPermissionChecker(user));
+			}
+
+			PrincipalThreadLocal.setName(user.getUserId());
 
 			return unsafeSupplier.get();
 		}

@@ -56,7 +56,6 @@ import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.security.auth.PrincipalThreadLocal;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
-import com.liferay.portal.kernel.settings.SystemSettingsLocator;
 import com.liferay.portal.kernel.systemevent.SystemEvent;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
@@ -78,6 +77,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -472,17 +472,16 @@ public class CPDefinitionOptionRelLocalServiceImpl
 
 		Map<Long, List<Long>>
 			cpDefinitionOptionRelIdCPDefinitionOptionValueRelIds =
-				new HashMap<>();
+				new LinkedHashMap<>();
 
 		for (int i = 0; i < skuOptionJSONArray.length(); i++) {
 			JSONObject skuOptionJSONObject = skuOptionJSONArray.getJSONObject(
 				i);
 
 			CPDefinitionOptionRel cpDefinitionOptionRel =
-				cpDefinitionOptionRelLocalService.
-					fetchCPDefinitionOptionRelByKey(
-						cpDefinitionId,
-						skuOptionJSONObject.getString("skuOptionKey"));
+				cpDefinitionOptionRelPersistence.fetchByC_K(
+					cpDefinitionId,
+					skuOptionJSONObject.getString("skuOptionKey"));
 
 			if ((cpDefinitionOptionRel == null) ||
 				(skuContributorsOnly &&
@@ -536,7 +535,7 @@ public class CPDefinitionOptionRelLocalServiceImpl
 
 		Map<Long, List<Long>>
 			cpDefinitionOptionRelIdCPDefinitionOptionValueRelIds =
-				new HashMap<>();
+				new LinkedHashMap<>();
 
 		JSONArray jsonArray = _jsonFactory.createJSONArray();
 
@@ -551,16 +550,13 @@ public class CPDefinitionOptionRelLocalServiceImpl
 			JSONObject jsonObject = jsonArray.getJSONObject(i);
 
 			CPDefinitionOptionRel cpDefinitionOptionRel =
-				cpDefinitionOptionRelLocalService.
-					fetchCPDefinitionOptionRelByKey(
-						cpDefinitionId, jsonObject.getString("key"));
+				cpDefinitionOptionRelPersistence.fetchByC_K(
+					cpDefinitionId, jsonObject.getString("key"));
 
 			if (cpDefinitionOptionRel == null) {
 				cpDefinitionOptionRel =
-					cpDefinitionOptionRelLocalService.
-						fetchCPDefinitionOptionRelByKey(
-							cpDefinitionId,
-							jsonObject.getString("skuOptionKey"));
+					cpDefinitionOptionRelPersistence.fetchByC_K(
+						cpDefinitionId, jsonObject.getString("skuOptionKey"));
 			}
 
 			if ((cpDefinitionOptionRel == null) ||
@@ -1099,9 +1095,8 @@ public class CPDefinitionOptionRelLocalServiceImpl
 	private CPOptionConfiguration _getCPOptionConfiguration()
 		throws ConfigurationException {
 
-		return _configurationProvider.getConfiguration(
-			CPOptionConfiguration.class,
-			new SystemSettingsLocator(CPConstants.SERVICE_NAME_CP_OPTION));
+		return _configurationProvider.getSystemConfiguration(
+			CPOptionConfiguration.class);
 	}
 
 	private boolean _hasCPDefinitionSKUContributorCPDefinitionOptionRel(
@@ -1201,13 +1196,14 @@ public class CPDefinitionOptionRelLocalServiceImpl
 		for (CPDefinitionOptionValueRel cpDefinitionOptionValueRel :
 				cpDefinitionOptionValueRels) {
 
-			if (cpDefinitionOptionValueRel.getPrice() == null) {
-				cpDefinitionOptionValueRel.setPrice(BigDecimal.ZERO);
-
-				cpDefinitionOptionValueRelLocalService.
-					updateCPDefinitionOptionValueRel(
-						cpDefinitionOptionValueRel);
+			if (cpDefinitionOptionValueRel.getPrice() != null) {
+				continue;
 			}
+
+			cpDefinitionOptionValueRel.setPrice(BigDecimal.ZERO);
+
+			cpDefinitionOptionValueRelLocalService.
+				updateCPDefinitionOptionValueRel(cpDefinitionOptionValueRel);
 		}
 	}
 

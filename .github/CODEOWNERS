@@ -357,8 +357,26 @@ modules/apps/shared-dependencies/
 modules/apps/sharing/    @liferay-content-management
 modules/apps/site/    @liferay-site-management
 modules/apps/site/site-cms-site-initializer/    @liferay-content-management
+modules/apps/site/site-cms-site-initializer-api/    @liferay-content-management
+modules/apps/site/site-cms-site-initializer-test/    @liferay-content-management
+modules/apps/site/site-cms-standalone-site-initializer/    @liferay-content-management
 modules/apps/site/site-demo-data-creator-api/
 modules/apps/site/site-demo-data-creator-impl/
+modules/apps/site/site-dsr-analytics-rest-api/    @liferay-commerce
+modules/apps/site/site-dsr-analytics-rest-client/    @liferay-commerce
+modules/apps/site/site-dsr-analytics-rest-impl/    @liferay-commerce
+modules/apps/site/site-dsr-analytics-rest-test/    @liferay-commerce
+modules/apps/site/site-dsr-site-initializer/    @liferay-commerce
+modules/apps/site/site-dsr-site-initializer-api/    @liferay-commerce
+modules/apps/site/site-dsr-site-initializer-test/    @liferay-commerce
+modules/apps/site/site-dsr-site-initializer-test-util/    @liferay-commerce
+modules/apps/site/site-pim-site-initializer/    @liferay-commerce
+modules/apps/site/site-pim-site-initializer-api/    @liferay-commerce
+modules/apps/site/site-pim-site-initializer-test/    @liferay-commerce
+modules/apps/site/site-pim-site-initializer-test-util/    @liferay-commerce
+modules/apps/site/site-staticexport-api/    @liferay-frontend
+modules/apps/site/site-staticexport-impl/    @liferay-frontend
+modules/apps/site/site-staticexport-test/    @liferay-frontend
 modules/apps/site/site-teams-item-selector-api/    @liferay-commerce
 modules/apps/site/site-teams-item-selector-web/    @liferay-commerce
 modules/apps/site/site-teams-test/    @liferay-commerce
@@ -369,7 +387,9 @@ modules/apps/site/site-welcome-site-initializer/
 modules/apps/site-initializer/
 modules/apps/site-initializer/site-initializer-extender/    @liferay-site-management
 modules/apps/site-navigation/    @liferay-site-management
+modules/apps/site-navigation/site-navigation-language-api/    @liferay-page-management
 modules/apps/site-navigation/site-navigation-language-web    @liferay-page-management
+modules/apps/site-navigation/site-navigation-language-web-test/    @liferay-page-management
 modules/apps/social/    @liferay-content-management
 modules/apps/staging/    @liferay-headless
 modules/apps/static/
@@ -411,7 +431,6 @@ modules/core/portal-app-license-api/    @liferay-core-infra
 modules/core/portal-app-license-resolver-hook/    @liferay-core-infra
 modules/core/portal-app-license-test/    @liferay-core-infra
 modules/core/portal-bootstrap/    @liferay-core-infra
-modules/core/portal-bootstrap-test/    @liferay-core-infra
 modules/core/portal-hibernate-dependencies/    @liferay-core-infra
 modules/core/portal-jsp-engine/    @liferay-core-infra
 modules/core/portal-web/    @liferay-core-infra
@@ -425,6 +444,7 @@ modules/dxp/apps/commerce-avalara/    @liferay-commerce
 modules/dxp/apps/commerce-demo-pack/    @liferay-commerce
 modules/dxp/apps/commerce-punchout/    @liferay-commerce
 modules/dxp/apps/content-marketing-platform/    @liferay-bpm
+modules/dxp/apps/digital-sales-room/    @liferay-commerce
 modules/dxp/apps/document-library-opener/    @liferay-content-management
 modules/dxp/apps/enterprise-product-notification/
 modules/dxp/apps/frontend-theme/    @liferay-platform-experience
@@ -504,6 +524,7 @@ modules/test/playwright/tests/portal-db-infrastructure    @liferay-database-infr
 modules/test/playwright/tests/portal-impl/portlet    @liferay-frontend
 modules/test/playwright/tests/portal-instances-web    @liferay-database-infra
 modules/test/playwright/tests/portal-tools-rest-builder-test-impl    @liferay-headless
+modules/test/playwright/tests/server-admin-web/database-migration    @liferay-database-infra
 modules/test/playwright/tests/staging-configuration-web    @liferay-headless
 modules/third-party/
 modules/util/css-builder/    @liferay-devtools
@@ -523,6 +544,7 @@ modules/util/portal-tools-rest-builder-test-client-js/    @liferay-headless
 modules/util/portal-tools-rest-builder-test-impl/    @liferay-headless
 modules/util/portal-tools-rest-builder-test-test/    @liferay-headless
 modules/util/portal-tools-sample-sql-builder/    @liferay-core-infra
+modules/util/portal-tools-schema-manifest-builder/    @liferay-database-infra
 modules/util/portal-tools-service-builder/    @liferay-core-infra
 modules/util/portal-tools-service-builder-spring-sample-api/    @liferay-core-infra
 modules/util/portal-tools-service-builder-spring-sample-service/    @liferay-core-infra

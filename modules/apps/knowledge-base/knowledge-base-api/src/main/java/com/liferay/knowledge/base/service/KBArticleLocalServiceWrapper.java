@@ -486,22 +486,6 @@ public class KBArticleLocalServiceWrapper
 	}
 
 	@Override
-	public java.util.List<KBArticle> getCompanyKBArticles(
-		long companyId, int status, int start, int end,
-		com.liferay.portal.kernel.util.OrderByComparator<KBArticle>
-			orderByComparator) {
-
-		return _kbArticleLocalService.getCompanyKBArticles(
-			companyId, status, start, end, orderByComparator);
-	}
-
-	@Override
-	public int getCompanyKBArticlesCount(long companyId, int status) {
-		return _kbArticleLocalService.getCompanyKBArticlesCount(
-			companyId, status);
-	}
-
-	@Override
 	public com.liferay.portal.kernel.dao.orm.ExportActionableDynamicQuery
 		getExportActionableDynamicQuery(
 			com.liferay.exportimport.kernel.lar.PortletDataContext
@@ -703,22 +687,6 @@ public class KBArticleLocalServiceWrapper
 	public int getKBArticleVersionsCount(long resourcePrimKey, int status) {
 		return _kbArticleLocalService.getKBArticleVersionsCount(
 			resourcePrimKey, status);
-	}
-
-	@Override
-	public java.util.List<KBArticle> getKBFolderKBArticles(
-		long groupId, long kbFolderId) {
-
-		return _kbArticleLocalService.getKBFolderKBArticles(
-			groupId, kbFolderId);
-	}
-
-	@Override
-	public int getKBFolderKBArticlesCount(
-		long groupId, long kbFolderId, int status) {
-
-		return _kbArticleLocalService.getKBFolderKBArticlesCount(
-			groupId, kbFolderId, status);
 	}
 
 	@Override
@@ -1113,4 +1081,4 @@ public class KBArticleLocalServiceWrapper
 	private KBArticleLocalService _kbArticleLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-2135641997
+// LIFERAY-SERVICE-BUILDER-HASH:-1189730527

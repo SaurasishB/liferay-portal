@@ -12,11 +12,21 @@
 				"dynamic-import-node",
 				"import-graphql",
 				"transform-require-context"
+			],
+			"presets": [
+				[
+					"@babel/preset-env",
+					{
+						"loose": true,
+						"targets": {
+							"node": "current"
+						}
+					}
+				]
 			]
 		}
 	},
 	"plugins": [
-		"graphql-tag",
 		"lodash",
 		"@babel/plugin-syntax-dynamic-import"
 	],

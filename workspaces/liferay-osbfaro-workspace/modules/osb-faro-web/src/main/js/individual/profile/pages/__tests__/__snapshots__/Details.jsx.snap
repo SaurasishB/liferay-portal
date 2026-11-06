@@ -42,7 +42,7 @@ exports[`IndividualDetails should render 1`] = `
               class="container-fluid"
             >
               <ul
-                class="nav-root front-nav navbar-nav"
+                class="nav-root front-nav mr-auto navbar-nav"
                 role="tablist"
               />
               <div
@@ -147,12 +147,9 @@ exports[`IndividualDetails should render 1`] = `
                         >
                           <svg
                             class="lexicon-icon lexicon-icon-order_arrow_ascending icon-root"
+                            data-file="order_arrow_ascending.svg"
                             role="presentation"
-                          >
-                            <use
-                              href="#order_arrow_ascending"
-                            />
-                          </svg>
+                          />
                         </button>
                       </div>
                     </button>
@@ -288,7 +285,11 @@ exports[`IndividualDetails should render 1`] = `
                   <td
                     class="table-cell-expand-small"
                   >
-                    -
+                    <span
+                      class="text-secondary"
+                    >
+                      –
+                    </span>
                   </td>
                   <td
                     class="table-cell-expand"
@@ -298,13 +299,21 @@ exports[`IndividualDetails should render 1`] = `
                       data-discover="true"
                       href="/workspace/23/settings/data-source/123"
                     >
-                      -
+                      <span
+                        class="text-secondary"
+                      >
+                        –
+                      </span>
                     </a>
                   </td>
                   <td
                     class="text-nowrap"
                   >
-                    -
+                    <span
+                      class="text-secondary"
+                    >
+                      –
+                    </span>
                   </td>
                 </tr>
                 <tr
@@ -337,13 +346,21 @@ exports[`IndividualDetails should render 1`] = `
                       data-discover="true"
                       href="/workspace/23/settings/data-source/123"
                     >
-                      -
+                      <span
+                        class="text-secondary"
+                      >
+                        –
+                      </span>
                     </a>
                   </td>
                   <td
                     class="text-nowrap"
                   >
-                    -
+                    <span
+                      class="text-secondary"
+                    >
+                      –
+                    </span>
                   </td>
                 </tr>
                 <tr
@@ -376,13 +393,21 @@ exports[`IndividualDetails should render 1`] = `
                       data-discover="true"
                       href="/workspace/23/settings/data-source/123"
                     >
-                      -
+                      <span
+                        class="text-secondary"
+                      >
+                        –
+                      </span>
                     </a>
                   </td>
                   <td
                     class="text-nowrap"
                   >
-                    -
+                    <span
+                      class="text-secondary"
+                    >
+                      –
+                    </span>
                   </td>
                 </tr>
                 <tr
@@ -405,7 +430,11 @@ exports[`IndividualDetails should render 1`] = `
                   <td
                     class="table-cell-expand-small"
                   >
-                    -
+                    <span
+                      class="text-secondary"
+                    >
+                      –
+                    </span>
                   </td>
                   <td
                     class="table-cell-expand"
@@ -415,13 +444,21 @@ exports[`IndividualDetails should render 1`] = `
                       data-discover="true"
                       href="/workspace/23/settings/data-source/123"
                     >
-                      -
+                      <span
+                        class="text-secondary"
+                      >
+                        –
+                      </span>
                     </a>
                   </td>
                   <td
                     class="text-nowrap"
                   >
-                    -
+                    <span
+                      class="text-secondary"
+                    >
+                      –
+                    </span>
                   </td>
                 </tr>
                 <tr
@@ -444,7 +481,11 @@ exports[`IndividualDetails should render 1`] = `
                   <td
                     class="table-cell-expand-small"
                   >
-                    -
+                    <span
+                      class="text-secondary"
+                    >
+                      –
+                    </span>
                   </td>
                   <td
                     class="table-cell-expand"
@@ -454,13 +495,21 @@ exports[`IndividualDetails should render 1`] = `
                       data-discover="true"
                       href="/workspace/23/settings/data-source/123"
                     >
-                      -
+                      <span
+                        class="text-secondary"
+                      >
+                        –
+                      </span>
                     </a>
                   </td>
                   <td
                     class="text-nowrap"
                   >
-                    -
+                    <span
+                      class="text-secondary"
+                    >
+                      –
+                    </span>
                   </td>
                 </tr>
               </tbody>

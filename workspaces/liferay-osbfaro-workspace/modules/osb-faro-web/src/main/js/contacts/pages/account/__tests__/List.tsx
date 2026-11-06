@@ -19,11 +19,21 @@ type FakeFilter = {
 	};
 };
 
+let lastApiURL: string | undefined;
 let lastFilters: FakeFilter[] | undefined;
 
 jest.mock('@liferay/frontend-data-set-web', () => ({
 	...jest.requireActual('@liferay/frontend-data-set-web'),
-	FrontendDataSet: ({filters, id}: {filters: FakeFilter[]; id: string}) => {
+	FrontendDataSet: ({
+		apiURL,
+		filters,
+		id,
+	}: {
+		apiURL: string;
+		filters: FakeFilter[];
+		id: string;
+	}) => {
+		lastApiURL = apiURL;
 		lastFilters = filters;
 
 		return <div data-testid="fds-component" id={id} />;
@@ -99,15 +109,21 @@ const useRequestImpl =
 	({
 		catalogError = false,
 		catalogLoading = false,
+		lifecycles,
 		total = 1,
 	}: {
 		catalogError?: boolean;
 		catalogLoading?: boolean;
+		lifecycles?: {id: string}[];
 		total?: number;
 	} = {}) =>
 	({variables}: {variables: {[key: string]: any}}) => {
 		if (variables?.channelIds !== undefined) {
 			return {data: {total}};
+		}
+
+		if (lifecycles && variables?.defaultAccountLifecycle) {
+			return {data: lifecycles};
 		}
 
 		if (variables?.tableName !== undefined) {
@@ -141,6 +157,7 @@ const renderList = ({queryString = ''}: {queryString?: string} = {}) =>
 describe('List', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		lastApiURL = undefined;
 		lastFilters = undefined;
 
 		mockedUseNavigate.mockReturnValue(mockHistoryPush);
@@ -168,10 +185,12 @@ describe('List', () => {
 			renderList();
 		});
 
-		it('should render the FrontendDataSet component', () => {
+		it('should render the FrontendDataSet component', async () => {
 			renderList();
 
-			expect(screen.getByTestId('fds-component')).toBeInTheDocument();
+			expect(
+				await screen.findByTestId('fds-component')
+			).toBeInTheDocument();
 		});
 
 		it('should withhold the data set until the field catalog resolves, without blanking the page', async () => {
@@ -187,24 +206,72 @@ describe('List', () => {
 			expect(screen.queryByTestId('fds-component')).toBeNull();
 		});
 
-		it('should still render the data set when the field catalog request fails', () => {
+		it('should still render the data set when the field catalog request fails', async () => {
 			mockedUseRequest.mockImplementation(
 				useRequestImpl({catalogError: true})
 			);
 
 			renderList();
 
-			expect(screen.getByTestId('fds-component')).toBeInTheDocument();
+			expect(
+				await screen.findByTestId('fds-component')
+			).toBeInTheDocument();
 		});
 
-		it('should render the FrontendDataSet with id "accounts-list-dataset"', () => {
+		it('should request the default lifecycle of the channel', () => {
 			renderList();
 
-			expect(screen.getByTestId('fds-component')).toHaveAttribute('id');
+			expect(mockedUseRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					variables: {
+						channelId: '123',
+						defaultAccountLifecycle: true,
+						groupId: '23',
+					},
+				})
+			);
 		});
 
-		it('should preload the rangeKey filter with Last 30 Days by default', () => {
+		it('should send the default lifecycle to the accounts endpoint', async () => {
+			mockedUseRequest.mockImplementation(
+				useRequestImpl({lifecycles: [{id: '55'}]})
+			);
+
 			renderList();
+
+			await screen.findByTestId('fds-component');
+
+			expect(lastApiURL).toBe(
+				'/o/faro/contacts/23/account/search?accountLifecycleId=55&channelId=123'
+			);
+		});
+
+		it('should leave out the lifecycle when the channel has none', async () => {
+			mockedUseRequest.mockImplementation(
+				useRequestImpl({lifecycles: []})
+			);
+
+			renderList();
+
+			await screen.findByTestId('fds-component');
+
+			expect(lastApiURL).toBe(
+				'/o/faro/contacts/23/account/search?channelId=123'
+			);
+		});
+
+		it('should render the FrontendDataSet with id "accounts-list-dataset"', async () => {
+			renderList();
+
+			expect(await screen.findByTestId('fds-component')).toHaveAttribute(
+				'id'
+			);
+		});
+
+		it('should preload the rangeKey filter with Last 30 Days by default', async () => {
+			renderList();
+
+			await screen.findByTestId('fds-component');
 
 			const rangeKeyFilter = lastFilters?.find(
 				(f) => f.id === 'rangeKey'

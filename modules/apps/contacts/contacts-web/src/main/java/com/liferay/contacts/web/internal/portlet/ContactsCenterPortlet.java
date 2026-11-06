@@ -16,10 +16,9 @@ import com.liferay.contacts.service.EntryLocalService;
 import com.liferay.contacts.service.EntryService;
 import com.liferay.contacts.util.ContactsUtil;
 import com.liferay.contacts.web.internal.constants.ContactsPortletKeys;
-import com.liferay.document.library.kernel.service.DLAppLocalService;
+import com.liferay.document.library.kernel.service.DLAppService;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.bean.BeanParamUtil;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.AddressCityException;
 import com.liferay.portal.kernel.exception.AddressStreetException;
@@ -61,12 +60,14 @@ import com.liferay.portal.kernel.portlet.bridges.mvc.MVCPortlet;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.security.auth.PrincipalException;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextFactory;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.service.UserNotificationEventLocalService;
 import com.liferay.portal.kernel.service.UserService;
+import com.liferay.portal.kernel.servlet.SessionErrors;
 import com.liferay.portal.kernel.theme.PortletDisplay;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.CalendarFactoryUtil;
@@ -94,11 +95,14 @@ import jakarta.portlet.Portlet;
 import jakarta.portlet.PortletException;
 import jakarta.portlet.PortletRequest;
 import jakarta.portlet.PortletResponse;
+import jakarta.portlet.RenderRequest;
+import jakarta.portlet.RenderResponse;
 import jakarta.portlet.ResourceRequest;
 import jakarta.portlet.ResourceResponse;
 
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 import java.net.URLEncoder;
@@ -183,10 +187,12 @@ public class ContactsCenterPortlet extends MVCPortlet {
 			socialRelationLocalService.addRelation(
 				themeDisplay.getUserId(), userId, type);
 
-			if (blocked) {
-				socialRelationLocalService.addRelation(
-					userId, themeDisplay.getUserId(), type);
+			if (!blocked) {
+				continue;
 			}
+
+			socialRelationLocalService.addRelation(
+				userId, themeDisplay.getUserId(), type);
 		}
 	}
 
@@ -372,6 +378,29 @@ public class ContactsCenterPortlet extends MVCPortlet {
 		catch (Exception exception) {
 			throw new PortletException(exception);
 		}
+	}
+
+	@Override
+	public void render(
+			RenderRequest renderRequest, RenderResponse renderResponse)
+		throws IOException, PortletException {
+
+		ThemeDisplay themeDisplay = (ThemeDisplay)renderRequest.getAttribute(
+			WebKeys.THEME_DISPLAY);
+
+		long userId = ParamUtil.getLong(renderRequest, "userId");
+
+		if (!themeDisplay.isSignedIn() && (userId > 0) &&
+			!_isMember(themeDisplay, userId)) {
+
+			SessionErrors.add(renderRequest, PrincipalException.class);
+
+			include("/error.jsp", renderRequest, renderResponse);
+
+			return;
+		}
+
+		super.render(renderRequest, renderResponse);
 	}
 
 	public void requestSocialRelation(
@@ -727,7 +756,7 @@ public class ContactsCenterPortlet extends MVCPortlet {
 		announcementsDeliveryLocalService;
 
 	@Reference
-	protected DLAppLocalService dlAppLocalService;
+	protected DLAppService dlAppService;
 
 	@Reference
 	protected EntryLocalService entryLocalService;
@@ -737,6 +766,9 @@ public class ContactsCenterPortlet extends MVCPortlet {
 
 	@Reference
 	protected File file;
+
+	@Reference
+	protected GroupLocalService groupLocalService;
 
 	@Reference
 	protected JSONFactory jsonFactory;
@@ -1138,6 +1170,29 @@ public class ContactsCenterPortlet extends MVCPortlet {
 		return jsonObject;
 	}
 
+	private boolean _isMember(ThemeDisplay themeDisplay, long userId) {
+		if (!ContactsPortletKeys.MEMBERS.equals(getPortletName())) {
+			return false;
+		}
+
+		User user = userLocalService.fetchUser(userId);
+
+		if ((user == null) || !user.isActive()) {
+			return false;
+		}
+
+		Group group = themeDisplay.getScopeGroup();
+		Layout layout = themeDisplay.getLayout();
+
+		if (group.isUser() && layout.isPublicLayout()) {
+			return socialRelationLocalService.hasRelation(
+				group.getClassPK(), userId,
+				SocialRelationConstants.TYPE_BI_CONNECTION);
+		}
+
+		return groupLocalService.hasUserGroup(userId, group.getGroupId(), true);
+	}
+
 	private void _sendNotificationEvent(SocialRequest socialRequest)
 		throws Exception {
 
@@ -1247,39 +1302,40 @@ public class ContactsCenterPortlet extends MVCPortlet {
 		long fileEntryId = ParamUtil.getLong(actionRequest, "fileEntryId");
 
 		if (!deleteLogo && (fileEntryId > 0)) {
-			FileEntry fileEntry = dlAppLocalService.getFileEntry(fileEntryId);
+			FileEntry fileEntry = dlAppService.getFileEntry(fileEntryId);
 
 			try (InputStream inputStream = fileEntry.getContentStream()) {
 				portraitBytes = file.getBytes(inputStream);
 			}
 		}
 
-		String comments = BeanParamUtil.getString(
-			user, actionRequest, "comments");
-		String emailAddress = BeanParamUtil.getString(
-			user, actionRequest, "emailAddress");
-		String firstName = BeanParamUtil.getString(
-			user, actionRequest, "firstName");
-		String jobTitle = BeanParamUtil.getString(
-			user, actionRequest, "jobTitle");
-		String lastName = BeanParamUtil.getString(
-			user, actionRequest, "lastName");
-		String middleName = BeanParamUtil.getString(
-			user, actionRequest, "middleName");
-		String screenName = BeanParamUtil.getString(
-			user, actionRequest, "screenName");
+		String comments = ParamUtil.getString(
+			actionRequest, "comments", user.getComments());
+		String emailAddress = ParamUtil.getString(
+			actionRequest, "emailAddress", user.getEmailAddress());
+		String firstName = ParamUtil.getString(
+			actionRequest, "firstName", user.getFirstName());
+		String jobTitle = ParamUtil.getString(
+			actionRequest, "jobTitle", user.getJobTitle());
+		String lastName = ParamUtil.getString(
+			actionRequest, "lastName", user.getLastName());
+		String middleName = ParamUtil.getString(
+			actionRequest, "middleName", user.getMiddleName());
+		String screenName = ParamUtil.getString(
+			actionRequest, "screenName", user.getScreenName());
 
 		Contact contact = user.getContact();
 
-		String facebookSn = BeanParamUtil.getString(
-			contact, actionRequest, "facebookSn");
-		String jabberSn = BeanParamUtil.getString(
-			contact, actionRequest, "jabberSn");
-		String skypeSn = BeanParamUtil.getString(
-			contact, actionRequest, "skypeSn");
-		String smsSn = BeanParamUtil.getString(contact, actionRequest, "smsSn");
-		String twitterSn = BeanParamUtil.getString(
-			contact, actionRequest, "twitterSn");
+		String facebookSn = ParamUtil.getString(
+			actionRequest, "facebookSn", contact.getFacebookSn());
+		String jabberSn = ParamUtil.getString(
+			actionRequest, "jabberSn", contact.getJabberSn());
+		String skypeSn = ParamUtil.getString(
+			actionRequest, "skypeSn", contact.getSkypeSn());
+		String smsSn = ParamUtil.getString(
+			actionRequest, "smsSn", contact.getSmsSn());
+		String twitterSn = ParamUtil.getString(
+			actionRequest, "twitterSn", contact.getTwitterSn());
 
 		Calendar cal = CalendarFactoryUtil.getCalendar();
 

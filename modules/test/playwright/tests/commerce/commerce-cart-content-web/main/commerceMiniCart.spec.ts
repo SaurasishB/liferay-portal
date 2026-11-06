@@ -17,6 +17,7 @@ import {CommerceThemeMiniumCatalogPage} from '../../../../pages/commerce/commerc
 import {CommerceMiniCartPage} from '../../../../pages/commerce/commerceMiniCartPage';
 import {clickAndExpectToBeHidden} from '../../../../utils/clickAndExpectToBeHidden';
 import {clickAndExpectToBeVisible} from '../../../../utils/clickAndExpectToBeVisible';
+import {getRandomInt} from '../../../../utils/getRandomInt';
 import getRandomString from '../../../../utils/getRandomString';
 import performLogin, {
 	performLoginViaApi,
@@ -35,6 +36,7 @@ import {
 	findSkuByOptionValueKeys,
 	getSkusByName,
 	miniumSetUp,
+	selectCurrentAccount,
 	setUpBrakeFluidUnitsOfMeasure,
 	unitOfMeasurePriceLabel,
 	zeroWarehouseStock,
@@ -1572,6 +1574,83 @@ test(
 );
 
 test(
+	'As a buyer I can quick add to cart a SKU marked as price on application',
+	{tag: ['@COMMERCE-11551', '@LPD-110523']},
+	async ({
+		apiHelpers,
+		commerceAdminChannelsPage,
+		commerceMiniCartPage,
+		page,
+	}) => {
+		const site = await apiHelpers.headlessAdminSite.postSite({
+			name: getRandomString(),
+		});
+
+		const layout = await apiHelpers.headlessDelivery.createSitePage({
+			pageDefinition: getPageDefinition([
+				getFragmentDefinition({
+					id: getRandomString(),
+					key: 'COMMERCE_CART_FRAGMENTS-mini-cart',
+				}),
+			]),
+			siteId: site.id,
+			title: getRandomString(),
+		});
+
+		const channel =
+			await apiHelpers.headlessCommerceAdminChannel.postChannel({
+				siteGroupId: site.id,
+			});
+
+		await commerceAdminChannelsPage.changeCommerceChannelSiteType(
+			channel.name,
+			'B2B'
+		);
+
+		await waitForAlert(page);
+
+		const catalog =
+			await apiHelpers.headlessCommerceAdminCatalog.postCatalog({
+				name: getRandomString(),
+			});
+
+		const product =
+			await apiHelpers.headlessCommerceAdminCatalog.postProduct({
+				catalogId: catalog.id,
+				name: {en_US: getRandomString()},
+			});
+
+		const sku = product.skus[0];
+
+		await apiHelpers.headlessCommerceAdminPricing.postBasePriceEntries(
+			catalog.id,
+			[{price: 10, priceOnApplication: true, skuId: sku.id}]
+		);
+
+		const {buyerUser} = await createAccountWithBuyerUser(
+			apiHelpers,
+			site.id
+		);
+
+		await performLogout(page);
+		await performLoginViaApi({page, screenName: buyerUser.alternateName});
+
+		await page.goto(`/web${site.friendlyUrlPath}${layout.friendlyUrlPath}`);
+
+		await commerceMiniCartPage.quickAddToCart(sku.sku);
+
+		await expect(
+			commerceMiniCartPage.miniCartItem(product.name.en_US)
+		).toBeVisible();
+		await expect(
+			commerceMiniCartPage.miniCartItemPriceOnApplication(
+				product.name.en_US
+			)
+		).toHaveText('Price on Application');
+	}
+);
+
+test(
 	'Decimal unit of measure prices are converted for a bundled product in the mini cart Edit panel',
 	{tag: '@COMMERCE-12628'},
 	async ({
@@ -2111,17 +2190,18 @@ test(
 	}) => {
 		test.setTimeout(300000);
 
-		const {buyerUser, product, site} = await setUpMiniumBundledProduct(
-			apiHelpers,
-			commerceAdminProductPage,
-			{
-				buildOptionSpecs: () => buildColorOptionSpecs(apiHelpers),
-				prices: [
-					['blue', 10],
-					['white', 20],
-				],
-			}
-		);
+		const {account, buyerUser, product, site} =
+			await setUpMiniumBundledProduct(
+				apiHelpers,
+				commerceAdminProductPage,
+				{
+					buildOptionSpecs: () => buildColorOptionSpecs(apiHelpers),
+					prices: [
+						['blue', 10],
+						['white', 20],
+					],
+				}
+			);
 
 		const blueSku = findSkuByOptionValueKeys(product, ['blue']);
 		const whiteSku = findSkuByOptionValueKeys(product, ['white']);
@@ -2129,139 +2209,154 @@ test(
 		await performLogout(page);
 		await performLoginViaApi({page, screenName: buyerUser.alternateName});
 
-		await test.step('The buyer adds both bundle variants to the cart', async () => {
-			for (const [index, optionLabel] of ['Blue', 'White'].entries()) {
-				await page.goto(
-					`/web${site.friendlyUrlPath}/p/${product.urls['en_US']}`,
-					{waitUntil: 'networkidle'}
-				);
+		try {
+			await test.step('The buyer adds both bundle variants to the cart', async () => {
+				for (const [index, optionLabel] of [
+					'Blue',
+					'White',
+				].entries()) {
+					await page.goto(
+						`/web${site.friendlyUrlPath}/p/${product.urls['en_US']}`,
+						{waitUntil: 'networkidle'}
+					);
 
-				await productDetailsPage.selectOptionContaining(
-					optionLabel,
-					'Color'
-				);
+					await productDetailsPage.selectOptionContaining(
+						optionLabel,
+						'Color'
+					);
+					await productDetailsPage.productDetailAddToCartButton.click();
 
+					await expect(
+						commerceMiniCartPage.miniCartButton
+					).toHaveAttribute('data-badge-count', String(index + 1));
+				}
+
+				await commerceMiniCartPage.open();
+			});
+
+			await test.step('Each bundled order item lists its linked SKU and offers the edit action', async () => {
+				for (const [linkedProductName, optionValueName, price, sku] of [
+					['ABS Sensor', 'Blue', '$ 30.00', blueSku],
+					['Brake Rotors', 'White', '$ 50.00', whiteSku],
+				] as Array<[string, string, string, {sku: string}]>) {
+					const cartItem = commerceMiniCartPage.miniCartItemForSku(
+						sku.sku
+					);
+
+					await expect(
+						commerceMiniCartPage.miniCartItemListPrice(cartItem)
+					).toHaveText(price);
+					await expect(
+						commerceThemeMiniumCatalogPage.quantitySelector(
+							cartItem
+						)
+					).toHaveValue('1');
+					await expect(
+						commerceMiniCartPage.miniCartItemActionsButton(cartItem)
+					).toBeVisible();
+					await commerceMiniCartPage.showItemOptions(cartItem);
+
+					const bundledItem =
+						commerceMiniCartPage.miniCartItemBundledItem(
+							cartItem,
+							linkedProductName
+						);
+
+					await expect(bundledItem).toBeVisible();
+					await expect(bundledItem.locator('.item-name')).toHaveText(
+						'Color'
+					);
+					await expect(
+						bundledItem.locator('.item-sku')
+					).toContainText(optionValueName);
+					await expect(
+						bundledItem.locator('.item-sku')
+					).toContainText(`1 \u00D7 ${linkedProductName}`);
+				}
+			});
+
+			await test.step('A non bundled order item keeps its options collapsed and lists no linked SKU', async () => {
+				await commerceMiniCartPage.close();
+
+				await page.goto(`/web${site.friendlyUrlPath}/p/brake-fluid`, {
+					waitUntil: 'networkidle',
+				});
+
+				await productDetailsPage.selectOption('12', 'Package Quantity');
 				await productDetailsPage.productDetailAddToCartButton.click();
 
-				await expect(
-					commerceMiniCartPage.miniCartButton
-				).toHaveAttribute('data-badge-count', String(index + 1));
-			}
+				await page.waitForLoadState('networkidle');
 
-			await commerceMiniCartPage.open();
-		});
+				await commerceMiniCartPage.open();
 
-		await test.step('Each bundled order item lists its linked SKU and offers the edit action', async () => {
-			for (const [sku, price, optionValueName, linkedProductName] of [
-				[blueSku, '$ 30.00', 'Blue', 'ABS Sensor'],
-				[whiteSku, '$ 50.00', 'White', 'Brake Rotors'],
-			] as Array<[{sku: string}, string, string, string]>) {
-				const cartItem = commerceMiniCartPage.miniCartItemForSku(
-					sku.sku
-				);
+				const cartItem =
+					commerceMiniCartPage.miniCartItemForSku('MIN93016A');
 
 				await expect(
-					commerceMiniCartPage.miniCartItemListPrice(cartItem)
-				).toHaveText(price);
-				await expect(
-					commerceThemeMiniumCatalogPage.quantitySelector(cartItem)
-				).toHaveValue('1');
+					commerceMiniCartPage.miniCartItemShowOptionsButton(cartItem)
+				).toBeVisible();
 				await expect(
 					commerceMiniCartPage.miniCartItemActionsButton(cartItem)
 				).toBeVisible();
+
 				await commerceMiniCartPage.showItemOptions(cartItem);
 
-				const bundledItem =
-					commerceMiniCartPage.miniCartItemBundledItem(
-						cartItem,
-						linkedProductName
-					);
-
-				await expect(bundledItem).toBeVisible();
-				await expect(bundledItem.locator('.item-name')).toHaveText(
-					'Color'
+				const optionInfo = commerceMiniCartPage.miniCartItemBundledItem(
+					cartItem,
+					'Package Quantity'
 				);
-				await expect(bundledItem.locator('.item-sku')).toContainText(
-					optionValueName
-				);
-				await expect(bundledItem.locator('.item-sku')).toContainText(
-					`1 \u00D7 ${linkedProductName}`
-				);
-			}
-		});
 
-		await test.step('A non bundled order item keeps its options collapsed and lists no linked SKU', async () => {
-			await commerceMiniCartPage.close();
-
-			await page.goto(`/web${site.friendlyUrlPath}/p/brake-fluid`, {
-				waitUntil: 'networkidle',
+				await expect(optionInfo.locator('.item-name')).toHaveText(
+					'Package Quantity'
+				);
+				await expect(optionInfo.locator('.item-sku')).toHaveText('12');
 			});
 
-			await productDetailsPage.selectOption('12', 'Package Quantity');
+			await test.step('Closing the mini cart drops the edit panel, whether by the overlay or by the close button', async () => {
+				const cartItem = commerceMiniCartPage.miniCartItemForSku(
+					blueSku.sku
+				);
 
-			await productDetailsPage.productDetailAddToCartButton.click();
+				for (const dismiss of [
+					commerceMiniCartPage.miniCartButtonClose,
+					commerceMiniCartPage.miniCartOverlay,
+				]) {
+					await commerceMiniCartPage.open();
+					await commerceMiniCartPage
+						.miniCartItemActionsButton(cartItem)
+						.click();
+					await commerceMiniCartPage.editMenuItem.click();
 
-			await page.waitForLoadState('networkidle');
+					await expect(
+						commerceMiniCartPage.miniCartEditItemPanel
+					).toBeVisible();
 
-			await commerceMiniCartPage.open();
+					await clickAndExpectToBeHidden({
+						target: commerceMiniCartPage.miniCartOpenDrawer,
+						trigger: dismiss,
+					});
 
-			const cartItem =
-				commerceMiniCartPage.miniCartItemForSku('MIN93016A');
+					await commerceMiniCartPage.open();
 
-			await expect(
-				commerceMiniCartPage.miniCartItemShowOptionsButton(cartItem)
-			).toBeVisible();
-			await expect(
-				commerceMiniCartPage.miniCartItemActionsButton(cartItem)
-			).toBeVisible();
+					await expect(
+						commerceMiniCartPage.miniCartEditItemPanel
+					).toHaveCount(0);
+					await expect(
+						commerceMiniCartPage.miniCartResume
+					).toBeVisible();
+				}
+			});
+		}
+		finally {
+			const orders =
+				await apiHelpers.headlessCommerceAdminOrder.getOrdersPage();
 
-			await commerceMiniCartPage.showItemOptions(cartItem);
-
-			const optionInfo = commerceMiniCartPage.miniCartItemBundledItem(
-				cartItem,
-				'Package Quantity'
-			);
-
-			await expect(optionInfo.locator('.item-name')).toHaveText(
-				'Package Quantity'
-			);
-			await expect(optionInfo.locator('.item-sku')).toHaveText('12');
-		});
-
-		await test.step('Closing the mini cart drops the edit panel, whether by the overlay or by the close button', async () => {
-			const cartItem = commerceMiniCartPage.miniCartItemForSku(
-				blueSku.sku
-			);
-
-			for (const dismiss of [
-				commerceMiniCartPage.miniCartOverlay,
-				commerceMiniCartPage.miniCartButtonClose,
-			]) {
-				await commerceMiniCartPage.open();
-
-				await commerceMiniCartPage
-					.miniCartItemActionsButton(cartItem)
-					.click();
-
-				await commerceMiniCartPage.editMenuItem.click();
-
-				await expect(
-					commerceMiniCartPage.miniCartEditItemPanel
-				).toBeVisible();
-
-				await clickAndExpectToBeHidden({
-					target: commerceMiniCartPage.miniCartOpenDrawer,
-					trigger: dismiss,
-				});
-
-				await commerceMiniCartPage.open();
-
-				await expect(
-					commerceMiniCartPage.miniCartEditItemPanel
-				).toHaveCount(0);
-				await expect(commerceMiniCartPage.miniCartResume).toBeVisible();
+			for (const order of orders.items ?? []) {
+				if (order.accountId === account.id) {
+					apiHelpers.data.push({id: order.id, type: 'order'});
+				}
 			}
-		});
+		}
 	}
 );
 
@@ -3274,5 +3369,468 @@ test(
 				false
 			);
 		}
+	}
+);
+
+test(
+	'An admin can submit, reject, resubmit, approve and check out an order from the Mini Cart widget with the buyer order approval workflow',
+	{tag: ['@COMMERCE-10247', '@LPD-92663']},
+	async ({
+		apiHelpers,
+		checkoutPage,
+		commerceAdminChannelsPage,
+		commerceMiniCartPage,
+		page,
+	}) => {
+		const site = await apiHelpers.headlessAdminSite.postSite({
+			name: getRandomString(),
+		});
+
+		const channel =
+			await apiHelpers.headlessCommerceAdminChannel.postChannel({
+				siteGroupId: site.id,
+			});
+
+		const catalog =
+			await apiHelpers.headlessCommerceAdminCatalog.postCatalog({
+				name: getRandomString(),
+			});
+
+		const product =
+			await apiHelpers.headlessCommerceAdminCatalog.postProduct({
+				catalogId: catalog.id,
+			});
+
+		const miniCartWidgetLayout =
+			await apiHelpers.headlessDelivery.createSitePage({
+				pageDefinition: getPageDefinition([
+					getWidgetDefinition({
+						id: getRandomString(),
+						widgetName:
+							'com_liferay_commerce_cart_content_web_internal_portlet_CommerceCartContentMiniPortlet',
+					}),
+				]),
+				siteId: site.id,
+				title: getRandomString(),
+			});
+
+		await apiHelpers.headlessDelivery.createSitePage({
+			pageDefinition: getPageDefinition([
+				getWidgetDefinition({
+					id: getRandomString(),
+					widgetName:
+						'com_liferay_commerce_checkout_web_internal_portlet_CommerceCheckoutPortlet',
+				}),
+			]),
+			siteId: site.id,
+			title: getRandomString(),
+		});
+
+		await commerceAdminChannelsPage.changeCommerceChannelSiteType(
+			channel.name,
+			'B2B'
+		);
+		await commerceAdminChannelsPage.changeCommerceChannelBuyerOrderApprovalWorkflow(
+			'Single Approver (Version 1)',
+			channel.name,
+			true
+		);
+
+		const account = await apiHelpers.headlessAdminUser.postAccount({
+			name: getRandomString(),
+			type: 'business',
+		});
+
+		await apiHelpers.headlessAdminUser.assignUserToAccountByEmailAddress(
+			account.id,
+			['test@liferay.com']
+		);
+
+		await selectCurrentAccount(account.id, apiHelpers, site.id);
+
+		await apiHelpers.headlessCommerceDeliveryCart.postCart(
+			{
+				accountId: account.id,
+				cartItems: [
+					{
+						options: '[]',
+						quantity: 1,
+						skuId: product.skus[0].id,
+					},
+				],
+			},
+			channel.id
+		);
+
+		await page.goto(
+			`/web${site.friendlyUrlPath}${miniCartWidgetLayout.friendlyUrlPath}`,
+			{waitUntil: 'networkidle'}
+		);
+
+		await test.step('Canceling the approval of the submitted order keeps it pending', async () => {
+			await clickAndExpectToBeVisible({
+				target: commerceMiniCartPage.miniCartWidgetTransitionButton(
+					'Approve'
+				),
+				trigger:
+					commerceMiniCartPage.miniCartWidgetTransitionButton(
+						'Submit'
+					),
+			});
+
+			await clickAndExpectToBeVisible({
+				target: commerceMiniCartPage.transitionCommentInput,
+				trigger:
+					commerceMiniCartPage.miniCartWidgetTransitionButton(
+						'Approve'
+					),
+			});
+
+			await commerceMiniCartPage.transitionCommentInput.fill(
+				getRandomString()
+			);
+
+			await clickAndExpectToBeHidden({
+				target: commerceMiniCartPage.transitionCommentInput,
+				trigger: commerceMiniCartPage.transitionCancelButton,
+			});
+
+			await expect(
+				commerceMiniCartPage.miniCartWidgetTransitionButton('Approve')
+			).toBeVisible();
+		});
+
+		await test.step('The comment of the canceled approval is reset and the rejected order can be resubmitted', async () => {
+			await clickAndExpectToBeVisible({
+				target: commerceMiniCartPage.transitionCommentInput,
+				trigger:
+					commerceMiniCartPage.miniCartWidgetTransitionButton(
+						'Reject'
+					),
+			});
+
+			await expect(
+				commerceMiniCartPage.transitionCommentInput
+			).toHaveValue('');
+
+			await clickAndExpectToBeVisible({
+				target: commerceMiniCartPage.miniCartWidgetTransitionButton(
+					'Resubmit'
+				),
+				trigger: commerceMiniCartPage.transitionDoneButton,
+			});
+
+			await clickAndExpectToBeVisible({
+				target: commerceMiniCartPage.transitionDoneButton,
+				trigger:
+					commerceMiniCartPage.miniCartWidgetTransitionButton(
+						'Resubmit'
+					),
+			});
+
+			await clickAndExpectToBeVisible({
+				target: commerceMiniCartPage.miniCartWidgetTransitionButton(
+					'Approve'
+				),
+				trigger: commerceMiniCartPage.transitionDoneButton,
+			});
+		});
+
+		await test.step('The approved order is checked out from the Mini Cart widget', async () => {
+			await clickAndExpectToBeVisible({
+				target: commerceMiniCartPage.transitionDoneButton,
+				trigger:
+					commerceMiniCartPage.miniCartWidgetTransitionButton(
+						'Approve'
+					),
+			});
+
+			await clickAndExpectToBeVisible({
+				target: commerceMiniCartPage.miniCartWidgetTransitionButton(
+					'Checkout'
+				),
+				trigger: commerceMiniCartPage.transitionDoneButton,
+			});
+
+			await commerceMiniCartPage
+				.miniCartWidgetTransitionButton('Checkout')
+				.click();
+
+			await checkoutPage.addAddress({
+				city: 'Test City',
+				countryLabel: 'United States',
+				name: 'Address Name',
+				regionLabel: 'Florida',
+				street: 'Test Address',
+				zip: '12345',
+			});
+
+			await checkoutPage.performCheckoutUntilStep('Order Confirmation');
+
+			await expect(checkoutPage.orderSuccessMessage).toBeVisible();
+		});
+	}
+);
+
+test(
+	'Quick add to cart checks the minimum quantity against the emptied cart after all the items are removed',
+	{tag: ['@COMMERCE-10753', '@LPD-62368']},
+	async ({
+		apiHelpers,
+		commerceAdminChannelsPage,
+		commerceMiniCartPage,
+		page,
+	}) => {
+		const site = await apiHelpers.headlessAdminSite.postSite({
+			name: getRandomString(),
+		});
+
+		const layout = await apiHelpers.headlessDelivery.createSitePage({
+			pageDefinition: getPageDefinition([
+				getFragmentDefinition({
+					id: getRandomString(),
+					key: 'COMMERCE_CART_FRAGMENTS-mini-cart',
+				}),
+			]),
+			siteId: site.id,
+			title: getRandomString(),
+		});
+
+		const channel =
+			await apiHelpers.headlessCommerceAdminChannel.postChannel({
+				siteGroupId: site.id,
+			});
+
+		await commerceAdminChannelsPage.changeCommerceChannelSiteType(
+			channel.name,
+			'B2B'
+		);
+
+		await waitForAlert(page);
+
+		const catalog =
+			await apiHelpers.headlessCommerceAdminCatalog.postCatalog({
+				name: getRandomString(),
+			});
+
+		const product =
+			await apiHelpers.headlessCommerceAdminCatalog.postProduct({
+				catalogId: catalog.id,
+				name: {en_US: getRandomString()},
+				productConfiguration: {
+					allowedOrderQuantities: [7, 8],
+					minOrderQuantity: 8,
+				},
+			});
+
+		const sku = product.skus[0];
+
+		const {buyerUser} = await createAccountWithBuyerUser(
+			apiHelpers,
+			site.id
+		);
+
+		await performUserSwitchViaApi(page, buyerUser.alternateName);
+
+		const layoutURL = `/web${site.friendlyUrlPath}${layout.friendlyUrlPath}`;
+
+		await page.goto(layoutURL);
+
+		await test.step('Quick add skips the allowed quantity lower than the minimum quantity', async () => {
+			await commerceMiniCartPage.quickAddToCart(sku.sku);
+
+			await expect(
+				commerceMiniCartPage.miniCartSummaryItem('Quantity')
+			).toHaveText('8');
+		});
+
+		await performUserSwitchViaApi(page, 'test');
+
+		await apiHelpers.headlessCommerceAdminCatalog.patchProduct(
+			String(product.productId),
+			{
+				name: product.name,
+				productConfiguration: {
+					allowedOrderQuantities: [6, 7],
+				},
+			}
+		);
+
+		await performUserSwitchViaApi(page, buyerUser.alternateName);
+
+		await page.goto(layoutURL);
+
+		await test.step('Quick add shows the minimum quantity error after all the items are removed', async () => {
+			await commerceMiniCartPage.miniCartButton.click();
+			await commerceMiniCartPage.removeAllItemsButton.click();
+			await commerceMiniCartPage.removeAllItemsConfirmButton.click();
+
+			await commerceMiniCartPage.quickAddToCart(sku.sku);
+
+			await waitForAlert(page, 'Error:The minimum quantity is 8.', {
+				type: 'danger',
+			});
+
+			await expect(commerceMiniCartPage.miniCartSku(sku.sku)).toHaveCount(
+				0
+			);
+		});
+	}
+);
+
+test(
+	'A unit of measure without stock cannot be chosen while editing a mini cart item',
+	{tag: ['@COMMERCE-12618', '@LPD-62368']},
+	async ({
+		apiHelpers,
+		commerceAdminChannelsPage,
+		commerceMiniCartPage,
+		page,
+	}) => {
+		const site = await apiHelpers.headlessAdminSite.postSite({
+			name: getRandomString(),
+		});
+
+		const layout = await apiHelpers.headlessDelivery.createSitePage({
+			pageDefinition: getPageDefinition([
+				getFragmentDefinition({
+					id: getRandomString(),
+					key: 'COMMERCE_CART_FRAGMENTS-mini-cart',
+				}),
+			]),
+			siteId: site.id,
+			title: getRandomString(),
+		});
+
+		const channel =
+			await apiHelpers.headlessCommerceAdminChannel.postChannel({
+				siteGroupId: site.id,
+			});
+
+		await commerceAdminChannelsPage.changeCommerceChannelSiteType(
+			channel.name,
+			'B2B'
+		);
+
+		await waitForAlert(page);
+
+		const catalog =
+			await apiHelpers.headlessCommerceAdminCatalog.postCatalog({
+				name: getRandomString(),
+			});
+
+		const product =
+			await apiHelpers.headlessCommerceAdminCatalog.postProduct({
+				catalogId: catalog.id,
+				name: {en_US: getRandomString()},
+				productConfiguration: {
+					allowBackOrder: false,
+					minOrderQuantity: 0.01,
+					multipleOrderQuantity: 0.01,
+				},
+			});
+
+		const sku = product.skus[0];
+
+		await apiHelpers.headlessCommerceAdminCatalog.postSkuUnitOfMeasure(
+			sku.id,
+			{
+				active: false,
+				basePrice: 1,
+				precision: 1,
+				priority: 1,
+				rate: 1,
+			}
+		);
+
+		const unitOfMeasure1 =
+			await apiHelpers.headlessCommerceAdminCatalog.postSkuUnitOfMeasure(
+				sku.id,
+				{
+					basePrice: 2,
+					incrementalOrderQuantity: 0.6,
+					precision: 1,
+					priority: 2,
+					rate: 1,
+				}
+			);
+
+		const unitOfMeasure2 =
+			await apiHelpers.headlessCommerceAdminCatalog.postSkuUnitOfMeasure(
+				sku.id,
+				{
+					basePrice: 3,
+					incrementalOrderQuantity: 2,
+					precision: 1,
+					priority: 3,
+					rate: 1,
+				}
+			);
+
+		const warehouse =
+			await apiHelpers.headlessCommerceAdminInventoryApiHelper.postWarehouses(
+				{
+					active: true,
+					latitude: getRandomInt(),
+					longitude: getRandomInt(),
+					warehouseItems: [
+						{
+							quantity: 10,
+							sku: sku.sku,
+							unitOfMeasureKey: unitOfMeasure1.key,
+						},
+					],
+				}
+			);
+
+		await apiHelpers.headlessCommerceAdminInventoryApiHelper.postWarehousesChannels(
+			warehouse.id,
+			channel.id
+		);
+
+		const {buyerUser} = await createAccountWithBuyerUser(
+			apiHelpers,
+			site.id
+		);
+
+		await performUserSwitchViaApi(page, buyerUser.alternateName);
+
+		await page.goto(`/web${site.friendlyUrlPath}${layout.friendlyUrlPath}`);
+
+		await test.step('Quick add puts the SKU in the cart', async () => {
+			await commerceMiniCartPage.quickAddToCart(sku.sku);
+		});
+
+		await test.step('Saving a unit of measure without stock shows an error and keeps the cart item', async () => {
+			await commerceMiniCartPage
+				.miniCartItemActionsButton(product.name.en_US)
+				.click();
+			await commerceMiniCartPage.editMenuItem.click();
+			await commerceMiniCartPage.miniCartUnitOfMeasureSelector.selectOption(
+				unitOfMeasure2.key
+			);
+			await commerceMiniCartPage.editQuantitySelector.fill('6');
+			await commerceMiniCartPage.miniCartSaveButton.click();
+
+			await waitForAlert(
+				page,
+				'Error:The specified quantity is unavailable.',
+				{type: 'danger'}
+			);
+
+			await commerceMiniCartPage.miniCartCancelButton.click();
+
+			await expect(
+				commerceMiniCartPage.miniCartItemUnitOfMeasure(
+					product.name.en_US
+				)
+			).toHaveText(unitOfMeasure1.key);
+			await expect(
+				commerceMiniCartPage.miniCartSummaryItem('Quantity')
+			).toHaveText('0.6');
+			await expect(commerceMiniCartPage.miniCartTotalPrice).toHaveText(
+				'$ 2.00'
+			);
+		});
 	}
 );

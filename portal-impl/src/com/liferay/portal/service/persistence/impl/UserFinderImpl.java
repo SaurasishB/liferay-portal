@@ -63,29 +63,11 @@ public class UserFinderImpl extends UserFinderBaseImpl implements UserFinder {
 	public static final String COUNT_BY_USER =
 		UserFinder.class.getName() + ".countByUser";
 
-	public static final String FIND_BY_NO_ANNOUNCEMENTS_DELIVERIES =
-		UserFinder.class.getName() + ".findByNoAnnouncementsDeliveries";
-
-	public static final String FIND_BY_NO_GROUPS =
-		UserFinder.class.getName() + ".findByNoGroups";
-
 	public static final String FIND_BY_SOCIAL_USERS =
 		UserFinder.class.getName() + ".findBySocialUsers";
 
-	public static final String FIND_BY_USERS_GROUPS =
-		UserFinder.class.getName() + ".findByUsersGroups";
-
-	public static final String FIND_BY_USERS_ORGS =
-		UserFinder.class.getName() + ".findByUsersOrgs";
-
-	public static final String FIND_BY_USERS_ORGS_GROUP =
-		UserFinder.class.getName() + ".findByUsersOrgsGroup";
-
 	public static final String FIND_BY_USERS_ORGS_GT_USER_ID =
 		UserFinder.class.getName() + ".findByUsersOrgsGtUserId";
-
-	public static final String FIND_BY_USERS_USER_GROUPS =
-		UserFinder.class.getName() + ".findByUsersUserGroups";
 
 	public static final String FIND_BY_USERS_USER_GROUPS_GT_USER_ID =
 		UserFinder.class.getName() + ".findByUsersUserGroupsGtUserId";
@@ -426,9 +408,11 @@ public class UserFinderImpl extends UserFinderBaseImpl implements UserFinder {
 				queryPos.add(screenNames, 2);
 				queryPos.add(emailAddresses, 2);
 
-				if (status != WorkflowConstants.STATUS_ANY) {
-					queryPos.add(status);
+				if (status == WorkflowConstants.STATUS_ANY) {
+					continue;
 				}
+
+				queryPos.add(status);
 			}
 
 			Iterator<Long> iterator = sqlQuery.iterate();
@@ -486,56 +470,6 @@ public class UserFinderImpl extends UserFinderBaseImpl implements UserFinder {
 			companyId, firstNames, middleNames, lastNames, screenNames,
 			emailAddresses, status, params, andOperator, start, end,
 			orderByComparator);
-	}
-
-	@Override
-	public List<User> findByNoAnnouncementsDeliveries(String type) {
-		Session session = null;
-
-		try {
-			session = openSession();
-
-			String sql = CustomSQLUtil.get(FIND_BY_NO_ANNOUNCEMENTS_DELIVERIES);
-
-			SQLQuery sqlQuery = session.createSynchronizedSQLQuery(sql);
-
-			sqlQuery.addEntity("User_", UserImpl.class);
-
-			QueryPos queryPos = QueryPos.getInstance(sqlQuery);
-
-			queryPos.add(type);
-
-			return sqlQuery.list(true);
-		}
-		catch (Exception exception) {
-			throw new SystemException(exception);
-		}
-		finally {
-			closeSession(session);
-		}
-	}
-
-	@Override
-	public List<User> findByNoGroups() {
-		Session session = null;
-
-		try {
-			session = openSession();
-
-			String sql = CustomSQLUtil.get(FIND_BY_NO_GROUPS);
-
-			SQLQuery sqlQuery = session.createSynchronizedSQLQuery(sql);
-
-			sqlQuery.addEntity("User_", UserImpl.class);
-
-			return sqlQuery.list(true);
-		}
-		catch (Exception exception) {
-			throw new SystemException(exception);
-		}
-		finally {
-			closeSession(session);
-		}
 	}
 
 	@Override
@@ -787,9 +721,11 @@ public class UserFinderImpl extends UserFinderBaseImpl implements UserFinder {
 				queryPos.add(screenNames, 2);
 				queryPos.add(emailAddresses, 2);
 
-				if (status != WorkflowConstants.STATUS_ANY) {
-					queryPos.add(status);
+				if (status == WorkflowConstants.STATUS_ANY) {
+					continue;
 				}
+
+				queryPos.add(status);
 			}
 
 			return (List<Long>)QueryUtil.list(
@@ -844,9 +780,11 @@ public class UserFinderImpl extends UserFinderBaseImpl implements UserFinder {
 
 			Object value = entry.getValue();
 
-			if (value != null) {
-				sb.append(getJoin(key, value));
+			if (value == null) {
+				continue;
 			}
+
+			sb.append(getJoin(key, value));
 		}
 
 		return sb.toString();
@@ -1222,9 +1160,11 @@ public class UserFinderImpl extends UserFinderBaseImpl implements UserFinder {
 
 			Object value = entry.getValue();
 
-			if (value != null) {
-				sb.append(getWhere(key, value));
+			if (value == null) {
+				continue;
 			}
+
+			sb.append(getWhere(key, value));
 		}
 
 		return sb.toString();
@@ -1507,9 +1447,11 @@ public class UserFinderImpl extends UserFinderBaseImpl implements UserFinder {
 				for (int i = 0; i < socialRelationTypes.length; i++) {
 					sb.append(StringPool.QUESTION);
 
-					if ((i + 1) < socialRelationTypes.length) {
-						sb.append(StringPool.COMMA);
+					if ((i + 1) >= socialRelationTypes.length) {
+						continue;
 					}
+
+					sb.append(StringPool.COMMA);
 				}
 
 				sb.append("))");
@@ -1605,9 +1547,11 @@ public class UserFinderImpl extends UserFinderBaseImpl implements UserFinder {
 				Long[] valueArray = (Long[])value;
 
 				for (Long element : valueArray) {
-					if (Validator.isNotNull(element)) {
-						queryPos.add(element);
+					if (Validator.isNull(element)) {
+						continue;
 					}
+
+					queryPos.add(element);
 				}
 			}
 			else if (value instanceof Long[][]) {
@@ -1630,9 +1574,11 @@ public class UserFinderImpl extends UserFinderBaseImpl implements UserFinder {
 				String[] valueArray = (String[])value;
 
 				for (String element : valueArray) {
-					if (Validator.isNotNull(element)) {
-						queryPos.add(element);
+					if (Validator.isNull(element)) {
+						continue;
 					}
+
+					queryPos.add(element);
 				}
 			}
 			else if (value instanceof CustomSQLParam) {

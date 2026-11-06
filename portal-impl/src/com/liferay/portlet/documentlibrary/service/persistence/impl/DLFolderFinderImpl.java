@@ -109,13 +109,6 @@ public class DLFolderFinderImpl
 	}
 
 	@Override
-	public int countFE_ByG_F(
-		long groupId, long folderId, QueryDefinition<?> queryDefinition) {
-
-		return doCountFE_ByG_F(groupId, folderId, queryDefinition, false);
-	}
-
-	@Override
 	public int countFE_FS_ByG_F(
 		long groupId, long folderId, QueryDefinition<?> queryDefinition) {
 
@@ -141,13 +134,6 @@ public class DLFolderFinderImpl
 		return doCountF_FE_FS_ByG_F_M_FETI_M(
 			groupId, folderId, mimeTypes, fileEntryTypeId, includeMountFolders,
 			queryDefinition, true);
-	}
-
-	@Override
-	public int filterCountFE_ByG_F(
-		long groupId, long folderId, QueryDefinition<?> queryDefinition) {
-
-		return doCountFE_ByG_F(groupId, folderId, queryDefinition, true);
 	}
 
 	@Override
@@ -361,9 +347,11 @@ public class DLFolderFinderImpl
 			while (iterator.hasNext()) {
 				Long l = iterator.next();
 
-				if (l != null) {
-					count += l.intValue();
+				if (l == null) {
+					continue;
 				}
+
+				count += l.intValue();
 			}
 
 			return count;
@@ -470,57 +458,14 @@ public class DLFolderFinderImpl
 			while (iterator.hasNext()) {
 				Long l = iterator.next();
 
-				if (l != null) {
-					count += l.intValue();
+				if (l == null) {
+					continue;
 				}
+
+				count += l.intValue();
 			}
 
 			return count;
-		}
-		catch (Exception exception) {
-			throw new SystemException(exception);
-		}
-		finally {
-			closeSession(session);
-		}
-	}
-
-	protected int doCountFE_ByG_F(
-		long groupId, long folderId, QueryDefinition<?> queryDefinition,
-		boolean inlineSQLHelper) {
-
-		Session session = null;
-
-		try {
-			session = openSession();
-
-			String sql = getFileVersionsSQL(
-				COUNT_FE_BY_G_F, groupId, null, queryDefinition,
-				inlineSQLHelper);
-
-			sql = updateSQL(sql, folderId, false, false);
-
-			SQLQuery sqlQuery = session.createSynchronizedSQLQuery(sql);
-
-			sqlQuery.addScalar(COUNT_COLUMN_NAME, Type.LONG);
-
-			QueryPos queryPos = QueryPos.getInstance(sqlQuery);
-
-			queryPos.add(groupId);
-			queryPos.add(queryDefinition.getStatus());
-			queryPos.add(folderId);
-
-			Iterator<Long> iterator = sqlQuery.iterate();
-
-			if (iterator.hasNext()) {
-				Long count = iterator.next();
-
-				if (count != null) {
-					return count.intValue();
-				}
-			}
-
-			return 0;
 		}
 		catch (Exception exception) {
 			throw new SystemException(exception);
@@ -590,9 +535,11 @@ public class DLFolderFinderImpl
 			while (iterator.hasNext()) {
 				Long l = iterator.next();
 
-				if (l != null) {
-					count += l.intValue();
+				if (l == null) {
+					continue;
 				}
+
+				count += l.intValue();
 			}
 
 			return count;
@@ -1000,9 +947,11 @@ public class DLFolderFinderImpl
 
 				queryPos.add(folderId);
 
-				if (mimeTypes != null) {
-					queryPos.add(mimeTypes);
+				if (mimeTypes == null) {
+					continue;
 				}
+
+				queryPos.add(mimeTypes);
 			}
 
 			for (int i = 0; i < 2; i++) {
@@ -1011,9 +960,11 @@ public class DLFolderFinderImpl
 				queryPos.add(queryDefinition.getStatus());
 				queryPos.add(folderId);
 
-				if (mimeTypes != null) {
-					queryPos.add(mimeTypes);
+				if (mimeTypes == null) {
+					continue;
 				}
+
+				queryPos.add(mimeTypes);
 			}
 
 			List<Object> models = new ArrayList<>();
@@ -1160,9 +1111,11 @@ public class DLFolderFinderImpl
 				queryPos.add(queryDefinition.getStatus());
 				queryPos.add(folderId);
 
-				if (mimeTypes != null) {
-					queryPos.add(mimeTypes);
+				if (mimeTypes == null) {
+					continue;
 				}
+
+				queryPos.add(mimeTypes);
 			}
 
 			List<Object> models = new ArrayList<>();
@@ -1424,9 +1377,11 @@ public class DLFolderFinderImpl
 			sb.append(tableName);
 			sb.append(".mimeType = ?");
 
-			if ((i + 1) != mimeTypes.length) {
-				sb.append(WHERE_OR);
+			if ((i + 1) == mimeTypes.length) {
+				continue;
 			}
+
+			sb.append(WHERE_OR);
 		}
 
 		return sb.toString();

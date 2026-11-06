@@ -25,6 +25,8 @@ spec:
             {{- end }}
             containers:
                 -   env:
+                        -   name: CLIENT_EXTENSIONS_ENABLED
+                            value: {{ .Values.clientExtensions.enabled | quote }}
                         -   name: DEBUG
                             value: {{ .Values.debug | quote }}
                         -   name: DOWNLOAD_POLL_INTERVAL
@@ -125,6 +127,8 @@ spec:
                         claimName: {{ .Values.marketplace.claimName }}
                 {{- end }}
                 {{- range $k, $v := .Values.customVolumes }}
+                {{- if and $v (gt (len $v) 0) }}
                 {{- toYaml $v | nindent 16 }}
+                {{- end }}
                 {{- end }}
             {{- end }}

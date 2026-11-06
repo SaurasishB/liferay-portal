@@ -2,6 +2,7 @@ import React from 'react';
 import {align} from './align';
 import {
 	ALIGNMENTS_MAP,
+	NO_DATA_VALUE,
 	POSITIONS,
 	RangeKeyTimeRanges,
 } from 'shared/util/constants';
@@ -14,10 +15,10 @@ import {
 
 /**
  * Check if the value is blank.
- * @param {string|number} value
+ * @param {unknown} value
  * @returns {boolean}
  */
-export const isBlank = (value: string | number): boolean =>
+export const isBlank = (value: unknown): value is null | undefined | '' =>
 	isNil(value) || (isString(value) && !value.length);
 
 /**
@@ -103,17 +104,25 @@ export const normalizeRangeSelectors = (
  */
 export const getSafeDisplayValue = (
 	value: string | number,
-	defaultValue: string | number = '-'
+	defaultValue: string | number = NO_DATA_VALUE
 ): string | number => (isBlank(value) ? defaultValue : value);
 
 export const getSafeTouchpoint = (touchpoint: string) => {
 	if (!touchpoint) return null;
 
 	try {
-		const url = new URL(decodeURIComponent(touchpoint));
+		const decodedTouchpoint = decodeURIComponent(touchpoint);
+
+		const url = new URL(decodedTouchpoint);
 		const remainingUrl = url.href.replace(url.origin, '');
 
-		return remainingUrl === '/' ? url.origin : url.origin + remainingUrl;
+		// `URL` appends a slash to a bare origin, so it is dropped again to
+		// keep the touchpoint as given. A site root URL that arrived with its
+		// slash keeps it, since that is the URL the page list reports.
+
+		return remainingUrl === '/' && !decodedTouchpoint.endsWith('/')
+			? url.origin
+			: url.origin + remainingUrl;
 	}
 	catch (e) {
 		return touchpoint !== 'Any'

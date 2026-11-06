@@ -55,16 +55,16 @@ public class FaroProjectLocalServiceUtil {
 			long userId, String name, String accountKey, String accountName,
 			String corpProjectName, String corpProjectUuid,
 			List<String> emailAddressDomains, String friendlyURL,
-			String incidentReportEmailAddresses, String serverLocation,
-			String services, String state, String subscription,
-			String timeZoneId, String weDeployKey)
+			String incidentReportEmailAddresses, String salesforceAccountId,
+			String serverLocation, String services, String state,
+			String subscription, String timeZoneId, String weDeployKey)
 		throws PortalException {
 
 		return getService().addFaroProject(
 			userId, name, accountKey, accountName, corpProjectName,
 			corpProjectUuid, emailAddressDomains, friendlyURL,
-			incidentReportEmailAddresses, serverLocation, services, state,
-			subscription, timeZoneId, weDeployKey);
+			incidentReportEmailAddresses, salesforceAccountId, serverLocation,
+			services, state, subscription, timeZoneId, weDeployKey);
 	}
 
 	/**
@@ -233,6 +233,13 @@ public class FaroProjectLocalServiceUtil {
 		return getService().fetchFaroProjectByGroupId(groupId);
 	}
 
+	public static FaroProject fetchFaroProjectBySalesforceAccountId(
+		String salesforceAccountId) {
+
+		return getService().fetchFaroProjectBySalesforceAccountId(
+			salesforceAccountId);
+	}
+
 	public static FaroProject fetchFaroProjectByWeDeployKey(
 		String weDeployKey) {
 
@@ -361,6 +368,13 @@ public class FaroProjectLocalServiceUtil {
 		return getService().updateFaroProject(faroProject);
 	}
 
+	public static FaroProject updateSalesforceAccountId(
+		long faroProjectId, String salesforceAccountId) {
+
+		return getService().updateSalesforceAccountId(
+			faroProjectId, salesforceAccountId);
+	}
+
 	public static FaroProject updateState(long faroProjectId, String state) {
 		return getService().updateState(faroProjectId, state);
 	}
@@ -380,4 +394,4 @@ public class FaroProjectLocalServiceUtil {
 			FaroProjectLocalServiceUtil.class, FaroProjectLocalService.class);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1167403344
+// LIFERAY-SERVICE-BUILDER-HASH:540582131

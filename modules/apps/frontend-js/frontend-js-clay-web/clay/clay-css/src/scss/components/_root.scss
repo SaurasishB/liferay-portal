@@ -31,27 +31,28 @@
 }
 
 @if (variable-exists(c-dark)) {
-	@media (prefers-color-scheme: dark) {
-		:root {
-			@include clay-css($c-dark);
-		}
-	}
-
 	[data-color-scheme='dark']:root,
 	:root [data-color-scheme='dark'] {
+		color-scheme: dark;
+
 		@include clay-css($c-dark);
 	}
 }
 
-@if (variable-exists(c-dark-high-contrast)) {
-	@media (prefers-color-scheme: dark) and (prefers-contrast: more) {
-		:root {
-			@include clay-css($c-dark-high-contrast);
+@if (variable-exists(c-high-contrast)) {
+	html:root {
+		@media (prefers-contrast: more) {
+			@include clay-css($c-high-contrast);
 		}
-	}
 
-	[data-color-scheme='dark-high-contrast']:root,
-	:root [data-color-scheme='dark-high-contrast'] {
-		@include clay-css($c-dark-high-contrast);
+		&[data-prefers-contrast='more'] {
+			@include clay-css($c-high-contrast);
+		}
+
+		@media (forced-colors: active) {
+			forced-color-adjust: none;
+
+			@include clay-css($c-high-contrast);
+		}
 	}
 }

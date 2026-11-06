@@ -380,6 +380,14 @@ public class StyleBookEntryLocalServiceWrapper
 	}
 
 	@Override
+	public String generateStyleBookEntryName(
+		long groupId, String name, long styleBookEntryId) {
+
+		return _styleBookEntryLocalService.generateStyleBookEntryName(
+			groupId, name, styleBookEntryId);
+	}
+
+	@Override
 	public com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery
 		getActionableDynamicQuery() {
 
@@ -716,25 +724,14 @@ public class StyleBookEntryLocalServiceWrapper
 			long userId, long styleBookEntryId, boolean defaultStyleBookEntry,
 			String frontendTokenDefinition, String frontendTokensValues,
 			String name, String styleBookEntryKey, long previewFileEntryId,
+			String themeId,
 			com.liferay.portal.kernel.service.ServiceContext serviceContext)
 		throws com.liferay.portal.kernel.exception.PortalException {
 
 		return _styleBookEntryLocalService.updateStyleBookEntry(
 			userId, styleBookEntryId, defaultStyleBookEntry,
 			frontendTokenDefinition, frontendTokensValues, name,
-			styleBookEntryKey, previewFileEntryId, serviceContext);
-	}
-
-	@Override
-	public StyleBookEntry updateStyleBookEntry(
-			long styleBookEntryId, String frontendTokenDefinition,
-			String frontendTokensValues, String name,
-			com.liferay.portal.kernel.service.ServiceContext serviceContext)
-		throws com.liferay.portal.kernel.exception.PortalException {
-
-		return _styleBookEntryLocalService.updateStyleBookEntry(
-			styleBookEntryId, frontendTokenDefinition, frontendTokensValues,
-			name, serviceContext);
+			styleBookEntryKey, previewFileEntryId, themeId, serviceContext);
 	}
 
 	/**
@@ -796,4 +793,4 @@ public class StyleBookEntryLocalServiceWrapper
 	private StyleBookEntryLocalService _styleBookEntryLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1113817741
+// LIFERAY-SERVICE-BUILDER-HASH:1370032108

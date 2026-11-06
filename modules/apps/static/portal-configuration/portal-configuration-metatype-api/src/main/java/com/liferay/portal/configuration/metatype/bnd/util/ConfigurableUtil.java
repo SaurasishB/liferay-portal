@@ -110,9 +110,11 @@ public class ConfigurableUtil {
 		List<Method> nonsyntheticDeclaredMethods = new ArrayList<>();
 
 		for (Method method : interfaceClass.getDeclaredMethods()) {
-			if (!method.isSynthetic()) {
-				nonsyntheticDeclaredMethods.add(method);
+			if (method.isSynthetic()) {
+				continue;
 			}
+
+			nonsyntheticDeclaredMethods.add(method);
 		}
 
 		// Fields
@@ -255,20 +257,12 @@ public class ConfigurableUtil {
 		).build();
 	}
 
-	private static final Method _defineClassMethod;
-	private static final Method _findLoadedClassMethod;
-
-	static {
-		try {
-			_defineClassMethod = ReflectionUtil.getDeclaredMethod(
-				ClassLoader.class, "defineClass", String.class, byte[].class,
-				int.class, int.class);
-			_findLoadedClassMethod = ReflectionUtil.getDeclaredMethod(
-				ClassLoader.class, "findLoadedClass", String.class);
-		}
-		catch (Throwable throwable) {
-			throw new ExceptionInInitializerError(throwable);
-		}
-	}
+	private static final Method _defineClassMethod =
+		ReflectionUtil.fetchDeclaredMethod(
+			ClassLoader.class, "defineClass", String.class, byte[].class,
+			int.class, int.class);
+	private static final Method _findLoadedClassMethod =
+		ReflectionUtil.fetchDeclaredMethod(
+			ClassLoader.class, "findLoadedClass", String.class);
 
 }

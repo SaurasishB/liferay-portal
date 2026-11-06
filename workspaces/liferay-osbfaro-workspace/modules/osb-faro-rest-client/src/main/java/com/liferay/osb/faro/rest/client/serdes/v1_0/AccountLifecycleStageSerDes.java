@@ -10,6 +10,7 @@ import com.liferay.osb.faro.rest.client.json.BaseJSONParser;
 
 import jakarta.annotation.Generated;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -60,16 +61,6 @@ public class AccountLifecycleStageSerDes {
 			sb.append("\"");
 		}
 
-		if (accountLifecycleStage.getDisplayOrder() != null) {
-			if (sb.length() > 1) {
-				sb.append(", ");
-			}
-
-			sb.append("\"displayOrder\": ");
-
-			sb.append(accountLifecycleStage.getDisplayOrder());
-		}
-
 		if (accountLifecycleStage.getId() != null) {
 			if (sb.length() > 1) {
 				sb.append(", ");
@@ -94,18 +85,28 @@ public class AccountLifecycleStageSerDes {
 			sb.append(accountLifecycleStage.getMaxDuration());
 		}
 
-		if (accountLifecycleStage.getStageType() != null) {
+		if (accountLifecycleStage.getName() != null) {
 			if (sb.length() > 1) {
 				sb.append(", ");
 			}
 
-			sb.append("\"stageType\": ");
+			sb.append("\"name\": ");
 
 			sb.append("\"");
 
-			sb.append(_escape(accountLifecycleStage.getStageType()));
+			sb.append(_escape(accountLifecycleStage.getName()));
 
 			sb.append("\"");
+		}
+
+		if (accountLifecycleStage.getPosition() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"position\": ");
+
+			sb.append(accountLifecycleStage.getPosition());
 		}
 
 		sb.append("}");
@@ -138,15 +139,6 @@ public class AccountLifecycleStageSerDes {
 				String.valueOf(accountLifecycleStage.getDescription()));
 		}
 
-		if (accountLifecycleStage.getDisplayOrder() == null) {
-			map.put("displayOrder", null);
-		}
-		else {
-			map.put(
-				"displayOrder",
-				String.valueOf(accountLifecycleStage.getDisplayOrder()));
-		}
-
 		if (accountLifecycleStage.getId() == null) {
 			map.put("id", null);
 		}
@@ -163,13 +155,20 @@ public class AccountLifecycleStageSerDes {
 				String.valueOf(accountLifecycleStage.getMaxDuration()));
 		}
 
-		if (accountLifecycleStage.getStageType() == null) {
-			map.put("stageType", null);
+		if (accountLifecycleStage.getName() == null) {
+			map.put("name", null);
+		}
+		else {
+			map.put("name", String.valueOf(accountLifecycleStage.getName()));
+		}
+
+		if (accountLifecycleStage.getPosition() == null) {
+			map.put("position", null);
 		}
 		else {
 			map.put(
-				"stageType",
-				String.valueOf(accountLifecycleStage.getStageType()));
+				"position",
+				String.valueOf(accountLifecycleStage.getPosition()));
 		}
 
 		return map;
@@ -193,16 +192,16 @@ public class AccountLifecycleStageSerDes {
 			if (Objects.equals(jsonParserFieldName, "description")) {
 				return false;
 			}
-			else if (Objects.equals(jsonParserFieldName, "displayOrder")) {
-				return false;
-			}
 			else if (Objects.equals(jsonParserFieldName, "id")) {
 				return false;
 			}
 			else if (Objects.equals(jsonParserFieldName, "maxDuration")) {
 				return false;
 			}
-			else if (Objects.equals(jsonParserFieldName, "stageType")) {
+			else if (Objects.equals(jsonParserFieldName, "name")) {
+				return false;
+			}
+			else if (Objects.equals(jsonParserFieldName, "position")) {
 				return false;
 			}
 
@@ -220,12 +219,6 @@ public class AccountLifecycleStageSerDes {
 						(String)jsonParserFieldValue);
 				}
 			}
-			else if (Objects.equals(jsonParserFieldName, "displayOrder")) {
-				if (jsonParserFieldValue != null) {
-					accountLifecycleStage.setDisplayOrder(
-						Integer.valueOf((String)jsonParserFieldValue));
-				}
-			}
 			else if (Objects.equals(jsonParserFieldName, "id")) {
 				if (jsonParserFieldValue != null) {
 					accountLifecycleStage.setId((String)jsonParserFieldValue);
@@ -237,10 +230,15 @@ public class AccountLifecycleStageSerDes {
 						Integer.valueOf((String)jsonParserFieldValue));
 				}
 			}
-			else if (Objects.equals(jsonParserFieldName, "stageType")) {
+			else if (Objects.equals(jsonParserFieldName, "name")) {
 				if (jsonParserFieldValue != null) {
-					accountLifecycleStage.setStageType(
-						(String)jsonParserFieldValue);
+					accountLifecycleStage.setName((String)jsonParserFieldValue);
+				}
+			}
+			else if (Objects.equals(jsonParserFieldName, "position")) {
+				if (jsonParserFieldValue != null) {
+					accountLifecycleStage.setPosition(
+						Integer.valueOf((String)jsonParserFieldValue));
 				}
 			}
 		}
@@ -292,6 +290,12 @@ public class AccountLifecycleStageSerDes {
 			return "null";
 		}
 
+		if (value instanceof Collection) {
+			Collection<?> collection = (Collection<?>)value;
+
+			return _toJSON(collection.toArray());
+		}
+
 		if (value instanceof Map) {
 			return _toJSON((Map)value);
 		}
@@ -324,4 +328,4 @@ public class AccountLifecycleStageSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:1087458209
+// LIFERAY-REST-BUILDER-HASH:-2062420481

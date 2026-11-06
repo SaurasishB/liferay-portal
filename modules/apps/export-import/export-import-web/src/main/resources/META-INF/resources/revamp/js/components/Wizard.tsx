@@ -8,12 +8,11 @@ import {Form, Formik, FormikConfig, FormikHelpers, FormikValues} from 'formik';
 import React, {ReactElement, useState} from 'react';
 
 import Footer from './Footer';
-import SectionHeader from './SectionHeader';
 
 interface WizardStepProps {
-	actionButton?: React.ReactElement;
+	actionButtonLabel?: string;
+	actionButtonSymbol?: string;
 	children: React.ReactNode;
-	description: string;
 	initialValues?: FormikValues;
 	isStepValid?: (values: FormikValues) => boolean;
 	onSubmit?: FormikConfig<FormikValues>['onSubmit'];
@@ -43,8 +42,13 @@ export function Wizard({
 
 	const step = steps[stepNumber] as React.ReactElement<WizardStepProps>;
 
-	const {actionButton, description, isStepValid, onSubmit, title, validate} =
-		step.props;
+	const {
+		actionButtonLabel,
+		actionButtonSymbol,
+		isStepValid,
+		onSubmit,
+		validate,
+	} = step.props;
 
 	const initialValues = steps.reduce(
 		(accumulator, {props}) => ({
@@ -118,18 +122,14 @@ export function Wizard({
 						})}
 					</ClayMultiStepNav>
 
-					<SectionHeader subtitle={description} title={title} />
-
 					{step}
 
 					<Footer
-						actionButton={actionButton}
+						actionButtonLabel={actionButtonLabel}
+						actionButtonSymbol={actionButtonSymbol}
 						backURL={backURL}
 						continueDisabled={
-							formik.isSubmitting ||
-							(isStepValid
-								? !isStepValid(formik.values)
-								: !formik.isValid)
+							isStepValid && !isStepValid(formik.values)
 						}
 						onPrevious={stepNumber > 0 ? previous : undefined}
 					/>

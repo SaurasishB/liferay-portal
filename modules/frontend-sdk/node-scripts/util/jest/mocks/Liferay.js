@@ -82,7 +82,7 @@ import toggleControls from '../../../../../apps/frontend-js/frontend-js-web/src/
 import toggleDisabled from '../../../../../apps/frontend-js/frontend-js-web/src/main/resources/META-INF/resources/liferay/util/toggle_disabled';
 import toggleRadio from '../../../../../apps/frontend-js/frontend-js-web/src/main/resources/META-INF/resources/liferay/util/toggle_radio';
 import toggleSelectBox from '../../../../../apps/frontend-js/frontend-js-web/src/main/resources/META-INF/resources/liferay/util/toggle_select_box';
-import loadClientExtensions from '../../../../../apps/frontend-js/frontend-js-web/src/main/resources/META-INF/resources/liferay/utils/client_extensions/loadClientExtensions';
+import {loadClientExtensions} from '../../../../../apps/frontend-js/frontend-js-web/src/main/resources/META-INF/resources/liferay/utils/client_extensions/loadClientExtensions';
 import loadEditorClientExtensions from '../../../../../apps/frontend-js/frontend-js-web/src/main/resources/META-INF/resources/liferay/utils/client_extensions/loadEditorClientExtensions';
 import {loadModule} from '../../../../../apps/frontend-js/frontend-js-web/src/main/resources/META-INF/resources/liferay/utils/client_extensions/loadModule';
 import zIndex from '../../../../../apps/frontend-js/frontend-js-web/src/main/resources/META-INF/resources/liferay/zIndex';
@@ -283,6 +283,10 @@ const ThemeDisplay = {
 	 * https://github.com/liferay/liferay-portal/blob/31073fb75fb0d3b309f9e0f921cb7a469aa2703d/portal-web/docroot/html/common/themes/top_js.jspf#L235
 	 */
 	getPathMain: jest.fn(() => '/c'),
+
+	getPathThemeEmptyStatesSpritemap: jest.fn(
+		() => 'http://localhost:8080/o/admin-theme/images/clay/empty_states.svg'
+	),
 
 	/**
 	 * https://github.com/liferay/liferay-portal/blob/31073fb75fb0d3b309f9e0f921cb7a469aa2703d/portal-web/docroot/html/common/themes/top_js.jspf#L238

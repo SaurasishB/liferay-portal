@@ -104,6 +104,7 @@ public class CountryResourceTest extends BaseCountryResourceTestCase {
 		assertValid(page);
 
 		_testGetCountriesPageWithFilter();
+		_testGetCountriesPageWithRegions();
 	}
 
 	@Override
@@ -519,6 +520,43 @@ public class CountryResourceTest extends BaseCountryResourceTestCase {
 		Assert.assertEquals(1, page.getTotalCount());
 
 		assertContains(country2, (List<Country>)page.getItems());
+
+		page = countryResource.getCountriesPage(
+			null, keywords, "id eq " + country1.getId(), Pagination.of(1, 2),
+			null);
+
+		Assert.assertEquals(1, page.getTotalCount());
+		assertContains(country1, (List<Country>)page.getItems());
+
+		page = countryResource.getCountriesPage(
+			null, keywords, "not (id in (" + country1.getId() + "))",
+			Pagination.of(1, 2), null);
+
+		Assert.assertEquals(1, page.getTotalCount());
+		assertContains(country2, (List<Country>)page.getItems());
+	}
+
+	private void _testGetCountriesPageWithRegions() throws Exception {
+		Country country = _addCountry(randomCountry());
+
+		Region serviceBuilderRegion = _regionLocalService.addRegion(
+			null, country.getId(), true, RandomTestUtil.randomString(), 0D,
+			RandomTestUtil.randomString(),
+			ServiceContextTestUtil.getServiceContext());
+
+		Page<Country> page = countryResource.getCountriesPage(
+			null, null, null, Pagination.of(1, _getPageSize()), null);
+
+		Assert.assertTrue(
+			ListUtil.exists(
+				(List<Country>)page.getItems(),
+				curCountry ->
+					Objects.equals(curCountry.getId(), country.getId()) &&
+					ArrayUtil.exists(
+						curCountry.getRegions(),
+						region ->
+							region.getId() ==
+								serviceBuilderRegion.getRegionId())));
 	}
 
 	private void _testGetCountryWithNestedFields() throws Exception {
@@ -533,11 +571,6 @@ public class CountryResourceTest extends BaseCountryResourceTestCase {
 			String.valueOf(postCountry.getId()), role.getRoleId(),
 			new String[] {ActionKeys.UPDATE});
 
-		Region serviceBuilderRegion = _regionLocalService.addRegion(
-			null, postCountry.getId(), true, RandomTestUtil.randomString(), 0D,
-			RandomTestUtil.randomString(),
-			ServiceContextTestUtil.getServiceContext());
-
 		CountryResource countryResource = CountryResource.builder(
 		).authentication(
 			"test@liferay.com", PropsValues.DEFAULT_ADMIN_PASSWORD
@@ -547,7 +580,7 @@ public class CountryResourceTest extends BaseCountryResourceTestCase {
 		).locale(
 			LocaleUtil.getDefault()
 		).parameters(
-			"nestedFields", "creator,permissions,regions"
+			"nestedFields", "creator,permissions"
 		).build();
 
 		Country getCountry = countryResource.getCountry(postCountry.getId());
@@ -563,11 +596,6 @@ public class CountryResourceTest extends BaseCountryResourceTestCase {
 						   Objects.equals(
 							   role.getName(), permission.getRoleName());
 				}));
-		Assert.assertTrue(
-			ArrayUtil.exists(
-				getCountry.getRegions(),
-				region ->
-					region.getId() == serviceBuilderRegion.getRegionId()));
 
 		Creator creator = getCountry.getCreator();
 

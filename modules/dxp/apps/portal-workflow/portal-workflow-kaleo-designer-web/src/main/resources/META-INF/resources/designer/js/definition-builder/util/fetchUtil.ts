@@ -66,7 +66,20 @@ export function retrieveDefinitionRequest(
 	});
 }
 
-export function retrieveRoleById(roleId: number) {
+export function retrieveRole(
+	roleExternalReferenceCode: string,
+	roleId: number
+) {
+	if (roleExternalReferenceCode) {
+		return fetch(
+			`${window.location.origin}${contextUrl}${userBaseURL}/roles/by-external-reference-code/${encodeURIComponent(roleExternalReferenceCode)}`,
+			{
+				headers: HEADERS,
+				method: 'GET',
+			}
+		);
+	}
+
 	return fetch(
 		`${window.location.origin}${contextUrl}${userBaseURL}/roles/${roleId}`,
 		{
@@ -79,6 +92,29 @@ export function retrieveRoleById(roleId: number) {
 export function retrieveRoles() {
 	return fetch(
 		`${window.location.origin}${contextUrl}${userBaseURL}/roles?fields=id,name,roleType&pageSize=-1`,
+		{
+			headers: HEADERS,
+			method: 'GET',
+		}
+	);
+}
+
+export function retrieveUser(
+	userExternalReferenceCode: string,
+	userId: number
+) {
+	if (userExternalReferenceCode) {
+		return fetch(
+			`${window.location.origin}${contextUrl}${userBaseURL}/user-accounts/by-external-reference-code/${encodeURIComponent(userExternalReferenceCode)}`,
+			{
+				headers: HEADERS,
+				method: 'GET',
+			}
+		);
+	}
+
+	return fetch(
+		`${window.location.origin}${contextUrl}${userBaseURL}/user-accounts/${userId}`,
 		{
 			headers: HEADERS,
 			method: 'GET',

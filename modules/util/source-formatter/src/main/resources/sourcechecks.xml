@@ -430,6 +430,13 @@
 			<description name="Performs several checks on tag attributes." />
 		</check>
 	</source-processor>
+	<source-processor name="IgnoreSourceProcessor">
+		<check name="WhitespaceCheck">
+			<category name="Styling" />
+			<description name="Finds missing and unnecessary whitespace." />
+			<property name="allowLeadingSpaces" value="true" />
+		</check>
+	</source-processor>
 	<source-processor name="JakartaTransformSourceProcessor">
 		<check name="JakartaTransformBNDCheck">
 			<category name="JakartaTransform" />
@@ -841,6 +848,10 @@
 			<category name="Bug Prevention" />
 			<description name="Ensure `setExpandoBridgeAttributes` is the final setter called on a model before model persistence." />
 		</check>
+		<check name="JavaFeatureFlagAnnotationCheck">
+			<category name="Bug Prevention" />
+			<description name="Checks that feature flags are declared with `x-feature-flag` in `rest-openapi.yaml` instead of using the annotation `@FeatureFlag`." />
+		</check>
 		<check name="JavaFeatureFlagManagerUtilCheck">
 			<category name="Bug Prevention" />
 			<description name="Finds cases where `FeatureFlagManagerUtil.isEnabled` should be used and incorrect use of it." />
@@ -929,6 +940,11 @@
 		<check name="JavaRunSQLCheck">
 			<category name="Styling" />
 			<description name="Applies rules to enforce consistency in code style." />
+		</check>
+		<check name="JavaServiceHopCheck">
+			<category name="Performance" />
+			<description name="Flags a service method that delegates to a passthrough service method in the same bundle, so it can call persistence directly and skip the AOP proxy hop." />
+			<property name="enabled" value="true" />
 		</check>
 		<check name="JavaServiceImplGetFetchCheck">
 			<category name="Bug Prevention" />
@@ -1213,7 +1229,7 @@
 
 		<check name="JSONBatchEngineDataFileCheck">
 			<category name="Styling" />
-			<description name="Remove elements in `*.batch-engine-data.json` files." />
+			<description name="Performs several checks on `*.batch-engine-data.json` files." />
 		</check>
 		<check name="JSONCommerceCatalogFileCheck">
 			<category name="Styling" />
@@ -1223,10 +1239,6 @@
 			<category name="Bug Prevention" />
 			<description name="Finds incorrect use of deprecated packages in `package.json` files." />
 			<property name="deprecatedPackageNames" value="@clayui/checkbox,liferay-module-config-generator,metal-cli" />
-		</check>
-		<check name="JSONObjectDefinitionFileCheck">
-			<category name="Styling" />
-			<description name="Applies rules to enforce consistency in code style." />
 		</check>
 		<check name="JSONPackageJSONBNDVersionCheck">
 			<category name="Bug Prevention" />
@@ -1692,7 +1704,7 @@
 		</check>
 		<check name="PropertiesCommentsCheck">
 			<category name="Styling" />
-			<description name="Validates comments in `.properties` files." />
+			<description name="Validates comments in `.properties` files and wraps them to the maximum line length." />
 		</check>
 		<check name="PropertiesDefaultAdminScreenNameCheck">
 			<category name="Bug Prevention" />
@@ -1759,10 +1771,6 @@
 		<check name="PropertiesLiferayPluginPackageLiferayVersionsCheck">
 			<category name="Bug Prevention" />
 			<description name="Validates the version in `liferay-plugin-package.properties` file." />
-		</check>
-		<check name="PropertiesLongLinesCheck">
-			<category name="Styling" />
-			<description name="Finds lines that are longer than the specified maximum line length." />
 		</check>
 		<check name="PropertiesMultiLineValuesOrderCheck">
 			<category name="Styling" />
@@ -1909,9 +1917,25 @@
 		</check>
 	</source-processor>
 	<source-processor name="TFSourceProcessor">
+		<check name="EmbeddedJSONCheck">
+			<category name="Styling" />
+			<description name="Ensures consistent formatting for embedded JSON." />
+		</check>
 		<check name="TFBlockOrderCheck">
 			<category name="Styling" />
-			<description name="Checks the order of blocks in `.tf` file." />
+			<description name="Checks the order of blocks and attributes in `.hcl` and `.tf` files." />
+		</check>
+		<check name="TFEmptyLinesCheck">
+			<category name="Styling" />
+			<description name="Finds missing and unnecessary empty lines." />
+		</check>
+		<check name="TFIndentationCheck">
+			<category name="Styling" />
+			<description name="Finds incorrect indentation in `.hcl` and `.tf` files." />
+		</check>
+		<check name="TFStylingCheck">
+			<category name="Styling" />
+			<description name="Applies rules to enforce consistency in code style." />
 		</check>
 	</source-processor>
 	<source-processor name="TLDSourceProcessor">

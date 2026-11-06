@@ -13,6 +13,8 @@ import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.PropsKeys;
+import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.URLCodec;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
@@ -53,6 +55,40 @@ public class ProductsSectionDisplayContextTest {
 				"&nestedFields=embedded,systemProperties.",
 				"objectDefinitionBrief"),
 			productsSectionDisplayContext.getAPIURL());
+	}
+
+	@Test
+	public void testGetAdditionalProps() {
+		try (MockedStatic<PropsUtil> propsUtilMockedStatic = Mockito.mockStatic(
+				PropsUtil.class)) {
+
+			propsUtilMockedStatic.when(
+				() -> PropsUtil.get(PropsKeys.CMS_BROKEN_LINKS_CHECKER_ENABLED)
+			).thenReturn(
+				"false"
+			);
+
+			ProductsSectionDisplayContext productsSectionDisplayContext =
+				new ProductsSectionDisplayContext(null);
+
+			Map<String, Object> additionalProps =
+				productsSectionDisplayContext.getAdditionalProps();
+
+			Assert.assertFalse(
+				(Boolean)additionalProps.get("brokenLinksCheckerEnabled"));
+
+			propsUtilMockedStatic.when(
+				() -> PropsUtil.get(PropsKeys.CMS_BROKEN_LINKS_CHECKER_ENABLED)
+			).thenReturn(
+				"true"
+			);
+
+			additionalProps =
+				productsSectionDisplayContext.getAdditionalProps();
+
+			Assert.assertTrue(
+				(Boolean)additionalProps.get("brokenLinksCheckerEnabled"));
+		}
 	}
 
 	@Test
@@ -179,13 +215,6 @@ public class ProductsSectionDisplayContextTest {
 			HttpServletRequest.class);
 
 		Mockito.when(
-			language.get(
-				httpServletRequest, "are-you-sure-you-want-to-delete-this")
-		).thenReturn(
-			"Are you sure?"
-		);
-
-		Mockito.when(
 			language.get(httpServletRequest, "delete")
 		).thenReturn(
 			"Delete"
@@ -286,22 +315,18 @@ public class ProductsSectionDisplayContextTest {
 			FDSActionDropdownItem deleteFDSActionDropdownItem =
 				fdsActionDropdownItems.get(1);
 
-			Assert.assertEquals(
-				"{embedded.actions.delete.href}",
-				deleteFDSActionDropdownItem.get("href"));
+			Assert.assertNull(deleteFDSActionDropdownItem.get("href"));
 			Assert.assertEquals(
 				"trash", deleteFDSActionDropdownItem.get("icon"));
 			Assert.assertEquals(
 				"Delete", deleteFDSActionDropdownItem.get("label"));
-			Assert.assertEquals(
-				"headless", deleteFDSActionDropdownItem.get("target"));
+			Assert.assertNull(deleteFDSActionDropdownItem.get("target"));
 
 			data = (Map<?, ?>)deleteFDSActionDropdownItem.get("data");
 
-			Assert.assertEquals(
-				"Are you sure?", data.get("confirmationMessage"));
+			Assert.assertNull(data.get("confirmationMessage"));
 			Assert.assertEquals("delete", data.get("id"));
-			Assert.assertEquals("delete", data.get("method"));
+			Assert.assertNull(data.get("method"));
 			Assert.assertEquals("delete", data.get("permissionKey"));
 		}
 	}

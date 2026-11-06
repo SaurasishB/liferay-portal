@@ -102,7 +102,7 @@ SitemapCompanyConfigurationDisplayContext sitemapCompanyConfigurationDisplayCont
 	</clay:content-row>
 </clay:sheet-section>
 
-<c:if test="<%= sitemapCompanyConfigurationDisplayContext.isIndexModeAssetTypeEnabled() %>">
+<c:if test="<%= sitemapCompanyConfigurationDisplayContext.isXMLSitemapIndexEnabled() %>">
 
 	<%
 	boolean cachedGenerationEnabled = sitemapCompanyConfigurationDisplayContext.isCachedGenerationEnabled();
@@ -382,6 +382,21 @@ SitemapCompanyConfigurationDisplayContext sitemapCompanyConfigurationDisplayCont
 				id='<%= liferayPortletResponse.getNamespace() + "includeWebContent" %>'
 				label='<%= LanguageUtil.get(request, "web-content-urls") %>'
 				name='<%= liferayPortletResponse.getNamespace() + "includeWebContent" %>'
+			/>
+		</clay:content-col>
+	</clay:content-row>
+
+	<clay:content-row
+		cssClass="c-mt-2"
+	>
+		<clay:content-col
+			expand="<%= true %>"
+		>
+			<clay:checkbox
+				checked="<%= sitemapCompanyConfigurationDisplayContext.includeCommerceProducts() %>"
+				id='<%= liferayPortletResponse.getNamespace() + "includeCommerceProducts" %>'
+				label='<%= LanguageUtil.get(request, "commerce-product-urls") %>'
+				name='<%= liferayPortletResponse.getNamespace() + "includeCommerceProducts" %>'
 			/>
 		</clay:content-col>
 	</clay:content-row>

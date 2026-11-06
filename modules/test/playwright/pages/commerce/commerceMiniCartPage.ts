@@ -15,6 +15,7 @@ export class CommerceMiniCartPage {
 	readonly editUnitOfMeasureLabel: Locator;
 	readonly miniCartButton: Locator;
 	readonly miniCartButtonClose: Locator;
+	readonly miniCartCancelButton: Locator;
 	readonly miniCartOpenDrawer: Locator;
 	readonly miniCartOverlay: Locator;
 	readonly miniCartEditItemPanel: Locator;
@@ -63,6 +64,10 @@ export class CommerceMiniCartPage {
 	readonly miniCartSummaryItem: (label: string) => Locator;
 	readonly miniCartTotalPrice: Locator;
 	readonly miniCartUnitOfMeasureSelector: Locator;
+	readonly miniCartWidget: Locator;
+	readonly miniCartWidgetTransitionButton: (
+		transitionName: string
+	) => Locator;
 	readonly page: Page;
 	readonly editQuantitySelector: Locator;
 	readonly priceField: (
@@ -85,6 +90,10 @@ export class CommerceMiniCartPage {
 	readonly removeAllItemsButton: Locator;
 	readonly removeAllItemsConfirmButton: Locator;
 	readonly submitButton: Locator;
+	readonly transitionCancelButton: Locator;
+	readonly transitionCommentInput: Locator;
+	readonly transitionDialog: Locator;
+	readonly transitionDoneButton: Locator;
 	readonly unitOfMeasureTableLabel: Locator;
 	readonly viewDetailsButton: Locator;
 
@@ -102,6 +111,12 @@ export class CommerceMiniCartPage {
 		});
 		this.miniCartButton = page.getByTestId('miniCartButton');
 		this.miniCartButtonClose = page.locator('.mini-cart-close');
+		this.miniCartCancelButton = page
+			.locator('.mini-cart-footer')
+			.getByRole('button', {
+				exact: true,
+				name: 'Cancel',
+			});
 		this.miniCartOpenDrawer = page.locator('.mini-cart.is-open');
 		this.miniCartOverlay = page.locator('.mini-cart-overlay');
 		this.miniCartEditItemPanel = page.locator('.mini-cart-edit-item');
@@ -225,6 +240,12 @@ export class CommerceMiniCartPage {
 		this.miniCartUnitOfMeasureSelector = page.locator(
 			'select[name="minicart-uom-selector"]'
 		);
+		this.miniCartWidget = page.locator('.portlet-commerce-cart-mini');
+		this.miniCartWidgetTransitionButton = (transitionName: string) =>
+			this.miniCartWidget.getByRole('button', {
+				exact: true,
+				name: transitionName,
+			});
 		this.priceField = async (price: string, container = this.page) => {
 			return container.getByText(price);
 		};
@@ -266,6 +287,24 @@ export class CommerceMiniCartPage {
 			name: 'Yes',
 		});
 		this.submitButton = page.getByRole('button', {name: 'Submit'});
+		this.transitionDialog = page.getByRole('dialog').filter({
+			has: page.getByRole('textbox', {exact: true, name: 'Comment'}),
+		});
+		this.transitionCancelButton = this.transitionDialog.getByRole(
+			'button',
+			{
+				exact: true,
+				name: 'Cancel',
+			}
+		);
+		this.transitionCommentInput = this.transitionDialog.getByRole(
+			'textbox',
+			{exact: true, name: 'Comment'}
+		);
+		this.transitionDoneButton = this.transitionDialog.getByRole('button', {
+			exact: true,
+			name: 'Done',
+		});
 		this.unitOfMeasureTableLabel = page.getByText('Unit of Measure Table', {
 			exact: true,
 		});

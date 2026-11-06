@@ -7,7 +7,7 @@ import {
 	ObjectAction,
 	ObjectActionAPI,
 	ObjectDefinition,
-} from '@liferay/object-admin-rest-client-js';
+} from '@liferay/object-admin-rest-client-js/v1_0';
 import {expect, mergeTests} from '@playwright/test';
 import path from 'node:path';
 
@@ -1818,8 +1818,6 @@ test.describe('Object Action Cross-Object Behavior', () => {
 				},
 				'headless-commerce-admin-catalog/v1.0/product-groups'
 			);
-
-			apiHelpers.data.push({id: productGroup.id, type: 'objectEntry'});
 
 			await expect(async () => {
 				const updatedGroup =

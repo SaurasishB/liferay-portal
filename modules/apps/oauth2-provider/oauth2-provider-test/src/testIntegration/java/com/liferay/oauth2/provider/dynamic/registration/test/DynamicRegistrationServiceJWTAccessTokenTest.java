@@ -8,17 +8,20 @@ package com.liferay.oauth2.provider.dynamic.registration.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.oauth2.provider.client.test.BaseClientTestCase;
 import com.liferay.oauth2.provider.client.test.BaseTestPreparatorBundleActivator;
+import com.liferay.oauth2.provider.constants.GrantType;
 import com.liferay.oauth2.provider.internal.test.util.JWTAssertionUtil;
 import com.liferay.oauth2.provider.model.OAuth2Application;
 import com.liferay.oauth2.provider.service.OAuth2ApplicationLocalService;
 import com.liferay.portal.configuration.test.util.ConfigurationTemporarySwapper;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
+import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
@@ -27,6 +30,9 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
+
+import java.util.Arrays;
+import java.util.Collections;
 
 import org.apache.cxf.rs.security.jose.jws.JwsJwtCompactConsumer;
 import org.apache.cxf.rs.security.jose.jwt.JwtToken;
@@ -54,24 +60,39 @@ public class DynamicRegistrationServiceJWTAccessTokenTest
 		new LiferayIntegrationTestRule();
 
 	@Test
-	public void testUpdateClientRegistration() throws Exception {
-		String jwtAccessToken = _getJWTAccessToken();
+	public void testRegister() throws Exception {
+		String token = getToken(getDynamicRegistratorOAuth2Application());
+
+		Response response = _register(token);
+
+		Assert.assertEquals(201, response.getStatus());
 
 		String clientName = RandomTestUtil.randomString();
+		JSONObject jsonObject = parseJSONObject(response);
 
-		Response response = _updateClientRegistration(
-			clientName, jwtAccessToken);
+		response = _updateClientRegistration(
+			jsonObject.getString(OAuthConstants.CLIENT_ID), clientName,
+			jsonObject.getString("registration_access_token"));
 
 		Assert.assertEquals(200, response.getStatus());
 
-		JSONObject jsonObject = parseJSONObject(response);
+		jsonObject = parseJSONObject(response);
 
 		Assert.assertEquals(clientName, jsonObject.getString("client_name"));
 
-		revokeOAuth2AuthorizationByAccessToken(jwtAccessToken);
+		revokeOAuth2AuthorizationByAccessToken(token);
 
-		response = _updateClientRegistration(
-			RandomTestUtil.randomString(), jwtAccessToken);
+		response = _register(token);
+
+		Assert.assertEquals(401, response.getStatus());
+	}
+
+	@Test
+	public void testUpdateClientRegistration() throws Exception {
+		String clientName = RandomTestUtil.randomString();
+
+		Response response = _updateClientRegistration(
+			_CLIENT_ID, clientName, _getJWTAccessToken());
 
 		Assert.assertEquals(401, response.getStatus());
 
@@ -79,7 +100,7 @@ public class DynamicRegistrationServiceJWTAccessTokenTest
 			_oAuth2ApplicationLocalService.fetchOAuth2Application(
 				TestPropsValues.getCompanyId(), _CLIENT_ID);
 
-		Assert.assertEquals(clientName, oAuth2Application.getName());
+		Assert.assertNotEquals(clientName, oAuth2Application.getName());
 	}
 
 	@Override
@@ -88,7 +109,11 @@ public class DynamicRegistrationServiceJWTAccessTokenTest
 	}
 
 	private String _getJWTAccessToken() {
-		String jwtAccessToken = getToken(_CLIENT_ID);
+		String jwtAccessToken = getToken(
+			_CLIENT_ID, null,
+			getResourceOwnerPasswordBiFunction(
+				_user.getEmailAddress(), PropsValues.DEFAULT_ADMIN_PASSWORD),
+			this::parseTokenString);
 
 		JwsJwtCompactConsumer jwsJwtCompactConsumer = new JwsJwtCompactConsumer(
 			jwtAccessToken);
@@ -101,24 +126,40 @@ public class DynamicRegistrationServiceJWTAccessTokenTest
 		return jwtAccessToken;
 	}
 
+	private Response _register(String token) {
+		WebTarget webTarget = getOAuth2WebTarget();
+
+		WebTarget registerWebTarget = webTarget.path("register");
+
+		Invocation.Builder invocationBuilder = authorize(
+			registerWebTarget.request(), token);
+
+		return invocationBuilder.method(
+			"post",
+			Entity.json(
+				JSONUtil.put(
+					"client_name", RandomTestUtil.randomString()
+				).put(
+					"grant_types",
+					new String[] {OAuthConstants.RESOURCE_OWNER_GRANT}
+				).toString()));
+	}
+
 	private Response _updateClientRegistration(
-		String clientName, String jwtAccessToken) {
+		String clientId, String clientName, String token) {
 
 		WebTarget webTarget = getOAuth2WebTarget();
 
-		WebTarget registerWebTarget = webTarget.path("register/" + _CLIENT_ID);
+		WebTarget registerWebTarget = webTarget.path("register/" + clientId);
 
 		Invocation.Builder invocationBuilder = authorize(
-			registerWebTarget.request(), jwtAccessToken);
+			registerWebTarget.request(), token);
 
 		return invocationBuilder.method(
 			"put",
 			Entity.json(
 				JSONUtil.put(
 					"client_name", clientName
-				).put(
-					"grant_types",
-					new String[] {OAuthConstants.CLIENT_CREDENTIALS_GRANT}
 				).toString()));
 	}
 
@@ -127,6 +168,8 @@ public class DynamicRegistrationServiceJWTAccessTokenTest
 
 	@Inject
 	private OAuth2ApplicationLocalService _oAuth2ApplicationLocalService;
+
+	private User _user;
 
 	private class JWTAccessTokenTestPreparatorBundleActivator
 		extends BaseTestPreparatorBundleActivator {
@@ -148,8 +191,12 @@ public class DynamicRegistrationServiceJWTAccessTokenTest
 
 			long companyId = TestPropsValues.getCompanyId();
 
+			_user = UserTestUtil.getAdminUser(companyId);
+
 			createOAuth2Application(
-				companyId, UserTestUtil.getAdminUser(companyId), _CLIENT_ID);
+				companyId, _user, _CLIENT_ID,
+				Collections.singletonList(GrantType.RESOURCE_OWNER_PASSWORD),
+				Arrays.asList("everything", "everything.read"));
 		}
 
 	}

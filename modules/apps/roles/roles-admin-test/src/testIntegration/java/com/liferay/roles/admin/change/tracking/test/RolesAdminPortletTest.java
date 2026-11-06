@@ -16,36 +16,54 @@ import com.liferay.petra.sql.dsl.DSLQueryFactoryUtil;
 import com.liferay.petra.sql.dsl.base.BaseTable;
 import com.liferay.petra.sql.dsl.expression.Expression;
 import com.liferay.petra.sql.dsl.query.DSLQuery;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.change.tracking.CTCollectionThreadLocal;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Groups_RolesTable;
+import com.liferay.portal.kernel.model.Layout;
+import com.liferay.portal.kernel.model.LayoutTypePortlet;
 import com.liferay.portal.kernel.model.Role;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.UserGroup;
 import com.liferay.portal.kernel.model.Users_RolesTable;
+import com.liferay.portal.kernel.model.role.RoleConstants;
+import com.liferay.portal.kernel.portlet.LiferayActionRequest;
+import com.liferay.portal.kernel.portlet.LiferayStateAwareResponse;
+import com.liferay.portal.kernel.security.auth.PrincipalException;
+import com.liferay.portal.kernel.security.permission.PermissionChecker;
+import com.liferay.portal.kernel.security.permission.PermissionCheckerFactoryUtil;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.service.CompanyLocalService;
+import com.liferay.portal.kernel.service.LayoutLocalService;
+import com.liferay.portal.kernel.service.PortletLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
 import com.liferay.portal.kernel.servlet.PortletServlet;
-import com.liferay.portal.kernel.test.ReflectionTestUtil;
+import com.liferay.portal.kernel.servlet.SessionErrors;
+import com.liferay.portal.kernel.test.context.ContextUserReplace;
 import com.liferay.portal.kernel.test.portlet.MockLiferayPortletActionRequest;
 import com.liferay.portal.kernel.test.portlet.MockLiferayPortletActionResponse;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
+import com.liferay.portal.kernel.test.util.RandomTestUtil;
+import com.liferay.portal.kernel.test.util.RoleTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserGroupTestUtil;
+import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
+import com.liferay.portlet.ActionRequestFactory;
 import com.liferay.roles.admin.constants.RolesAdminPortletKeys;
 
 import jakarta.portlet.ActionRequest;
-import jakarta.portlet.ActionResponse;
+import jakarta.portlet.Event;
 import jakarta.portlet.Portlet;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -74,9 +92,9 @@ public class RolesAdminPortletTest {
 	public void setUp() throws Exception {
 		_ctCollection = _ctCollectionLocalService.addCTCollection(
 			null, TestPropsValues.getCompanyId(), TestPropsValues.getUserId(),
-			0, RolesAdminPortletTest.class.getName(), null);
-
+			0, RandomTestUtil.randomString(), null);
 		_group = GroupTestUtil.addGroup();
+		_layout = _layoutLocalService.getLayout(TestPropsValues.getPlid());
 
 		_role = _roleLocalService.getRole(
 			_group.getCompanyId(), "Publications User");
@@ -91,6 +109,34 @@ public class RolesAdminPortletTest {
 	}
 
 	@Test
+	public void testCopyRole() throws Exception {
+		Role role = RoleTestUtil.addRole(RoleConstants.TYPE_REGULAR);
+		User user = UserTestUtil.addUser();
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				user, PermissionCheckerFactoryUtil.create(user))) {
+
+			LiferayActionRequest liferayActionRequest =
+				_getLiferayActionRequest(
+					"copyRole",
+					HashMapBuilder.put(
+						"roleId", String.valueOf(role.getRoleId())
+					).put(
+						"roleName", RandomTestUtil.randomString()
+					).build());
+
+			_portlet.processAction(
+				liferayActionRequest,
+				new CustomMockLiferayPortletActionResponse());
+
+			Assert.assertTrue(
+				SessionErrors.contains(
+					liferayActionRequest,
+					PrincipalException.MustHavePermission.class));
+		}
+	}
+
+	@Test
 	public void testEditRoleAssignmentsForUserGroups() throws Exception {
 		Groups_RolesTable groups_rolesTable = Groups_RolesTable.INSTANCE;
 
@@ -101,7 +147,7 @@ public class RolesAdminPortletTest {
 		long roleId = _role.getRoleId();
 
 		_processAction(
-			_ctCollection,
+			"editRoleAssignments", _ctCollection,
 			HashMapBuilder.put(
 				"addGroupIds", String.valueOf(groupId)
 			).put(
@@ -118,7 +164,7 @@ public class RolesAdminPortletTest {
 		Assert.assertEquals(results.toString(), 1, results.size());
 
 		_processAction(
-			_ctCollection,
+			"editRoleAssignments", _ctCollection,
 			HashMapBuilder.put(
 				"removeGroupIds", String.valueOf(groupId)
 			).put(
@@ -145,7 +191,7 @@ public class RolesAdminPortletTest {
 		long userId = TestPropsValues.getUserId();
 
 		_processAction(
-			_ctCollection,
+			"editRoleAssignments", _ctCollection,
 			HashMapBuilder.put(
 				"addUserIds", String.valueOf(userId)
 			).put(
@@ -162,7 +208,7 @@ public class RolesAdminPortletTest {
 		Assert.assertEquals(results.toString(), 1, results.size());
 
 		_processAction(
-			_ctCollection,
+			"editRoleAssignments", _ctCollection,
 			HashMapBuilder.put(
 				"removeUserIds", String.valueOf(userId)
 			).put(
@@ -218,26 +264,15 @@ public class RolesAdminPortletTest {
 		);
 	}
 
-	private ThemeDisplay _getThemeDisplay() throws Exception {
-		ThemeDisplay themeDisplay = new ThemeDisplay();
-
-		themeDisplay.setCompany(
-			_companyLocalService.getCompany(TestPropsValues.getCompanyId()));
-		themeDisplay.setPermissionChecker(
-			PermissionThreadLocal.getPermissionChecker());
-		themeDisplay.setScopeGroupId(TestPropsValues.getGroupId());
-		themeDisplay.setSiteGroupId(TestPropsValues.getGroupId());
-		themeDisplay.setUser(TestPropsValues.getUser());
-
-		return themeDisplay;
-	}
-
-	private void _processAction(
-			CTCollection ctCollection, Map<String, String> params)
+	private LiferayActionRequest _getLiferayActionRequest(
+			String actionName, Map<String, String> params)
 		throws Exception {
 
 		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
 			new MockLiferayPortletActionRequest();
+
+		mockLiferayPortletActionRequest.addParameter(
+			ActionRequest.ACTION_NAME, actionName);
 
 		for (Map.Entry<String, String> entry : params.entrySet()) {
 			mockLiferayPortletActionRequest.addParameter(
@@ -247,20 +282,66 @@ public class RolesAdminPortletTest {
 		mockLiferayPortletActionRequest.setAttribute(
 			PortletServlet.PORTLET_SERVLET_REQUEST,
 			mockLiferayPortletActionRequest.getHttpServletRequest());
+		mockLiferayPortletActionRequest.setAttribute(WebKeys.LAYOUT, _layout);
 		mockLiferayPortletActionRequest.setAttribute(
 			WebKeys.PORTLET_ID, RolesAdminPortletKeys.ROLES_ADMIN);
+
+		ThemeDisplay themeDisplay = _getThemeDisplay();
+
 		mockLiferayPortletActionRequest.setAttribute(
-			WebKeys.THEME_DISPLAY, _getThemeDisplay());
+			WebKeys.THEME_DISPLAY, themeDisplay);
+		mockLiferayPortletActionRequest.setAttribute(
+			WebKeys.USER_ID, themeDisplay.getUserId());
+
+		LiferayActionRequest liferayActionRequest = ActionRequestFactory.create(
+			mockLiferayPortletActionRequest.getHttpServletRequest(),
+			_portletLocalService.getPortletById(
+				RolesAdminPortletKeys.ROLES_ADMIN),
+			null, null, null, null, null, TestPropsValues.getPlid());
+
+		liferayActionRequest.setPortletRequestDispatcherRequest(
+			mockLiferayPortletActionRequest.getHttpServletRequest());
+
+		return liferayActionRequest;
+	}
+
+	private ThemeDisplay _getThemeDisplay() throws Exception {
+		ThemeDisplay themeDisplay = new ThemeDisplay();
+
+		themeDisplay.setCompany(
+			_companyLocalService.getCompany(TestPropsValues.getCompanyId()));
+		themeDisplay.setLayout(_layout);
+		themeDisplay.setLayoutSet(_layout.getLayoutSet());
+		themeDisplay.setLayoutTypePortlet(
+			(LayoutTypePortlet)_layout.getLayoutType());
+
+		PermissionChecker permissionChecker =
+			PermissionThreadLocal.getPermissionChecker();
+
+		themeDisplay.setPermissionChecker(permissionChecker);
+
+		themeDisplay.setScopeGroupId(TestPropsValues.getGroupId());
+		themeDisplay.setSiteGroupId(TestPropsValues.getGroupId());
+		themeDisplay.setUser(permissionChecker.getUser());
+
+		return themeDisplay;
+	}
+
+	private void _processAction(
+			String actionName, CTCollection ctCollection,
+			Map<String, String> params)
+		throws Exception {
+
+		LiferayActionRequest liferayActionRequest = _getLiferayActionRequest(
+			actionName, params);
 
 		try (SafeCloseable safeCloseable =
 				CTCollectionThreadLocal.setCTCollectionIdWithSafeCloseable(
 					ctCollection.getCtCollectionId())) {
 
-			ReflectionTestUtil.invoke(
-				_portlet, "editRoleAssignments",
-				new Class<?>[] {ActionRequest.class, ActionResponse.class},
-				mockLiferayPortletActionRequest,
-				new MockLiferayPortletActionResponse());
+			_portlet.processAction(
+				liferayActionRequest,
+				new CustomMockLiferayPortletActionResponse());
 		}
 	}
 
@@ -276,11 +357,18 @@ public class RolesAdminPortletTest {
 	private CTEntryLocalService _ctEntryLocalService;
 
 	private Group _group;
+	private Layout _layout;
+
+	@Inject
+	private LayoutLocalService _layoutLocalService;
 
 	@Inject(
 		filter = "component.name=com.liferay.roles.admin.web.internal.portlet.RolesAdminPortlet"
 	)
 	private Portlet _portlet;
+
+	@Inject
+	private PortletLocalService _portletLocalService;
 
 	private Role _role;
 
@@ -289,5 +377,26 @@ public class RolesAdminPortletTest {
 
 	@DeleteAfterTestRun
 	private UserGroup _userGroup;
+
+	private class CustomMockLiferayPortletActionResponse
+		extends MockLiferayPortletActionResponse
+		implements LiferayStateAwareResponse {
+
+		@Override
+		public List<Event> getEvents() {
+			return Collections.emptyList();
+		}
+
+		@Override
+		public String getRedirectLocation() {
+			return StringPool.BLANK;
+		}
+
+		@Override
+		public boolean isCalledSetRenderParameter() {
+			return false;
+		}
+
+	}
 
 }

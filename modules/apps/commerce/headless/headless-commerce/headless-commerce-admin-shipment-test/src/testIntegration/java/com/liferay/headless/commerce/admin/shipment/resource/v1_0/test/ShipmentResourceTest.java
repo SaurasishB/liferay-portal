@@ -12,7 +12,7 @@ import com.liferay.commerce.model.CommerceAddress;
 import com.liferay.commerce.model.CommerceOrder;
 import com.liferay.commerce.model.CommerceShipment;
 import com.liferay.commerce.product.model.CommerceChannel;
-import com.liferay.commerce.service.CommerceAddressService;
+import com.liferay.commerce.service.CommerceAddressLocalService;
 import com.liferay.commerce.service.CommerceShipmentLocalServiceUtil;
 import com.liferay.commerce.test.util.CommerceTestUtil;
 import com.liferay.headless.commerce.admin.shipment.client.dto.v1_0.Shipment;
@@ -109,6 +109,10 @@ public class ShipmentResourceTest extends BaseShipmentResourceTestCase {
 	@Override
 	@Test
 	public void testPutShipmentByExternalReferenceCode() throws Exception {
+		super.testPutShipmentByExternalReferenceCode();
+
+		_testPutShipmentByExternalReferenceCodeWithNonexistentOrderExternalReferenceCode();
+		_testPutShipmentByExternalReferenceCodeWithOrderExternalReferenceCode();
 	}
 
 	@Ignore
@@ -342,12 +346,56 @@ public class ShipmentResourceTest extends BaseShipmentResourceTestCase {
 			postShipment.getShippingMethodId());
 
 		ShippingAddress getShippingAddress = _toShippingAddress(
-			_commerceAddressService.getCommerceAddress(
+			_commerceAddressLocalService.getCommerceAddress(
 				postShipment.getShippingAddressId()));
 
 		Assert.assertEquals(
 			randomShippingAddress.getExternalReferenceCode(),
 			getShippingAddress.getExternalReferenceCode());
+	}
+
+	private void _testPutShipmentByExternalReferenceCodeWithNonexistentOrderExternalReferenceCode()
+		throws Exception {
+
+		Shipment randomShipment = randomShipment();
+
+		randomShipment.setOrderExternalReferenceCode(
+			RandomTestUtil.randomString());
+		randomShipment.setOrderId(0L);
+
+		assertHttpResponseStatusCode(
+			404,
+			shipmentResource.putShipmentByExternalReferenceCodeHttpResponse(
+				RandomTestUtil.randomString(), randomShipment));
+	}
+
+	private void _testPutShipmentByExternalReferenceCodeWithOrderExternalReferenceCode()
+		throws Exception {
+
+		Shipment randomShipment = randomShipment();
+
+		randomShipment.setExternalReferenceCode((String)null);
+		randomShipment.setOrderExternalReferenceCode(
+			_commerceOrder.getExternalReferenceCode());
+		randomShipment.setOrderId(0L);
+
+		String externalReferenceCode = RandomTestUtil.randomString();
+
+		Shipment putShipment =
+			shipmentResource.putShipmentByExternalReferenceCode(
+				externalReferenceCode, randomShipment);
+
+		_commerceShipments.add(
+			CommerceShipmentLocalServiceUtil.getCommerceShipment(
+				putShipment.getId()));
+
+		Assert.assertEquals(
+			randomShipment.getAccountId(), putShipment.getAccountId());
+		Assert.assertEquals(
+			externalReferenceCode, putShipment.getExternalReferenceCode());
+		Assert.assertEquals(
+			randomShipment.getShippingMethodId(),
+			putShipment.getShippingMethodId());
 	}
 
 	private Shipment _toShipment(CommerceShipment commerceShipment)
@@ -402,7 +450,7 @@ public class ShipmentResourceTest extends BaseShipmentResourceTestCase {
 	}
 
 	@Inject
-	private CommerceAddressService _commerceAddressService;
+	private CommerceAddressLocalService _commerceAddressLocalService;
 
 	@DeleteAfterTestRun
 	private CommerceChannel _commerceChannel;

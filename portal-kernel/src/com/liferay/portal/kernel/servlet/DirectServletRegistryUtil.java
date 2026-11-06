@@ -70,10 +70,12 @@ public class DirectServletRegistryUtil {
 		return servlet;
 	}
 
-	public static void putServlet(String path, Servlet servlet) {
-		if (path.startsWith(PathModulePrefixHolder._PATH_MODULE_PREFIX) ||
-			_servletInfos.containsKey(path)) {
+	public static boolean isModulePath(String path) {
+		return path.startsWith(PathModulePrefixHolder._PATH_MODULE_PREFIX);
+	}
 
+	public static void putServlet(String path, Servlet servlet) {
+		if (isModulePath(path) || _servletInfos.containsKey(path)) {
 			return;
 		}
 
@@ -157,16 +159,18 @@ public class DirectServletRegistryUtil {
 					previousLastModified = lastModified;
 				}
 
-				if ((lastModified == 0) ||
-					(lastModified != previousLastModified.longValue())) {
+				if ((lastModified != 0) &&
+					(lastModified == previousLastModified.longValue())) {
 
-					reloadServlet = true;
+					continue;
+				}
 
-					_dependantTimestamps.put(dependant, lastModified);
+				reloadServlet = true;
 
-					if (_log.isDebugEnabled()) {
-						_log.debug("Reload dependant " + dependant);
-					}
+				_dependantTimestamps.put(dependant, lastModified);
+
+				if (_log.isDebugEnabled()) {
+					_log.debug("Reload dependant " + dependant);
 				}
 			}
 

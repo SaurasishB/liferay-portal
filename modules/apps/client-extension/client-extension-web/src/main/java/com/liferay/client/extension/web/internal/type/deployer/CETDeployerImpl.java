@@ -34,6 +34,7 @@ import com.liferay.portal.kernel.module.service.Snapshot;
 import com.liferay.portal.kernel.portlet.ConfigurationAction;
 import com.liferay.portal.kernel.portlet.FriendlyURLMapper;
 import com.liferay.portal.kernel.service.PortletLocalService;
+import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.Validator;
@@ -143,6 +144,12 @@ public class CETDeployerImpl implements CETDeployer {
 						friendlyURLMapping, portletId)));
 		}
 
+		serviceRegistrations.add(
+			_register(
+				Portlet.class,
+				new CustomElementCETPortlet(
+					customElementCET, _portal, portletId)));
+
 		if (Validator.isNotNull(customElementCET.getPanelAppOrder()) &&
 			Validator.isNotNull(customElementCET.getPanelCategoryKey())) {
 
@@ -153,19 +160,14 @@ public class CETDeployerImpl implements CETDeployer {
 						portletId,
 						() -> _portletLocalService.getPortletById(portletId)),
 					HashMapDictionaryBuilder.<String, Object>put(
-						"panel.app.order:Integer",
-						customElementCET.getPanelAppOrder()
+						"panel.app.order",
+						GetterUtil.getInteger(
+							customElementCET.getPanelAppOrder())
 					).put(
 						"panel.category.key",
 						customElementCET.getPanelCategoryKey()
 					).build()));
 		}
-
-		serviceRegistrations.add(
-			_register(
-				Portlet.class,
-				new CustomElementCETPortlet(
-					customElementCET, _portal, portletId)));
 
 		return serviceRegistrations;
 	}

@@ -730,12 +730,6 @@ public class WikiPageLocalServiceUtil {
 	}
 
 	public static List<WikiPage> getPages(
-		long userId, long nodeId, int status, int start, int end) {
-
-		return getService().getPages(userId, nodeId, status, start, end);
-	}
-
-	public static List<WikiPage> getPages(
 		long groupId, long nodeId, int status, long statusByUserId) {
 
 		return getService().getPages(groupId, nodeId, status, statusByUserId);
@@ -761,10 +755,6 @@ public class WikiPageLocalServiceUtil {
 			nodeId, title, start, end, orderByComparator);
 	}
 
-	public static List<WikiPage> getPages(String format) {
-		return getService().getPages(format);
-	}
-
 	public static int getPagesCount(long nodeId) {
 		return getService().getPagesCount(nodeId);
 	}
@@ -777,24 +767,12 @@ public class WikiPageLocalServiceUtil {
 		return getService().getPagesCount(nodeId, head, status);
 	}
 
-	public static int getPagesCount(long nodeId, int status) {
-		return getService().getPagesCount(nodeId, status);
-	}
-
-	public static int getPagesCount(long userId, long nodeId, int status) {
-		return getService().getPagesCount(userId, nodeId, status);
-	}
-
 	public static int getPagesCount(long nodeId, String title) {
 		return getService().getPagesCount(nodeId, title);
 	}
 
 	public static int getPagesCount(long nodeId, String title, boolean head) {
 		return getService().getPagesCount(nodeId, title, head);
-	}
-
-	public static int getPagesCount(String format) {
-		return getService().getPagesCount(format);
 	}
 
 	public static List<? extends PersistedModel> getPersistedModel(
@@ -817,16 +795,6 @@ public class WikiPageLocalServiceUtil {
 		throws PortalException {
 
 		return getService().getPreviousVersionPage(page);
-	}
-
-	public static List<WikiPage> getRecentChanges(
-		long groupId, long nodeId, int start, int end) {
-
-		return getService().getRecentChanges(groupId, nodeId, start, end);
-	}
-
-	public static int getRecentChangesCount(long groupId, long nodeId) {
-		return getService().getRecentChangesCount(groupId, nodeId);
 	}
 
 	public static List<WikiPage> getRedirectorPages(
@@ -1109,4 +1077,4 @@ public class WikiPageLocalServiceUtil {
 			WikiPageLocalServiceUtil.class, WikiPageLocalService.class);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1715222725
+// LIFERAY-SERVICE-BUILDER-HASH:-173878131

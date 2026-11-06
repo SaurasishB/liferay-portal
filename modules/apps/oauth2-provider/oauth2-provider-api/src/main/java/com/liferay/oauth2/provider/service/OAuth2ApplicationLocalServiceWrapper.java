@@ -157,6 +157,14 @@ public class OAuth2ApplicationLocalServiceWrapper
 			serviceContext);
 	}
 
+	@Override
+	public void checkDynamicRegistratorOAuth2Application(long companyId)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		_oAuth2ApplicationLocalService.checkDynamicRegistratorOAuth2Application(
+			companyId);
+	}
+
 	/**
 	 * Creates a new o auth2 application with the primary key. Does not add the o auth2 application to the database.
 	 *
@@ -647,4 +655,4 @@ public class OAuth2ApplicationLocalServiceWrapper
 	private OAuth2ApplicationLocalService _oAuth2ApplicationLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1297684656
+// LIFERAY-SERVICE-BUILDER-HASH:445038092

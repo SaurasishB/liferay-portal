@@ -100,7 +100,8 @@ public class CommercePriceListCommerceAccountGroupRelLocalServiceWrapper
 
 	@Override
 	public void deleteCommercePriceListAccountGroupRelsByCommercePriceListId(
-		long commercePriceListId) {
+			long commercePriceListId)
+		throws com.liferay.portal.kernel.exception.PortalException {
 
 		_commercePriceListCommerceAccountGroupRelLocalService.
 			deleteCommercePriceListAccountGroupRelsByCommercePriceListId(
@@ -434,15 +435,6 @@ public class CommercePriceListCommerceAccountGroupRelLocalServiceWrapper
 	}
 
 	@Override
-	public int getCommercePriceListCommerceAccountGroupRelsCount(
-		long commercePriceListId, String name) {
-
-		return _commercePriceListCommerceAccountGroupRelLocalService.
-			getCommercePriceListCommerceAccountGroupRelsCount(
-				commercePriceListId, name);
-	}
-
-	@Override
 	public com.liferay.portal.kernel.dao.orm.ExportActionableDynamicQuery
 		getExportActionableDynamicQuery(
 			com.liferay.exportimport.kernel.lar.PortletDataContext
@@ -568,4 +560,4 @@ public class CommercePriceListCommerceAccountGroupRelLocalServiceWrapper
 		_commercePriceListCommerceAccountGroupRelLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-921011585
+// LIFERAY-SERVICE-BUILDER-HASH:966699989

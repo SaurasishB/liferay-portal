@@ -20,12 +20,15 @@
 		"@clayui/popover": "^3.166.0",
 		"@clayui/tooltip": "^3.166.0",
 		"@liferay/frontend-js-codemirror-web": "*",
+		"@liferay/map-common": "*",
+		"@liferay/map-google-maps": "*",
+		"@liferay/map-openstreetmap": "*",
 		"classnames": "2.3.1",
 		"frontend-editor-ckeditor-web": "*",
 		"frontend-js-components-web": "*",
 		"frontend-js-web": "*",
 		"libphonenumber-js": "1.12.42",
-		"moment": "2.29.4",
+		"moment": "2.31.0",
 		"react": "18.2.0",
 		"react-dnd": "11.1.1",
 		"react-dnd-html5-backend": "11.1.1",
@@ -48,5 +51,5 @@
 		"format": "node-scripts format",
 		"test": "node-scripts test"
 	},
-	"version": "1.0.115"
+	"version": "1.0.116"
 }

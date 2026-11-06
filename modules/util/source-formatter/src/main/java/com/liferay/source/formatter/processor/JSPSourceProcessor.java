@@ -185,9 +185,11 @@ public class JSPSourceProcessor extends BaseSourceProcessor {
 		for (String fileName : fileNames) {
 			File file = new File(SourceUtil.getAbsolutePath(fileName));
 
-			if (!Files.exists(file.toPath())) {
-				deletedFileNames.add(fileName);
+			if (Files.exists(file.toPath())) {
+				continue;
 			}
+
+			deletedFileNames.add(fileName);
 		}
 
 		if (deletedFileNames.isEmpty()) {
@@ -213,32 +215,59 @@ public class JSPSourceProcessor extends BaseSourceProcessor {
 	}
 
 	private void _processCheckstyle() throws CheckstyleException, IOException {
-		if (_ungeneratedFileContents.isEmpty()) {
+		List<String[]> ungeneratedFileContents = null;
+
+		synchronized (this) {
+			ungeneratedFileContents = new ArrayList<>(_ungeneratedFileContents);
+
+			_ungeneratedFileContents.clear();
+		}
+
+		_processCheckstyle(ungeneratedFileContents);
+	}
+
+	private void _processCheckstyle(List<String[]> ungeneratedFileContents)
+		throws CheckstyleException, IOException {
+
+		if (ungeneratedFileContents.isEmpty()) {
 			return;
 		}
 
-		_sourceFormatterMessages.addAll(
-			processCheckstyle(
-				_checkstyleConfiguration, _checkstyleLogger,
-				_ungeneratedFileContents));
+		Set<SourceFormatterMessage> sourceFormatterMessages = processCheckstyle(
+			_checkstyleConfiguration, _checkstyleLogger,
+			ungeneratedFileContents);
 
-		_ungeneratedFileContents.clear();
+		synchronized (this) {
+			_sourceFormatterMessages.addAll(sourceFormatterMessages);
+		}
 	}
 
-	private synchronized void _processCheckstyle(
-			String absolutePath, String content)
+	private void _processCheckstyle(String absolutePath, String content)
 		throws CheckstyleException, IOException {
 
 		String javaContent = JSPCheckstyleUtil.getJavaContent(
 			absolutePath, content);
 
-		if (javaContent != null) {
+		if (javaContent == null) {
+			return;
+		}
+
+		List<String[]> ungeneratedFileContents = null;
+
+		synchronized (this) {
 			_ungeneratedFileContents.add(
 				new String[] {absolutePath, javaContent});
 
 			if (_ungeneratedFileContents.size() == CheckstyleUtil.BATCH_SIZE) {
-				_processCheckstyle();
+				ungeneratedFileContents = new ArrayList<>(
+					_ungeneratedFileContents);
+
+				_ungeneratedFileContents.clear();
 			}
+		}
+
+		if (ungeneratedFileContents != null) {
+			_processCheckstyle(ungeneratedFileContents);
 		}
 	}
 

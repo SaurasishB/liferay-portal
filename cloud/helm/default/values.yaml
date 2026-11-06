@@ -18,7 +18,8 @@ autoscaling:
         maxReplicaCount: 100
         minReplicaCount: 1
         pollingInterval: 30
-        prometheusServerAddress: ""
+        prometheusTriggerMetadata:
+            serverAddress: ""
         triggerAuthentication:
             annotations: {}
             spec: {}
@@ -50,6 +51,8 @@ clientExtensions:
         operatorServiceAccount:
             name: dxp-operator
             namespace: dxp-operator-system
+    policy:
+        allowedNamespaces: []
 configmap:
     annotations: {}
     data: {}
@@ -84,9 +87,8 @@ customInitContainers:
                         seccompProfile:
                             type: RuntimeDefault
                     volumeMounts:
-                        -   mountPath: /liferay-init-scripts/deploy-sync.sh
-                            name: {{ .licensing.initScriptsVolumeName }}
-                            subPath: deploy-sync.sh
+                        -   mountPath: /liferay-init-scripts
+                            name: liferay-deploy-sync
                         -   mountPath: /secret
                             name: liferay-license
                         -   mountPath: /opt/liferay
@@ -129,6 +131,7 @@ customInitContainers:
 
                             mkdir --parents \
                                 /temp/liferay \
+                                /temp/liferay/deploy \
                                 /temp/liferay/logs \
                                 /temp/liferay/metrics \
                                 /temp/liferay/reports \
@@ -204,7 +207,7 @@ customInitContainers:
                                     <Sender className="org.apache.catalina.tribes.transport.ReplicationTransmitter">
                                         <Transport
                                             className="org.apache.catalina.tribes.transport.nio.PooledParallelSender"
-                                            timeout="300000"
+                                            timeout="{{ dig "sessionReplication" "transportTimeoutMs" 300000 (.tomcat | default dict) | int64 }}"
                                         />
                                     </Sender>
                                 </Channel>
@@ -213,7 +216,7 @@ customInitContainers:
 
                             sed --in-place '/<Engine/r'<(echo "${SERVER_XML_CLUSTER}") /temp/tomcat/conf/server.xml
 
-                            if [ -d /opt/liferay/deploy ] && [ -z "$(ls --all /temp/liferay/deploy/*license* 2>/dev/null)" ]
+                            if [ -d /opt/liferay/deploy ] && [ -n "$(ls --almost-all /opt/liferay/deploy 2>/dev/null)" ] && [ -z "$(ls --all /temp/liferay/deploy/*license* 2>/dev/null)" ]
                             then
                                 if [ ! -d /temp/liferay/data/license ] || [ -z "$(ls --all /temp/liferay/data/license/*.li 2>/dev/null)" ]
                                 then
@@ -297,9 +300,8 @@ customInitContainers:
                         seccompProfile:
                             type: RuntimeDefault
                     volumeMounts:
-                        -   mountPath: /liferay-init-scripts/deploy-sync.sh
-                            name: {{ .marketplace.initScriptsVolumeName }}
-                            subPath: deploy-sync.sh
+                        -   mountPath: /liferay-init-scripts
+                            name: liferay-deploy-sync
                         -   mountPath: /marketplace
                             name: liferay-marketplace
                             readOnly: true
@@ -321,6 +323,11 @@ customVolumes:
                 defaultMode: 0755
                 name: liferay-init-scripts-default
             name: liferay-init-scripts-default
+database:
+    engine: ""
+    host: ""
+    port: ""
+    tlsRequired: false
 dependencies: {}
 env:
     -   name: DNS_MEMBERSHIP_SERVICE_NAME
@@ -388,20 +395,20 @@ image:
     pullPolicy: IfNotPresent
     pullSecrets: []
     repository: liferay/dxp
-    tag: 2026.q1.8-lts
+    tag: 2026.q1.14-lts
 initContainers: []
 licensing:
     activationCodeSecretKey: activationCode
     activationCodeSecretName: ""
     dxpVersion: ""
     enabled: false
-    initScriptsVolumeName: liferay-init-scripts-default
+    environmentName: ""
     offline: false
     offlineActivationBundle: ""
     onlineActivationWorkflow:
         clusterRoleName: online-activation-cluster-role
         clusterWorkflowTemplateName: online-activation-cluster-workflow-template
-        enabled: true
+        enabled: false
         serviceAccountName: online-activation-service-account
         ttlSecondsAfterCompletion: 3600
         userAccess:
@@ -425,7 +432,6 @@ marketplace:
         volumeAttributes: {}
         volumeHandle: ""
     enabled: false
-    initScriptsVolumeName: liferay-init-scripts-default
     size: 10Gi
     syncInterval: 600
 nameOverride: ""
@@ -438,6 +444,9 @@ network:
     forceHttpsRedirect: false
     gatewayName: ""
     hostnames: []
+    hsts:
+        enabled: false
+        value: max-age=31536000
     perHostnameRoutes: false
     securityPolicyAuthorizationSpec: {}
     sessionPersistence:
@@ -448,6 +457,7 @@ network:
     timeouts: {}
 networkPolicy:
     allowGatewayIngress: true
+    allowMetricsIngress: true
     annotations: {}
     cluster:
         kubernetesEndpointCidrs: ""
@@ -456,6 +466,8 @@ networkPolicy:
     extraIngress: []
     gatewayNamespace: envoy-gateway-system
     gatewayPodLabel: envoy
+    metricsNamespace: observability
+    metricsPort: 12345
 nodeSelector: {}
 overlay:
     copy: []
@@ -509,6 +521,8 @@ resources:
         cpu: 2000m
         memory: 6Gi
 schedulingGates: []
+search:
+    engine: ""
 securityContext: {}
 service:
     annotations: {}
@@ -537,6 +551,8 @@ startupProbe:
 tolerations: []
 tomcat:
     maxThreads: ""
+    sessionReplication:
+        transportTimeoutMs: 300000
 updateStrategy:
     type: RollingUpdate
 volumeClaimTemplates:

@@ -8,7 +8,6 @@ package com.liferay.jenkins.results.parser.monitor;
 import com.liferay.jenkins.results.parser.JenkinsMasterTestUtil;
 import com.liferay.jenkins.results.parser.JenkinsResultsParserUtil;
 import com.liferay.jenkins.results.parser.RandomTestUtil;
-import com.liferay.jenkins.results.parser.UrlReader;
 
 import java.io.IOException;
 
@@ -26,6 +25,9 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+
 /**
  * @author Calum Ragan
  */
@@ -40,7 +42,10 @@ public class UpstreamJobHealthMonitorTest
 		mockEnvironment(Collections.emptyMap());
 
 		JenkinsMasterTestUtil.getJenkinsMaster(
-			_MASTER_NAME, "http://" + _MASTER_NAME);
+			_MASTER_NAME, "https://test-9-1.liferay.com/",
+			"http://" + _MASTER_NAME);
+
+		_currentTimeMillis = JenkinsResultsParserUtil.getCurrentTimeMillis();
 	}
 
 	@Test
@@ -79,15 +84,15 @@ public class UpstreamJobHealthMonitorTest
 	public void testExecuteHeadIsUnreadable() throws Exception {
 		String sha = _newSHA();
 
-		UrlReader urlReader = _setURLReaderOutput(
+		_setURLReaderOutput(
 			null, _newBuildJSONObject(0, _newInvocationDescription(sha)));
 
-		setUrlReaderException(
-			new IOException("Unable to read"), _HEAD_COMMIT_API_URL, urlReader);
+		setURLReaderException(
+			new IOException("Unable to read"), _HEAD_COMMIT_API_URL);
 
 		MonitorResult monitorResult = _execute(_newMonitorProperties());
 
-		testEquals(MonitorResult.Status.UNKNOWN, monitorResult.getStatus());
+		testEquals(MonitorResult.Status.CRITICAL, monitorResult.getStatus());
 
 		String message = monitorResult.getMessage();
 
@@ -113,13 +118,65 @@ public class UpstreamJobHealthMonitorTest
 	}
 
 	@Test
+	public void testExecuteMissingControllerTimestamp() throws Exception {
+		String sha = _newSHA();
+
+		_setURLReaderOutput(
+			_newHeadCommitJSONObject(0, sha),
+			new JSONObject(
+			).put(
+				"description", _newInvocationDescription(sha)
+			));
+
+		MonitorResult monitorResult = _execute(_newMonitorProperties());
+
+		testEquals(
+			JenkinsResultsParserUtil.combine(
+				"Unable to determine the last build timestamp for ",
+				"controller job ", _CONTROLLER_JOB_NAME),
+			monitorResult.getMessage());
+		testEquals(MonitorResult.Status.WARN, monitorResult.getStatus());
+	}
+
+	@Test
+	public void testExecuteMissingInvocationSHA() throws Exception {
+		_setURLReaderOutput(
+			null, _newBuildJSONObject(0, "<strong>GIT ID</strong> - "));
+
+		MonitorResult monitorResult = _execute(_newMonitorProperties());
+
+		testEquals(
+			"Unable to determine the commit the upstream testsuite for " +
+				"branch master last ran against",
+			monitorResult.getMessage());
+		testEquals(MonitorResult.Status.WARN, monitorResult.getStatus());
+	}
+
+	@Test
+	public void testExecuteMissingMergeTimestamp() throws Exception {
+		_setURLReaderOutput(
+			new JSONObject(
+			).put(
+				"sha", _newSHA()
+			),
+			_newBuildJSONObject(0, _newInvocationDescription(_newSHA())));
+
+		MonitorResult monitorResult = _execute(_newMonitorProperties());
+
+		testEquals(
+			"Unable to determine when branch master was last merged",
+			monitorResult.getMessage());
+		testEquals(MonitorResult.Status.WARN, monitorResult.getStatus());
+	}
+
+	@Test
 	public void testExecuteNoInvocationInWindow() throws Exception {
 		_setURLReaderOutput(
 			_newHeadCommitJSONObject(0, _newSHA()), _newBuildJSONObject(0, ""));
 
 		MonitorResult monitorResult = _execute(_newMonitorProperties());
 
-		testEquals(MonitorResult.Status.UNKNOWN, monitorResult.getStatus());
+		testEquals(MonitorResult.Status.WARN, monitorResult.getStatus());
 
 		String message = monitorResult.getMessage();
 
@@ -148,6 +205,43 @@ public class UpstreamJobHealthMonitorTest
 
 		testEquals(sha, metrics.get("branch.head.sha"));
 		testEquals(sha, metrics.get("last.invocation.sha"));
+	}
+
+	@Test
+	public void testExecuteReadFailure() throws Exception {
+		mockURLReaders();
+
+		String exceptionMessage = RandomTestUtil.randomString();
+
+		setURLReaderException(new IOException(exceptionMessage), _JOB_API_URL);
+
+		MonitorResult monitorResult = _execute(_newMonitorProperties());
+
+		testEquals(
+			JenkinsResultsParserUtil.combine(
+				"Unable to read ", _CONTROLLER_JOB_URL, ": ", exceptionMessage),
+			monitorResult.getMessage());
+		testEquals(MonitorResult.Status.CRITICAL, monitorResult.getStatus());
+
+		setURLReaderException(new IOException(), _JOB_API_URL);
+
+		monitorResult = _execute(_newMonitorProperties());
+
+		testEquals(
+			JenkinsResultsParserUtil.combine(
+				"Unable to read ", _CONTROLLER_JOB_URL, ": ",
+				IOException.class.getName()),
+			monitorResult.getMessage());
+		testEquals(MonitorResult.Status.CRITICAL, monitorResult.getStatus());
+
+		setURLReaderOutput("{}", _JOB_API_URL);
+
+		monitorResult = _execute(_newMonitorProperties());
+
+		testEquals(
+			"Unable to read " + _CONTROLLER_JOB_URL,
+			monitorResult.getMessage());
+		testEquals(MonitorResult.Status.CRITICAL, monitorResult.getStatus());
 	}
 
 	@Test
@@ -186,6 +280,35 @@ public class UpstreamJobHealthMonitorTest
 	}
 
 	@Test
+	public void testExecuteTriggerLatency() throws Exception {
+		String sha = _newSHA();
+
+		_setURLReaderOutput(
+			_newHeadCommitJSONObject(0, sha),
+			_newBuildJSONObject(3600, _newInvocationDescription(sha)));
+
+		_testExecuteTriggerLatency(MonitorResult.Status.OK, 3600);
+		_testExecuteTriggerLatency(MonitorResult.Status.WARN, 3599);
+
+		_setURLReaderOutput(
+			_newHeadCommitJSONObject(3600, _newSHA()),
+			_newBuildJSONObject(0, _newInvocationDescription(_newSHA())));
+
+		_testExecuteTriggerLatency(MonitorResult.Status.OK, 3600);
+		_testExecuteTriggerLatency(MonitorResult.Status.WARN, 3599);
+	}
+
+	@Test
+	public void testGetLinkURLs() {
+		UpstreamJobHealthMonitor upstreamJobHealthMonitor =
+			_newUpstreamJobHealthMonitor(_newMonitorProperties());
+
+		testEquals(
+			Collections.singletonList(_CONTROLLER_JOB_URL),
+			upstreamJobHealthMonitor.getLinkURLs());
+	}
+
+	@Test
 	public void testUpstreamJobHealthMonitor() {
 		_testUpstreamJobHealthMonitorInvalidProperty(
 			"monitor[a].threshold[trigger.latency]", "-1");
@@ -202,29 +325,35 @@ public class UpstreamJobHealthMonitorTest
 		UpstreamJobHealthMonitor upstreamJobHealthMonitor =
 			_newUpstreamJobHealthMonitor(monitorProperties);
 
-		return upstreamJobHealthMonitor.execute();
+		try (MockedStatic<JenkinsResultsParserUtil>
+				jenkinsResultsParserUtilMockedStatic = Mockito.mockStatic(
+					JenkinsResultsParserUtil.class,
+					Mockito.CALLS_REAL_METHODS)) {
+
+			jenkinsResultsParserUtilMockedStatic.when(
+				JenkinsResultsParserUtil::getCurrentTimeMillis
+			).thenReturn(
+				_currentTimeMillis
+			);
+
+			return upstreamJobHealthMonitor.execute();
+		}
 	}
 
 	private JSONObject _newBuildJSONObject(
 		long ageSeconds, String description) {
 
-		long currentTimeMillis =
-			JenkinsResultsParserUtil.getCurrentTimeMillis();
-
 		return new JSONObject(
 		).put(
 			"description", description
 		).put(
-			"timestamp", currentTimeMillis - (ageSeconds * 1000)
+			"timestamp", _currentTimeMillis - (ageSeconds * 1000)
 		);
 	}
 
 	private JSONObject _newHeadCommitJSONObject(long ageSeconds, String sha) {
-		long currentTimeMillis =
-			JenkinsResultsParserUtil.getCurrentTimeMillis();
-
 		Instant instant = Instant.ofEpochMilli(
-			currentTimeMillis - (ageSeconds * 1000));
+			_currentTimeMillis - (ageSeconds * 1000));
 
 		return new JSONObject(
 		).put(
@@ -275,7 +404,7 @@ public class UpstreamJobHealthMonitorTest
 		return new UpstreamJobHealthMonitor(monitorConfigs.get(0));
 	}
 
-	private UrlReader _setURLReaderOutput(
+	private void _setURLReaderOutput(
 			JSONObject headCommitJSONObject, JSONObject... buildJSONObjects)
 		throws Exception {
 
@@ -285,22 +414,33 @@ public class UpstreamJobHealthMonitorTest
 			buildsJSONArray.put(buildJSONObject);
 		}
 
-		UrlReader urlReader = mockUrlReader();
+		mockURLReaders();
 
 		JSONObject jobJSONObject = new JSONObject(
 		).put(
 			"builds", buildsJSONArray
 		);
 
-		setUrlReaderOutput(jobJSONObject.toString(), _JOB_API_URL, urlReader);
+		setURLReaderOutput(jobJSONObject.toString(), _JOB_API_URL);
 
 		if (headCommitJSONObject != null) {
-			setUrlReaderOutput(
-				headCommitJSONObject.toString(), _HEAD_COMMIT_API_URL,
-				urlReader);
+			setURLReaderOutput(
+				headCommitJSONObject.toString(), _HEAD_COMMIT_API_URL);
 		}
+	}
 
-		return urlReader;
+	private void _testExecuteTriggerLatency(
+		MonitorResult.Status expectedStatus, long triggerLatency) {
+
+		Properties monitorProperties = _newMonitorProperties();
+
+		monitorProperties.setProperty(
+			"monitor[a].threshold[trigger.latency]",
+			String.valueOf(triggerLatency));
+
+		MonitorResult monitorResult = _execute(monitorProperties);
+
+		testEquals(expectedStatus, monitorResult.getStatus());
 	}
 
 	private void _testUpstreamJobHealthMonitorInvalidProperty(
@@ -342,6 +482,10 @@ public class UpstreamJobHealthMonitorTest
 	private static final String _CONTROLLER_JOB_NAME =
 		"test-portal-testsuite-upstream-controller(master)";
 
+	private static final String _CONTROLLER_JOB_URL =
+		"https://test-9-1.liferay.com/job/test-portal-testsuite-upstream-" +
+			"controller(master)";
+
 	private static final String _HEAD_COMMIT_API_URL =
 		"https://api.github.com/repos/liferay/liferay-portal/commits/master";
 
@@ -350,5 +494,7 @@ public class UpstreamJobHealthMonitorTest
 			"(master)/api/json";
 
 	private static final String _MASTER_NAME = "test-9-1";
+
+	private long _currentTimeMillis;
 
 }

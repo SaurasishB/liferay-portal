@@ -706,176 +706,6 @@ public class JournalArticlePersistenceImpl
 	}
 
 	private CollectionPersistenceFinder<JournalArticle, NoSuchArticleException>
-		_collectionPersistenceFinderByDDMTemplateKey;
-
-	/**
-	 * Returns an ordered range of all the journal articles where DDMTemplateKey = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param DDMTemplateKey the ddm template key
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByDDMTemplateKey(
-		String DDMTemplateKey, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByDDMTemplateKey.find(
-			finderCache, new Object[] {DDMTemplateKey}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where DDMTemplateKey = &#63;.
-	 *
-	 * @param DDMTemplateKey the ddm template key
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article
-	 * @throws NoSuchArticleException if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle findByDDMTemplateKey_First(
-			String DDMTemplateKey,
-			OrderByComparator<JournalArticle> orderByComparator)
-		throws NoSuchArticleException {
-
-		return _collectionPersistenceFinderByDDMTemplateKey.findFirst(
-			finderCache, new Object[] {DDMTemplateKey}, orderByComparator);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where DDMTemplateKey = &#63;.
-	 *
-	 * @param DDMTemplateKey the ddm template key
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article, or <code>null</code> if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle fetchByDDMTemplateKey_First(
-		String DDMTemplateKey,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByDDMTemplateKey.fetchFirst(
-			finderCache, new Object[] {DDMTemplateKey}, orderByComparator);
-	}
-
-	/**
-	 * Removes all the journal articles where DDMTemplateKey = &#63; from the database.
-	 *
-	 * @param DDMTemplateKey the ddm template key
-	 */
-	@Override
-	public void removeByDDMTemplateKey(String DDMTemplateKey) {
-		_collectionPersistenceFinderByDDMTemplateKey.remove(
-			finderCache, new Object[] {DDMTemplateKey});
-	}
-
-	/**
-	 * Returns the number of journal articles where DDMTemplateKey = &#63;.
-	 *
-	 * @param DDMTemplateKey the ddm template key
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByDDMTemplateKey(String DDMTemplateKey) {
-		return _collectionPersistenceFinderByDDMTemplateKey.count(
-			finderCache, new Object[] {DDMTemplateKey});
-	}
-
-	private CollectionPersistenceFinder<JournalArticle, NoSuchArticleException>
-		_collectionPersistenceFinderByLayoutUuid;
-
-	/**
-	 * Returns an ordered range of all the journal articles where layoutUuid = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param layoutUuid the layout uuid
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByLayoutUuid(
-		String layoutUuid, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByLayoutUuid.find(
-			finderCache, new Object[] {layoutUuid}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where layoutUuid = &#63;.
-	 *
-	 * @param layoutUuid the layout uuid
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article
-	 * @throws NoSuchArticleException if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle findByLayoutUuid_First(
-			String layoutUuid,
-			OrderByComparator<JournalArticle> orderByComparator)
-		throws NoSuchArticleException {
-
-		return _collectionPersistenceFinderByLayoutUuid.findFirst(
-			finderCache, new Object[] {layoutUuid}, orderByComparator);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where layoutUuid = &#63;.
-	 *
-	 * @param layoutUuid the layout uuid
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article, or <code>null</code> if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle fetchByLayoutUuid_First(
-		String layoutUuid,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByLayoutUuid.fetchFirst(
-			finderCache, new Object[] {layoutUuid}, orderByComparator);
-	}
-
-	/**
-	 * Removes all the journal articles where layoutUuid = &#63; from the database.
-	 *
-	 * @param layoutUuid the layout uuid
-	 */
-	@Override
-	public void removeByLayoutUuid(String layoutUuid) {
-		_collectionPersistenceFinderByLayoutUuid.remove(
-			finderCache, new Object[] {layoutUuid});
-	}
-
-	/**
-	 * Returns the number of journal articles where layoutUuid = &#63;.
-	 *
-	 * @param layoutUuid the layout uuid
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByLayoutUuid(String layoutUuid) {
-		return _collectionPersistenceFinderByLayoutUuid.count(
-			finderCache, new Object[] {layoutUuid});
-	}
-
-	private CollectionPersistenceFinder<JournalArticle, NoSuchArticleException>
 		_collectionPersistenceFinderBySmallImageId;
 
 	/**
@@ -958,98 +788,6 @@ public class JournalArticlePersistenceImpl
 	public int countBySmallImageId(long smallImageId) {
 		return _collectionPersistenceFinderBySmallImageId.count(
 			finderCache, new Object[] {smallImageId});
-	}
-
-	private CollectionPersistenceFinder<JournalArticle, NoSuchArticleException>
-		_collectionPersistenceFinderByR_I;
-
-	/**
-	 * Returns an ordered range of all the journal articles where resourcePrimKey = &#63; and indexable = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param resourcePrimKey the resource prim key
-	 * @param indexable the indexable
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByR_I(
-		long resourcePrimKey, boolean indexable, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByR_I.find(
-			finderCache, new Object[] {resourcePrimKey, indexable}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where resourcePrimKey = &#63; and indexable = &#63;.
-	 *
-	 * @param resourcePrimKey the resource prim key
-	 * @param indexable the indexable
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article
-	 * @throws NoSuchArticleException if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle findByR_I_First(
-			long resourcePrimKey, boolean indexable,
-			OrderByComparator<JournalArticle> orderByComparator)
-		throws NoSuchArticleException {
-
-		return _collectionPersistenceFinderByR_I.findFirst(
-			finderCache, new Object[] {resourcePrimKey, indexable},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where resourcePrimKey = &#63; and indexable = &#63;.
-	 *
-	 * @param resourcePrimKey the resource prim key
-	 * @param indexable the indexable
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article, or <code>null</code> if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle fetchByR_I_First(
-		long resourcePrimKey, boolean indexable,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByR_I.fetchFirst(
-			finderCache, new Object[] {resourcePrimKey, indexable},
-			orderByComparator);
-	}
-
-	/**
-	 * Removes all the journal articles where resourcePrimKey = &#63; and indexable = &#63; from the database.
-	 *
-	 * @param resourcePrimKey the resource prim key
-	 * @param indexable the indexable
-	 */
-	@Override
-	public void removeByR_I(long resourcePrimKey, boolean indexable) {
-		_collectionPersistenceFinderByR_I.remove(
-			finderCache, new Object[] {resourcePrimKey, indexable});
-	}
-
-	/**
-	 * Returns the number of journal articles where resourcePrimKey = &#63; and indexable = &#63;.
-	 *
-	 * @param resourcePrimKey the resource prim key
-	 * @param indexable the indexable
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByR_I(long resourcePrimKey, boolean indexable) {
-		return _collectionPersistenceFinderByR_I.count(
-			finderCache, new Object[] {resourcePrimKey, indexable});
 	}
 
 	private CollectionPersistenceFinder<JournalArticle, NoSuchArticleException>
@@ -1183,134 +921,6 @@ public class JournalArticlePersistenceImpl
 		return _collectionPersistenceFinderByR_ST.count(
 			finderCache,
 			new Object[] {resourcePrimKey, ArrayUtil.sortedUnique(statuses)});
-	}
-
-	private FilterCollectionPersistenceFinder
-		<JournalArticle, NoSuchArticleException>
-			_collectionPersistenceFinderByG_U;
-
-	/**
-	 * Returns an ordered range of all the journal articles where groupId = &#63; and userId = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByG_U(
-		long groupId, long userId, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByG_U.find(
-			finderCache, new Object[] {groupId, userId}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where groupId = &#63; and userId = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article
-	 * @throws NoSuchArticleException if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle findByG_U_First(
-			long groupId, long userId,
-			OrderByComparator<JournalArticle> orderByComparator)
-		throws NoSuchArticleException {
-
-		return _collectionPersistenceFinderByG_U.findFirst(
-			finderCache, new Object[] {groupId, userId}, orderByComparator);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where groupId = &#63; and userId = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article, or <code>null</code> if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle fetchByG_U_First(
-		long groupId, long userId,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_U.fetchFirst(
-			finderCache, new Object[] {groupId, userId}, orderByComparator);
-	}
-
-	/**
-	 * Returns an ordered range of all the journal articles that the user has permissions to view where groupId = &#63; and userId = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching journal articles that the user has permission to view
-	 */
-	@Override
-	public List<JournalArticle> filterFindByG_U(
-		long groupId, long userId, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_U.filterFind(
-			finderCache, new Object[] {groupId, userId}, start, end,
-			orderByComparator, groupId);
-	}
-
-	/**
-	 * Removes all the journal articles where groupId = &#63; and userId = &#63; from the database.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 */
-	@Override
-	public void removeByG_U(long groupId, long userId) {
-		_collectionPersistenceFinderByG_U.remove(
-			finderCache, new Object[] {groupId, userId});
-	}
-
-	/**
-	 * Returns the number of journal articles where groupId = &#63; and userId = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByG_U(long groupId, long userId) {
-		return _collectionPersistenceFinderByG_U.count(
-			finderCache, new Object[] {groupId, userId});
-	}
-
-	/**
-	 * Returns the number of journal articles that the user has permission to view where groupId = &#63; and userId = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @return the number of matching journal articles that the user has permission to view
-	 */
-	@Override
-	public int filterCountByG_U(long groupId, long userId) {
-		return _collectionPersistenceFinderByG_U.filterCount(
-			finderCache, new Object[] {groupId, userId}, groupId);
 	}
 
 	private FilterCollectionPersistenceFinder
@@ -2043,136 +1653,6 @@ public class JournalArticlePersistenceImpl
 
 	private FilterCollectionPersistenceFinder
 		<JournalArticle, NoSuchArticleException>
-			_collectionPersistenceFinderByG_DDMTK;
-
-	/**
-	 * Returns an ordered range of all the journal articles where groupId = &#63; and DDMTemplateKey = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param DDMTemplateKey the ddm template key
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByG_DDMTK(
-		long groupId, String DDMTemplateKey, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByG_DDMTK.find(
-			finderCache, new Object[] {groupId, DDMTemplateKey}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where groupId = &#63; and DDMTemplateKey = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param DDMTemplateKey the ddm template key
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article
-	 * @throws NoSuchArticleException if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle findByG_DDMTK_First(
-			long groupId, String DDMTemplateKey,
-			OrderByComparator<JournalArticle> orderByComparator)
-		throws NoSuchArticleException {
-
-		return _collectionPersistenceFinderByG_DDMTK.findFirst(
-			finderCache, new Object[] {groupId, DDMTemplateKey},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where groupId = &#63; and DDMTemplateKey = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param DDMTemplateKey the ddm template key
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article, or <code>null</code> if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle fetchByG_DDMTK_First(
-		long groupId, String DDMTemplateKey,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_DDMTK.fetchFirst(
-			finderCache, new Object[] {groupId, DDMTemplateKey},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns an ordered range of all the journal articles that the user has permissions to view where groupId = &#63; and DDMTemplateKey = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param DDMTemplateKey the ddm template key
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching journal articles that the user has permission to view
-	 */
-	@Override
-	public List<JournalArticle> filterFindByG_DDMTK(
-		long groupId, String DDMTemplateKey, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_DDMTK.filterFind(
-			finderCache, new Object[] {groupId, DDMTemplateKey}, start, end,
-			orderByComparator, groupId);
-	}
-
-	/**
-	 * Removes all the journal articles where groupId = &#63; and DDMTemplateKey = &#63; from the database.
-	 *
-	 * @param groupId the group ID
-	 * @param DDMTemplateKey the ddm template key
-	 */
-	@Override
-	public void removeByG_DDMTK(long groupId, String DDMTemplateKey) {
-		_collectionPersistenceFinderByG_DDMTK.remove(
-			finderCache, new Object[] {groupId, DDMTemplateKey});
-	}
-
-	/**
-	 * Returns the number of journal articles where groupId = &#63; and DDMTemplateKey = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param DDMTemplateKey the ddm template key
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByG_DDMTK(long groupId, String DDMTemplateKey) {
-		return _collectionPersistenceFinderByG_DDMTK.count(
-			finderCache, new Object[] {groupId, DDMTemplateKey});
-	}
-
-	/**
-	 * Returns the number of journal articles that the user has permission to view where groupId = &#63; and DDMTemplateKey = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param DDMTemplateKey the ddm template key
-	 * @return the number of matching journal articles that the user has permission to view
-	 */
-	@Override
-	public int filterCountByG_DDMTK(long groupId, String DDMTemplateKey) {
-		return _collectionPersistenceFinderByG_DDMTK.filterCount(
-			finderCache, new Object[] {groupId, DDMTemplateKey}, groupId);
-	}
-
-	private FilterCollectionPersistenceFinder
-		<JournalArticle, NoSuchArticleException>
 			_collectionPersistenceFinderByG_L;
 
 	/**
@@ -2297,460 +1777,6 @@ public class JournalArticlePersistenceImpl
 	public int filterCountByG_L(long groupId, String layoutUuid) {
 		return _collectionPersistenceFinderByG_L.filterCount(
 			finderCache, new Object[] {groupId, layoutUuid}, groupId);
-	}
-
-	private FilterCollectionPersistenceFinder
-		<JournalArticle, NoSuchArticleException>
-			_collectionPersistenceFinderByG_ST;
-
-	/**
-	 * Returns an ordered range of all the journal articles where groupId = &#63; and status = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param status the status
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByG_ST(
-		long groupId, int status, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByG_ST.find(
-			finderCache, new Object[] {groupId, status}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where groupId = &#63; and status = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article
-	 * @throws NoSuchArticleException if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle findByG_ST_First(
-			long groupId, int status,
-			OrderByComparator<JournalArticle> orderByComparator)
-		throws NoSuchArticleException {
-
-		return _collectionPersistenceFinderByG_ST.findFirst(
-			finderCache, new Object[] {groupId, status}, orderByComparator);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where groupId = &#63; and status = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article, or <code>null</code> if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle fetchByG_ST_First(
-		long groupId, int status,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_ST.fetchFirst(
-			finderCache, new Object[] {groupId, status}, orderByComparator);
-	}
-
-	/**
-	 * Returns an ordered range of all the journal articles that the user has permissions to view where groupId = &#63; and status = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param status the status
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching journal articles that the user has permission to view
-	 */
-	@Override
-	public List<JournalArticle> filterFindByG_ST(
-		long groupId, int status, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_ST.filterFind(
-			finderCache, new Object[] {groupId, status}, start, end,
-			orderByComparator, groupId);
-	}
-
-	/**
-	 * Removes all the journal articles where groupId = &#63; and status = &#63; from the database.
-	 *
-	 * @param groupId the group ID
-	 * @param status the status
-	 */
-	@Override
-	public void removeByG_ST(long groupId, int status) {
-		_collectionPersistenceFinderByG_ST.remove(
-			finderCache, new Object[] {groupId, status});
-	}
-
-	/**
-	 * Returns the number of journal articles where groupId = &#63; and status = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param status the status
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByG_ST(long groupId, int status) {
-		return _collectionPersistenceFinderByG_ST.count(
-			finderCache, new Object[] {groupId, status});
-	}
-
-	/**
-	 * Returns the number of journal articles that the user has permission to view where groupId = &#63; and status = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param status the status
-	 * @return the number of matching journal articles that the user has permission to view
-	 */
-	@Override
-	public int filterCountByG_ST(long groupId, int status) {
-		return _collectionPersistenceFinderByG_ST.filterCount(
-			finderCache, new Object[] {groupId, status}, groupId);
-	}
-
-	private CollectionPersistenceFinder<JournalArticle, NoSuchArticleException>
-		_collectionPersistenceFinderByC_V;
-
-	/**
-	 * Returns an ordered range of all the journal articles where companyId = &#63; and version = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param version the version
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByC_V(
-		long companyId, double version, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByC_V.find(
-			finderCache, new Object[] {companyId, version}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where companyId = &#63; and version = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param version the version
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article
-	 * @throws NoSuchArticleException if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle findByC_V_First(
-			long companyId, double version,
-			OrderByComparator<JournalArticle> orderByComparator)
-		throws NoSuchArticleException {
-
-		return _collectionPersistenceFinderByC_V.findFirst(
-			finderCache, new Object[] {companyId, version}, orderByComparator);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where companyId = &#63; and version = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param version the version
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article, or <code>null</code> if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle fetchByC_V_First(
-		long companyId, double version,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByC_V.fetchFirst(
-			finderCache, new Object[] {companyId, version}, orderByComparator);
-	}
-
-	/**
-	 * Removes all the journal articles where companyId = &#63; and version = &#63; from the database.
-	 *
-	 * @param companyId the company ID
-	 * @param version the version
-	 */
-	@Override
-	public void removeByC_V(long companyId, double version) {
-		_collectionPersistenceFinderByC_V.remove(
-			finderCache, new Object[] {companyId, version});
-	}
-
-	/**
-	 * Returns the number of journal articles where companyId = &#63; and version = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param version the version
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByC_V(long companyId, double version) {
-		return _collectionPersistenceFinderByC_V.count(
-			finderCache, new Object[] {companyId, version});
-	}
-
-	private CollectionPersistenceFinder<JournalArticle, NoSuchArticleException>
-		_collectionPersistenceFinderByC_ST;
-
-	/**
-	 * Returns an ordered range of all the journal articles where companyId = &#63; and status = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByC_ST(
-		long companyId, int status, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByC_ST.find(
-			finderCache, new Object[] {companyId, status}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where companyId = &#63; and status = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article
-	 * @throws NoSuchArticleException if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle findByC_ST_First(
-			long companyId, int status,
-			OrderByComparator<JournalArticle> orderByComparator)
-		throws NoSuchArticleException {
-
-		return _collectionPersistenceFinderByC_ST.findFirst(
-			finderCache, new Object[] {companyId, status}, orderByComparator);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where companyId = &#63; and status = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article, or <code>null</code> if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle fetchByC_ST_First(
-		long companyId, int status,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByC_ST.fetchFirst(
-			finderCache, new Object[] {companyId, status}, orderByComparator);
-	}
-
-	/**
-	 * Removes all the journal articles where companyId = &#63; and status = &#63; from the database.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 */
-	@Override
-	public void removeByC_ST(long companyId, int status) {
-		_collectionPersistenceFinderByC_ST.remove(
-			finderCache, new Object[] {companyId, status});
-	}
-
-	/**
-	 * Returns the number of journal articles where companyId = &#63; and status = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByC_ST(long companyId, int status) {
-		return _collectionPersistenceFinderByC_ST.count(
-			finderCache, new Object[] {companyId, status});
-	}
-
-	private CollectionPersistenceFinder<JournalArticle, NoSuchArticleException>
-		_collectionPersistenceFinderByC_NotST;
-
-	/**
-	 * Returns all the journal articles where companyId = &#63; and status &ne; &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @return the matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByC_NotST(long companyId, int status) {
-		return findByC_NotST(
-			companyId, status, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
-	}
-
-	/**
-	 * Returns a range of all the journal articles where companyId = &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @return the range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByC_NotST(
-		long companyId, int status, int start, int end) {
-
-		return findByC_NotST(companyId, status, start, end, null);
-	}
-
-	/**
-	 * Returns an ordered range of all the journal articles where companyId = &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByC_NotST(
-		long companyId, int status, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return findByC_NotST(
-			companyId, status, start, end, orderByComparator, true);
-	}
-
-	/**
-	 * Returns an ordered range of all the journal articles where companyId = &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByC_NotST(
-		long companyId, int status, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByC_NotST.find(
-			finderCache, new Object[] {companyId, status}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where companyId = &#63; and status &ne; &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article
-	 * @throws NoSuchArticleException if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle findByC_NotST_First(
-			long companyId, int status,
-			OrderByComparator<JournalArticle> orderByComparator)
-		throws NoSuchArticleException {
-
-		return _collectionPersistenceFinderByC_NotST.findFirst(
-			finderCache, new Object[] {companyId, status}, orderByComparator);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where companyId = &#63; and status &ne; &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article, or <code>null</code> if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle fetchByC_NotST_First(
-		long companyId, int status,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByC_NotST.fetchFirst(
-			finderCache, new Object[] {companyId, status}, orderByComparator);
-	}
-
-	/**
-	 * Removes all the journal articles where companyId = &#63; and status &ne; &#63; from the database.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 */
-	@Override
-	public void removeByC_NotST(long companyId, int status) {
-		_collectionPersistenceFinderByC_NotST.remove(
-			finderCache, new Object[] {companyId, status});
-	}
-
-	/**
-	 * Returns the number of journal articles where companyId = &#63; and status &ne; &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByC_NotST(long companyId, int status) {
-		return _collectionPersistenceFinderByC_NotST.count(
-			finderCache, new Object[] {companyId, status});
 	}
 
 	private CollectionPersistenceFinder<JournalArticle, NoSuchArticleException>
@@ -2897,161 +1923,6 @@ public class JournalArticlePersistenceImpl
 	public int countByLtD_S(Date displayDate, int status) {
 		return _collectionPersistenceFinderByLtD_S.count(
 			finderCache, new Object[] {displayDate, status});
-	}
-
-	private CollectionPersistenceFinder<JournalArticle, NoSuchArticleException>
-		_collectionPersistenceFinderByR_I_S;
-
-	/**
-	 * Returns an ordered range of all the journal articles where resourcePrimKey = &#63; and indexable = &#63; and status = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param resourcePrimKey the resource prim key
-	 * @param indexable the indexable
-	 * @param status the status
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByR_I_S(
-		long resourcePrimKey, boolean indexable, int status, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByR_I_S.find(
-			finderCache,
-			new Object[] {resourcePrimKey, indexable, new int[] {status}},
-			start, end, orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where resourcePrimKey = &#63; and indexable = &#63; and status = &#63;.
-	 *
-	 * @param resourcePrimKey the resource prim key
-	 * @param indexable the indexable
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article
-	 * @throws NoSuchArticleException if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle findByR_I_S_First(
-			long resourcePrimKey, boolean indexable, int status,
-			OrderByComparator<JournalArticle> orderByComparator)
-		throws NoSuchArticleException {
-
-		return _collectionPersistenceFinderByR_I_S.findFirst(
-			finderCache,
-			new Object[] {resourcePrimKey, indexable, new int[] {status}},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where resourcePrimKey = &#63; and indexable = &#63; and status = &#63;.
-	 *
-	 * @param resourcePrimKey the resource prim key
-	 * @param indexable the indexable
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article, or <code>null</code> if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle fetchByR_I_S_First(
-		long resourcePrimKey, boolean indexable, int status,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByR_I_S.fetchFirst(
-			finderCache,
-			new Object[] {resourcePrimKey, indexable, new int[] {status}},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns an ordered range of all the journal articles where resourcePrimKey = &#63; and indexable = &#63; and status = &#63;, optionally using the finder cache.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param resourcePrimKey the resource prim key
-	 * @param indexable the indexable
-	 * @param statuses the statuses
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByR_I_S(
-		long resourcePrimKey, boolean indexable, int[] statuses, int start,
-		int end, OrderByComparator<JournalArticle> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByR_I_S.find(
-			finderCache,
-			new Object[] {
-				resourcePrimKey, indexable, ArrayUtil.sortedUnique(statuses)
-			},
-			start, end, orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Removes all the journal articles where resourcePrimKey = &#63; and indexable = &#63; and status = &#63; from the database.
-	 *
-	 * @param resourcePrimKey the resource prim key
-	 * @param indexable the indexable
-	 * @param status the status
-	 */
-	@Override
-	public void removeByR_I_S(
-		long resourcePrimKey, boolean indexable, int status) {
-
-		_collectionPersistenceFinderByR_I_S.remove(
-			finderCache,
-			new Object[] {resourcePrimKey, indexable, new int[] {status}});
-	}
-
-	/**
-	 * Returns the number of journal articles where resourcePrimKey = &#63; and indexable = &#63; and status = &#63;.
-	 *
-	 * @param resourcePrimKey the resource prim key
-	 * @param indexable the indexable
-	 * @param status the status
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByR_I_S(
-		long resourcePrimKey, boolean indexable, int status) {
-
-		return _collectionPersistenceFinderByR_I_S.count(
-			finderCache,
-			new Object[] {resourcePrimKey, indexable, new int[] {status}});
-	}
-
-	/**
-	 * Returns the number of journal articles where resourcePrimKey = &#63; and indexable = &#63; and status = any &#63;.
-	 *
-	 * @param resourcePrimKey the resource prim key
-	 * @param indexable the indexable
-	 * @param statuses the statuses
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByR_I_S(
-		long resourcePrimKey, boolean indexable, int[] statuses) {
-
-		return _collectionPersistenceFinderByR_I_S.count(
-			finderCache,
-			new Object[] {
-				resourcePrimKey, indexable, ArrayUtil.sortedUnique(statuses)
-			});
 	}
 
 	private FilterCollectionPersistenceFinder
@@ -3878,367 +2749,6 @@ public class JournalArticlePersistenceImpl
 
 		return _collectionPersistenceFinderByG_C_C.filterCount(
 			finderCache, new Object[] {groupId, classNameId, classPK}, groupId);
-	}
-
-	private UniquePersistenceFinder<JournalArticle, NoSuchArticleException>
-		_uniquePersistenceFinderByG_C_DDMSI;
-
-	/**
-	 * Returns the journal article where groupId = &#63; and classNameId = &#63; and DDMStructureId = &#63; or throws a <code>NoSuchArticleException</code> if it could not be found.
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param DDMStructureId the ddm structure ID
-	 * @return the matching journal article
-	 * @throws NoSuchArticleException if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle findByG_C_DDMSI(
-			long groupId, long classNameId, long DDMStructureId)
-		throws NoSuchArticleException {
-
-		return _uniquePersistenceFinderByG_C_DDMSI.find(
-			finderCache, new Object[] {groupId, classNameId, DDMStructureId});
-	}
-
-	/**
-	 * Returns the journal article where groupId = &#63; and classNameId = &#63; and DDMStructureId = &#63; or returns <code>null</code> if it could not be found, optionally using the finder cache.
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param DDMStructureId the ddm structure ID
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the matching journal article, or <code>null</code> if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle fetchByG_C_DDMSI(
-		long groupId, long classNameId, long DDMStructureId,
-		boolean useFinderCache) {
-
-		return _uniquePersistenceFinderByG_C_DDMSI.fetch(
-			finderCache, new Object[] {groupId, classNameId, DDMStructureId},
-			useFinderCache);
-	}
-
-	/**
-	 * Removes the journal article where groupId = &#63; and classNameId = &#63; and DDMStructureId = &#63; from the database.
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param DDMStructureId the ddm structure ID
-	 * @return the journal article that was removed
-	 */
-	@Override
-	public JournalArticle removeByG_C_DDMSI(
-			long groupId, long classNameId, long DDMStructureId)
-		throws NoSuchArticleException {
-
-		JournalArticle journalArticle = findByG_C_DDMSI(
-			groupId, classNameId, DDMStructureId);
-
-		return remove(journalArticle);
-	}
-
-	/**
-	 * Returns the number of journal articles where groupId = &#63; and classNameId = &#63; and DDMStructureId = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param DDMStructureId the ddm structure ID
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByG_C_DDMSI(
-		long groupId, long classNameId, long DDMStructureId) {
-
-		return _uniquePersistenceFinderByG_C_DDMSI.count(
-			finderCache, new Object[] {groupId, classNameId, DDMStructureId});
-	}
-
-	private FilterCollectionPersistenceFinder
-		<JournalArticle, NoSuchArticleException>
-			_collectionPersistenceFinderByG_C_DDMTK;
-
-	/**
-	 * Returns an ordered range of all the journal articles where groupId = &#63; and classNameId = &#63; and DDMTemplateKey = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param DDMTemplateKey the ddm template key
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByG_C_DDMTK(
-		long groupId, long classNameId, String DDMTemplateKey, int start,
-		int end, OrderByComparator<JournalArticle> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByG_C_DDMTK.find(
-			finderCache, new Object[] {groupId, classNameId, DDMTemplateKey},
-			start, end, orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where groupId = &#63; and classNameId = &#63; and DDMTemplateKey = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param DDMTemplateKey the ddm template key
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article
-	 * @throws NoSuchArticleException if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle findByG_C_DDMTK_First(
-			long groupId, long classNameId, String DDMTemplateKey,
-			OrderByComparator<JournalArticle> orderByComparator)
-		throws NoSuchArticleException {
-
-		return _collectionPersistenceFinderByG_C_DDMTK.findFirst(
-			finderCache, new Object[] {groupId, classNameId, DDMTemplateKey},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where groupId = &#63; and classNameId = &#63; and DDMTemplateKey = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param DDMTemplateKey the ddm template key
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article, or <code>null</code> if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle fetchByG_C_DDMTK_First(
-		long groupId, long classNameId, String DDMTemplateKey,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_C_DDMTK.fetchFirst(
-			finderCache, new Object[] {groupId, classNameId, DDMTemplateKey},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns an ordered range of all the journal articles that the user has permissions to view where groupId = &#63; and classNameId = &#63; and DDMTemplateKey = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param DDMTemplateKey the ddm template key
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching journal articles that the user has permission to view
-	 */
-	@Override
-	public List<JournalArticle> filterFindByG_C_DDMTK(
-		long groupId, long classNameId, String DDMTemplateKey, int start,
-		int end, OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_C_DDMTK.filterFind(
-			finderCache, new Object[] {groupId, classNameId, DDMTemplateKey},
-			start, end, orderByComparator, groupId);
-	}
-
-	/**
-	 * Removes all the journal articles where groupId = &#63; and classNameId = &#63; and DDMTemplateKey = &#63; from the database.
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param DDMTemplateKey the ddm template key
-	 */
-	@Override
-	public void removeByG_C_DDMTK(
-		long groupId, long classNameId, String DDMTemplateKey) {
-
-		_collectionPersistenceFinderByG_C_DDMTK.remove(
-			finderCache, new Object[] {groupId, classNameId, DDMTemplateKey});
-	}
-
-	/**
-	 * Returns the number of journal articles where groupId = &#63; and classNameId = &#63; and DDMTemplateKey = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param DDMTemplateKey the ddm template key
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByG_C_DDMTK(
-		long groupId, long classNameId, String DDMTemplateKey) {
-
-		return _collectionPersistenceFinderByG_C_DDMTK.count(
-			finderCache, new Object[] {groupId, classNameId, DDMTemplateKey});
-	}
-
-	/**
-	 * Returns the number of journal articles that the user has permission to view where groupId = &#63; and classNameId = &#63; and DDMTemplateKey = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param DDMTemplateKey the ddm template key
-	 * @return the number of matching journal articles that the user has permission to view
-	 */
-	@Override
-	public int filterCountByG_C_DDMTK(
-		long groupId, long classNameId, String DDMTemplateKey) {
-
-		return _collectionPersistenceFinderByG_C_DDMTK.filterCount(
-			finderCache, new Object[] {groupId, classNameId, DDMTemplateKey},
-			groupId);
-	}
-
-	private FilterCollectionPersistenceFinder
-		<JournalArticle, NoSuchArticleException>
-			_collectionPersistenceFinderByG_C_L;
-
-	/**
-	 * Returns an ordered range of all the journal articles where groupId = &#63; and classNameId = &#63; and layoutUuid = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param layoutUuid the layout uuid
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByG_C_L(
-		long groupId, long classNameId, String layoutUuid, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByG_C_L.find(
-			finderCache, new Object[] {groupId, classNameId, layoutUuid}, start,
-			end, orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where groupId = &#63; and classNameId = &#63; and layoutUuid = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param layoutUuid the layout uuid
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article
-	 * @throws NoSuchArticleException if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle findByG_C_L_First(
-			long groupId, long classNameId, String layoutUuid,
-			OrderByComparator<JournalArticle> orderByComparator)
-		throws NoSuchArticleException {
-
-		return _collectionPersistenceFinderByG_C_L.findFirst(
-			finderCache, new Object[] {groupId, classNameId, layoutUuid},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where groupId = &#63; and classNameId = &#63; and layoutUuid = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param layoutUuid the layout uuid
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article, or <code>null</code> if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle fetchByG_C_L_First(
-		long groupId, long classNameId, String layoutUuid,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_C_L.fetchFirst(
-			finderCache, new Object[] {groupId, classNameId, layoutUuid},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns an ordered range of all the journal articles that the user has permissions to view where groupId = &#63; and classNameId = &#63; and layoutUuid = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param layoutUuid the layout uuid
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching journal articles that the user has permission to view
-	 */
-	@Override
-	public List<JournalArticle> filterFindByG_C_L(
-		long groupId, long classNameId, String layoutUuid, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_C_L.filterFind(
-			finderCache, new Object[] {groupId, classNameId, layoutUuid}, start,
-			end, orderByComparator, groupId);
-	}
-
-	/**
-	 * Removes all the journal articles where groupId = &#63; and classNameId = &#63; and layoutUuid = &#63; from the database.
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param layoutUuid the layout uuid
-	 */
-	@Override
-	public void removeByG_C_L(
-		long groupId, long classNameId, String layoutUuid) {
-
-		_collectionPersistenceFinderByG_C_L.remove(
-			finderCache, new Object[] {groupId, classNameId, layoutUuid});
-	}
-
-	/**
-	 * Returns the number of journal articles where groupId = &#63; and classNameId = &#63; and layoutUuid = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param layoutUuid the layout uuid
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByG_C_L(long groupId, long classNameId, String layoutUuid) {
-		return _collectionPersistenceFinderByG_C_L.count(
-			finderCache, new Object[] {groupId, classNameId, layoutUuid});
-	}
-
-	/**
-	 * Returns the number of journal articles that the user has permission to view where groupId = &#63; and classNameId = &#63; and layoutUuid = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param classNameId the class name ID
-	 * @param layoutUuid the layout uuid
-	 * @return the number of matching journal articles that the user has permission to view
-	 */
-	@Override
-	public int filterCountByG_C_L(
-		long groupId, long classNameId, String layoutUuid) {
-
-		return _collectionPersistenceFinderByG_C_L.filterCount(
-			finderCache, new Object[] {groupId, classNameId, layoutUuid},
-			groupId);
 	}
 
 	private FilterCollectionPersistenceFinder
@@ -5378,364 +3888,6 @@ public class JournalArticlePersistenceImpl
 			finderCache, new Object[] {groupId, urlTitle, status}, groupId);
 	}
 
-	private CollectionPersistenceFinder<JournalArticle, NoSuchArticleException>
-		_collectionPersistenceFinderByC_V_ST;
-
-	/**
-	 * Returns an ordered range of all the journal articles where companyId = &#63; and version = &#63; and status = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param version the version
-	 * @param status the status
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByC_V_ST(
-		long companyId, double version, int status, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByC_V_ST.find(
-			finderCache, new Object[] {companyId, version, status}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where companyId = &#63; and version = &#63; and status = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param version the version
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article
-	 * @throws NoSuchArticleException if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle findByC_V_ST_First(
-			long companyId, double version, int status,
-			OrderByComparator<JournalArticle> orderByComparator)
-		throws NoSuchArticleException {
-
-		return _collectionPersistenceFinderByC_V_ST.findFirst(
-			finderCache, new Object[] {companyId, version, status},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where companyId = &#63; and version = &#63; and status = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param version the version
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article, or <code>null</code> if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle fetchByC_V_ST_First(
-		long companyId, double version, int status,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByC_V_ST.fetchFirst(
-			finderCache, new Object[] {companyId, version, status},
-			orderByComparator);
-	}
-
-	/**
-	 * Removes all the journal articles where companyId = &#63; and version = &#63; and status = &#63; from the database.
-	 *
-	 * @param companyId the company ID
-	 * @param version the version
-	 * @param status the status
-	 */
-	@Override
-	public void removeByC_V_ST(long companyId, double version, int status) {
-		_collectionPersistenceFinderByC_V_ST.remove(
-			finderCache, new Object[] {companyId, version, status});
-	}
-
-	/**
-	 * Returns the number of journal articles where companyId = &#63; and version = &#63; and status = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param version the version
-	 * @param status the status
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByC_V_ST(long companyId, double version, int status) {
-		return _collectionPersistenceFinderByC_V_ST.count(
-			finderCache, new Object[] {companyId, version, status});
-	}
-
-	private FilterCollectionPersistenceFinder
-		<JournalArticle, NoSuchArticleException>
-			_collectionPersistenceFinderByG_F_C_NotST;
-
-	/**
-	 * Returns all the journal articles where groupId = &#63; and folderId = &#63; and classNameId = &#63; and status &ne; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param folderId the folder ID
-	 * @param classNameId the class name ID
-	 * @param status the status
-	 * @return the matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByG_F_C_NotST(
-		long groupId, long folderId, long classNameId, int status) {
-
-		return findByG_F_C_NotST(
-			groupId, folderId, classNameId, status, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
-	}
-
-	/**
-	 * Returns a range of all the journal articles where groupId = &#63; and folderId = &#63; and classNameId = &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param folderId the folder ID
-	 * @param classNameId the class name ID
-	 * @param status the status
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @return the range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByG_F_C_NotST(
-		long groupId, long folderId, long classNameId, int status, int start,
-		int end) {
-
-		return findByG_F_C_NotST(
-			groupId, folderId, classNameId, status, start, end, null);
-	}
-
-	/**
-	 * Returns an ordered range of all the journal articles where groupId = &#63; and folderId = &#63; and classNameId = &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param folderId the folder ID
-	 * @param classNameId the class name ID
-	 * @param status the status
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByG_F_C_NotST(
-		long groupId, long folderId, long classNameId, int status, int start,
-		int end, OrderByComparator<JournalArticle> orderByComparator) {
-
-		return findByG_F_C_NotST(
-			groupId, folderId, classNameId, status, start, end,
-			orderByComparator, true);
-	}
-
-	/**
-	 * Returns an ordered range of all the journal articles where groupId = &#63; and folderId = &#63; and classNameId = &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param folderId the folder ID
-	 * @param classNameId the class name ID
-	 * @param status the status
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching journal articles
-	 */
-	@Override
-	public List<JournalArticle> findByG_F_C_NotST(
-		long groupId, long folderId, long classNameId, int status, int start,
-		int end, OrderByComparator<JournalArticle> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByG_F_C_NotST.find(
-			finderCache, new Object[] {groupId, folderId, classNameId, status},
-			start, end, orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where groupId = &#63; and folderId = &#63; and classNameId = &#63; and status &ne; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param folderId the folder ID
-	 * @param classNameId the class name ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article
-	 * @throws NoSuchArticleException if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle findByG_F_C_NotST_First(
-			long groupId, long folderId, long classNameId, int status,
-			OrderByComparator<JournalArticle> orderByComparator)
-		throws NoSuchArticleException {
-
-		return _collectionPersistenceFinderByG_F_C_NotST.findFirst(
-			finderCache, new Object[] {groupId, folderId, classNameId, status},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns the first journal article in the ordered set where groupId = &#63; and folderId = &#63; and classNameId = &#63; and status &ne; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param folderId the folder ID
-	 * @param classNameId the class name ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching journal article, or <code>null</code> if a matching journal article could not be found
-	 */
-	@Override
-	public JournalArticle fetchByG_F_C_NotST_First(
-		long groupId, long folderId, long classNameId, int status,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_F_C_NotST.fetchFirst(
-			finderCache, new Object[] {groupId, folderId, classNameId, status},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns all the journal articles that the user has permission to view where groupId = &#63; and folderId = &#63; and classNameId = &#63; and status &ne; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param folderId the folder ID
-	 * @param classNameId the class name ID
-	 * @param status the status
-	 * @return the matching journal articles that the user has permission to view
-	 */
-	@Override
-	public List<JournalArticle> filterFindByG_F_C_NotST(
-		long groupId, long folderId, long classNameId, int status) {
-
-		return filterFindByG_F_C_NotST(
-			groupId, folderId, classNameId, status, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
-	}
-
-	/**
-	 * Returns a range of all the journal articles that the user has permission to view where groupId = &#63; and folderId = &#63; and classNameId = &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param folderId the folder ID
-	 * @param classNameId the class name ID
-	 * @param status the status
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @return the range of matching journal articles that the user has permission to view
-	 */
-	@Override
-	public List<JournalArticle> filterFindByG_F_C_NotST(
-		long groupId, long folderId, long classNameId, int status, int start,
-		int end) {
-
-		return filterFindByG_F_C_NotST(
-			groupId, folderId, classNameId, status, start, end, null);
-	}
-
-	/**
-	 * Returns an ordered range of all the journal articles that the user has permissions to view where groupId = &#63; and folderId = &#63; and classNameId = &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>JournalArticleModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param folderId the folder ID
-	 * @param classNameId the class name ID
-	 * @param status the status
-	 * @param start the lower bound of the range of journal articles
-	 * @param end the upper bound of the range of journal articles (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching journal articles that the user has permission to view
-	 */
-	@Override
-	public List<JournalArticle> filterFindByG_F_C_NotST(
-		long groupId, long folderId, long classNameId, int status, int start,
-		int end, OrderByComparator<JournalArticle> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_F_C_NotST.filterFind(
-			finderCache, new Object[] {groupId, folderId, classNameId, status},
-			start, end, orderByComparator, groupId);
-	}
-
-	/**
-	 * Removes all the journal articles where groupId = &#63; and folderId = &#63; and classNameId = &#63; and status &ne; &#63; from the database.
-	 *
-	 * @param groupId the group ID
-	 * @param folderId the folder ID
-	 * @param classNameId the class name ID
-	 * @param status the status
-	 */
-	@Override
-	public void removeByG_F_C_NotST(
-		long groupId, long folderId, long classNameId, int status) {
-
-		_collectionPersistenceFinderByG_F_C_NotST.remove(
-			finderCache, new Object[] {groupId, folderId, classNameId, status});
-	}
-
-	/**
-	 * Returns the number of journal articles where groupId = &#63; and folderId = &#63; and classNameId = &#63; and status &ne; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param folderId the folder ID
-	 * @param classNameId the class name ID
-	 * @param status the status
-	 * @return the number of matching journal articles
-	 */
-	@Override
-	public int countByG_F_C_NotST(
-		long groupId, long folderId, long classNameId, int status) {
-
-		return _collectionPersistenceFinderByG_F_C_NotST.count(
-			finderCache, new Object[] {groupId, folderId, classNameId, status});
-	}
-
-	/**
-	 * Returns the number of journal articles that the user has permission to view where groupId = &#63; and folderId = &#63; and classNameId = &#63; and status &ne; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param folderId the folder ID
-	 * @param classNameId the class name ID
-	 * @param status the status
-	 * @return the number of matching journal articles that the user has permission to view
-	 */
-	@Override
-	public int filterCountByG_F_C_NotST(
-		long groupId, long folderId, long classNameId, int status) {
-
-		return _collectionPersistenceFinderByG_F_C_NotST.filterCount(
-			finderCache, new Object[] {groupId, folderId, classNameId, status},
-			groupId);
-	}
-
 	public JournalArticlePersistenceImpl() {
 		Map<String, String> dbColumnNames = new HashMap<String, String>();
 
@@ -6213,7 +4365,12 @@ public class JournalArticlePersistenceImpl
 
 		_collectionPersistenceFinderByGroupId =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, JournalArticle::getResourcePrimKey,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByGroupId",
+					new String[] {Long.class.getName()},
+					new String[] {"groupId"}, false),
+				"", JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByGroupId",
 					new String[] {
@@ -6222,18 +4379,13 @@ public class JournalArticlePersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId"}, true),
+				_SQL_COUNT_JOURNALARTICLE_WHERE,
+				_SQL_SELECT_JOURNALARTICLE_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByGroupId",
 					new String[] {Long.class.getName()},
 					new String[] {"groupId"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByGroupId",
-					new String[] {Long.class.getName()},
-					new String[] {"groupId"}, false),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
+				"",
 				new FinderColumn<>(
 					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getGroupId));
@@ -6294,64 +4446,6 @@ public class JournalArticlePersistenceImpl
 					"journalArticle.", "DDMStructureId", FinderColumn.Type.LONG,
 					"=", true, true, JournalArticle::getDDMStructureId));
 
-		_collectionPersistenceFinderByDDMTemplateKey =
-			new CollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION,
-					"findByDDMTemplateKey",
-					new String[] {
-						String.class.getName(), Integer.class.getName(),
-						Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {"DDMTemplateKey"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION,
-					"findByDDMTemplateKey",
-					new String[] {String.class.getName()},
-					new String[] {"DDMTemplateKey"}, 0, 1, true, null),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION,
-					"countByDDMTemplateKey",
-					new String[] {String.class.getName()},
-					new String[] {"DDMTemplateKey"}, 0, 1, false, null),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
-				new FinderColumn<>(
-					"journalArticle.", "DDMTemplateKey",
-					FinderColumn.Type.STRING, "=", true, true,
-					JournalArticle::getDDMTemplateKey));
-
-		_collectionPersistenceFinderByLayoutUuid =
-			new CollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByLayoutUuid",
-					new String[] {
-						String.class.getName(), Integer.class.getName(),
-						Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {"layoutUuid"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION,
-					"findByLayoutUuid", new String[] {String.class.getName()},
-					new String[] {"layoutUuid"}, 0, 1, true, null),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION,
-					"countByLayoutUuid", new String[] {String.class.getName()},
-					new String[] {"layoutUuid"}, 0, 1, false, null),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
-				new FinderColumn<>(
-					"journalArticle.", "layoutUuid", FinderColumn.Type.STRING,
-					"=", true, true, JournalArticle::getLayoutUuid));
-
 		_collectionPersistenceFinderBySmallImageId =
 			new CollectionPersistenceFinder<>(
 				this,
@@ -6379,34 +4473,6 @@ public class JournalArticlePersistenceImpl
 				new FinderColumn<>(
 					"journalArticle.", "smallImageId", FinderColumn.Type.LONG,
 					"=", true, true, JournalArticle::getSmallImageId));
-
-		_collectionPersistenceFinderByR_I = new CollectionPersistenceFinder<>(
-			this,
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByR_I",
-				new String[] {
-					Long.class.getName(), Boolean.class.getName(),
-					Integer.class.getName(), Integer.class.getName(),
-					OrderByComparator.class.getName()
-				},
-				new String[] {"resourcePrimKey", "indexable"}, true),
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByR_I",
-				new String[] {Long.class.getName(), Boolean.class.getName()},
-				new String[] {"resourcePrimKey", "indexable"}, true),
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByR_I",
-				new String[] {Long.class.getName(), Boolean.class.getName()},
-				new String[] {"resourcePrimKey", "indexable"}, false),
-			_SQL_SELECT_JOURNALARTICLE_WHERE, _SQL_COUNT_JOURNALARTICLE_WHERE,
-			JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-			null,
-			new FinderColumn<>(
-				"journalArticle.", "resourcePrimKey", FinderColumn.Type.LONG,
-				"=", true, true, JournalArticle::getResourcePrimKey),
-			new FinderColumn<>(
-				"journalArticle.", "indexable", FinderColumn.Type.BOOLEAN, "=",
-				true, true, JournalArticle::isIndexable));
 
 		_collectionPersistenceFinderByR_ST = new CollectionPersistenceFinder<>(
 			this,
@@ -6436,39 +4502,15 @@ public class JournalArticlePersistenceImpl
 				"journalArticle.", "status", FinderColumn.Type.INTEGER, "=",
 				false, true, true, JournalArticle::getStatus));
 
-		_collectionPersistenceFinderByG_U =
-			new FilterCollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_U",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						Integer.class.getName(), Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {"groupId", "userId"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_U",
-					new String[] {Long.class.getName(), Long.class.getName()},
-					new String[] {"groupId", "userId"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_U",
-					new String[] {Long.class.getName(), Long.class.getName()},
-					new String[] {"groupId", "userId"}, false),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
-				new FinderColumn<>(
-					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
-					true, true, JournalArticle::getGroupId),
-				new FinderColumn<>(
-					"journalArticle.", "userId", FinderColumn.Type.LONG, "=",
-					true, true, JournalArticle::getUserId));
-
 		_collectionPersistenceFinderByG_ERC =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, JournalArticle::getResourcePrimKey,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_ERC",
+					new String[] {Long.class.getName(), String.class.getName()},
+					new String[] {"groupId", "externalReferenceCode"}, 0, 2,
+					false, null),
+				"", JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_ERC",
 					new String[] {
@@ -6477,20 +4519,14 @@ public class JournalArticlePersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "externalReferenceCode"}, true),
+				_SQL_COUNT_JOURNALARTICLE_WHERE,
+				_SQL_SELECT_JOURNALARTICLE_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_ERC",
 					new String[] {Long.class.getName(), String.class.getName()},
 					new String[] {"groupId", "externalReferenceCode"}, 0, 2,
 					true, null),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_ERC",
-					new String[] {Long.class.getName(), String.class.getName()},
-					new String[] {"groupId", "externalReferenceCode"}, 0, 2,
-					false, null),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
+				"",
 				new FinderColumn<>(
 					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getGroupId),
@@ -6501,7 +4537,12 @@ public class JournalArticlePersistenceImpl
 
 		_collectionPersistenceFinderByG_F =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, JournalArticle::getResourcePrimKey,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_F",
+					new String[] {Long.class.getName(), Long.class.getName()},
+					new String[] {"groupId", "folderId"}, false),
+				"", JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_F",
 					new String[] {
@@ -6510,18 +4551,13 @@ public class JournalArticlePersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "folderId"}, true),
+				_SQL_COUNT_JOURNALARTICLE_WHERE,
+				_SQL_SELECT_JOURNALARTICLE_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_F",
 					new String[] {Long.class.getName(), Long.class.getName()},
 					new String[] {"groupId", "folderId"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_F",
-					new String[] {Long.class.getName(), Long.class.getName()},
-					new String[] {"groupId", "folderId"}, false),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
+				"",
 				new FinderColumn<>(
 					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getGroupId),
@@ -6531,7 +4567,12 @@ public class JournalArticlePersistenceImpl
 
 		_collectionPersistenceFinderByG_A =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, JournalArticle::getResourcePrimKey,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_A",
+					new String[] {Long.class.getName(), String.class.getName()},
+					new String[] {"groupId", "articleId"}, 0, 2, false, null),
+				"", JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_A",
 					new String[] {
@@ -6540,18 +4581,13 @@ public class JournalArticlePersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "articleId"}, true),
+				_SQL_COUNT_JOURNALARTICLE_WHERE,
+				_SQL_SELECT_JOURNALARTICLE_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_A",
 					new String[] {Long.class.getName(), String.class.getName()},
 					new String[] {"groupId", "articleId"}, 0, 2, true, null),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_A",
-					new String[] {Long.class.getName(), String.class.getName()},
-					new String[] {"groupId", "articleId"}, 0, 2, false, null),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
+				"",
 				new FinderColumn<>(
 					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getGroupId),
@@ -6561,7 +4597,12 @@ public class JournalArticlePersistenceImpl
 
 		_collectionPersistenceFinderByG_UT =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, JournalArticle::getResourcePrimKey,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_UT",
+					new String[] {Long.class.getName(), String.class.getName()},
+					new String[] {"groupId", "urlTitle"}, 0, 2, false, null),
+				"", JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_UT",
 					new String[] {
@@ -6570,18 +4611,13 @@ public class JournalArticlePersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "urlTitle"}, true),
+				_SQL_COUNT_JOURNALARTICLE_WHERE,
+				_SQL_SELECT_JOURNALARTICLE_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_UT",
 					new String[] {Long.class.getName(), String.class.getName()},
 					new String[] {"groupId", "urlTitle"}, 0, 2, true, null),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_UT",
-					new String[] {Long.class.getName(), String.class.getName()},
-					new String[] {"groupId", "urlTitle"}, 0, 2, false, null),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
+				"",
 				new FinderColumn<>(
 					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getGroupId),
@@ -6591,7 +4627,12 @@ public class JournalArticlePersistenceImpl
 
 		_collectionPersistenceFinderByG_DDMSI =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, JournalArticle::getResourcePrimKey,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_DDMSI",
+					new String[] {Long.class.getName(), Long.class.getName()},
+					new String[] {"groupId", "DDMStructureId"}, false),
+				"", JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_DDMSI",
 					new String[] {
@@ -6600,18 +4641,13 @@ public class JournalArticlePersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "DDMStructureId"}, true),
+				_SQL_COUNT_JOURNALARTICLE_WHERE,
+				_SQL_SELECT_JOURNALARTICLE_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_DDMSI",
 					new String[] {Long.class.getName(), Long.class.getName()},
 					new String[] {"groupId", "DDMStructureId"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_DDMSI",
-					new String[] {Long.class.getName(), Long.class.getName()},
-					new String[] {"groupId", "DDMStructureId"}, false),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
+				"",
 				new FinderColumn<>(
 					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getGroupId),
@@ -6619,42 +4655,14 @@ public class JournalArticlePersistenceImpl
 					"journalArticle.", "DDMStructureId", FinderColumn.Type.LONG,
 					"=", true, true, JournalArticle::getDDMStructureId));
 
-		_collectionPersistenceFinderByG_DDMTK =
-			new FilterCollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_DDMTK",
-					new String[] {
-						Long.class.getName(), String.class.getName(),
-						Integer.class.getName(), Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {"groupId", "DDMTemplateKey"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_DDMTK",
-					new String[] {Long.class.getName(), String.class.getName()},
-					new String[] {"groupId", "DDMTemplateKey"}, 0, 2, true,
-					null),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_DDMTK",
-					new String[] {Long.class.getName(), String.class.getName()},
-					new String[] {"groupId", "DDMTemplateKey"}, 0, 2, false,
-					null),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
-				new FinderColumn<>(
-					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
-					true, true, JournalArticle::getGroupId),
-				new FinderColumn<>(
-					"journalArticle.", "DDMTemplateKey",
-					FinderColumn.Type.STRING, "=", true, true,
-					JournalArticle::getDDMTemplateKey));
-
 		_collectionPersistenceFinderByG_L =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, JournalArticle::getResourcePrimKey,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_L",
+					new String[] {Long.class.getName(), String.class.getName()},
+					new String[] {"groupId", "layoutUuid"}, 0, 2, false, null),
+				"", JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_L",
 					new String[] {
@@ -6663,143 +4671,19 @@ public class JournalArticlePersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "layoutUuid"}, true),
+				_SQL_COUNT_JOURNALARTICLE_WHERE,
+				_SQL_SELECT_JOURNALARTICLE_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_L",
 					new String[] {Long.class.getName(), String.class.getName()},
 					new String[] {"groupId", "layoutUuid"}, 0, 2, true, null),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_L",
-					new String[] {Long.class.getName(), String.class.getName()},
-					new String[] {"groupId", "layoutUuid"}, 0, 2, false, null),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
+				"",
 				new FinderColumn<>(
 					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getGroupId),
 				new FinderColumn<>(
 					"journalArticle.", "layoutUuid", FinderColumn.Type.STRING,
 					"=", true, true, JournalArticle::getLayoutUuid));
-
-		_collectionPersistenceFinderByG_ST =
-			new FilterCollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_ST",
-					new String[] {
-						Long.class.getName(), Integer.class.getName(),
-						Integer.class.getName(), Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {"groupId", "status"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_ST",
-					new String[] {
-						Long.class.getName(), Integer.class.getName()
-					},
-					new String[] {"groupId", "status"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_ST",
-					new String[] {
-						Long.class.getName(), Integer.class.getName()
-					},
-					new String[] {"groupId", "status"}, false),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
-				new FinderColumn<>(
-					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
-					true, true, JournalArticle::getGroupId),
-				new FinderColumn<>(
-					"journalArticle.", "status", FinderColumn.Type.INTEGER, "=",
-					true, true, JournalArticle::getStatus));
-
-		_collectionPersistenceFinderByC_V = new CollectionPersistenceFinder<>(
-			this,
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_V",
-				new String[] {
-					Long.class.getName(), Double.class.getName(),
-					Integer.class.getName(), Integer.class.getName(),
-					OrderByComparator.class.getName()
-				},
-				new String[] {"companyId", "version"}, true),
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByC_V",
-				new String[] {Long.class.getName(), Double.class.getName()},
-				new String[] {"companyId", "version"}, true),
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_V",
-				new String[] {Long.class.getName(), Double.class.getName()},
-				new String[] {"companyId", "version"}, false),
-			_SQL_SELECT_JOURNALARTICLE_WHERE, _SQL_COUNT_JOURNALARTICLE_WHERE,
-			JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-			null,
-			new FinderColumn<>(
-				"journalArticle.", "companyId", FinderColumn.Type.LONG, "=",
-				true, true, JournalArticle::getCompanyId),
-			new FinderColumn<>(
-				"journalArticle.", "version", FinderColumn.Type.DOUBLE, "=",
-				true, true, JournalArticle::getVersion));
-
-		_collectionPersistenceFinderByC_ST = new CollectionPersistenceFinder<>(
-			this,
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_ST",
-				new String[] {
-					Long.class.getName(), Integer.class.getName(),
-					Integer.class.getName(), Integer.class.getName(),
-					OrderByComparator.class.getName()
-				},
-				new String[] {"companyId", "status"}, true),
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByC_ST",
-				new String[] {Long.class.getName(), Integer.class.getName()},
-				new String[] {"companyId", "status"}, true),
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_ST",
-				new String[] {Long.class.getName(), Integer.class.getName()},
-				new String[] {"companyId", "status"}, false),
-			_SQL_SELECT_JOURNALARTICLE_WHERE, _SQL_COUNT_JOURNALARTICLE_WHERE,
-			JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-			null,
-			new FinderColumn<>(
-				"journalArticle.", "companyId", FinderColumn.Type.LONG, "=",
-				true, true, JournalArticle::getCompanyId),
-			new FinderColumn<>(
-				"journalArticle.", "status", FinderColumn.Type.INTEGER, "=",
-				true, true, JournalArticle::getStatus));
-
-		_collectionPersistenceFinderByC_NotST =
-			new CollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_NotST",
-					new String[] {
-						Long.class.getName(), Integer.class.getName(),
-						Integer.class.getName(), Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {"companyId", "status"}, true),
-				null,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByC_NotST",
-					new String[] {
-						Long.class.getName(), Integer.class.getName()
-					},
-					new String[] {"companyId", "status"}, false),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
-				new FinderColumn<>(
-					"journalArticle.", "companyId", FinderColumn.Type.LONG, "=",
-					true, true, JournalArticle::getCompanyId),
-				new FinderColumn<>(
-					"journalArticle.", "status", FinderColumn.Type.INTEGER,
-					"!=", true, true, JournalArticle::getStatus));
 
 		_collectionPersistenceFinderByLtD_S = new CollectionPersistenceFinder<>(
 			this,
@@ -6826,46 +4710,17 @@ public class JournalArticlePersistenceImpl
 				"journalArticle.", "status", FinderColumn.Type.INTEGER, "=",
 				true, true, JournalArticle::getStatus));
 
-		_collectionPersistenceFinderByR_I_S = new CollectionPersistenceFinder<>(
-			this,
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByR_I_S",
-				new String[] {
-					Long.class.getName(), Boolean.class.getName(),
-					Integer.class.getName(), Integer.class.getName(),
-					Integer.class.getName(), OrderByComparator.class.getName()
-				},
-				new String[] {"resourcePrimKey", "indexable", "status"}, true),
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByR_I_S",
-				new String[] {
-					Long.class.getName(), Boolean.class.getName(),
-					Integer.class.getName()
-				},
-				new String[] {"resourcePrimKey", "indexable", "status"}, true),
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByR_I_S",
-				new String[] {
-					Long.class.getName(), Boolean.class.getName(),
-					Integer.class.getName()
-				},
-				new String[] {"resourcePrimKey", "indexable", "status"}, false),
-			_SQL_SELECT_JOURNALARTICLE_WHERE, _SQL_COUNT_JOURNALARTICLE_WHERE,
-			JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-			null,
-			new FinderColumn<>(
-				"journalArticle.", "resourcePrimKey", FinderColumn.Type.LONG,
-				"=", true, true, JournalArticle::getResourcePrimKey),
-			new FinderColumn<>(
-				"journalArticle.", "indexable", FinderColumn.Type.BOOLEAN, "=",
-				true, true, JournalArticle::isIndexable),
-			new ArrayableFinderColumn<>(
-				"journalArticle.", "status", FinderColumn.Type.INTEGER, "=",
-				false, true, true, JournalArticle::getStatus));
-
 		_collectionPersistenceFinderByG_U_C =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, JournalArticle::getResourcePrimKey,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_U_C",
+					new String[] {
+						Long.class.getName(), Long.class.getName(),
+						Long.class.getName()
+					},
+					new String[] {"groupId", "userId", "classNameId"}, false),
+				"", JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_U_C",
 					new String[] {
@@ -6875,6 +4730,8 @@ public class JournalArticlePersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "userId", "classNameId"}, true),
+				_SQL_COUNT_JOURNALARTICLE_WHERE,
+				_SQL_SELECT_JOURNALARTICLE_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_U_C",
 					new String[] {
@@ -6882,17 +4739,7 @@ public class JournalArticlePersistenceImpl
 						Long.class.getName()
 					},
 					new String[] {"groupId", "userId", "classNameId"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_U_C",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						Long.class.getName()
-					},
-					new String[] {"groupId", "userId", "classNameId"}, false),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
+				"",
 				new FinderColumn<>(
 					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getGroupId),
@@ -6929,7 +4776,16 @@ public class JournalArticlePersistenceImpl
 
 		_collectionPersistenceFinderByG_ERC_ST =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, JournalArticle::getResourcePrimKey,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_ERC_ST",
+					new String[] {
+						Long.class.getName(), String.class.getName(),
+						Integer.class.getName()
+					},
+					new String[] {"groupId", "externalReferenceCode", "status"},
+					0, 2, false, null),
+				"", JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_ERC_ST",
 					new String[] {
@@ -6940,6 +4796,8 @@ public class JournalArticlePersistenceImpl
 					},
 					new String[] {"groupId", "externalReferenceCode", "status"},
 					true),
+				_SQL_COUNT_JOURNALARTICLE_WHERE,
+				_SQL_SELECT_JOURNALARTICLE_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_ERC_ST",
 					new String[] {
@@ -6948,18 +4806,7 @@ public class JournalArticlePersistenceImpl
 					},
 					new String[] {"groupId", "externalReferenceCode", "status"},
 					0, 2, true, null),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_ERC_ST",
-					new String[] {
-						Long.class.getName(), String.class.getName(),
-						Integer.class.getName()
-					},
-					new String[] {"groupId", "externalReferenceCode", "status"},
-					0, 2, false, null),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
+				"",
 				new FinderColumn<>(
 					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getGroupId),
@@ -6973,7 +4820,15 @@ public class JournalArticlePersistenceImpl
 
 		_collectionPersistenceFinderByG_F_ST =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, JournalArticle::getResourcePrimKey,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_F_ST",
+					new String[] {
+						Long.class.getName(), Long.class.getName(),
+						Integer.class.getName()
+					},
+					new String[] {"groupId", "folderId", "status"}, false),
+				"", JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_F_ST",
 					new String[] {
@@ -6983,6 +4838,8 @@ public class JournalArticlePersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "folderId", "status"}, true),
+				_SQL_COUNT_JOURNALARTICLE_WHERE,
+				_SQL_SELECT_JOURNALARTICLE_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_F_ST",
 					new String[] {
@@ -6990,17 +4847,7 @@ public class JournalArticlePersistenceImpl
 						Integer.class.getName()
 					},
 					new String[] {"groupId", "folderId", "status"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_F_ST",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						Integer.class.getName()
-					},
-					new String[] {"groupId", "folderId", "status"}, false),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
+				"",
 				new FinderColumn<>(
 					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getGroupId),
@@ -7013,7 +4860,15 @@ public class JournalArticlePersistenceImpl
 
 		_collectionPersistenceFinderByG_C_C =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, JournalArticle::getResourcePrimKey,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_C_C",
+					new String[] {
+						Long.class.getName(), Long.class.getName(),
+						Long.class.getName()
+					},
+					new String[] {"groupId", "classNameId", "classPK"}, false),
+				"", JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_C_C",
 					new String[] {
@@ -7023,6 +4878,8 @@ public class JournalArticlePersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "classNameId", "classPK"}, true),
+				_SQL_COUNT_JOURNALARTICLE_WHERE,
+				_SQL_SELECT_JOURNALARTICLE_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_C_C",
 					new String[] {
@@ -7030,17 +4887,7 @@ public class JournalArticlePersistenceImpl
 						Long.class.getName()
 					},
 					new String[] {"groupId", "classNameId", "classPK"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_C_C",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						Long.class.getName()
-					},
-					new String[] {"groupId", "classNameId", "classPK"}, false),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
+				"",
 				new FinderColumn<>(
 					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getGroupId),
@@ -7051,121 +4898,18 @@ public class JournalArticlePersistenceImpl
 					"journalArticle.", "classPK", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getClassPK));
 
-		_uniquePersistenceFinderByG_C_DDMSI = new UniquePersistenceFinder<>(
-			this,
-			createUniqueFinderPath(
-				FINDER_CLASS_NAME_ENTITY, "fetchByG_C_DDMSI",
-				new String[] {
-					Long.class.getName(), Long.class.getName(),
-					Long.class.getName()
-				},
-				new String[] {"groupId", "classNameId", "DDMStructureId"}, 0, 0,
-				false, JournalArticle::getGroupId,
-				JournalArticle::getClassNameId,
-				JournalArticle::getDDMStructureId),
-			_SQL_SELECT_JOURNALARTICLE_WHERE, "",
-			new FinderColumn<>(
-				"journalArticle.", "groupId", FinderColumn.Type.LONG, "=", true,
-				true, JournalArticle::getGroupId),
-			new FinderColumn<>(
-				"journalArticle.", "classNameId", FinderColumn.Type.LONG, "=",
-				true, true, JournalArticle::getClassNameId),
-			new FinderColumn<>(
-				"journalArticle.", "DDMStructureId", FinderColumn.Type.LONG,
-				"=", true, true, JournalArticle::getDDMStructureId));
-
-		_collectionPersistenceFinderByG_C_DDMTK =
-			new FilterCollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_C_DDMTK",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						String.class.getName(), Integer.class.getName(),
-						Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {"groupId", "classNameId", "DDMTemplateKey"},
-					true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION,
-					"findByG_C_DDMTK",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						String.class.getName()
-					},
-					new String[] {"groupId", "classNameId", "DDMTemplateKey"},
-					0, 4, true, null),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION,
-					"countByG_C_DDMTK",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						String.class.getName()
-					},
-					new String[] {"groupId", "classNameId", "DDMTemplateKey"},
-					0, 4, false, null),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
-				new FinderColumn<>(
-					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
-					true, true, JournalArticle::getGroupId),
-				new FinderColumn<>(
-					"journalArticle.", "classNameId", FinderColumn.Type.LONG,
-					"=", true, true, JournalArticle::getClassNameId),
-				new FinderColumn<>(
-					"journalArticle.", "DDMTemplateKey",
-					FinderColumn.Type.STRING, "=", true, true,
-					JournalArticle::getDDMTemplateKey));
-
-		_collectionPersistenceFinderByG_C_L =
-			new FilterCollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_C_L",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						String.class.getName(), Integer.class.getName(),
-						Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {"groupId", "classNameId", "layoutUuid"},
-					true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_C_L",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						String.class.getName()
-					},
-					new String[] {"groupId", "classNameId", "layoutUuid"}, 0, 4,
-					true, null),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_C_L",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						String.class.getName()
-					},
-					new String[] {"groupId", "classNameId", "layoutUuid"}, 0, 4,
-					false, null),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
-				new FinderColumn<>(
-					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
-					true, true, JournalArticle::getGroupId),
-				new FinderColumn<>(
-					"journalArticle.", "classNameId", FinderColumn.Type.LONG,
-					"=", true, true, JournalArticle::getClassNameId),
-				new FinderColumn<>(
-					"journalArticle.", "layoutUuid", FinderColumn.Type.STRING,
-					"=", true, true, JournalArticle::getLayoutUuid));
-
 		_collectionPersistenceFinderByG_C_NotL =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, JournalArticle::getResourcePrimKey,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_C_NotL",
+					new String[] {
+						Long.class.getName(), Long.class.getName(),
+						String.class.getName()
+					},
+					new String[] {"groupId", "classNameId", "layoutUuid"},
+					false),
+				"", JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_C_NotL",
 					new String[] {
@@ -7176,19 +4920,8 @@ public class JournalArticlePersistenceImpl
 					},
 					new String[] {"groupId", "classNameId", "layoutUuid"},
 					true),
-				null,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_C_NotL",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						String.class.getName()
-					},
-					new String[] {"groupId", "classNameId", "layoutUuid"},
-					false),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
 				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
+				_SQL_SELECT_JOURNALARTICLE_WHERE, null, null, "",
 				new FinderColumn<>(
 					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getGroupId),
@@ -7224,7 +4957,16 @@ public class JournalArticlePersistenceImpl
 
 		_collectionPersistenceFinderByG_A_ST =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, JournalArticle::getResourcePrimKey,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_A_ST",
+					new String[] {
+						Long.class.getName(), String.class.getName(),
+						Integer.class.getName()
+					},
+					new String[] {"groupId", "articleId", "status"}, 0, 2,
+					false, null),
+				"", JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_A_ST",
 					new String[] {
@@ -7234,6 +4976,8 @@ public class JournalArticlePersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "articleId", "status"}, true),
+				_SQL_COUNT_JOURNALARTICLE_WHERE,
+				_SQL_SELECT_JOURNALARTICLE_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_A_ST",
 					new String[] {
@@ -7242,18 +4986,7 @@ public class JournalArticlePersistenceImpl
 					},
 					new String[] {"groupId", "articleId", "status"}, 0, 2, true,
 					null),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_A_ST",
-					new String[] {
-						Long.class.getName(), String.class.getName(),
-						Integer.class.getName()
-					},
-					new String[] {"groupId", "articleId", "status"}, 0, 2,
-					false, null),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
+				"",
 				new FinderColumn<>(
 					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getGroupId),
@@ -7266,7 +4999,15 @@ public class JournalArticlePersistenceImpl
 
 		_collectionPersistenceFinderByG_A_NotST =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, JournalArticle::getResourcePrimKey,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_A_NotST",
+					new String[] {
+						Long.class.getName(), String.class.getName(),
+						Integer.class.getName()
+					},
+					new String[] {"groupId", "articleId", "status"}, false),
+				"", JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_A_NotST",
 					new String[] {
@@ -7276,18 +5017,8 @@ public class JournalArticlePersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "articleId", "status"}, true),
-				null,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_A_NotST",
-					new String[] {
-						Long.class.getName(), String.class.getName(),
-						Integer.class.getName()
-					},
-					new String[] {"groupId", "articleId", "status"}, false),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
 				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
+				_SQL_SELECT_JOURNALARTICLE_WHERE, null, null, "",
 				new FinderColumn<>(
 					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getGroupId),
@@ -7300,7 +5031,16 @@ public class JournalArticlePersistenceImpl
 
 		_collectionPersistenceFinderByG_UT_ST =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, JournalArticle::getResourcePrimKey,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_UT_ST",
+					new String[] {
+						Long.class.getName(), String.class.getName(),
+						Integer.class.getName()
+					},
+					new String[] {"groupId", "urlTitle", "status"}, 0, 2, false,
+					null),
+				"", JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_UT_ST",
 					new String[] {
@@ -7310,6 +5050,8 @@ public class JournalArticlePersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "urlTitle", "status"}, true),
+				_SQL_COUNT_JOURNALARTICLE_WHERE,
+				_SQL_SELECT_JOURNALARTICLE_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_UT_ST",
 					new String[] {
@@ -7318,18 +5060,7 @@ public class JournalArticlePersistenceImpl
 					},
 					new String[] {"groupId", "urlTitle", "status"}, 0, 2, true,
 					null),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_UT_ST",
-					new String[] {
-						Long.class.getName(), String.class.getName(),
-						Integer.class.getName()
-					},
-					new String[] {"groupId", "urlTitle", "status"}, 0, 2, false,
-					null),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
+				"",
 				new FinderColumn<>(
 					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
 					true, true, JournalArticle::getGroupId),
@@ -7339,90 +5070,6 @@ public class JournalArticlePersistenceImpl
 				new FinderColumn<>(
 					"journalArticle.", "status", FinderColumn.Type.INTEGER, "=",
 					true, true, JournalArticle::getStatus));
-
-		_collectionPersistenceFinderByC_V_ST =
-			new CollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_V_ST",
-					new String[] {
-						Long.class.getName(), Double.class.getName(),
-						Integer.class.getName(), Integer.class.getName(),
-						Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {"companyId", "version", "status"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByC_V_ST",
-					new String[] {
-						Long.class.getName(), Double.class.getName(),
-						Integer.class.getName()
-					},
-					new String[] {"companyId", "version", "status"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_V_ST",
-					new String[] {
-						Long.class.getName(), Double.class.getName(),
-						Integer.class.getName()
-					},
-					new String[] {"companyId", "version", "status"}, false),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
-				new FinderColumn<>(
-					"journalArticle.", "companyId", FinderColumn.Type.LONG, "=",
-					true, true, JournalArticle::getCompanyId),
-				new FinderColumn<>(
-					"journalArticle.", "version", FinderColumn.Type.DOUBLE, "=",
-					true, true, JournalArticle::getVersion),
-				new FinderColumn<>(
-					"journalArticle.", "status", FinderColumn.Type.INTEGER, "=",
-					true, true, JournalArticle::getStatus));
-
-		_collectionPersistenceFinderByG_F_C_NotST =
-			new FilterCollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_F_C_NotST",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						Long.class.getName(), Integer.class.getName(),
-						Integer.class.getName(), Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {
-						"groupId", "folderId", "classNameId", "status"
-					},
-					true),
-				null,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION,
-					"countByG_F_C_NotST",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						Long.class.getName(), Integer.class.getName()
-					},
-					new String[] {
-						"groupId", "folderId", "classNameId", "status"
-					},
-					false),
-				_SQL_SELECT_JOURNALARTICLE_WHERE,
-				_SQL_COUNT_JOURNALARTICLE_WHERE,
-				JournalArticleModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "",
-				"", null,
-				new FinderColumn<>(
-					"journalArticle.", "groupId", FinderColumn.Type.LONG, "=",
-					true, true, JournalArticle::getGroupId),
-				new FinderColumn<>(
-					"journalArticle.", "folderId", FinderColumn.Type.LONG, "=",
-					true, true, JournalArticle::getFolderId),
-				new FinderColumn<>(
-					"journalArticle.", "classNameId", FinderColumn.Type.LONG,
-					"=", true, true, JournalArticle::getClassNameId),
-				new FinderColumn<>(
-					"journalArticle.", "status", FinderColumn.Type.INTEGER,
-					"!=", true, true, JournalArticle::getStatus));
 
 		JournalArticleUtil.setPersistence(this);
 	}
@@ -7490,4 +5137,4 @@ public class JournalArticlePersistenceImpl
 	}
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-162217073
+// LIFERAY-SERVICE-BUILDER-HASH:883296951

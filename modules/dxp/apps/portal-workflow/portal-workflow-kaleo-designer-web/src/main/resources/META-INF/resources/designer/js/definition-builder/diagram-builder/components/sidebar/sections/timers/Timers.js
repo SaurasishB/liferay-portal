@@ -75,9 +75,17 @@ const Timers = ({setContentName, setErrors}) => {
 						else if (
 							reassignments.assignmentType[0] === 'roleId'
 						) {
+							reassignments.roleExternalReferenceCode =
+								filteredTimerActions.map(
+									({roleExternalReferenceCode}) =>
+										roleExternalReferenceCode
+								)[0];
 							reassignments.roleId = filteredTimerActions.map(
 								({roleId}) => roleId
 							);
+							reassignments.roleType = filteredTimerActions.map(
+								({roleType}) => roleType
+							)[0];
 						}
 						else if (
 							reassignments.assignmentType[0] ===
@@ -94,6 +102,26 @@ const Timers = ({setContentName, setErrors}) => {
 								filteredTimerActions.map(({scriptLanguage}) => [
 									scriptLanguage || DEFAULT_LANGUAGE,
 								])[0];
+						}
+						else if (
+							reassignments.assignmentType[0] === 'user' &&
+							Object.keys(filteredTimerActions[0]).includes(
+								'sectionData'
+							) &&
+							filteredTimerActions[0].sectionData.every(
+								({userExternalReferenceCode}) =>
+									userExternalReferenceCode
+							)
+						) {
+							reassignments.userExternalReferenceCode =
+								filteredTimerActions[0].sectionData.map(
+									({userExternalReferenceCode}) =>
+										userExternalReferenceCode
+								);
+							reassignments.userId =
+								filteredTimerActions[0].sectionData.map(
+									({userId}) => userId
+								);
 						}
 						else if (
 							reassignments.assignmentType[0] === 'user' &&
@@ -243,9 +271,15 @@ const Timers = ({setContentName, setErrors}) => {
 					)[1];
 				}
 				else if (section.assignmentType === 'roleId') {
+					section.roleExternalReferenceCode = data.find(
+						(entry) => entry[0] === 'roleExternalReferenceCode'
+					)?.[1];
 					section.roleId = data.find(
 						(entry) => entry[0] === 'roleId'
 					)[1];
+					section.roleType = data.find(
+						(entry) => entry[0] === 'roleType'
+					)?.[1];
 				}
 				else if (section.assignmentType === 'scriptedAssignment') {
 					section.assignmentType = 'scriptedReassignment';
@@ -263,6 +297,23 @@ const Timers = ({setContentName, setErrors}) => {
 						.map((email, index) => ({
 							emailAddress: email,
 							identifier: `${Date.now()}-${index}`,
+						}));
+				}
+				else if (
+					section.assignmentType === 'user' &&
+					data.some((entry) => entry[0] === 'userId')
+				) {
+					const userExternalReferenceCodes = data.find(
+						(entry) => entry[0] === 'userExternalReferenceCode'
+					)?.[1];
+
+					section.sectionData = data
+						.find((entry) => entry[0] === 'userId')[1]
+						.map((userId, index) => ({
+							identifier: `${Date.now()}-${index}`,
+							userExternalReferenceCode:
+								userExternalReferenceCodes?.[index],
+							userId,
 						}));
 				}
 				else if (

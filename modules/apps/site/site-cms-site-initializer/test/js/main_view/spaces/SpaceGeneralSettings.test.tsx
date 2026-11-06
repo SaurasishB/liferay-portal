@@ -144,7 +144,7 @@ describe('SpaceGeneralSettings', () => {
 		await waitFor(() => {
 			const {externalReferenceCode, ...space} = SPACE;
 
-			expect(SpaceService.updateSpace).toBeCalledWith(
+			expect(SpaceService.updateSpace).toHaveBeenCalledWith(
 				externalReferenceCode,
 				{
 					...space,
@@ -213,7 +213,7 @@ describe('SpaceGeneralSettings', () => {
 		await userEvent.click(screen.getByRole('button', {name: 'save'}));
 
 		await waitFor(() => {
-			expect(SpaceService.updateSpace).toBeCalled();
+			expect(SpaceService.updateSpace).toHaveBeenCalled();
 			expect(
 				screen.queryByText('My Space-was-saved-successfully')
 			).not.toBeInTheDocument();
@@ -253,7 +253,7 @@ describe('SpaceGeneralSettings', () => {
 			await userEvent.click(screen.getByRole('button', {name: 'save'}));
 
 			await waitFor(() => {
-				expect(SpaceService.updateSpace).toBeCalledWith(
+				expect(SpaceService.updateSpace).toHaveBeenCalledWith(
 					expect.any(String),
 					expect.objectContaining({
 						settings: expect.objectContaining({
@@ -329,7 +329,58 @@ describe('SpaceGeneralSettings', () => {
 			expect(
 				screen.getByText(/please-enter-no-more-than/)
 			).toBeInTheDocument();
-			expect(SpaceService.updateSpace).not.toBeCalled();
+			expect(SpaceService.updateSpace).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Location provider', () => {
+		beforeEach(() => {
+			Liferay.FeatureFlags['LPD-11388'] = true;
+		});
+
+		afterEach(() => {
+			delete Liferay.FeatureFlags['LPD-11388'];
+		});
+
+		it('saves the instance default with an empty API key', async () => {
+			renderComponent({
+				space: {
+					...SPACE,
+					settings: {
+						...SPACE.settings!,
+						googleMapsAPIKey: 'google-maps-api-key',
+						mapProviderKey: 'GoogleMaps',
+					},
+				} as Partial<Space>,
+			});
+
+			await userEvent.click(
+				screen.getByRole('radio', {name: /^instance-default/})
+			);
+
+			await userEvent.click(screen.getByRole('button', {name: 'save'}));
+
+			await waitFor(() => {
+				expect(SpaceService.updateSpace).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
+						settings: expect.objectContaining({
+							googleMapsAPIKey: '',
+							mapProviderKey: '',
+						}),
+					})
+				);
+			});
+
+			await closeToast();
+		});
+
+		it('selects the instance default when the space has no provider', () => {
+			renderComponent();
+
+			expect(
+				screen.getByRole('radio', {name: /^instance-default/})
+			).toBeChecked();
 		});
 	});
 });

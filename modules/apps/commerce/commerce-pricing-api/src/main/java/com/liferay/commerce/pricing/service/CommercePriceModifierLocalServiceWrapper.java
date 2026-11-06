@@ -172,14 +172,6 @@ public class CommercePriceModifierLocalServiceWrapper
 	}
 
 	@Override
-	public void deleteCommercePriceModifiers(long companyId)
-		throws com.liferay.portal.kernel.exception.PortalException {
-
-		_commercePriceModifierLocalService.deleteCommercePriceModifiers(
-			companyId);
-	}
-
-	@Override
 	public void deleteCommercePriceModifiersByCommercePriceListId(
 			long commercePriceListId)
 		throws com.liferay.portal.kernel.exception.PortalException {
@@ -426,14 +418,6 @@ public class CommercePriceModifierLocalServiceWrapper
 			commercePriceListId, start, end, orderByComparator);
 	}
 
-	@Override
-	public java.util.List<CommercePriceModifier> getCommercePriceModifiers(
-		long companyId, String target) {
-
-		return _commercePriceModifierLocalService.getCommercePriceModifiers(
-			companyId, target);
-	}
-
 	/**
 	 * Returns all the commerce price modifiers matching the UUID and company.
 	 *
@@ -633,4 +617,4 @@ public class CommercePriceModifierLocalServiceWrapper
 		_commercePriceModifierLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-252302759
+// LIFERAY-SERVICE-BUILDER-HASH:-656068919

@@ -284,23 +284,6 @@ public class CommerceDiscountRelLocalServiceWrapper
 	}
 
 	@Override
-	public com.liferay.commerce.discount.model.CommerceDiscountRel
-		fetchCommerceDiscountRel(
-			long commerceDiscountId, String className, long classPK) {
-
-		return _commerceDiscountRelLocalService.fetchCommerceDiscountRel(
-			commerceDiscountId, className, classPK);
-	}
-
-	@Override
-	public com.liferay.commerce.discount.model.CommerceDiscountRel
-		fetchCommerceDiscountRel(String className, long classPK) {
-
-		return _commerceDiscountRelLocalService.fetchCommerceDiscountRel(
-			className, classPK);
-	}
-
-	@Override
 	public com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery
 		getActionableDynamicQuery() {
 
@@ -409,6 +392,16 @@ public class CommerceDiscountRelLocalServiceWrapper
 			commerceDiscountId, className, start, end, orderByComparator);
 	}
 
+	@Override
+	public java.util.List
+		<com.liferay.commerce.discount.model.CommerceDiscountRel>
+			getCommerceDiscountRels(
+				long commerceDiscountId, String className, long classPK) {
+
+		return _commerceDiscountRelLocalService.getCommerceDiscountRels(
+			commerceDiscountId, className, classPK);
+	}
+
 	/**
 	 * Returns the number of commerce discount rels.
 	 *
@@ -417,14 +410,6 @@ public class CommerceDiscountRelLocalServiceWrapper
 	@Override
 	public int getCommerceDiscountRelsCount() {
 		return _commerceDiscountRelLocalService.getCommerceDiscountRelsCount();
-	}
-
-	@Override
-	public int getCommerceDiscountRelsCount(
-		long commerceDiscountId, String className) {
-
-		return _commerceDiscountRelLocalService.getCommerceDiscountRelsCount(
-			commerceDiscountId, className);
 	}
 
 	@Override
@@ -569,4 +554,4 @@ public class CommerceDiscountRelLocalServiceWrapper
 	private CommerceDiscountRelLocalService _commerceDiscountRelLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1983296535
+// LIFERAY-SERVICE-BUILDER-HASH:1558458645

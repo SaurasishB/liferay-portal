@@ -5,6 +5,7 @@
 
 package com.liferay.jenkins.results.parser;
 
+import java.net.MalformedURLException;
 import java.net.URL;
 
 import java.util.ArrayList;
@@ -96,30 +97,21 @@ public abstract class BaseDownstreamBuildReport
 	}
 
 	@Override
+	public synchronized TestClassReport getTestClassReport(
+		String testClassName) {
+
+		Map<String, TestClassReport> testClassReportsMap =
+			_getTestClassReportsMap();
+
+		return testClassReportsMap.get(testClassName);
+	}
+
+	@Override
 	public synchronized List<TestClassReport> getTestClassReports() {
-		if (_testClassReportsMap != null) {
-			return new ArrayList<>(_testClassReportsMap.values());
-		}
+		Map<String, TestClassReport> testClassReportsMap =
+			_getTestClassReportsMap();
 
-		_testClassReportsMap = new TreeMap<>();
-
-		for (TestReport testReport : getTestReports()) {
-			String testClassName = testReport.getTestClassName();
-
-			TestClassReport testClassReport = _testClassReportsMap.get(
-				testClassName);
-
-			if (testClassReport == null) {
-				testClassReport = TestReportFactory.newTestClassReport(
-					this, testClassName);
-
-				_testClassReportsMap.put(testClassName, testClassReport);
-			}
-
-			testClassReport.addTestReport(testReport);
-		}
-
-		return new ArrayList<>(_testClassReportsMap.values());
+		return new ArrayList<>(testClassReportsMap.values());
 	}
 
 	@Override
@@ -158,6 +150,29 @@ public abstract class BaseDownstreamBuildReport
 		_testReports = testReports;
 
 		return _testReports;
+	}
+
+	@Override
+	public URL getTestrayCaseResultURL() {
+		JSONObject buildReportJSONObject = getBuildReportJSONObject();
+
+		if (buildReportJSONObject == null) {
+			return null;
+		}
+
+		String testrayCaseResultURL = buildReportJSONObject.optString(
+			"testrayCaseResultURL");
+
+		if (JenkinsResultsParserUtil.isNullOrEmpty(testrayCaseResultURL)) {
+			return null;
+		}
+
+		try {
+			return new URL(testrayCaseResultURL);
+		}
+		catch (MalformedURLException malformedURLException) {
+			return null;
+		}
 	}
 
 	@Override
@@ -272,6 +287,32 @@ public abstract class BaseDownstreamBuildReport
 		}
 
 		return testReports;
+	}
+
+	private Map<String, TestClassReport> _getTestClassReportsMap() {
+		if (_testClassReportsMap != null) {
+			return _testClassReportsMap;
+		}
+
+		_testClassReportsMap = new TreeMap<>();
+
+		for (TestReport testReport : getTestReports()) {
+			String testClassName = testReport.getTestClassName();
+
+			TestClassReport testClassReport = _testClassReportsMap.get(
+				testClassName);
+
+			if (testClassReport == null) {
+				testClassReport = TestReportFactory.newTestClassReport(
+					this, testClassName);
+
+				_testClassReportsMap.put(testClassName, testClassReport);
+			}
+
+			testClassReport.addTestReport(testReport);
+		}
+
+		return _testClassReportsMap;
 	}
 
 	private JSONObject _toTestResultJSONObject(JSONObject caseJSONObject) {

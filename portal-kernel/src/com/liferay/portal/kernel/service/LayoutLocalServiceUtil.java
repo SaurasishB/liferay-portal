@@ -646,6 +646,10 @@ public class LayoutLocalServiceUtil {
 		return getService().fetchDraftLayout(plid);
 	}
 
+	public static Layout fetchDraftLayout(long plid, long launchSetId) {
+		return getService().fetchDraftLayout(plid, launchSetId);
+	}
+
 	public static Map<Layout, Layout> fetchDraftLayouts(List<Layout> layouts) {
 		return getService().fetchDraftLayouts(layouts);
 	}
@@ -1477,13 +1481,6 @@ public class LayoutLocalServiceUtil {
 	}
 
 	public static boolean hasLayouts(
-			com.liferay.portal.kernel.model.Group group)
-		throws PortalException {
-
-		return getService().hasLayouts(group);
-	}
-
-	public static boolean hasLayouts(
 			com.liferay.portal.kernel.model.Group group, boolean privateLayout)
 		throws PortalException {
 
@@ -2109,4 +2106,4 @@ public class LayoutLocalServiceUtil {
 	private static volatile LayoutLocalService _service;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-374945548
+// LIFERAY-SERVICE-BUILDER-HASH:-291377457

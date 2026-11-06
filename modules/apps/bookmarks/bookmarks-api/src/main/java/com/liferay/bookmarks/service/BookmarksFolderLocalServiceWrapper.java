@@ -393,19 +393,6 @@ public class BookmarksFolderLocalServiceWrapper
 	}
 
 	@Override
-	public java.util.List<BookmarksFolder> getCompanyFolders(
-		long companyId, int start, int end) {
-
-		return _bookmarksFolderLocalService.getCompanyFolders(
-			companyId, start, end);
-	}
-
-	@Override
-	public int getCompanyFoldersCount(long companyId) {
-		return _bookmarksFolderLocalService.getCompanyFoldersCount(companyId);
-	}
-
-	@Override
 	public com.liferay.portal.kernel.dao.orm.ExportActionableDynamicQuery
 		getExportActionableDynamicQuery(
 			com.liferay.exportimport.kernel.lar.PortletDataContext
@@ -464,14 +451,6 @@ public class BookmarksFolderLocalServiceWrapper
 
 		return _bookmarksFolderLocalService.getFoldersAndEntries(
 			groupId, folderId, status);
-	}
-
-	@Override
-	public java.util.List<Object> getFoldersAndEntries(
-		long groupId, long folderId, int status, int start, int end) {
-
-		return _bookmarksFolderLocalService.getFoldersAndEntries(
-			groupId, folderId, status, start, end);
 	}
 
 	@Override
@@ -706,4 +685,4 @@ public class BookmarksFolderLocalServiceWrapper
 	private BookmarksFolderLocalService _bookmarksFolderLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1769914154
+// LIFERAY-SERVICE-BUILDER-HASH:1915357942

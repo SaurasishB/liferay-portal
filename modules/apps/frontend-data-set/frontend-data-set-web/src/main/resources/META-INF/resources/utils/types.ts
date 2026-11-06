@@ -11,6 +11,8 @@ import {IInlineNotificationComponent} from '../inline_notification/InlineNotific
 import {EEntityFieldType} from '../management_bar/controls/filters/utils/types';
 import {ISnapshots, IUserConfiguration} from '../views/ViewsContext';
 
+import type {FDSVisualizationModeSchema} from '@liferay/js-api/data-set';
+
 export declare function FrontendDataSet({
 	actionParameterName,
 	apiURL,
@@ -73,6 +75,7 @@ export interface IEmptyState {
 	description?: string;
 	image?: string;
 	imageReducedMotion?: string;
+	symbol?: string;
 	title?: string;
 }
 
@@ -286,7 +289,11 @@ export interface IListSchema {
 	tooltip?: string;
 }
 
-export type ISchema = ITableSchema | ICardSchema | IListSchema;
+export type ISchema =
+	| ITableSchema
+	| ICardSchema
+	| IListSchema
+	| FDSVisualizationModeSchema;
 
 export interface IView {
 	component?: any;

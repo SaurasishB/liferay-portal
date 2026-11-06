@@ -236,13 +236,6 @@ public class DDLRecordPersistenceTest {
 	}
 
 	@Test
-	public void testCountByCompanyId() throws Exception {
-		_persistence.countByCompanyId(RandomTestUtil.nextLong());
-
-		_persistence.countByCompanyId(0L);
-	}
-
-	@Test
 	public void testCountByRecordSetId() throws Exception {
 		_persistence.countByRecordSetId(RandomTestUtil.nextLong());
 
@@ -255,24 +248,6 @@ public class DDLRecordPersistenceTest {
 			RandomTestUtil.nextLong(), RandomTestUtil.nextLong());
 
 		_persistence.countByR_U(0L, 0L);
-	}
-
-	@Test
-	public void testCountByR_R() throws Exception {
-		_persistence.countByR_R(RandomTestUtil.nextLong(), "");
-
-		_persistence.countByR_R(0L, "null");
-
-		_persistence.countByR_R(0L, (String)null);
-	}
-
-	@Test
-	public void testCountByC_C() throws Exception {
-		_persistence.countByC_C("", RandomTestUtil.nextLong());
-
-		_persistence.countByC_C("null", 0L);
-
-		_persistence.countByC_C((String)null, 0L);
 	}
 
 	@Test
@@ -626,4 +601,4 @@ public class DDLRecordPersistenceTest {
 	private ClassLoader _dynamicQueryClassLoader;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1817912770
+// LIFERAY-SERVICE-BUILDER-HASH:24647790

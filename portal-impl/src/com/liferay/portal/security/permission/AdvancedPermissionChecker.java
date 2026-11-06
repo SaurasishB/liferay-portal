@@ -315,13 +315,18 @@ public class AdvancedPermissionChecker extends BasePermissionChecker {
 
 	@Override
 	public boolean isGroupAdmin(long groupId) {
-		groupId = StagingUtil.getLiveGroupId(groupId);
+		Group group = null;
+
+		if (groupId > 0) {
+			group = GroupLocalServiceUtil.fetchGroup(groupId);
+		}
+
+		Group liveGroup = StagingUtil.getLiveGroup(group);
 
 		try {
-			Group group = null;
-
-			if (groupId > 0) {
-				group = GroupLocalServiceUtil.fetchGroup(groupId);
+			if ((liveGroup != null) && (liveGroup != group)) {
+				group = GroupLocalServiceUtil.fetchGroup(
+					liveGroup.getGroupId());
 			}
 
 			return _isGroupAdminImpl(group);
@@ -484,16 +489,20 @@ public class AdvancedPermissionChecker extends BasePermissionChecker {
 			UserGroupRoleLocalServiceUtil.getUserGroupRoles(userId);
 
 		for (UserGroupRole userGroupRole : userGroupRoles) {
-			if (userGroupRole.getGroupId() == groupId) {
-				roleIdsSet.add(userGroupRole.getRoleId());
+			if (userGroupRole.getGroupId() != groupId) {
+				continue;
 			}
+
+			roleIdsSet.add(userGroupRole.getRoleId());
 		}
 
 		if (parentGroupId > 0) {
 			for (UserGroupRole userGroupRole : userGroupRoles) {
-				if (userGroupRole.getGroupId() == parentGroupId) {
-					roleIdsSet.add(userGroupRole.getRoleId());
+				if (userGroupRole.getGroupId() != parentGroupId) {
+					continue;
 				}
+
+				roleIdsSet.add(userGroupRole.getRoleId());
 			}
 		}
 

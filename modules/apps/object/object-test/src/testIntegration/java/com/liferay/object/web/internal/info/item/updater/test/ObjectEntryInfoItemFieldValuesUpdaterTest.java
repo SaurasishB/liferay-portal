@@ -20,6 +20,8 @@ import com.liferay.info.field.InfoField;
 import com.liferay.info.field.InfoFieldValue;
 import com.liferay.info.field.RelatedInfoFieldValue;
 import com.liferay.info.field.type.FileInfoFieldType;
+import com.liferay.info.field.type.MultiselectInfoFieldType;
+import com.liferay.info.field.type.RelationshipInfoFieldType;
 import com.liferay.info.field.type.TextInfoFieldType;
 import com.liferay.info.item.InfoItemFieldValues;
 import com.liferay.info.item.updater.InfoItemFieldValuesUpdater;
@@ -44,20 +46,32 @@ import com.liferay.object.model.ObjectFieldSetting;
 import com.liferay.object.model.ObjectFolder;
 import com.liferay.object.model.ObjectRelationship;
 import com.liferay.object.related.models.test.util.ObjectEntryTestUtil;
+import com.liferay.object.rest.manager.v1_0.ObjectEntryManager;
 import com.liferay.object.service.ObjectDefinitionLocalService;
 import com.liferay.object.service.ObjectEntryFolderLocalService;
+import com.liferay.object.service.ObjectFieldLocalService;
 import com.liferay.object.service.ObjectFolderLocalService;
 import com.liferay.object.service.ObjectRelationshipLocalService;
 import com.liferay.object.test.util.ObjectDefinitionTestUtil;
+import com.liferay.object.test.util.ObjectRelationshipTestUtil;
+import com.liferay.object.test.util.TreeTestUtil;
+import com.liferay.object.tree.Node;
+import com.liferay.object.tree.ObjectEntryTreeFactory;
+import com.liferay.object.tree.Tree;
 import com.liferay.object.web.internal.info.item.BaseObjectEntryInfoItemTestCase;
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
+import com.liferay.portal.kernel.exception.InfoFormException;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.repository.model.FileEntry;
+import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.test.AssertUtils;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
@@ -65,6 +79,7 @@ import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.LinkedHashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.MapUtil;
@@ -72,6 +87,10 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.TempFileEntryUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.test.rule.Inject;
+import com.liferay.portal.vulcan.aggregation.Aggregation;
+import com.liferay.portal.vulcan.dto.converter.DTOConverterContext;
+import com.liferay.portal.vulcan.pagination.Page;
+import com.liferay.portal.vulcan.pagination.Pagination;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
 
 import java.io.Serializable;
@@ -79,12 +98,19 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.ServiceRegistration;
 
 /**
  * @author Carolina Barbosa
@@ -228,6 +254,213 @@ public class ObjectEntryInfoItemFieldValuesUpdaterTest
 	}
 
 	@Test
+	public void testUpdateFromInfoItemFieldValuesWithDeletedItemIdentifiers()
+		throws Exception {
+
+		// Object entries from the same tree
+
+		Tree objectDefinitionTree = TreeTestUtil.createObjectDefinitionTree(
+			_objectDefinitionLocalService, _objectRelationshipLocalService,
+			true,
+			LinkedHashMapBuilder.put(
+				"A", new String[] {"AA", "AB"}
+			).put(
+				"AA", new String[] {"AAA", "AAB"}
+			).put(
+				"AB", new String[0]
+			).put(
+				"AAA", new String[0]
+			).put(
+				"AAB", new String[0]
+			).build());
+
+		Node objectDefinitionRootNode = objectDefinitionTree.getRootNode();
+
+		TreeTestUtil.createObjectEntryTree(
+			"1", _objectDefinitionLocalService, objectEntryLocalService,
+			_objectFieldLocalService, _objectRelationshipLocalService,
+			objectDefinitionRootNode.getPrimaryKey());
+
+		ObjectEntry rootObjectEntry1 = _getObjectEntry("A1", "C_A");
+
+		_updateFromInfoItemFieldValues(
+			InfoItemFieldValues.builder(
+			).infoFieldValue(
+				_getDeletedItemIdentifiersInfoFieldValue(
+					_getObjectEntry("AA1", "C_AA"),
+					_getObjectEntry("AB1", "C_AB"))
+			).build(),
+			rootObjectEntry1.getObjectDefinition(), rootObjectEntry1);
+
+		ObjectEntryTreeFactory objectEntryTreeFactory =
+			new ObjectEntryTreeFactory(
+				objectEntryLocalService, _objectRelationshipLocalService);
+
+		TreeTestUtil.assertObjectEntryTree(
+			LinkedHashMapBuilder.put(
+				"A1", new String[0]
+			).build(),
+			objectEntryTreeFactory.create(rootObjectEntry1.getObjectEntryId()),
+			objectEntryLocalService);
+
+		// Object entry from another tree
+
+		TreeTestUtil.createObjectEntryTree(
+			"2", _objectDefinitionLocalService, objectEntryLocalService,
+			_objectFieldLocalService, _objectRelationshipLocalService,
+			objectDefinitionRootNode.getPrimaryKey());
+		TreeTestUtil.createObjectEntryTree(
+			"3", _objectDefinitionLocalService, objectEntryLocalService,
+			_objectFieldLocalService, _objectRelationshipLocalService,
+			objectDefinitionRootNode.getPrimaryKey());
+
+		ObjectEntry rootObjectEntry2 = _getObjectEntry("A2", "C_A");
+
+		AssertUtils.assertFailure(
+			InfoFormException.class, null,
+			() -> _updateFromInfoItemFieldValues(
+				InfoItemFieldValues.builder(
+				).infoFieldValue(
+					_getDeletedItemIdentifiersInfoFieldValue(
+						_getObjectEntry("AA3", "C_AA"))
+				).build(),
+				rootObjectEntry2.getObjectDefinition(), rootObjectEntry2));
+
+		ObjectEntry rootObjectEntry3 = _getObjectEntry("A3", "C_A");
+
+		TreeTestUtil.assertObjectEntryTree(
+			LinkedHashMapBuilder.put(
+				"A3", new String[] {"AA3", "AB3"}
+			).put(
+				"AA3", new String[] {"AAA3", "AAB3"}
+			).put(
+				"AB3", new String[0]
+			).put(
+				"AAA3", new String[0]
+			).put(
+				"AAB3", new String[0]
+			).build(),
+			objectEntryTreeFactory.create(rootObjectEntry3.getObjectEntryId()),
+			objectEntryLocalService);
+
+		// Object entry from the same tree with an updated sibling
+
+		TreeTestUtil.createObjectEntryTree(
+			"4", _objectDefinitionLocalService, objectEntryLocalService,
+			_objectFieldLocalService, _objectRelationshipLocalService,
+			objectDefinitionRootNode.getPrimaryKey());
+
+		ObjectDefinition objectDefinitionAA =
+			_objectDefinitionLocalService.getObjectDefinition(
+				TestPropsValues.getCompanyId(), "C_AA");
+
+		ObjectField objectField = ObjectFieldUtil.addCustomObjectField(
+			new TextObjectFieldBuilder(
+			).labelMap(
+				RandomTestUtil.randomLocaleStringMap()
+			).name(
+				"a" + RandomTestUtil.randomString()
+			).objectDefinitionId(
+				objectDefinitionAA.getObjectDefinitionId()
+			).userId(
+				TestPropsValues.getUserId()
+			).build());
+
+		ObjectRelationship objectRelationship =
+			TreeTestUtil.getEdgeObjectRelationship(
+				objectDefinitionAA, _objectRelationshipLocalService,
+				objectDefinitionTree);
+
+		ObjectField relationshipObjectField =
+			_objectFieldLocalService.getObjectField(
+				objectRelationship.getObjectFieldId2());
+
+		ObjectEntry rootObjectEntry4 = _getObjectEntry("A4", "C_A");
+
+		ObjectEntry siblingObjectEntryAA4 = ObjectEntryTestUtil.addObjectEntry(
+			0, objectDefinitionAA.getObjectDefinitionId(),
+			HashMapBuilder.<String, Serializable>put(
+				relationshipObjectField.getName(),
+				rootObjectEntry4.getObjectEntryId()
+			).build());
+
+		InfoField<TextInfoFieldType> infoField = InfoField.builder(
+		).infoFieldType(
+			TextInfoFieldType.INSTANCE
+		).namespace(
+			ObjectEntryInfoItemUtil.getInfoFieldNamespace(
+				objectDefinitionAA, objectRelationship)
+		).name(
+			objectField.getName()
+		).build();
+		String value = RandomTestUtil.randomString();
+
+		_updateFromInfoItemFieldValues(
+			InfoItemFieldValues.builder(
+			).infoFieldValue(
+				_getDeletedItemIdentifiersInfoFieldValue(siblingObjectEntryAA4)
+			).infoFieldValue(
+				new InfoFieldValue<>(
+					infoField,
+					new RelatedInfoFieldValue<>(
+						HashMapBuilder.
+							<RelatedInfoFieldValue.
+								RelatedInfoFieldValueIdentifier,
+							 InfoFieldValue<Object>>put(
+								new RelatedInfoFieldValue.
+									RelatedInfoFieldValueIdentifier(
+										"AA4", "A4"),
+								new InfoFieldValue<>(infoField, value)
+							).build()))
+			).build(),
+			rootObjectEntry4.getObjectDefinition(), rootObjectEntry4);
+
+		TreeTestUtil.assertObjectEntryTree(
+			LinkedHashMapBuilder.put(
+				"A4", new String[] {"AA4", "AB4"}
+			).put(
+				"AA4", new String[] {"AAA4", "AAB4"}
+			).put(
+				"AB4", new String[0]
+			).put(
+				"AAA4", new String[0]
+			).put(
+				"AAB4", new String[0]
+			).build(),
+			objectEntryTreeFactory.create(rootObjectEntry4.getObjectEntryId()),
+			objectEntryLocalService);
+
+		ObjectEntry objectEntryAA4 = _getObjectEntry("AA4", "C_AA");
+
+		Assert.assertEquals(
+			value,
+			MapUtil.getString(
+				objectEntryAA4.getValues(), objectField.getName()));
+
+		// Standalone object entry
+
+		ObjectEntry objectEntry = ObjectEntryTestUtil.addObjectEntry(
+			0, objectDefinitionAA.getObjectDefinitionId(),
+			Collections.emptyMap());
+
+		_updateFromInfoItemFieldValues(
+			InfoItemFieldValues.builder(
+			).infoFieldValue(
+				_getDeletedItemIdentifiersInfoFieldValue(objectEntry)
+			).build(),
+			rootObjectEntry4.getObjectDefinition(), rootObjectEntry4);
+
+		Assert.assertNull(
+			objectEntryLocalService.fetchObjectEntry(
+				objectEntry.getObjectEntryId()));
+
+		TreeTestUtil.deleteObjectDefinitionHierarchy(
+			_objectDefinitionLocalService,
+			new String[] {"C_A", "C_AA", "C_AB", "C_AAA", "C_AAB"},
+			objectEntryLocalService, _objectRelationshipLocalService);
+	}
+
+	@Test
 	public void testUpdateFromInfoItemFieldValuesWithLocalizedObjectField()
 		throws Exception {
 
@@ -287,6 +520,78 @@ public class ObjectEntryInfoItemFieldValuesUpdaterTest
 		Assert.assertEquals(ptValue, localizedValues.get("pt_BR"));
 
 		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
+	}
+
+	@Test
+	public void testUpdateFromInfoItemFieldValuesWithNestedManyToManyObjectRelationship()
+		throws Exception {
+
+		_testUpdateFromInfoItemFieldValuesWithNestedManyToManyObjectRelationship(
+			ObjectDefinitionConstants.STORAGE_TYPE_DEFAULT);
+		_testUpdateFromInfoItemFieldValuesWithNestedManyToManyObjectRelationship(
+			TestObjectEntryManager.STORAGE_TYPE);
+	}
+
+	@Test
+	public void testUpdateFromInfoItemFieldValuesWithNondefaultStorageType()
+		throws Exception {
+
+		TestObjectEntryManager testObjectEntryManager =
+			new TestObjectEntryManager();
+
+		ServiceRegistration<ObjectEntryManager> serviceRegistration = _register(
+			testObjectEntryManager);
+
+		ObjectDefinition objectDefinition = _publishObjectDefinition(
+			Collections.singletonList(
+				new TextObjectFieldBuilder(
+				).labelMap(
+					RandomTestUtil.randomLocaleStringMap()
+				).name(
+					"name"
+				).build()),
+			TestObjectEntryManager.STORAGE_TYPE);
+
+		ObjectEntry objectEntry = objectEntryLocalService.createObjectEntry(0);
+
+		objectEntry.setExternalReferenceCode(RandomTestUtil.randomString());
+		objectEntry.setCompanyId(TestPropsValues.getCompanyId());
+		objectEntry.setObjectDefinitionId(
+			objectDefinition.getObjectDefinitionId());
+		objectEntry.setValues(new HashMap<>());
+
+		String value = RandomTestUtil.randomString();
+
+		_updateFromInfoItemFieldValues(
+			InfoItemFieldValues.builder(
+			).infoFieldValue(
+				new InfoFieldValue<>(
+					InfoField.builder(
+					).infoFieldType(
+						TextInfoFieldType.INSTANCE
+					).namespace(
+						ObjectField.class.getSimpleName()
+					).name(
+						"name"
+					).build(),
+					value)
+			).build(),
+			objectDefinition, objectEntry);
+
+		com.liferay.object.rest.dto.v1_0.ObjectEntry dtoObjectEntry =
+			testObjectEntryManager.getDTOObjectEntry();
+
+		Assert.assertEquals(
+			objectEntry.getExternalReferenceCode(),
+			dtoObjectEntry.getExternalReferenceCode());
+
+		Map<String, Object> properties = dtoObjectEntry.getProperties();
+
+		Assert.assertEquals(value, properties.get("name"));
+
+		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
+
+		serviceRegistration.unregister();
 	}
 
 	@Test
@@ -558,6 +863,31 @@ public class ObjectEntryInfoItemFieldValuesUpdaterTest
 				title, MapUtil.getString(curObjectEntry.getValues(), "title")));
 	}
 
+	private InfoFieldValue<Object> _getDeletedItemIdentifiersInfoFieldValue(
+		ObjectEntry... objectEntries) {
+
+		return new InfoFieldValue<>(
+			InfoField.builder(
+			).infoFieldType(
+				MultiselectInfoFieldType.INSTANCE
+			).namespace(
+				InfoItemFieldValuesUpdater.class.getSimpleName()
+			).name(
+				"deletedItemIdentifiers"
+			).build(),
+			TransformUtil.transform(
+				objectEntries,
+				objectEntry -> {
+					ObjectDefinition objectDefinition =
+						objectEntry.getObjectDefinition();
+
+					return StringBundler.concat(
+						objectDefinition.getClassName(), StringPool.UNDERLINE,
+						objectEntry.getExternalReferenceCode());
+				},
+				String.class));
+	}
+
 	private ObjectEntryFolder _getExpectedObjectEntryFolder(
 			ObjectEntry objectEntry, String storageDLFolderPath)
 		throws Exception {
@@ -586,12 +916,56 @@ public class ObjectEntryInfoItemFieldValuesUpdaterTest
 		return objectEntryFolder;
 	}
 
+	private ObjectEntry _getObjectEntry(
+			String externalReferenceCode, String objectDefinitionName)
+		throws Exception {
+
+		ObjectDefinition objectDefinition =
+			_objectDefinitionLocalService.getObjectDefinition(
+				TestPropsValues.getCompanyId(), objectDefinitionName);
+
+		return objectEntryLocalService.getObjectEntry(
+			externalReferenceCode, 0, objectDefinition.getObjectDefinitionId());
+	}
+
 	private int _getObjectEntryFoldersCount(
 		ObjectEntryFolder objectEntryFolder) {
 
 		return _objectEntryFolderLocalService.getObjectEntryFoldersCount(
 			objectEntryFolder.getGroupId(), objectEntryFolder.getCompanyId(),
 			objectEntryFolder.getObjectEntryFolderId());
+	}
+
+	private ObjectDefinition _publishObjectDefinition(
+			List<ObjectField> objectFields, String storageType)
+		throws Exception {
+
+		ObjectDefinition objectDefinition =
+			_objectDefinitionLocalService.addCustomObjectDefinition(
+				null, TestPropsValues.getUserId(), 0, null, null, false, false,
+				true, false, true, false, false, false, false, null,
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
+				ObjectDefinitionTestUtil.getRandomName(), null, null,
+				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
+				true, ObjectDefinitionConstants.SCOPE_COMPANY, storageType,
+				Collections.emptyList(), objectFields, Collections.emptyList(),
+				ServiceContextTestUtil.getServiceContext());
+
+		return _objectDefinitionLocalService.publishCustomObjectDefinition(
+			TestPropsValues.getUserId(),
+			objectDefinition.getObjectDefinitionId());
+	}
+
+	private ServiceRegistration<ObjectEntryManager> _register(
+		ObjectEntryManager objectEntryManager) {
+
+		Bundle bundle = FrameworkUtil.getBundle(
+			ObjectEntryInfoItemFieldValuesUpdaterTest.class);
+
+		BundleContext bundleContext = bundle.getBundleContext();
+
+		return bundleContext.registerService(
+			ObjectEntryManager.class, objectEntryManager, null);
 	}
 
 	private void _testUpdateFromInfoItemFieldValuesWithAttachmentObjectField(
@@ -778,6 +1152,189 @@ public class ObjectEntryInfoItemFieldValuesUpdaterTest
 		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
 	}
 
+	private void
+			_testUpdateFromInfoItemFieldValuesWithNestedManyToManyObjectRelationship(
+				String storageType)
+		throws Exception {
+
+		TestObjectEntryManager testObjectEntryManager =
+			new TestObjectEntryManager();
+
+		ServiceRegistration<ObjectEntryManager> serviceRegistration = _register(
+			testObjectEntryManager);
+
+		ObjectDefinition childObjectDefinition = _publishObjectDefinition(
+			Collections.singletonList(
+				new TextObjectFieldBuilder(
+				).labelMap(
+					RandomTestUtil.randomLocaleStringMap()
+				).name(
+					"text"
+				).build()),
+			storageType);
+		ObjectDefinition parentObjectDefinition =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				Collections.singletonList(
+					new TextObjectFieldBuilder(
+					).labelMap(
+						RandomTestUtil.randomLocaleStringMap()
+					).name(
+						"text"
+					).build()));
+
+		String namespace = ObjectEntryInfoItemUtil.getInfoFieldNamespace(
+			childObjectDefinition,
+			ObjectRelationshipTestUtil.addObjectRelationship(
+				_objectRelationshipLocalService, parentObjectDefinition,
+				childObjectDefinition,
+				ObjectRelationshipConstants.DELETION_TYPE_DISASSOCIATE,
+				StringUtil.randomId(),
+				ObjectRelationshipConstants.TYPE_ONE_TO_MANY));
+
+		ObjectDefinition relatedObjectDefinition =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				Collections.singletonList(
+					new TextObjectFieldBuilder(
+					).labelMap(
+						RandomTestUtil.randomLocaleStringMap()
+					).name(
+						"text"
+					).build()));
+
+		ObjectRelationship objectRelationship =
+			ObjectRelationshipTestUtil.addObjectRelationship(
+				_objectRelationshipLocalService, childObjectDefinition,
+				relatedObjectDefinition,
+				ObjectRelationshipConstants.DELETION_TYPE_DISASSOCIATE,
+				StringUtil.randomId(),
+				ObjectRelationshipConstants.TYPE_MANY_TO_MANY);
+
+		InfoField<RelationshipInfoFieldType> relationshipInfoField =
+			InfoField.builder(
+			).infoFieldType(
+				RelationshipInfoFieldType.INSTANCE
+			).namespace(
+				namespace
+			).name(
+				ObjectRelationshipConstants.
+					OBJECT_RELATIONSHIP_FIELD_NAME_PREFIX +
+						objectRelationship.getName()
+			).attribute(
+				RelationshipInfoFieldType.MULTIPLE, true
+			).build();
+
+		ObjectEntry parentObjectEntry = ObjectEntryTestUtil.addObjectEntry(
+			0, parentObjectDefinition.getObjectDefinitionId(),
+			HashMapBuilder.<String, Serializable>put(
+				"text", RandomTestUtil.randomString()
+			).build());
+
+		RelatedInfoFieldValue.RelatedInfoFieldValueIdentifier
+			relatedInfoFieldValueIdentifier =
+				new RelatedInfoFieldValue.RelatedInfoFieldValueIdentifier(
+					StringUtil.randomId(),
+					parentObjectEntry.getExternalReferenceCode());
+
+		ObjectEntry relatedObjectEntry = ObjectEntryTestUtil.addObjectEntry(
+			0, relatedObjectDefinition.getObjectDefinitionId(),
+			HashMapBuilder.<String, Serializable>put(
+				"text", RandomTestUtil.randomString()
+			).build());
+
+		InfoField<TextInfoFieldType> textInfoField = InfoField.builder(
+		).infoFieldType(
+			TextInfoFieldType.INSTANCE
+		).namespace(
+			namespace
+		).name(
+			"text"
+		).build();
+
+		_updateFromInfoItemFieldValues(
+			InfoItemFieldValues.builder(
+			).infoFieldValue(
+				new InfoFieldValue<>(
+					InfoField.builder(
+					).infoFieldType(
+						TextInfoFieldType.INSTANCE
+					).namespace(
+						ObjectField.class.getSimpleName()
+					).name(
+						"text"
+					).build(),
+					RandomTestUtil.randomString())
+			).infoFieldValue(
+				new InfoFieldValue<>(
+					relationshipInfoField,
+					new RelatedInfoFieldValue<>(
+						HashMapBuilder.
+							<RelatedInfoFieldValue.
+								RelatedInfoFieldValueIdentifier,
+							 InfoFieldValue<Object>>put(
+								relatedInfoFieldValueIdentifier,
+								new InfoFieldValue<>(
+									relationshipInfoField,
+									Collections.singletonList(
+										String.valueOf(
+											relatedObjectEntry.
+												getObjectEntryId())))
+							).build()))
+			).infoFieldValue(
+				new InfoFieldValue<>(
+					textInfoField,
+					new RelatedInfoFieldValue<>(
+						HashMapBuilder.
+							<RelatedInfoFieldValue.
+								RelatedInfoFieldValueIdentifier,
+							 InfoFieldValue<Object>>put(
+								relatedInfoFieldValueIdentifier,
+								new InfoFieldValue<>(
+									textInfoField,
+									RandomTestUtil.randomString())
+							).build()))
+			).build(),
+			parentObjectDefinition, parentObjectEntry);
+
+		if (childObjectDefinition.isDefaultStorageType()) {
+			ObjectEntry childObjectEntry = _getObjectEntry(
+				relatedInfoFieldValueIdentifier.getExternalReferenceCode(),
+				childObjectDefinition.getName());
+
+			List<ObjectEntry> objectEntries =
+				objectEntryLocalService.getManyToManyObjectEntries(
+					childObjectEntry.getGroupId(),
+					objectRelationship.getObjectRelationshipId(),
+					childObjectEntry.getObjectEntryId(), true, false, null,
+					QueryUtil.ALL_POS, QueryUtil.ALL_POS);
+
+			Assert.assertEquals(
+				objectEntries.toString(), 1, objectEntries.size());
+
+			ObjectEntry objectEntry = objectEntries.get(0);
+
+			Assert.assertEquals(
+				relatedObjectEntry.getObjectEntryId(),
+				objectEntry.getObjectEntryId());
+		}
+		else {
+			com.liferay.object.rest.dto.v1_0.ObjectEntry dtoObjectEntry =
+				testObjectEntryManager.getDTOObjectEntry();
+
+			Assert.assertEquals(
+				relatedInfoFieldValueIdentifier.getExternalReferenceCode(),
+				dtoObjectEntry.getExternalReferenceCode());
+		}
+
+		_objectDefinitionLocalService.deleteObjectDefinition(
+			childObjectDefinition);
+		_objectDefinitionLocalService.deleteObjectDefinition(
+			parentObjectDefinition);
+		_objectDefinitionLocalService.deleteObjectDefinition(
+			relatedObjectDefinition);
+
+		serviceRegistration.unregister();
+	}
+
 	private void _updateFromInfoItemFieldValues(
 			InfoItemFieldValues infoItemFieldValues,
 			ObjectDefinition objectDefinition, ObjectEntry objectEntry)
@@ -817,9 +1374,91 @@ public class ObjectEntryInfoItemFieldValuesUpdaterTest
 	private ObjectEntryFolderLocalService _objectEntryFolderLocalService;
 
 	@Inject
+	private ObjectFieldLocalService _objectFieldLocalService;
+
+	@Inject
 	private ObjectFolderLocalService _objectFolderLocalService;
 
 	@Inject
 	private ObjectRelationshipLocalService _objectRelationshipLocalService;
+
+	private static class TestObjectEntryManager implements ObjectEntryManager {
+
+		public static final String STORAGE_TYPE = RandomTestUtil.randomString();
+
+		@Override
+		public com.liferay.object.rest.dto.v1_0.ObjectEntry addObjectEntry(
+			DTOConverterContext dtoConverterContext,
+			ObjectDefinition objectDefinition,
+			com.liferay.object.rest.dto.v1_0.ObjectEntry objectEntry,
+			String scopeKey) {
+
+			return objectEntry;
+		}
+
+		@Override
+		public void deleteObjectEntry(
+			long companyId, DTOConverterContext dtoConverterContext,
+			String externalReferenceCode, ObjectDefinition objectDefinition,
+			String scopeKey) {
+		}
+
+		public com.liferay.object.rest.dto.v1_0.ObjectEntry
+			getDTOObjectEntry() {
+
+			return _dtoObjectEntry;
+		}
+
+		@Override
+		public Page<com.liferay.object.rest.dto.v1_0.ObjectEntry>
+			getObjectEntries(
+				long companyId, ObjectDefinition objectDefinition,
+				String scopeKey, Aggregation aggregation,
+				DTOConverterContext dtoConverterContext, String filterString,
+				Pagination pagination, String search, Sort[] sorts) {
+
+			return Page.of(Collections.emptyList());
+		}
+
+		@Override
+		public com.liferay.object.rest.dto.v1_0.ObjectEntry getObjectEntry(
+			long companyId, DTOConverterContext dtoConverterContext,
+			String externalReferenceCode, ObjectDefinition objectDefinition,
+			String scopeKey) {
+
+			com.liferay.object.rest.dto.v1_0.ObjectEntry objectEntry =
+				new com.liferay.object.rest.dto.v1_0.ObjectEntry();
+
+			objectEntry.setExternalReferenceCode(externalReferenceCode);
+			objectEntry.setProperties(new HashMap<>());
+
+			return objectEntry;
+		}
+
+		@Override
+		public String getStorageLabel(Locale locale) {
+			return RandomTestUtil.randomString();
+		}
+
+		@Override
+		public String getStorageType() {
+			return STORAGE_TYPE;
+		}
+
+		@Override
+		public com.liferay.object.rest.dto.v1_0.ObjectEntry updateObjectEntry(
+			long companyId, DTOConverterContext dtoConverterContext,
+			String externalReferenceCode, ObjectDefinition objectDefinition,
+			com.liferay.object.rest.dto.v1_0.ObjectEntry objectEntry,
+			String scopeKey) {
+
+			_dtoObjectEntry = objectEntry;
+
+			return objectEntry;
+		}
+
+		private com.liferay.object.rest.dto.v1_0.ObjectEntry _dtoObjectEntry;
+
+	}
 
 }

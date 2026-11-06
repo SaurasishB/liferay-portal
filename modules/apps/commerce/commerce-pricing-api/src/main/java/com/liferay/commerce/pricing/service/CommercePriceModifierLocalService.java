@@ -156,9 +156,6 @@ public interface CommercePriceModifierLocalService
 			long commercePriceModifierId)
 		throws PortalException;
 
-	public void deleteCommercePriceModifiers(long companyId)
-		throws PortalException;
-
 	public void deleteCommercePriceModifiersByCommercePriceListId(
 			long commercePriceListId)
 		throws PortalException;
@@ -320,10 +317,6 @@ public interface CommercePriceModifierLocalService
 		long commercePriceListId, int start, int end,
 		OrderByComparator<CommercePriceModifier> orderByComparator);
 
-	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public List<CommercePriceModifier> getCommercePriceModifiers(
-		long companyId, String target);
-
 	/**
 	 * Returns all the commerce price modifiers matching the UUID and company.
 	 *
@@ -437,4 +430,4 @@ public interface CommercePriceModifierLocalService
 		throws E;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:54150677
+// LIFERAY-SERVICE-BUILDER-HASH:-1491553851

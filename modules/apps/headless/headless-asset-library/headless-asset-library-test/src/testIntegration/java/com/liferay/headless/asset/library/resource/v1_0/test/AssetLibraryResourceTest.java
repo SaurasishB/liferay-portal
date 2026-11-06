@@ -19,6 +19,7 @@ import com.liferay.headless.asset.library.client.permission.Permission;
 import com.liferay.headless.asset.library.client.problem.Problem;
 import com.liferay.headless.asset.library.client.resource.v1_0.AssetLibraryResource;
 import com.liferay.petra.function.transform.TransformUtil;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.ResourceConstants;
@@ -30,7 +31,9 @@ import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
+import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.test.TestInfo;
+import com.liferay.portal.kernel.test.randomizerbumpers.SiteFriendlyURLKeywordRandomizerBumper;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
@@ -46,6 +49,9 @@ import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.odata.entity.EntityField;
+import com.liferay.portal.test.log.LogCapture;
+import com.liferay.portal.test.log.LoggerTestUtil;
+import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 
 import java.util.ArrayList;
@@ -167,9 +173,19 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 		}
 	}
 
+	@FeatureFlag("LPD-11388")
 	@Override
 	@Test
-	@TestInfo({"LPD-99972", "LPD-102154"})
+	public void testGetAssetLibrary() throws Exception {
+		super.testGetAssetLibrary();
+
+		_testGetAssetLibraryWithoutUpdatePermission();
+	}
+
+	@FeatureFlag("LPD-11388")
+	@Override
+	@Test
+	@TestInfo({"LPD-99972", "LPD-102154", "LPD-112197"})
 	public void testPatchAssetLibrary() throws Exception {
 		super.testPatchAssetLibrary();
 
@@ -185,9 +201,10 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 		_testPatchAssetLibraryWithoutUpdatePermission();
 	}
 
+	@FeatureFlag("LPD-11388")
 	@Override
 	@Test
-	@TestInfo("LPD-92654")
+	@TestInfo({"LPD-92654", "LPD-108842"})
 	public void testPostAssetLibrary() throws Exception {
 		super.testPostAssetLibrary();
 
@@ -244,8 +261,10 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 		}
 	}
 
+	@FeatureFlag("LPD-11388")
 	@Override
 	@Test
+	@TestInfo("LPD-112197")
 	public void testPutAssetLibrary() throws Exception {
 		super.testPutAssetLibrary();
 
@@ -514,7 +533,8 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 	private void _assertSettings(
 		AssetLibrary assetLibrary, boolean expectedAutoTaggingEnabled,
 		String[] expectedAvailableLanguageIds, String expectedDefaultLanguageId,
-		String expectedLogoColor, MimeTypeLimit[] expectedMimeTypeLimits,
+		String expectedGoogleMapsAPIKey, String expectedLogoColor,
+		String expectedMapProviderKey, MimeTypeLimit[] expectedMimeTypeLimits,
 		boolean expectedSharingEnabled, boolean expectedTrashEnabled,
 		int expectedTrashEntriesMaxAge, boolean expectedUseCustomLanguages) {
 
@@ -523,10 +543,14 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 		Assert.assertEquals(
 			expectedAutoTaggingEnabled, settings.getAutoTaggingEnabled());
 		Assert.assertEquals(
+			expectedAvailableLanguageIds, settings.getAvailableLanguageIds());
+		Assert.assertEquals(
 			expectedDefaultLanguageId, settings.getDefaultLanguageId());
 		Assert.assertEquals(
-			expectedAvailableLanguageIds, settings.getAvailableLanguageIds());
+			expectedGoogleMapsAPIKey, settings.getGoogleMapsAPIKey());
 		Assert.assertEquals(expectedLogoColor, settings.getLogoColor());
+		Assert.assertEquals(
+			expectedMapProviderKey, settings.getMapProviderKey());
 
 		MimeTypeLimit[] mimeTypeLimits = settings.getMimeTypeLimits();
 
@@ -556,12 +580,52 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 			(Locale locale) -> _language.getLanguageId(locale), String.class);
 	}
 
+	private AssetLibraryResource _getUserAssetLibraryResource(
+			AssetLibrary assetLibrary)
+		throws Exception {
+
+		DepotEntry depotEntry = _depotEntryLocalService.getDepotEntry(
+			assetLibrary.getId());
+		String password = RandomTestUtil.randomString();
+
+		_user = UserTestUtil.addUser(
+			TestPropsValues.getCompanyId(), TestPropsValues.getUserId(),
+			password, RandomTestUtil.randomString() + "@liferay.com",
+			RandomTestUtil.randomString(), LocaleUtil.getDefault(),
+			RandomTestUtil.randomString(), RandomTestUtil.randomString(),
+			new long[] {depotEntry.getGroupId()},
+			ServiceContextTestUtil.getServiceContext());
+
+		_user.setEmailAddressVerified(true);
+
+		_user = _userLocalService.updateUser(_user);
+
+		Role userRole = _roleLocalService.getRole(
+			TestPropsValues.getCompanyId(), RoleConstants.USER);
+
+		_resourcePermissionLocalService.setResourcePermissions(
+			depotEntry.getCompanyId(), DepotEntry.class.getName(),
+			ResourceConstants.SCOPE_INDIVIDUAL,
+			String.valueOf(depotEntry.getPrimaryKeyObj()), userRole.getRoleId(),
+			new String[] {ActionKeys.VIEW});
+
+		return AssetLibraryResource.builder(
+		).authentication(
+			_user.getEmailAddress(), password
+		).endpoint(
+			testCompany.getVirtualHostname(),
+			PortalUtil.getPortalServerPort(false), "http"
+		).locale(
+			LocaleUtil.getDefault()
+		).build();
+	}
+
 	private AssetLibrary _postAssetLibraryWithSettings(
 			boolean autoTaggingEnabled, String[] availableLanguageIds,
-			String defaultLanguageId, String logoColor,
-			MimeTypeLimit[] mimeTypeLimits, boolean sharingEnabled,
-			boolean trashEnabled, int trashEntriesMaxAge,
-			boolean useCustomLanguages)
+			String defaultLanguageId, String googleMapsAPIKey, String logoColor,
+			String mapProviderKey, MimeTypeLimit[] mimeTypeLimits,
+			boolean sharingEnabled, boolean trashEnabled,
+			int trashEntriesMaxAge, boolean useCustomLanguages)
 		throws Exception {
 
 		AssetLibrary assetLibrary = randomAssetLibrary();
@@ -571,7 +635,9 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 		settings.setAutoTaggingEnabled(autoTaggingEnabled);
 		settings.setAvailableLanguageIds(availableLanguageIds);
 		settings.setDefaultLanguageId(defaultLanguageId);
+		settings.setGoogleMapsAPIKey(googleMapsAPIKey);
 		settings.setLogoColor(logoColor);
+		settings.setMapProviderKey(mapProviderKey);
 		settings.setMimeTypeLimits(mimeTypeLimits);
 		settings.setSharingEnabled(sharingEnabled);
 		settings.setTrashEnabled(trashEnabled);
@@ -610,6 +676,28 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 
 	private String _randomFriendlyURL() {
 		return StringUtil.toLowerCase("/" + RandomTestUtil.randomString());
+	}
+
+	private void _testGetAssetLibraryWithoutUpdatePermission()
+		throws Exception {
+
+		String googleMapsAPIKey = RandomTestUtil.randomString();
+
+		AssetLibrary assetLibrary = _postAssetLibraryWithSettings(
+			true, _getAvailableLanguageIds(LocaleUtil.US),
+			_language.getLanguageId(LocaleUtil.US), googleMapsAPIKey,
+			RandomTestUtil.randomString(), "GoogleMaps", new MimeTypeLimit[0],
+			true, true, RandomTestUtil.randomInt(), true);
+
+		AssetLibraryResource userAssetLibraryResource =
+			_getUserAssetLibraryResource(assetLibrary);
+
+		assetLibrary = userAssetLibraryResource.getAssetLibrary(
+			assetLibrary.getExternalReferenceCode());
+
+		Settings settings = assetLibrary.getSettings();
+
+		Assert.assertNull(settings.getGoogleMapsAPIKey());
 	}
 
 	private void _testPatchAssetLibraryExternalReferenceCodeAndFriendlyURL()
@@ -752,7 +840,8 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 			_getAvailableLanguageIds(
 				LocaleUtil.US, LocaleUtil.SPAIN, LocaleUtil.GERMANY),
 			_language.getLanguageId(LocaleUtil.US),
-			RandomTestUtil.randomString(),
+			RandomTestUtil.randomString(), RandomTestUtil.randomString(),
+			"GoogleMaps",
 			new MimeTypeLimit[] {
 				new MimeTypeLimit() {
 					{
@@ -800,6 +889,7 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 		String[] availableLanguageIds = _getAvailableLanguageIds(
 			LocaleUtil.US, LocaleUtil.SPAIN, LocaleUtil.GERMANY);
 		String defaultLanguageId = _language.getLanguageId(LocaleUtil.US);
+		String googleMapsAPIKey = RandomTestUtil.randomString();
 		String logoColor = RandomTestUtil.randomString();
 		MimeTypeLimit[] mimeTypeLimits = {
 			new MimeTypeLimit() {
@@ -815,9 +905,9 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 		boolean useCustomLanguages = true;
 
 		AssetLibrary assetLibrary = _postAssetLibraryWithSettings(
-			true, availableLanguageIds, defaultLanguageId, logoColor,
-			mimeTypeLimits, sharingEnabled, trashEnabled, trashEntriesMaxAge,
-			useCustomLanguages);
+			true, availableLanguageIds, defaultLanguageId, googleMapsAPIKey,
+			logoColor, "GoogleMaps", mimeTypeLimits, sharingEnabled,
+			trashEnabled, trashEntriesMaxAge, useCustomLanguages);
 
 		boolean autoTaggingEnabled = false;
 
@@ -834,11 +924,14 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 
 		_assertSettings(
 			assetLibrary, autoTaggingEnabled, availableLanguageIds,
-			defaultLanguageId, logoColor, mimeTypeLimits, sharingEnabled,
-			trashEnabled, trashEntriesMaxAge, useCustomLanguages);
+			defaultLanguageId, googleMapsAPIKey, logoColor, "GoogleMaps",
+			mimeTypeLimits, sharingEnabled, trashEnabled, trashEntriesMaxAge,
+			useCustomLanguages);
 
 		settings = new Settings();
 
+		settings.setGoogleMapsAPIKey(StringPool.BLANK);
+		settings.setMapProviderKey("OpenStreetMap");
 		settings.setMimeTypeLimits(new MimeTypeLimit[0]);
 
 		assetLibrary.setSettings(settings);
@@ -848,8 +941,52 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 
 		_assertSettings(
 			assetLibrary, autoTaggingEnabled, availableLanguageIds,
-			defaultLanguageId, logoColor, new MimeTypeLimit[0], sharingEnabled,
-			trashEnabled, trashEntriesMaxAge, useCustomLanguages);
+			defaultLanguageId, StringPool.BLANK, logoColor, "OpenStreetMap",
+			new MimeTypeLimit[0], sharingEnabled, trashEnabled,
+			trashEntriesMaxAge, useCustomLanguages);
+
+		settings = new Settings();
+
+		settings.setMapProviderKey(StringPool.BLANK);
+
+		assetLibrary.setSettings(settings);
+
+		assetLibrary = assetLibraryResource.patchAssetLibrary(
+			assetLibrary.getExternalReferenceCode(), assetLibrary);
+
+		_assertSettings(
+			assetLibrary, autoTaggingEnabled, availableLanguageIds,
+			defaultLanguageId, StringPool.BLANK, logoColor, null,
+			new MimeTypeLimit[0], sharingEnabled, trashEnabled,
+			trashEntriesMaxAge, useCustomLanguages);
+
+		Group group = _groupLocalService.getGroupByExternalReferenceCode(
+			assetLibrary.getExternalReferenceCode(),
+			testCompany.getCompanyId());
+
+		Assert.assertNull(group.getTypeSettingsProperty("MAP_PROVIDER_KEY"));
+
+		settings = new Settings();
+
+		settings.setMapProviderKey(RandomTestUtil.randomString());
+
+		assetLibrary.setSettings(settings);
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.portal.vulcan.internal.jaxrs.exception.mapper." +
+					"WebApplicationExceptionMapper",
+				LoggerTestUtil.ERROR)) {
+
+			assetLibraryResource.patchAssetLibrary(
+				assetLibrary.getExternalReferenceCode(), assetLibrary);
+
+			Assert.fail();
+		}
+		catch (Problem.ProblemException problemException) {
+			Problem problem = problemException.getProblem();
+
+			Assert.assertEquals("BAD_REQUEST", problem.getStatus());
+		}
 	}
 
 	private void _testPatchAssetLibraryWithoutUpdatePermission()
@@ -858,21 +995,9 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 		AssetLibrary assetLibrary = _postAssetLibraryWithSettings(
 			true, _getAvailableLanguageIds(LocaleUtil.US),
 			_language.getLanguageId(LocaleUtil.US),
-			RandomTestUtil.randomString(), new MimeTypeLimit[0], true, true,
-			RandomTestUtil.randomInt(), true);
-
-		DepotEntry depotEntry = _depotEntryLocalService.getDepotEntry(
-			assetLibrary.getId());
-
-		String password = RandomTestUtil.randomString();
-
-		_user = UserTestUtil.addUser(
-			TestPropsValues.getCompanyId(), TestPropsValues.getUserId(),
-			password, RandomTestUtil.randomString() + "@liferay.com",
-			RandomTestUtil.randomString(), LocaleUtil.getDefault(),
 			RandomTestUtil.randomString(), RandomTestUtil.randomString(),
-			new long[] {depotEntry.getGroupId()},
-			ServiceContextTestUtil.getServiceContext());
+			"GoogleMaps", new MimeTypeLimit[0], true, true,
+			RandomTestUtil.randomInt(), true);
 
 		Settings settings = new Settings();
 
@@ -891,15 +1016,7 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 		patchAssetLibrary.setSettings(settings);
 
 		AssetLibraryResource userAssetLibraryResource =
-			AssetLibraryResource.builder(
-			).authentication(
-				_user.getEmailAddress(), password
-			).endpoint(
-				testCompany.getVirtualHostname(),
-				PortalUtil.getPortalServerPort(false), "http"
-			).locale(
-				LocaleUtil.getDefault()
-			).build();
+			_getUserAssetLibraryResource(assetLibrary);
 
 		try {
 			userAssetLibraryResource.patchAssetLibrary(
@@ -931,6 +1048,7 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 		String[] availableLanguageIds = _getAvailableLanguageIds(
 			LocaleUtil.US, LocaleUtil.SPAIN, LocaleUtil.GERMANY);
 		String defaultLanguageId = _language.getLanguageId(LocaleUtil.US);
+		String googleMapsAPIKey = RandomTestUtil.randomString();
 		String logoColor = RandomTestUtil.randomString();
 		boolean sharingEnabled = true;
 		boolean useCustomLanguages = true;
@@ -939,23 +1057,43 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 
 		AssetLibrary assetLibrary = _postAssetLibraryWithSettings(
 			autoTaggingEnabled, availableLanguageIds, defaultLanguageId,
-			logoColor, mimeTypeLimits, sharingEnabled, trashEnabled,
-			trashEntriesMaxAge, useCustomLanguages);
+			googleMapsAPIKey, logoColor, "GoogleMaps", mimeTypeLimits,
+			sharingEnabled, trashEnabled, trashEntriesMaxAge,
+			useCustomLanguages);
 
 		_assertSettings(
 			assetLibrary, autoTaggingEnabled, availableLanguageIds,
-			defaultLanguageId, logoColor, mimeTypeLimits, sharingEnabled,
-			trashEnabled, trashEntriesMaxAge, useCustomLanguages);
+			defaultLanguageId, googleMapsAPIKey, logoColor, "GoogleMaps",
+			mimeTypeLimits, sharingEnabled, trashEnabled, trashEntriesMaxAge,
+			useCustomLanguages);
 
 		_assertGroupDepotEntryType(assetLibrary);
 	}
 
 	private void _testPostAssetLibraryFriendlyURL() throws Exception {
-		AssetLibrary assetLibrary = _addAssetLibrary();
+		AssetLibrary randomAssetLibrary = randomAssetLibrary();
+
+		randomAssetLibrary.setType(AssetLibrary.Type.ASSET_LIBRARY);
+
+		AssetLibrary assetLibrary = testPostAssetLibrary_addAssetLibrary(
+			randomAssetLibrary);
 
 		Assert.assertEquals(
 			"/asset-library-" + assetLibrary.getId(),
 			assetLibrary.getFriendlyURL());
+
+		randomAssetLibrary = randomAssetLibrary();
+
+		randomAssetLibrary.setName(
+			StringUtil.toLowerCase(
+				RandomTestUtil.randomString(
+					SiteFriendlyURLKeywordRandomizerBumper.INSTANCE)));
+		randomAssetLibrary.setType(AssetLibrary.Type.SPACE);
+
+		assetLibrary = testPostAssetLibrary_addAssetLibrary(randomAssetLibrary);
+
+		Assert.assertEquals(
+			"/" + randomAssetLibrary.getName(), assetLibrary.getFriendlyURL());
 	}
 
 	private void _testPostAssetLibraryWithDuplicateExternalReferenceCode()
@@ -1044,9 +1182,9 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 			true,
 			_getAvailableLanguageIds(
 				LocaleUtil.US, LocaleUtil.SPAIN, LocaleUtil.GERMANY),
-			_language.getLanguageId(LocaleUtil.US),
-			RandomTestUtil.randomString(), mimeTypeLimits, true, true,
-			RandomTestUtil.randomInt(), true);
+			null, _language.getLanguageId(LocaleUtil.US),
+			RandomTestUtil.randomString(), "OpenStreetMap", mimeTypeLimits,
+			true, true, RandomTestUtil.randomInt(), true);
 
 		String defaultLanguageId = _language.getLanguageId(LocaleUtil.SPAIN);
 
@@ -1067,6 +1205,12 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 
 		settings.setDefaultLanguageId(defaultLanguageId);
 
+		String googleMapsAPIKey = RandomTestUtil.randomString();
+
+		settings.setGoogleMapsAPIKey(googleMapsAPIKey);
+
+		settings.setMapProviderKey("GoogleMaps");
+
 		boolean trashEnabled = true;
 
 		settings.setTrashEnabled(trashEnabled);
@@ -1086,10 +1230,28 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 
 		_assertSettings(
 			assetLibrary, autoTaggingEnabled, availableLanguageIds,
-			defaultLanguageId, "outline-0", new MimeTypeLimit[0], true,
-			trashEnabled, trashEntriesMaxAge, useCustomLanguages);
+			defaultLanguageId, googleMapsAPIKey, "outline-0", "GoogleMaps",
+			new MimeTypeLimit[0], true, trashEnabled, trashEntriesMaxAge,
+			useCustomLanguages);
 
 		_assertGroupDepotEntryType(assetLibrary);
+
+		assetLibrary.setName_i18n(
+			Collections.singletonMap(
+				defaultLanguageId, RandomTestUtil.randomString()));
+
+		settings.setMapProviderKey(StringPool.BLANK);
+
+		assetLibrary.setSettings(settings);
+
+		assetLibrary = assetLibraryResource.putAssetLibrary(
+			assetLibrary.getExternalReferenceCode(), assetLibrary);
+
+		_assertSettings(
+			assetLibrary, autoTaggingEnabled, availableLanguageIds,
+			defaultLanguageId, googleMapsAPIKey, "outline-0", null,
+			new MimeTypeLimit[0], true, trashEnabled, trashEntriesMaxAge,
+			useCustomLanguages);
 	}
 
 	@Inject
@@ -1112,5 +1274,8 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 
 	@DeleteAfterTestRun
 	private User _user;
+
+	@Inject
+	private UserLocalService _userLocalService;
 
 }

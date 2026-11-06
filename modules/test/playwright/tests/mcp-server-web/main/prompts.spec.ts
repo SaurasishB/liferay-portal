@@ -6,7 +6,6 @@
 import {expect, mergeTests} from '@playwright/test';
 
 import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
-import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {mcpServerWebPagesTest} from '../../../fixtures/mcpServerWebPagesTest';
 import {DataApiHelpers} from '../../../helpers/ApiHelpers';
@@ -23,9 +22,6 @@ import {
 
 const baseTest = mergeTests(
 	dataApiHelpersTest,
-	featureFlagsTest({
-		'LPD-63311': {enabled: true},
-	}),
 	loginTest(),
 	mcpServerWebPagesTest
 );
@@ -41,7 +37,7 @@ async function createPrompt(
 	name: string,
 	promptStatusKey: 'active' | 'inactive' = 'active'
 ): Promise<ObjectEntry> {
-	const prompt = await apiHelpers.objectEntry.postObjectEntry(
+	return apiHelpers.objectEntry.postObjectEntry(
 		{
 			description: `Created by Playwright ${name}`,
 			identifier: name,
@@ -51,14 +47,6 @@ async function createPrompt(
 		},
 		PROMPTS_API
 	);
-
-	apiHelpers.data.push({
-		applicationName: PROMPTS_API,
-		id: prompt.id,
-		type: 'objectEntry',
-	});
-
-	return prompt;
 }
 
 const test = baseTest.extend<{
@@ -134,12 +122,13 @@ test.describe('Prompts - FDS Table', () => {
 
 	test(
 		'Offers the row actions',
-		{tag: '@LPD-98309'},
+		{tag: ['@LPD-98309', '@LPD-110884']},
 		async ({fdsTablePage, page}) => {
 			await expectFDSTableRowActions(fdsTablePage, page, seededItemName, [
 				'Edit',
 				'Duplicate',
 				'Delete',
+				'Permissions',
 			]);
 		}
 	);
@@ -330,45 +319,6 @@ test.describe('Prompts - Detail (Create / Edit)', () => {
 	);
 
 	test(
-		'Stops auto-generating the identifier after a manual edit',
-		{tag: '@LPD-98450'},
-		async ({promptsPage}) => {
-			await promptsPage.goto();
-			await promptsPage.newPromptButton.click();
-
-			await promptsPage.nameInput.fill('First Name');
-
-			await expect(promptsPage.identifierInput).toHaveValue('first-name');
-
-			const identifier = promptName();
-
-			await promptsPage.identifierInput.fill(identifier);
-
-			await promptsPage.nameInput.fill('Second Name');
-
-			await expect(promptsPage.identifierInput).toHaveValue(identifier);
-		}
-	);
-
-	test(
-		'Shows a format error for an invalid identifier',
-		{tag: '@LPD-98450'},
-		async ({promptsPage}) => {
-			await promptsPage.goto();
-			await promptsPage.newPromptButton.click();
-
-			await promptsPage.identifierInput.fill('Invalid_Identifier');
-			await promptsPage.saveButton.click();
-
-			await expect(
-				promptsPage.identifierInput
-			).toHaveAccessibleDescription(
-				/Please enter a valid identifier \(lowercase letters and numbers separated by single hyphens\)\./
-			);
-		}
-	);
-
-	test(
 		'Shows a required-field error on Name, Identifier, Description, and Prompt',
 		{tag: '@LPD-98309'},
 		async ({promptsPage}) => {
@@ -387,27 +337,6 @@ test.describe('Prompts - Detail (Create / Edit)', () => {
 				promptsPage.descriptionInput
 			).toHaveAccessibleDescription(/This field is required\./);
 			await expect(promptsPage.promptInput).toHaveAccessibleDescription(
-				/This field is required\./
-			);
-		}
-	);
-
-	test(
-		'Clears the required error once the field is filled',
-		{tag: '@LPD-98309'},
-		async ({promptsPage}) => {
-			await promptsPage.goto();
-			await promptsPage.newPromptButton.click();
-
-			await promptsPage.saveButton.click();
-
-			await expect(promptsPage.nameInput).toHaveAccessibleDescription(
-				/This field is required\./
-			);
-
-			await promptsPage.nameInput.fill(promptName());
-
-			await expect(promptsPage.nameInput).not.toHaveAccessibleDescription(
 				/This field is required\./
 			);
 		}
@@ -475,6 +404,43 @@ test.describe('Prompts - Status filter', () => {
 
 			await expect(promptsPage.row(activeName)).toBeVisible();
 			await expect(promptsPage.row(inactiveName)).toBeHidden();
+		}
+	);
+});
+
+test.describe('Prompts - Permissions', () => {
+	test(
+		'Opens the permissions modal of a prompt from the three-dot menu',
+		{tag: '@LPD-110884'},
+		async ({apiHelpers, page, promptsPage}) => {
+			const name = promptName();
+
+			const prompt = await createPrompt(apiHelpers, name);
+
+			await promptsPage.goto();
+
+			await promptsPage.search(name);
+			await promptsPage.clickAction(name, 'Permissions');
+
+			await expect(
+				page.getByRole('dialog', {name: 'Permissions'})
+			).toBeVisible();
+			await expect(
+				page.locator('iframe[title="Permissions"]')
+			).toHaveAttribute(
+				'src',
+				new RegExp(`resourcePrimKey=${prompt.id}(&|$)`)
+			);
+
+			const permissionsFrame = page.frameLocator(
+				'iframe[title="Permissions"]'
+			);
+
+			for (const action of ['Delete', 'Permissions', 'Update', 'View']) {
+				await expect(
+					permissionsFrame.getByText(action, {exact: true}).first()
+				).toBeVisible();
+			}
 		}
 	);
 });

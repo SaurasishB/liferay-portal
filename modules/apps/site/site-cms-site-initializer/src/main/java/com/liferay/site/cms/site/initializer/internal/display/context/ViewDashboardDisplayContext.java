@@ -11,6 +11,8 @@ import com.liferay.depot.model.DepotEntry;
 import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.depot.service.DepotEntryService;
 import com.liferay.document.library.configuration.DLConfiguration;
+import com.liferay.frontend.data.set.action.FDSItemsActions;
+import com.liferay.frontend.data.set.model.FDSActionDropdownItem;
 import com.liferay.learn.LearnMessageUtil;
 import com.liferay.object.constants.ObjectEntryFolderConstants;
 import com.liferay.object.constants.ObjectFolderConstants;
@@ -63,7 +65,10 @@ public class ViewDashboardDisplayContext {
 		ObjectDefinitionService objectDefinitionService,
 		RoleLocalService roleLocalService, ThemeDisplay themeDisplay,
 		TranslationInfoItemFieldValuesExporterRegistry
-			translationInfoItemFieldValuesExporterRegistry) {
+			translationInfoItemFieldValuesExporterRegistry,
+		FDSItemsActions viewBrokenLinksSectionFDSItemsActions,
+		FDSItemsActions viewMissingRequiredFieldsSectionFDSItemsActions,
+		FDSItemsActions viewUnlinkedContentSectionFDSItemsActions) {
 
 		_analyticsSettingsManager = analyticsSettingsManager;
 		_depotEntryLocalService = depotEntryLocalService;
@@ -76,6 +81,12 @@ public class ViewDashboardDisplayContext {
 		_themeDisplay = themeDisplay;
 		_translationInfoItemFieldValuesExporterRegistry =
 			translationInfoItemFieldValuesExporterRegistry;
+		_viewBrokenLinksSectionFDSItemsActions =
+			viewBrokenLinksSectionFDSItemsActions;
+		_viewMissingRequiredFieldsSectionFDSItemsActions =
+			viewMissingRequiredFieldsSectionFDSItemsActions;
+		_viewUnlinkedContentSectionFDSItemsActions =
+			viewUnlinkedContentSectionFDSItemsActions;
 	}
 
 	public Map<String, Object> getConstants() {
@@ -96,7 +107,31 @@ public class ViewDashboardDisplayContext {
 		).put(
 			"admin", () -> _hasUserRole(RoleConstants.ADMINISTRATOR)
 		).put(
-			"administeredSpaceIds", () -> _getAvailableDepotEntryIds()
+			"administeredSpaceGroupIds",
+			() -> TransformUtil.transform(
+				_getAdministeredDepotEntries(),
+				depotEntry -> String.valueOf(depotEntry.getGroupId()))
+		).put(
+			"administeredSpaceIds",
+			() -> TransformUtil.transform(
+				_getAdministeredDepotEntries(),
+				depotEntry -> String.valueOf(depotEntry.getDepotEntryId()))
+		).put(
+			"allSpacesAdministered",
+			() -> {
+				List<DepotEntry> administeredDepotEntries =
+					_getAdministeredDepotEntries();
+
+				if (administeredDepotEntries.size() ==
+						_depotEntryLocalService.getDepotEntriesCount(
+							_themeDisplay.getCompanyId(),
+							DepotConstants.TYPE_SPACE)) {
+
+					return true;
+				}
+
+				return false;
+			}
 		).put(
 			"analyticsEnabled",
 			() -> {
@@ -168,6 +203,11 @@ public class ViewDashboardDisplayContext {
 			GetterUtil.getBoolean(
 				PropsUtil.get(PropsKeys.CMS_BROKEN_LINKS_CHECKER_ENABLED))
 		).put(
+			"brokenLinksFDSActionDropdownItems",
+			() ->
+				_viewBrokenLinksSectionFDSItemsActions.
+					getFDSActionDropdownItems(_httpServletRequest)
+		).put(
 			"candidateAssetLibraries",
 			SectionDisplayContextUtil.getDepotEntriesJSONArray(
 				_httpServletRequest)
@@ -212,17 +252,17 @@ public class ViewDashboardDisplayContext {
 			PermissionUtil.getDefaultPermissionAdditionalProps(
 				_httpServletRequest, _themeDisplay)
 		).put(
-			"expiringSoonFDSName",
-			CMSSiteInitializerFDSNames.EXPIRING_SOON_SECTION
-		).put(
-			"expiringSoonFilterString",
-			SectionDisplayContextUtil.getExpiringSoonFilterString(
-				_httpServletRequest)
-		).put(
 			"fdsActionDropdownItems",
-			() ->
-				SectionDisplayContextUtil.getNeedsReviewFDSActionDropdownItems(
-					_httpServletRequest)
+			() -> {
+				List<FDSActionDropdownItem> fdsActionDropdownItems =
+					SectionDisplayContextUtil.getFDSActionDropdownItems(
+						_httpServletRequest);
+
+				SectionDisplayContextUtil.addScheduleDateFDSActionDropdownItems(
+					fdsActionDropdownItems, _httpServletRequest);
+
+				return fdsActionDropdownItems;
+			}
 		).put(
 			"fileMimeTypeCssClasses",
 			() -> {
@@ -244,6 +284,11 @@ public class ViewDashboardDisplayContext {
 					_dlConfiguration);
 			}
 		).put(
+			"missingRequiredFieldsFDSActionDropdownItems",
+			() ->
+				_viewMissingRequiredFieldsSectionFDSItemsActions.
+					getFDSActionDropdownItems(_httpServletRequest)
+		).put(
 			"objectDefinitionCssClasses",
 			SectionDisplayContextUtil.getObjectDefinitionCssClasses()
 		).put(
@@ -255,17 +300,21 @@ public class ViewDashboardDisplayContext {
 		).put(
 			"redirect", _themeDisplay.getURLCurrent()
 		).put(
-			"upcomingReviewsFDSName",
-			CMSSiteInitializerFDSNames.UPCOMING_REVIEWS_SECTION
-		).put(
-			"upcomingReviewsFilterString",
-			SectionDisplayContextUtil.getUpcomingReviewsFilterString(
-				_httpServletRequest)
+			"unlinkedContentFDSActionDropdownItems",
+			() ->
+				_viewUnlinkedContentSectionFDSItemsActions.
+					getFDSActionDropdownItems(_httpServletRequest)
 		).build();
 	}
 
-	private List<String> _getAvailableDepotEntryIds() throws PortalException {
-		return TransformUtil.transform(
+	private List<DepotEntry> _getAdministeredDepotEntries()
+		throws PortalException {
+
+		if (_administeredDepotEntries != null) {
+			return _administeredDepotEntries;
+		}
+
+		_administeredDepotEntries = TransformUtil.transform(
 			_depotEntryService.getDepotEntryGroupIds(
 				_themeDisplay.getCompanyId(), _themeDisplay.getUserId(),
 				DepotConstants.TYPE_SPACE),
@@ -279,11 +328,13 @@ public class ViewDashboardDisplayContext {
 						depotEntry.getGroupId(),
 						ActionKeys.VIEW_SITE_ADMINISTRATION)) {
 
-					return String.valueOf(depotEntry.getDepotEntryId());
+					return depotEntry;
 				}
 
 				return null;
 			});
+
+		return _administeredDepotEntries;
 	}
 
 	private Long _getCMSGroupId() {
@@ -309,6 +360,7 @@ public class ViewDashboardDisplayContext {
 	private static final Log _log = LogFactoryUtil.getLog(
 		ViewDashboardDisplayContext.class);
 
+	private List<DepotEntry> _administeredDepotEntries;
 	private final AnalyticsSettingsManager _analyticsSettingsManager;
 	private final DepotEntryLocalService _depotEntryLocalService;
 	private final DepotEntryService _depotEntryService;
@@ -320,5 +372,9 @@ public class ViewDashboardDisplayContext {
 	private final ThemeDisplay _themeDisplay;
 	private final TranslationInfoItemFieldValuesExporterRegistry
 		_translationInfoItemFieldValuesExporterRegistry;
+	private final FDSItemsActions _viewBrokenLinksSectionFDSItemsActions;
+	private final FDSItemsActions
+		_viewMissingRequiredFieldsSectionFDSItemsActions;
+	private final FDSItemsActions _viewUnlinkedContentSectionFDSItemsActions;
 
 }

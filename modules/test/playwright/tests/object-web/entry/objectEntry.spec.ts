@@ -10,7 +10,7 @@ import {
 	ObjectRelationship,
 	ObjectRelationshipAPI,
 	ObjectValidationRuleAPI,
-} from '@liferay/object-admin-rest-client-js';
+} from '@liferay/object-admin-rest-client-js/v1_0';
 import {expect, mergeTests} from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
@@ -425,16 +425,10 @@ cmsTest.describe('Manage attachment ObjectField storage locations', () => {
 		async ({apiHelpers, page, viewObjectEntriesPage}) => {
 			const fileName = `file_${getRandomString()}.png`;
 			const fileTitle = `title ${getRandomString()}`;
-			const spaceName = `Space ${getRandomString()}`;
 			let space;
 
 			await test.step('Create a new Space and add a file entry to it', async () => {
-				space =
-					await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-						name: spaceName,
-						settings: {},
-						type: 'Space',
-					});
+				space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 				await apiHelpers.objectEntry.postObjectEntry(
 					{
@@ -522,7 +516,7 @@ cmsTest.describe('Manage attachment ObjectField storage locations', () => {
 
 			await viewObjectEntriesPage.selectFileButton.first().click();
 
-			await page.getByRole('img', {name: spaceName}).click();
+			await page.getByRole('img', {name: space.name}).click();
 
 			await page.getByLabel(fileTitle, {exact: true}).click();
 
@@ -560,10 +554,8 @@ cmsTest.describe('Manage attachment ObjectField storage locations', () => {
 			const spaceName = getRandomString();
 
 			await test.step('Create a new Space', async () => {
-				await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+				await apiHelpers.headlessAssetLibrary.createSpace({
 					name: spaceName,
-					settings: {},
-					type: 'Space',
 				});
 			});
 
@@ -654,14 +646,8 @@ cmsTest.describe('Manage attachment ObjectField storage locations', () => {
 		async ({apiHelpers, page, spaceSummaryPage, viewObjectEntriesPage}) => {
 			const childFolderName = `Child${getRandomString()}`;
 			const parentFolderName = `Parent${getRandomString()}`;
-			const spaceName = getRandomString();
 
-			const space =
-				await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-					name: spaceName,
-					settings: {},
-					type: 'Space',
-				});
+			const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 			const objectDefinition =
 				await apiHelpers.objectAdmin.postRandomObjectDefinition({
@@ -766,12 +752,7 @@ cmsTest.describe('Manage attachment ObjectField storage locations', () => {
 			let space;
 
 			await test.step('Create a new Space and add a draft file to it', async () => {
-				space =
-					await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-						name: `Space ${getRandomString()}`,
-						settings: {},
-						type: 'Space',
-					});
+				space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 				await apiHelpers.objectEntry.postObjectEntry(
 					{
@@ -6757,19 +6738,15 @@ test.describe('Manage object entries through View Object Entries', () => {
 
 		// Upload first file from user computer
 
-		await viewObjectEntriesPage.selectFileFromUserComputer(
-			__dirname,
-			'sampleFile.txt'
-		);
+		const fileEntryId1 =
+			await viewObjectEntriesPage.selectFileFromUserComputerToDocumentsAndMedia(
+				__dirname,
+				'sampleFile.txt'
+			);
 
 		await page
 			.getByRole('button', {name: 'sampleFile.txt'})
 			.waitFor({state: 'visible'});
-
-		const fileEntryId1 = await page.getAttribute(
-			'input[data-field-name^="testAttachment"]',
-			'value'
-		);
 
 		expect(
 			await apiHelpers.headlessDelivery.getDocument(fileEntryId1)
@@ -6781,10 +6758,11 @@ test.describe('Manage object entries through View Object Entries', () => {
 
 		// Verify that the first file is removed after the second file is uploaded
 
-		await viewObjectEntriesPage.selectFileFromUserComputer(
-			__dirname,
-			'astronaut.png'
-		);
+		const fileEntryId2 =
+			await viewObjectEntriesPage.selectFileFromUserComputerToDocumentsAndMedia(
+				__dirname,
+				'astronaut.png'
+			);
 
 		await page
 			.getByRole('button', {name: 'astronaut.png'})
@@ -6797,11 +6775,6 @@ test.describe('Manage object entries through View Object Entries', () => {
 				{timeout: 30 * 1000}
 			)
 			.toEqual({status: 'NOT_FOUND'});
-
-		const fileEntryId2 = await page.getAttribute(
-			'input[data-field-name^="testAttachment"]',
-			'value'
-		);
 
 		expect(
 			await apiHelpers.headlessDelivery.getDocument(fileEntryId2)
@@ -6825,19 +6798,15 @@ test.describe('Manage object entries through View Object Entries', () => {
 
 		// Verify that the file is removed after page reload
 
-		await viewObjectEntriesPage.selectFileFromUserComputer(
-			__dirname,
-			'sampleFile.txt'
-		);
+		const fileEntryId3 =
+			await viewObjectEntriesPage.selectFileFromUserComputerToDocumentsAndMedia(
+				__dirname,
+				'sampleFile.txt'
+			);
 
 		await page
 			.getByRole('button', {name: 'sampleFile.txt'})
 			.waitFor({state: 'visible'});
-
-		const fileEntryId3 = await page.getAttribute(
-			'input[data-field-name^="testAttachment"]',
-			'value'
-		);
 
 		await page.reload();
 

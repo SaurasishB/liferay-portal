@@ -1,5 +1,5 @@
 import * as API from 'shared/api';
-import ClayIcon from '@clayui/icon';
+import ClayIcon from 'shared/components/Icon';
 import ClayLink from '@clayui/link';
 import DocumentTitle from 'shared/components/DocumentTitle';
 import getCN from 'classnames';
@@ -154,13 +154,13 @@ export class WorkspacesBasePage extends React.Component<IWorkspacesBasePageProps
 									})}
 								>
 									<ClayIcon
-										className="icon-root logo-icon"
+										className="icon-root logo-icon mr-4"
 										symbol={
 											ldpEnabled ? 'ldp_logo' : 'ac_logo'
 										}
 									/>
 
-									<span className="logo-text">
+									<span className="logo-text text-uppercase">
 										{ldpEnabled
 											? Liferay.Language.get(
 													'liferay-data-platform'

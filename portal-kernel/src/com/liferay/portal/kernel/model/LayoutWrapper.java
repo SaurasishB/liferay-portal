@@ -51,6 +51,7 @@ public class LayoutWrapper
 		attributes.put("parentLayoutId", getParentLayoutId());
 		attributes.put("classNameId", getClassNameId());
 		attributes.put("classPK", getClassPK());
+		attributes.put("launchSetId", getLaunchSetId());
 		attributes.put("name", getName());
 		attributes.put("title", getTitle());
 		attributes.put("description", getDescription());
@@ -74,6 +75,9 @@ public class LayoutWrapper
 		attributes.put(
 			"masterLayoutPageTemplateEntryERC",
 			getMasterLayoutPageTemplateEntryERC());
+		attributes.put(
+			"masterLayoutPageTemplateEntryScopeERC",
+			getMasterLayoutPageTemplateEntryScopeERC());
 		attributes.put(
 			"portletLayoutPageTemplateEntryERC",
 			getPortletLayoutPageTemplateEntryERC());
@@ -200,6 +204,12 @@ public class LayoutWrapper
 			setClassPK(classPK);
 		}
 
+		Long launchSetId = (Long)attributes.get("launchSetId");
+
+		if (launchSetId != null) {
+			setLaunchSetId(launchSetId);
+		}
+
 		String name = (String)attributes.get("name");
 
 		if (name != null) {
@@ -323,6 +333,14 @@ public class LayoutWrapper
 		if (masterLayoutPageTemplateEntryERC != null) {
 			setMasterLayoutPageTemplateEntryERC(
 				masterLayoutPageTemplateEntryERC);
+		}
+
+		String masterLayoutPageTemplateEntryScopeERC = (String)attributes.get(
+			"masterLayoutPageTemplateEntryScopeERC");
+
+		if (masterLayoutPageTemplateEntryScopeERC != null) {
+			setMasterLayoutPageTemplateEntryScopeERC(
+				masterLayoutPageTemplateEntryScopeERC);
 		}
 
 		String portletLayoutPageTemplateEntryERC = (String)attributes.get(
@@ -956,6 +974,16 @@ public class LayoutWrapper
 	}
 
 	/**
+	 * Returns the launch set ID of this layout.
+	 *
+	 * @return the launch set ID of this layout
+	 */
+	@Override
+	public long getLaunchSetId() {
+		return model.getLaunchSetId();
+	}
+
+	/**
 	 * Returns the layout ID of this layout.
 	 *
 	 * @return the layout ID of this layout
@@ -1024,6 +1052,16 @@ public class LayoutWrapper
 	@Override
 	public String getMasterLayoutPageTemplateEntryERC() {
 		return model.getMasterLayoutPageTemplateEntryERC();
+	}
+
+	/**
+	 * Returns the master layout page template entry scope erc of this layout.
+	 *
+	 * @return the master layout page template entry scope erc of this layout
+	 */
+	@Override
+	public String getMasterLayoutPageTemplateEntryScopeERC() {
+		return model.getMasterLayoutPageTemplateEntryScopeERC();
 	}
 
 	@Override
@@ -2320,6 +2358,16 @@ public class LayoutWrapper
 	}
 
 	/**
+	 * Sets the launch set ID of this layout.
+	 *
+	 * @param launchSetId the launch set ID of this layout
+	 */
+	@Override
+	public void setLaunchSetId(long launchSetId) {
+		model.setLaunchSetId(launchSetId);
+	}
+
+	/**
 	 * Sets the layout ID of this layout.
 	 *
 	 * @param layoutId the layout ID of this layout
@@ -2357,6 +2405,19 @@ public class LayoutWrapper
 
 		model.setMasterLayoutPageTemplateEntryERC(
 			masterLayoutPageTemplateEntryERC);
+	}
+
+	/**
+	 * Sets the master layout page template entry scope erc of this layout.
+	 *
+	 * @param masterLayoutPageTemplateEntryScopeERC the master layout page template entry scope erc of this layout
+	 */
+	@Override
+	public void setMasterLayoutPageTemplateEntryScopeERC(
+		String masterLayoutPageTemplateEntryScopeERC) {
+
+		model.setMasterLayoutPageTemplateEntryScopeERC(
+			masterLayoutPageTemplateEntryScopeERC);
 	}
 
 	/**
@@ -2866,4 +2927,4 @@ public class LayoutWrapper
 	}
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1482886270
+// LIFERAY-SERVICE-BUILDER-HASH:1659655228

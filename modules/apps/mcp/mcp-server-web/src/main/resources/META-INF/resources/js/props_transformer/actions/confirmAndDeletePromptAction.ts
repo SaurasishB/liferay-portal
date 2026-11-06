@@ -4,10 +4,11 @@
  */
 
 import {openModal} from 'frontend-js-components-web';
+import {escapeHTML, sub} from 'frontend-js-web';
 
-import {deletePrompt} from '../../services/deletePrompt';
-import {PromptActionContext} from '../../types';
-import {openErrorToast, openSuccessToast} from '../../utils';
+import PromptService from '../../services/PromptService';
+import {PromptActionContext} from '../../types/Prompt';
+import {openErrorToast, openSuccessToast} from '../../utils/toasts';
 
 export default function confirmAndDeletePromptAction({
 	itemData,
@@ -22,11 +23,11 @@ export default function confirmAndDeletePromptAction({
 	openModal({
 		bodyHTML: `
 			<p>
-				${Liferay.Util.sub(
+				${sub(
 					Liferay.Language.get(
 						'this-will-permanently-delete-x-prompt-from-your-mcp-server-configuration'
 					),
-					`<strong>${Liferay.Util.escapeHTML(name)}</strong>`
+					`<strong>${escapeHTML(name)}</strong>`
 				)}
 				${Liferay.Language.get('anyone-using-this-prompt-will-lose-access-immediately')}
 			</p>
@@ -45,7 +46,7 @@ export default function confirmAndDeletePromptAction({
 				onClick: async ({processClose}: {processClose: () => void}) => {
 					processClose();
 
-					const {error} = await deletePrompt(id);
+					const {error} = await PromptService.deletePrompt(id);
 
 					if (error) {
 						openErrorToast(error);
@@ -56,7 +57,7 @@ export default function confirmAndDeletePromptAction({
 					loadData();
 
 					openSuccessToast(
-						Liferay.Util.sub(
+						sub(
 							Liferay.Language.get('x-was-deleted-successfully'),
 							name
 						)

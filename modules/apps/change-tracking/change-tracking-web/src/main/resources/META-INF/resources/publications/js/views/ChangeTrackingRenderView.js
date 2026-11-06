@@ -1089,7 +1089,8 @@ export default function ChangeTrackingRenderView({
 				title = state.renderData.rightTitle;
 
 				if (state.renderData.changeType === CHANGE_TYPE_ADDED) {
-					title += ' (' + Liferay.Language.get('new') + ')';
+					title +=
+						' (' + Liferay.Language.get('new[adjective]') + ')';
 				}
 			}
 
@@ -1205,17 +1206,13 @@ export default function ChangeTrackingRenderView({
 						</td>
 					</tr>
 					<tr className="publications-render-view-divider table-divider">
-						{
-							<td className="publications-render-view-divider">
-								{Liferay.Language.get('production')}
-							</td>
-						}
+						<td className="publications-render-view-divider">
+							{Liferay.Language.get('production')}
+						</td>
 
-						{
-							<td className="publications-render-view-divider">
-								{state.renderData.rightTitle}
-							</td>
-						}
+						<td className="publications-render-view-divider">
+							{state.renderData.rightTitle}
+						</td>
 					</tr>
 				</>
 			);
@@ -1271,7 +1268,13 @@ export default function ChangeTrackingRenderView({
 					description={Liferay.Language.get(
 						'there-are-no-changes-to-display-in-this-view'
 					)}
-					imgSrc={`${themeDisplay.getPathThemeImages()}/states/search_state.svg`}
+					image={
+						<ClayIcon
+							className="c-empty-state-icon c-empty-state-icon-search-state"
+							illustration
+							symbol="search-state"
+						/>
+					}
 					title={Liferay.Language.get('no-results-found')}
 				/>
 			);

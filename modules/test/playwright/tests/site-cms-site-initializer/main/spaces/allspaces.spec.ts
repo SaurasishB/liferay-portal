@@ -21,10 +21,8 @@ test(
 		const spaceName = getRandomString();
 
 		await test.step('Create a new space', async () => {
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+			await apiHelpers.headlessAssetLibrary.createSpace({
 				name: spaceName,
-				settings: {},
-				type: 'Space',
 			});
 		});
 
@@ -71,10 +69,8 @@ test(
 		const siteName = 'Global';
 
 		await test.step('Create a new space', async () => {
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+			await apiHelpers.headlessAssetLibrary.createSpace({
 				name: spaceName,
-				settings: {},
-				type: 'Space',
 			});
 		});
 
@@ -114,5 +110,30 @@ test(
 
 			await expect(page.getByText(siteName)).toBeVisible();
 		});
+	}
+);
+
+test(
+	'Export and Import actions open the space from All Spaces',
+	{tag: '@LPD-108842'},
+	async ({apiHelpers, page}) => {
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
+
+		for (const action of ['Export', 'Import']) {
+			await page.goto(PORTLET_URLS.cmsAllSpaces);
+
+			await page
+				.getByRole('button', {name: `${space.name} Actions`})
+				.click();
+
+			await page.getByRole('menuitem', {name: action}).click();
+
+			await expect(
+				page.getByRole('heading', {name: action})
+			).toBeVisible();
+			await expect(
+				page.getByText(space.name, {exact: true})
+			).toBeVisible();
+		}
 	}
 );

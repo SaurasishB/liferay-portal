@@ -22,10 +22,13 @@ import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.model.Company;
+import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.model.VirtualHost;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.security.auth.PrincipalThreadLocal;
 import com.liferay.portal.kernel.service.CompanyLocalService;
+import com.liferay.portal.kernel.service.VirtualHostLocalService;
 import com.liferay.portal.kernel.test.util.CompanyTestUtil;
 import com.liferay.portal.kernel.test.util.HTTPTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
@@ -39,9 +42,14 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.test.log.LogCapture;
 import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.Inject;
+import com.liferay.portal.util.PortalInstances;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.junit.Assert;
 import org.junit.Assume;
@@ -104,6 +112,8 @@ public class PortalInstanceImportResourceTest
 		_testPostPortalInstanceImportBatch();
 		_testPostPortalInstanceImportExistingDBPartition();
 		_testPostPortalInstanceImportExportedValuesInUse();
+		_testPostPortalInstanceImportGroupNameInUse();
+		_testPostPortalInstanceImportInProgress();
 		_testPostPortalInstanceImportInvalidSchemaName();
 		_testPostPortalInstanceImportNonexistentDBPartition();
 		_testPostPortalInstanceImportSuccess();
@@ -158,14 +168,14 @@ public class PortalInstanceImportResourceTest
 		PrincipalThreadLocal.setName(name);
 	}
 
-	private void _deleteCompanyByVirtualHost(String virtualHost)
+	private void _deleteCompanyByVirtualHost(String virtualHostname)
 		throws Exception {
 
-		Company company = _companyLocalService.fetchCompanyByVirtualHost(
-			virtualHost);
+		VirtualHost virtualHost = _virtualHostLocalService.fetchVirtualHost(
+			virtualHostname);
 
-		if (company != null) {
-			_deleteCompany(company.getCompanyId());
+		if (virtualHost != null) {
+			_deleteCompany(virtualHost.getCompanyId());
 		}
 	}
 
@@ -204,13 +214,13 @@ public class PortalInstanceImportResourceTest
 		return companyId;
 	}
 
-	private long _getCompanyIdByVirtualHost(String virtualHost)
+	private long _getCompanyIdByVirtualHost(String virtualHostname)
 		throws Exception {
 
-		Company company = _companyLocalService.getCompanyByVirtualHost(
-			virtualHost);
+		VirtualHost virtualHost = _virtualHostLocalService.getVirtualHost(
+			virtualHostname);
 
-		return company.getCompanyId();
+		return virtualHost.getCompanyId();
 	}
 
 	private PortalInstanceImport _randomPortalInstanceImport(long companyId) {
@@ -371,6 +381,101 @@ public class PortalInstanceImportResourceTest
 		_dropExportedSchema(companyId);
 	}
 
+	private void _testPostPortalInstanceImportGroupNameInUse()
+		throws Exception {
+
+		long companyId = _exportCompany();
+
+		PortalInstanceImport portalInstanceImport1 =
+			_randomPortalInstanceImport(companyId);
+
+		portalInstanceImport1.setName(GroupConstants.GUEST);
+
+		FutureTask<Problem> futureTask = new FutureTask<>(
+			() -> {
+				try {
+					portalInstanceImportResource.postPortalInstanceImport(
+						portalInstanceImport1);
+
+					return null;
+				}
+				catch (Problem.ProblemException problemException) {
+					return problemException.getProblem();
+				}
+			});
+
+		PortalInstanceImport portalInstanceImport2 =
+			_randomPortalInstanceImport(companyId);
+
+		try {
+			try (LogCapture logCapture1 = LoggerTestUtil.configureLog4JLogger(
+					_CLASS_NAME_PORTAL_INSTANCE_IMPORT_RESOURCE_IMPL,
+					LoggerTestUtil.OFF);
+				LogCapture logCapture2 = LoggerTestUtil.configureLog4JLogger(
+					"com.liferay.portal.vulcan.internal.jaxrs.exception." +
+						"mapper.ExceptionMapper",
+					LoggerTestUtil.OFF)) {
+
+				Thread thread = new Thread(futureTask);
+
+				thread.setDaemon(true);
+				thread.setName(
+					PortalInstanceImportResourceTest.class.getSimpleName() +
+						"-postPortalInstanceImport");
+
+				thread.start();
+
+				Problem problem = futureTask.get(10, TimeUnit.MINUTES);
+
+				Assert.assertEquals(
+					"INTERNAL_SERVER_ERROR", problem.getStatus());
+			}
+			catch (TimeoutException timeoutException) {
+				futureTask.cancel(true);
+
+				throw timeoutException;
+			}
+
+			Assert.assertFalse(PortalInstances.isCompanyInImportProcess());
+			Assert.assertNull(
+				_virtualHostLocalService.fetchVirtualHost(
+					portalInstanceImport1.getVirtualHost()));
+
+			PortalInstance portalInstance =
+				portalInstanceImportResource.postPortalInstanceImport(
+					portalInstanceImport2);
+
+			Assert.assertEquals(
+				Long.valueOf(companyId), portalInstance.getCompanyId());
+			Assert.assertEquals(
+				portalInstanceImport2.getWebId(),
+				portalInstance.getPortalInstanceId());
+		}
+		finally {
+			_deleteCompanyByVirtualHost(portalInstanceImport1.getVirtualHost());
+			_deleteCompanyByVirtualHost(portalInstanceImport2.getVirtualHost());
+
+			_dropExportedSchema(companyId);
+		}
+	}
+
+	private void _testPostPortalInstanceImportInProgress() throws Exception {
+		PortalInstanceImport portalInstanceImport = new PortalInstanceImport();
+
+		portalInstanceImport.setSchemaName(
+			DBPartitionUtil.getExportedPartitionName(
+				RandomTestUtil.randomLong()));
+
+		try (SafeCloseable safeCloseable =
+				PortalInstances.setImportInProcessCompanyIdWithSafeCloseable(
+					RandomTestUtil.randomLong())) {
+
+			_assertPostPortalInstanceImportProblemTitle(
+				portalInstanceImport,
+				"Importing an instance is already in progress");
+		}
+	}
+
 	private void _testPostPortalInstanceImportInvalidSchemaName()
 		throws Exception {
 
@@ -456,6 +561,13 @@ public class PortalInstanceImportResourceTest
 				portalInstanceImport);
 
 		try {
+			Company persistedCompany = _companyLocalService.getCompany(
+				companyId);
+
+			Assert.assertEquals(
+				Integer.valueOf(persistedCompany.getMaxUsers()),
+				portalInstance.getMaxUsers());
+
 			Assert.assertEquals(
 				Long.valueOf(companyId), portalInstance.getCompanyId());
 			Assert.assertEquals(randomId, portalInstance.getPortalInstanceId());
@@ -549,5 +661,8 @@ public class PortalInstanceImportResourceTest
 
 	@Inject
 	private CompanyLocalService _companyLocalService;
+
+	@Inject
+	private VirtualHostLocalService _virtualHostLocalService;
 
 }

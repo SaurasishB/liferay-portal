@@ -12,6 +12,7 @@ export {default as SpaceSticker} from './common/components/SpaceSticker';
 export {default as StatusLabel} from './common/components/StatusLabel';
 export {default as Toolbar} from './common/components/Toolbar';
 export {default as VerticalNavLayout} from './common/components/VerticalNavLayout';
+export {openAssetUsageListModal} from './common/components/asset_usage/utils';
 export {default as FieldPicker} from './common/components/forms/FieldPicker';
 export {default as FieldText} from './common/components/forms/FieldText';
 export {default as FieldWrapper} from './common/components/forms/FieldWrapper';
@@ -25,6 +26,7 @@ export {
 } from './common/types/BulkActionTask';
 export {ObjectField, StateFlowValue} from './common/types/ObjectDefinition';
 export {type Space} from './common/types/Space';
+export {getFormattedLabel} from './common/utils/getFormattedText';
 export {getScopeExternalReferenceCode} from './common/utils/getScopeExternalReferenceCode';
 export {
 	displayCreateSuccessToast,
@@ -81,11 +83,9 @@ export {default as BrokenLinksFDSPropsTransformer} from './main_view/props_trans
 export {default as BulkActionTaskReportFDSPropsTransformer} from './main_view/props_transformer/BulkActionTaskReportFDSPropsTransformer';
 export {default as CategoryFDSPropsTransformer} from './main_view/props_transformer/CategoryFDSPropsTransformer';
 export {default as CategoryUsagesFDSPropsTransformer} from './main_view/props_transformer/CategoryUsagesFDSPropsTransformer';
-export {default as ExpiredAssetsFDSPropsTransformer} from './main_view/props_transformer/ExpiredAssetsFDSPropsTransformer';
 export {default as HomeRecentAssetsFDSPropsTransformer} from './main_view/props_transformer/HomeRecentAssetsFDSPropsTransformer';
 export {default as MembersFDSPropsTransformer} from './main_view/props_transformer/MembersFDSPropsTransformer';
-export {default as OverdueReviewsFDSPropsTransformer} from './main_view/props_transformer/OverdueReviewsFDSPropsTransformer';
-export {default as PendingWorkflowsFDSPropsTransformer} from './main_view/props_transformer/PendingWorkflowsFDSPropsTransformer';
+export {default as MissingRequiredFieldsFDSPropsTransformer} from './main_view/props_transformer/MissingRequiredFieldsFDSPropsTransformer';
 export {default as RecycleBinFDSPropsTransformer} from './main_view/props_transformer/RecycleBinFDSPropsTransformer';
 export {default as RelatedAssetsFDSPropsTransformer} from './main_view/props_transformer/RelatedAssetsFDSPropsTransformer';
 export {default as SharedWithMeFDSPropsTransformer} from './main_view/props_transformer/SharedWithMeFDSPropsTransformer';
@@ -93,11 +93,15 @@ export {default as SitesFDSPropsTransformer} from './main_view/props_transformer
 export {default as StructureUsagesFDSPropsTransformer} from './main_view/props_transformer/StructureUsagesFDSPropsTransformer';
 export {default as StructuresFDSPropsTransformer} from './main_view/props_transformer/StructuresFDSPropsTransformer';
 export {default as TagUsagesFDSPropsTransformer} from './main_view/props_transformer/TagUsagesFDSPropsTransformer';
+export {default as UnlinkedContentFDSPropsTransformer} from './main_view/props_transformer/UnlinkedContentFDSPropsTransformer';
 export {default as ViewVersionHistoryFDSPropsTransformer} from './main_view/props_transformer/ViewVersionHistoryFDSPropsTransformer';
 export {default as VocabularyFDSPropsTransformer} from './main_view/props_transformer/VocabularyFDSPropsTransformer';
 export {default as confirmAndDeleteEntryAction} from './main_view/props_transformer/actions/confirmAndDeleteEntryAction';
 export {default as ACTIONS} from './main_view/props_transformer/actions/creationMenuActions';
-export {default as deleteAssetEntriesBulkAction} from './main_view/props_transformer/actions/deleteAssetEntriesBulkAction';
+export {
+	default as deleteAssetEntriesBulkAction,
+	executeBulkDeleteAction,
+} from './main_view/props_transformer/actions/deleteAssetEntriesBulkAction';
 export {default as deleteItemAction} from './main_view/props_transformer/actions/deleteItemAction';
 export {default as manageMembersAction} from './main_view/props_transformer/actions/manageMembersAction';
 export {triggerAssetBulkAction} from './main_view/props_transformer/actions/triggerAssetBulkAction';

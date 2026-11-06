@@ -554,20 +554,13 @@ test(
 			.getSiteByFriendlyUrlPath('cms')
 			.then((response) => response.id);
 
-		const spaceName = getRandomString();
-
-		const {id: spaceId} =
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-				name: spaceName,
-				settings: {},
-				type: 'Space',
-			});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		const categoryName = getRandomString();
 
 		await createScopedVocabularyAndContent({
 			apiHelpers,
-			assetLibraries: [{id: spaceId, name: spaceName}],
+			assetLibraries: [{id: space.id, name: space.name}],
 			assetTypes: [{required: false, type: 'AllAssetTypes'}],
 			categoryName,
 			contentsPage,
@@ -787,25 +780,15 @@ projectVocabularyTest.describe('Project selection tests', () => {
 		'Does not list a ghost project in the project selector',
 		{tag: '@LPD-97935'},
 		async ({apiHelpers, editVocabularyPage, page}) => {
+			const ghostProject =
+				await apiHelpers.headlessAssetLibrary.createProject();
+
 			const approvedProjectTitle = getRandomString();
-			const ghostProjectName = getRandomString();
 
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-				name: ghostProjectName,
-				settings: {},
-				type: 'Project',
-			});
-
-			const projectEntry = await apiHelpers.objectEntry.postObjectEntry(
+			await apiHelpers.objectEntry.postObjectEntry(
 				{title: approvedProjectTitle},
 				'cmp/projects'
 			);
-
-			apiHelpers.data.push({
-				applicationName: 'cmp/projects',
-				id: projectEntry.id,
-				type: 'objectEntry',
-			});
 
 			await editVocabularyPage.goto();
 
@@ -816,7 +799,7 @@ projectVocabularyTest.describe('Project selection tests', () => {
 			).toHaveCount(1);
 
 			await expect(
-				page.getByRole('option', {name: ghostProjectName})
+				page.getByRole('option', {name: ghostProject.name})
 			).toHaveCount(0);
 		}
 	);
@@ -854,16 +837,10 @@ projectVocabularyTest.describe('Project selection tests', () => {
 		async ({apiHelpers, editVocabularyPage, page, vocabulariesPage}) => {
 			const projectName = getRandomString();
 
-			const projectEntry = await apiHelpers.objectEntry.postObjectEntry(
+			await apiHelpers.objectEntry.postObjectEntry(
 				{title: projectName},
 				'cmp/projects'
 			);
-
-			apiHelpers.data.push({
-				applicationName: 'cmp/projects',
-				id: projectEntry.id,
-				type: 'objectEntry',
-			});
 
 			const name = `Vocabulary${getRandomInt()}`;
 

@@ -19,6 +19,7 @@ import com.liferay.commerce.inventory.model.CommerceInventoryWarehouseRelTable;
 import com.liferay.commerce.inventory.model.CommerceInventoryWarehouseTable;
 import com.liferay.commerce.inventory.service.CommerceInventoryReplenishmentItemLocalService;
 import com.liferay.commerce.inventory.service.CommerceInventoryWarehouseItemLocalService;
+import com.liferay.commerce.inventory.service.CommerceInventoryWarehouseRelLocalService;
 import com.liferay.commerce.inventory.service.base.CommerceInventoryWarehouseLocalServiceBaseImpl;
 import com.liferay.commerce.product.model.CommerceChannelRelTable;
 import com.liferay.commerce.product.model.CommerceChannelTable;
@@ -152,6 +153,10 @@ public class CommerceInventoryWarehouseLocalServiceImpl
 
 		_commerceInventoryReplenishmentItemLocalService.
 			deleteCommerceInventoryReplenishmentItems(
+				commerceInventoryWarehouse.getCommerceInventoryWarehouseId());
+
+		_commerceInventoryWarehouseRelLocalService.
+			deleteCommerceInventoryWarehouseRels(
 				commerceInventoryWarehouse.getCommerceInventoryWarehouseId());
 
 		_expandoRowLocalService.deleteRows(
@@ -401,8 +406,8 @@ public class CommerceInventoryWarehouseLocalServiceImpl
 				companyId, active, commerceCountryCode);
 		}
 
-		return commerceInventoryWarehouseLocalService.
-			getCommerceInventoryWarehousesCount(companyId, active);
+		return commerceInventoryWarehousePersistence.countByC_A(
+			companyId, active);
 	}
 
 	@Override
@@ -584,9 +589,8 @@ public class CommerceInventoryWarehouseLocalServiceImpl
 				document.get(Field.ENTRY_CLASS_PK));
 
 			CommerceInventoryWarehouse commerceInventoryWarehouse =
-				commerceInventoryWarehouseLocalService.
-					fetchCommerceInventoryWarehouse(
-						commerceInventoryWarehouseId);
+				commerceInventoryWarehousePersistence.fetchByPrimaryKey(
+					commerceInventoryWarehouseId);
 
 			if (commerceInventoryWarehouse == null) {
 				commerceInventoryWarehouses = null;
@@ -699,6 +703,10 @@ public class CommerceInventoryWarehouseLocalServiceImpl
 	@Reference
 	private CommerceInventoryWarehouseItemLocalService
 		_commerceInventoryWarehouseItemLocalService;
+
+	@Reference
+	private CommerceInventoryWarehouseRelLocalService
+		_commerceInventoryWarehouseRelLocalService;
 
 	@Reference
 	private CompanyLocalService _companyLocalService;

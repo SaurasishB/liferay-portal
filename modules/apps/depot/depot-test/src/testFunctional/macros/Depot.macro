@@ -381,29 +381,6 @@ definition {
 	}
 
 	@summary = "Default summary"
-	macro configureSearch(depotName = null, item = null, tableEntryText = null, siteList = null) {
-		for (var siteName : list ${siteList}) {
-			DepotNavigator.gotoEdit(depotName = ${depotName});
-
-			DepotNavigator.gotoSites(depotName = ${depotName});
-
-			LexiconTable.clickEllipsisItem(
-				item = ${item},
-				tableEntry = ${siteName});
-
-			SelectFrame(value1 = "relative=top");
-
-			Alert.viewSuccessMessage();
-
-			AssertTextEquals(
-				key_tableEntry = ${siteName},
-				key_tableEntryText = ${tableEntryText},
-				locator1 = "LexiconTable#TABLE_ENTRY_TEXT",
-				value1 = ${tableEntryText});
-		}
-	}
-
-	@summary = "Default summary"
 	macro configureSharing(sharing = null) {
 		if (${sharing} == "Enabled") {
 			Check.checkToggleSwitch(
@@ -439,16 +416,11 @@ definition {
 
 			SelectFrame(value1 = "relative=top");
 
-			if (isSet(connectStagedSite)) {
-				Alert.viewErrorMessage(errorMessage = "An unstaged asset library cannot be connected to a staged site.");
-			}
-			else {
-				Alert.viewSuccessMessage();
+			Alert.viewSuccessMessage();
 
-				AssertElementPresent.pauseAssertVisible(
-					key_tableEntry = ${siteName},
-					locator1 = "LexiconTable#TABLE_ENTRY");
-			}
+			AssertElementPresent.pauseAssertVisible(
+				key_tableEntry = ${siteName},
+				locator1 = "LexiconTable#TABLE_ENTRY");
 		}
 	}
 
@@ -987,21 +959,6 @@ definition {
 	}
 
 	@summary = "Default summary"
-	macro viewDMWorkflowPresent(dmFolderName = null) {
-		DMFolder.gotoEditCP(folderName = ${dmFolderName});
-
-		if (IsElementNotPresent.isNotVisible(locator1 = "Radio#WORKFLOW_PARENT_FOLDER")) {
-			Click(locator1 = "DocumentsAndMediaEditFolder#WORKFLOW_DOCUMENT_TYPE_RESTRICTIONS_TOGGLE");
-		}
-
-		AssertVisible(locator1 = "Radio#WORKFLOW_PARENT_FOLDER");
-
-		AssertVisible(locator1 = "Radio#WORKFLOW_SPECIFIC_RESTRICTIONS");
-
-		AssertVisible(locator1 = "Radio#WORKFLOW_DEFAULT_WORKFLOW");
-	}
-
-	@summary = "Default summary"
 	macro viewDocumentInFTP(dmDocumentTitle = null, depotName = null, dmFolderName = null) {
 		var portalURL = PropsUtil.get("portal.url");
 		var depotId = JSONGroupAPI._getDepotIdByName(depotName = ${depotName});
@@ -1162,7 +1119,7 @@ definition {
 	@summary = "Default summary"
 	macro viewNoConnectedSiteCP() {
 		AssertTextEquals(
-			locator1 = "Message#SUBTITLE",
+			locator1 = "Message#EMPTY_INFO_COMPACT",
 			value1 = "No sites are connected yet.");
 	}
 
@@ -1189,13 +1146,6 @@ definition {
 		AssertElementNotPresent(
 			key_panel = ${panelName},
 			locator1 = "Panel#PANEL");
-	}
-
-	@summary = "Default summary"
-	macro viewNoWorkflowResource() {
-		AssertTextEquals.assertPartialText(
-			locator1 = "Message#EMPTY_INFO",
-			value1 = "No entries were found.");
 	}
 
 	@summary = "Default summary"

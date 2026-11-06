@@ -29,6 +29,8 @@ import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.http.client.utils.URIBuilder;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -338,15 +340,15 @@ public class TestrayBuild implements Comparable<TestrayBuild> {
 
 		_testrayRuns = new ArrayList<>();
 
-		StringBuilder sb = new StringBuilder();
-
-		sb.append("/o/c/builds/");
-		sb.append(getId());
-		sb.append("/buildToRuns?pageSize=100");
-
 		try {
+			URIBuilder uriBuilder = JenkinsResultsParserUtil.newURIBuilder(
+				JenkinsResultsParserUtil.combine(
+					"/o/c/builds/", String.valueOf(getId()), "/buildToRuns"));
+
+			uriBuilder.addParameter("pageSize", "100");
+
 			JSONObject responseJSONObject = new JSONObject(
-				_testrayServer.requestGet(sb.toString()));
+				_testrayServer.requestGet(uriBuilder.toString()));
 
 			JSONArray itemsJSONArray = responseJSONObject.getJSONArray("items");
 
@@ -523,6 +525,8 @@ public class TestrayBuild implements Comparable<TestrayBuild> {
 		_testrayRoutine = _testrayServer.getTestrayRoutineById(
 			Long.parseLong(matcher.group("routineId")));
 
+		_testrayProject = _testrayRoutine.getTestrayProject();
+
 		String filterString = JenkinsResultsParserUtil.combine(
 			"id eq '", matcher.group("buildId"), "'");
 
@@ -548,18 +552,43 @@ public class TestrayBuild implements Comparable<TestrayBuild> {
 			return _testrayAttachmentURLMatcher;
 		}
 
-		StringBuilder sb = new StringBuilder();
+		String filterString = JenkinsResultsParserUtil.combine(
+			"r_buildToCaseResult_c_buildId eq '", String.valueOf(getId()), "'");
 
-		sb.append("r_buildToCaseResult_c_buildId eq '");
-		sb.append(getId());
-		sb.append("'");
+		TestrayProject testrayProject = getTestrayProject();
+
+		if (testrayProject != null) {
+			long topLevelBuildTestrayCaseId =
+				testrayProject.getTopLevelBuildTestrayCaseId();
+
+			if (topLevelBuildTestrayCaseId > 0) {
+				_testrayAttachmentURLMatcher = _getTestrayAttachmentURLMatcher(
+					JenkinsResultsParserUtil.combine(
+						filterString, " and r_caseToCaseResult_c_caseId eq '",
+						String.valueOf(topLevelBuildTestrayCaseId), "'"),
+					1);
+
+				if (_testrayAttachmentURLMatcher != null) {
+					return _testrayAttachmentURLMatcher;
+				}
+			}
+		}
+
+		_testrayAttachmentURLMatcher = _getTestrayAttachmentURLMatcher(
+			filterString, 5);
+
+		return _testrayAttachmentURLMatcher;
+	}
+
+	private Matcher _getTestrayAttachmentURLMatcher(
+		String filterString, int maxCount) {
 
 		Set<JSONObject> entityJSONObjects;
 
 		try {
 			entityJSONObjects = _testrayServer.requestGraphQL(
-				"caseResults", new String[] {"attachments"}, sb.toString(),
-				null, 5, 0);
+				"caseResults", new String[] {"attachments"}, filterString, null,
+				maxCount, 0);
 		}
 		catch (IOException ioException) {
 			throw new RuntimeException(ioException);
@@ -590,9 +619,7 @@ public class TestrayBuild implements Comparable<TestrayBuild> {
 						attachmentJSONObject.getString("url"));
 
 				if (testrayAttachmentURLMatcher.find()) {
-					_testrayAttachmentURLMatcher = testrayAttachmentURLMatcher;
-
-					return _testrayAttachmentURLMatcher;
+					return testrayAttachmentURLMatcher;
 				}
 			}
 		}
@@ -627,7 +654,7 @@ public class TestrayBuild implements Comparable<TestrayBuild> {
 	private String _pullRequestSenderUsername;
 	private Matcher _testrayAttachmentURLMatcher;
 	private TestrayProductVersion _testrayProductVersion;
-	private TestrayProject _testrayProject;
+	private final TestrayProject _testrayProject;
 	private final TestrayRoutine _testrayRoutine;
 	private List<TestrayRun> _testrayRuns;
 	private final TestrayServer _testrayServer;

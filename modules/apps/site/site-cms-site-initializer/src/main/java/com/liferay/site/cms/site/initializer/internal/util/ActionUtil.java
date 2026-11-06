@@ -867,7 +867,7 @@ public class ActionUtil {
 
 		sb.append(themeDisplay.getCDNBaseURL());
 		sb.append(themeDisplay.getPathFriendlyURLPrivateGroup());
-		sb.append("/asset-library-{id}/~/control_panel/manage?p_p_id=");
+		sb.append("{friendlyURL}/~/control_panel/manage?p_p_id=");
 		sb.append(portletId);
 
 		return sb.toString();
@@ -1102,8 +1102,8 @@ public class ActionUtil {
 				LocaleUtil.toLanguageId(locale),
 				LanguageUtil.get(
 					locale,
-					"for-now-the-file-is-only-reachable-through-the-friendly-" +
-						"url-of-the-default-language"));
+					"the-file-is-only-reachable-through-the-friendly-url-of-" +
+						"the-default-language"));
 		}
 
 		return JSONUtil.toString(

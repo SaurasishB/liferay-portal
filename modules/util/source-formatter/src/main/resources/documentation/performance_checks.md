@@ -17,6 +17,7 @@ JavaCollapseImportsCheck | .java | Collapses imports that use wildcard. |
 JavaHibernateSQLCheck | .java | Finds calls to `com.liferay.portal.kernel.dao.orm.Session.createSQLQuery` (use `Session.createSynchronizedSQLQuery` instead). |
 [JavaMultiPlusConcatCheck](check/java_multi_plus_concat_check.md#javamultiplusconcatcheck) | .java | Checks that we do not concatenate more than 3 String objects. |
 [JavaRedundantContainsCheck](check/java_redundant_contains_check.md#javaredundantcontainscheck) | .java | Finds a `contains` or `containsKey` check that is immediately followed by a `get`, `remove`, `put`, or `add` on the same key or element, which should be combined into the single operation that already reports presence through its return value. |
+JavaServiceHopCheck | .java | Flags a service method that delegates to a passthrough service method in the same bundle, so it can call persistence directly and skip the AOP proxy hop. |
 [JavaServiceTrackerFactoryCheck](check/java_service_tracker_factory_check.md#javaservicetrackerfactorycheck) | .java | Checks that there are no calls to deprecated method `ServiceTrackerFactory.open(java.lang.Class)`. |
 JavaSessionCheck | .java | Finds unnecessary calls to `Session.flush()` (calls that are followed by `Session.clear()`). |
 [JavaStringBundlerConcatCheck](check/java_string_bundler_concat_check.md#javastringbundlerconcatcheck) | .java | Finds calls to `StringBundler.concat` with less than 3 parameters. |
@@ -25,9 +26,11 @@ LocalPatternCheck | .java | Checks that a `java.util.Pattern` variable is declar
 LocalVariableTypeInferenceCheck | .java, .jsp, .jspf, .jspx, .tag, .tpl, or .vm | Finds usage of `var` in local variable declaration. |
 [MapIterationCheck](check/map_iteration_check.md#mapiterationcheck) | .java, .jsp, .jspf, .jspx, .tag, .tpl, or .vm | Checks that there are no unnecessary map iterations. |
 ParsePrimitiveTypeCheck | .java, .jsp, .jspf, .jspx, .tag, .tpl, or .vm | Verifies that `GetterUtil.parse*` is used to parse primitive types, when possible. |
+PatternMatchingForSwitchCheck | .java | Finds usage of pattern matching for `switch`. |
 [PoshiPauseUsageCheck](check/poshi_pause_usage_check.md#poshipauseusagecheck) | .function, .jar, .lar, .macro, .path, .testcase, .war, or .zip | Finds missing comment with JIRA project when using `Pause`. |
 RESTDTOSetCallCheck | .java | Ensures using set calls with `UnsafeSupplier` parameter for REST DTO. |
 RecordClassCheck | .java | Finds usage of `record`. |
+RecordPatternCheck | .java | Finds usage of record patterns. |
 RedundantBranchingStatementCheck | .java | Finds unnecessary branching (`break`, `continue` or `return`) statements. |
 [RedundantLogCheck](check/redundant_log_check.md#redundantlogcheck) | .java | Finds unnecessary logs. |
 [ResourcePermissionFactoryCheck](check/resource_permission_factory_check.md#resourcepermissionfactorycheck) | .java | Checks usage of `*ResourcePermissionFactory` classes. |
@@ -38,6 +41,7 @@ StringCastCheck | .java, .jsp, .jspf, .jspx, .tag, .tpl, or .vm | Finds cases wh
 SubstringCheck | .java, .jsp, .jspf, .jspx, .tag, .tpl, or .vm | Finds cases like `s.substring(1, s.length())` (use `s.substring(1)` instead). |
 TestClassStaticVariableCheck | .java | Finds unnecessary static modifiers in test classes. |
 ThreadLocalUtilCheck | .java | Finds new instances of `java.lang.Thread` (use `ThreadLocalUtil.create` instead). |
+[ToSQLCallCheck](check/to_sql_call_check.md#tosqlcallcheck) | .java | Finds `toSQL(ASTNodeListener)` calls whose SQL string is unused, which should pass a consumer that ignores the text to `toSQL(Consumer, ASTNodeListener)` instead. |
 TryWithResourcesCheck | .java | Ensures using Try-With-Resources statement to properly close the resource. |
 [UnnecessaryAssignCheck](check/unnecessary_assign_check.md#unnecessaryassigncheck) | .java | Finds unnecessary assign statements (when it is either reassigned or returned right after). |
 UnnecessaryTypeCastCheck | .java, .jsp, .jspf, .jspx, .tag, .tpl, or .vm | Finds unnecessary Type Casting. |

@@ -4,11 +4,12 @@
  */
 
 import {openModal} from 'frontend-js-components-web';
+import {sub} from 'frontend-js-web';
 
-import {deleteDataMask} from '../../services/deleteDataMask';
-import {getProfileDataMasks} from '../../services/getProfileDataMasks';
-import {ActionContext} from '../../types';
-import {openErrorToast, openSuccessToast} from '../../utils';
+import DataMaskService from '../../services/DataMaskService';
+import ProfileDataMaskService from '../../services/ProfileDataMaskService';
+import {DataMaskActionContext} from '../../types/DataMask';
+import {openErrorToast, openSuccessToast} from '../../utils/toasts';
 
 async function getAssociatedProfilesCount(
 	dataMaskExternalReferenceCode?: string
@@ -17,7 +18,7 @@ async function getAssociatedProfilesCount(
 		return 0;
 	}
 
-	const {data, error} = await getProfileDataMasks({
+	const {data, error} = await ProfileDataMaskService.getProfileDataMasks({
 		dataMaskExternalReferenceCode,
 	});
 
@@ -36,7 +37,7 @@ function deleteBody(associatedProfilesCount: number) {
 	}
 
 	return [
-		Liferay.Util.sub(
+		sub(
 			Liferay.Language.get(
 				'this-mask-is-currently-being-used-in-x-profile-s-deleting-it-will-remove-the-masking-rules-from-all-of-them-and-matching-values-will-no-longer-be-masked-in-incoming-data'
 			),
@@ -49,7 +50,7 @@ function deleteBody(associatedProfilesCount: number) {
 export default async function confirmAndDeleteDataMaskAction({
 	itemData,
 	loadData,
-}: ActionContext) {
+}: DataMaskActionContext) {
 	const {externalReferenceCode, id, name} = itemData;
 
 	if (id === undefined) {
@@ -79,7 +80,7 @@ export default async function confirmAndDeleteDataMaskAction({
 				onClick: async ({processClose}: {processClose: () => void}) => {
 					processClose();
 
-					const {error} = await deleteDataMask(id);
+					const {error} = await DataMaskService.deleteDataMask(id);
 
 					if (error) {
 						openErrorToast(error);
@@ -90,7 +91,7 @@ export default async function confirmAndDeleteDataMaskAction({
 					loadData();
 
 					openSuccessToast(
-						Liferay.Util.sub(
+						sub(
 							Liferay.Language.get('x-was-deleted-successfully'),
 							name
 						)

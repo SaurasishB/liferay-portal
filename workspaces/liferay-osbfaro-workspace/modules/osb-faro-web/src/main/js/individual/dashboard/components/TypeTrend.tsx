@@ -1,4 +1,4 @@
-import ClayIcon from '@clayui/icon';
+import ClayIcon from 'shared/components/Icon';
 import getCN from 'classnames';
 import InfoPopover from 'shared/components/InfoPopover';
 import React from 'react';
@@ -25,7 +25,7 @@ export const TrendItem: React.FC<ITrendItemProps> = ({
 
 	return (
 		<div className="trend-item-root" key={title}>
-			<div className="trend-item-title d-flex justify-content-between">
+			<div className="d-flex justify-content-between mb-3 trend-item-title">
 				<div className="card-title">{title}</div>
 
 				{info && <InfoPopover {...info} />}

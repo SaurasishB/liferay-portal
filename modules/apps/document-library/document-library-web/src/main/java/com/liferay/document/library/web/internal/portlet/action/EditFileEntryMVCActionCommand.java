@@ -389,8 +389,6 @@ public class EditFileEntryMVCActionCommand extends BaseMVCActionCommand {
 		ServiceContext serviceContext = ServiceContextFactory.getInstance(
 			DLFileEntry.class.getName(), actionRequest);
 
-		_setUpDDMFormValues(serviceContext);
-
 		UploadPortletRequest uploadPortletRequest =
 			_portal.getUploadPortletRequest(actionRequest);
 
@@ -470,6 +468,8 @@ public class EditFileEntryMVCActionCommand extends BaseMVCActionCommand {
 		long folderId = ParamUtil.getLong(actionRequest, "folderId");
 		String description = ParamUtil.getString(actionRequest, "description");
 		String changeLog = ParamUtil.getString(actionRequest, "changeLog");
+
+		_setUpDDMFormValues(serviceContext);
 
 		FileEntry tempFileEntry = null;
 
@@ -1010,11 +1010,12 @@ public class EditFileEntryMVCActionCommand extends BaseMVCActionCommand {
 		for (Map.Entry<String, String[]> entry : parameterMap.entrySet()) {
 			String parameterName = entry.getKey();
 
-			if (StringUtil.startsWith(parameterName, namespace)) {
-				dynamicServletRequest.setParameterValues(
-					parameterName.substring(namespace.length()),
-					entry.getValue());
+			if (!StringUtil.startsWith(parameterName, namespace)) {
+				continue;
 			}
+
+			dynamicServletRequest.setParameterValues(
+				parameterName.substring(namespace.length()), entry.getValue());
 		}
 
 		return dynamicServletRequest;

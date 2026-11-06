@@ -140,11 +140,13 @@ public class KBFolderLocalServiceImpl extends KBFolderLocalServiceBaseImpl {
 			kbFolder.getGroupId(), kbFolder.getKbFolderId());
 
 		for (KBFolder childKBFolder : childKBFolders) {
-			if (includeTrashedEntries ||
-				!_trashHelper.isInTrashExplicitly(childKBFolder)) {
+			if (!includeTrashedEntries &&
+				_trashHelper.isInTrashExplicitly(childKBFolder)) {
 
-				deleteKBFolder(childKBFolder.getKbFolderId());
+				continue;
 			}
+
+			deleteKBFolder(childKBFolder.getKbFolderId());
 		}
 
 		_resourceLocalService.deleteResource(
@@ -245,14 +247,6 @@ public class KBFolderLocalServiceImpl extends KBFolderLocalServiceBaseImpl {
 		return kbFolderPersistence.findByG_P_S(
 			groupId, parentKBFolderId, WorkflowConstants.STATUS_APPROVED, start,
 			end);
-	}
-
-	@Override
-	public List<Object> getKBFoldersAndKBArticles(
-		long groupId, long parentResourcePrimKey) {
-
-		return getKBFoldersAndKBArticles(
-			groupId, parentResourcePrimKey, WorkflowConstants.STATUS_APPROVED);
 	}
 
 	@Override

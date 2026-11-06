@@ -27,8 +27,11 @@ public class EnvironmentBuildProperties extends Properties {
 
 	public static Environment getCurrentEnvironment() {
 		String jenkinsURL = System.getenv("JENKINS_URL");
+		String pluginsWarName = System.getenv("PLUGINS_WAR_NAME");
 
-		if (!JenkinsResultsParserUtil.isURL(jenkinsURL)) {
+		if (!JenkinsResultsParserUtil.isURL(jenkinsURL) &&
+			JenkinsResultsParserUtil.isNullOrEmpty(pluginsWarName)) {
+
 			return Environment.LOCAL;
 		}
 
@@ -226,7 +229,7 @@ public class EnvironmentBuildProperties extends Properties {
 		throws IOException {
 
 		return JenkinsResultsParserUtil.toString(
-			url, checkCache, 0, null, null, 0, 10 * 1000, null, true);
+			url, checkCache, 0, null, null, 0, 10 * 1000, null, false);
 	}
 
 	private static final Pattern _environmentBuildPropertiesFileNamePattern =

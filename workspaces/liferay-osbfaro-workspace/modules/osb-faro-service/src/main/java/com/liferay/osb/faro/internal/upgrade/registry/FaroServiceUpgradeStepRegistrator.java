@@ -8,6 +8,7 @@ package com.liferay.osb.faro.internal.upgrade.registry;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.upgrade.MVCCVersionUpgradeProcess;
 import com.liferay.portal.kernel.upgrade.UpgradeProcessFactory;
+import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.upgrade.registry.UpgradeStepRegistrator;
 
 import org.osgi.service.component.annotations.Component;
@@ -167,6 +168,36 @@ public class FaroServiceUpgradeStepRegistrator
 			UpgradeProcessFactory.runSQL(
 				"update OSBFaro_FaroProject set dataSourceConnected = " +
 					"[$TRUE$]"));
+
+		registry.register(
+			"21.0.0", "21.0.1",
+			UpgradeProcessFactory.runSQL(
+				"update Layout set colorSchemeId = '', themeId = '' where " +
+					"themeId = 'osbfarotheme_WAR_osbfarotheme'",
+				StringBundler.concat(
+					"update LayoutSet set colorSchemeId = '",
+					PropsValues.DEFAULT_REGULAR_COLOR_SCHEME_ID,
+					"', themeId = '", PropsValues.DEFAULT_REGULAR_THEME_ID,
+					"' where themeId = 'osbfarotheme_WAR_osbfarotheme'")));
+
+		registry.register(
+			"21.0.1", "22.0.0",
+			UpgradeProcessFactory.addColumns(
+				"OSBFaro_FaroProject", "salesforceAccountId VARCHAR(75) null"));
+
+		registry.register(
+			"22.0.0", "23.0.0",
+			UpgradeProcessFactory.dropTables(
+				"OSBFaro_ContactsCardTemplate",
+				"OSBFaro_ContactsLayoutTemplate"));
+
+		registry.register(
+			"23.0.0", "24.0.0",
+			UpgradeProcessFactory.addColumns(
+				"OSBFaro_FaroProjectUsage", "activeLogicalBytes LONG",
+				"anonymousIndividualsCount LONG", "eventsCount LONG",
+				"longTermLogicalBytes LONG", "onDemandBytesBilled LONG",
+				"reservationSlotMs LONG"));
 	}
 
 }

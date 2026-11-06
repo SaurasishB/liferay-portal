@@ -2,19 +2,18 @@ import * as breadcrumbs from 'shared/util/breadcrumbs';
 import BasePage from 'settings/components/base-page/BasePage';
 import ClayAlert, {DisplayType} from '@clayui/alert';
 import ClayButton from '@clayui/button';
-import ClayIcon from '@clayui/icon';
+import ClayIcon from 'shared/components/Icon';
 import ClayLink from '@clayui/link';
 import ErrorDisplay from 'shared/components/ErrorDisplay';
 import Loading from 'shared/components/Loading';
 import React, {useEffect, useRef, useState} from 'react';
-import SalesforceAccountsAndIndividuals from './SalesforceAccountsAndIndividuals';
+import SalesforceEntities from './SalesforceEntities';
 import URLConstants from 'shared/util/url-constants';
 import {addAlert} from 'shared/actions/alerts';
 import {Alert} from 'shared/types';
 import {AssignedPropertiesTable} from '../AssignedPropertiesTable';
 import {Card} from 'shared/components/revamping/Card';
 import {ClayInput} from '@clayui/form';
-import {close, open} from 'shared/actions/modals';
 import {compose} from 'redux';
 import {connect, ConnectedProps} from 'react-redux';
 import {ConnectSalesforceAuth} from './ConnectSalesforceAuth';
@@ -35,8 +34,6 @@ import {withSelectionProvider} from 'shared/context/selection';
 
 const connector = connect(null, {
 	addAlert,
-	close,
-	open,
 });
 
 type PropsFromRedux = ConnectedProps<typeof connector>;
@@ -47,9 +44,7 @@ interface ISalesforceOverviewProps extends PropsFromRedux {
 
 const SalesforceOverview: React.FC<ISalesforceOverviewProps> = ({
 	addAlert,
-	close,
 	dataSource: initialDataSource,
-	open,
 }) => {
 	const [loading, setLoading] = useState(false);
 	const [dataSource, setDataSource] = useState(initialDataSource);
@@ -143,15 +138,13 @@ const SalesforceOverview: React.FC<ISalesforceOverviewProps> = ({
 		enabledAllContacts,
 	]);
 
-	const {handleDisconnect} = useDisconnectDataSource({
+	const {disconnectModal, handleDisconnect} = useDisconnectDataSource({
 		addAlert,
-		close,
 		groupId,
 		id,
 		onSubmit: async () => {
 			await handleUpdateDataSource();
 		},
-		open,
 	});
 
 	const {display, label} = getDataSourceDisplayObject(dataSource);
@@ -276,7 +269,7 @@ const SalesforceOverview: React.FC<ISalesforceOverviewProps> = ({
 			</Card>
 
 			<Card title={Liferay.Language.get('synced-data')}>
-				<AccountAndIndividuals
+				<SyncedDataSection
 					currentUser={currentUser}
 					dataSource={dataSource}
 					groupId={groupId}
@@ -318,11 +311,9 @@ const SalesforceOverview: React.FC<ISalesforceOverviewProps> = ({
 			>
 				<AssignedPropertiesTable
 					addAlert={addAlert}
-					close={close}
 					dataSource={dataSource}
 					handleUpdateDataSource={handleUpdateDataSource}
 					loading={loading}
-					open={open}
 					updateDataSourceFn={
 						updateSalesforce as (params: {
 							[key: string]: any;
@@ -330,11 +321,13 @@ const SalesforceOverview: React.FC<ISalesforceOverviewProps> = ({
 					}
 				/>
 			</Card>
+
+			{disconnectModal}
 		</BasePage>
 	);
 };
 
-const AccountAndIndividuals = ({
+const SyncedDataSection = ({
 	currentUser,
 	dataSource,
 	groupId,
@@ -374,6 +367,12 @@ const AccountAndIndividuals = ({
 		variables: {groupId, id: dataSource.id!},
 	});
 
+	const campaignsCountResponse = useRequest({
+		dataSourceFn: (params) =>
+			fetchConnectorEntityCount(Entity.Campaigns, params),
+		variables: {groupId, id: dataSource.id!},
+	});
+
 	const userCountResponse = useRequest({
 		dataSourceFn: (params) =>
 			fetchConnectorEntityCount(Entity.Users, params),
@@ -386,11 +385,19 @@ const AccountAndIndividuals = ({
 
 	const dataSourceActive = dataSource.status === DataSourceStatuses.Active;
 
-	if (accountsCountResponse.error || userCountResponse.error) {
+	if (
+		accountsCountResponse.error ||
+		campaignsCountResponse.error ||
+		userCountResponse.error
+	) {
 		return <ErrorDisplay />;
 	}
 
-	if (accountsCountResponse.loading || userCountResponse.loading) {
+	if (
+		accountsCountResponse.loading ||
+		campaignsCountResponse.loading ||
+		userCountResponse.loading
+	) {
 		return <Loading spacer />;
 	}
 
@@ -432,8 +439,9 @@ const AccountAndIndividuals = ({
 				</Text>
 			</div>
 
-			<SalesforceAccountsAndIndividuals
+			<SalesforceEntities
 				accountsSyncedCount={accountsCountResponse.data}
+				campaignsSyncedCount={campaignsCountResponse.data}
 				disabled={!dataSourceActive || !currentUser.isAdmin()}
 				enabledAccounts={enabledAllAccounts}
 				enabledIndividuals={enabledAllIndividuals}

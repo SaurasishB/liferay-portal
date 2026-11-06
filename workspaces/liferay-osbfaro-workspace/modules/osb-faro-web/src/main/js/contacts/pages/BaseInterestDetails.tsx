@@ -1,6 +1,6 @@
 import * as API from 'shared/api';
 import Card from 'shared/components/Card';
-import ClayIcon from '@clayui/icon';
+import ClayIcon from 'shared/components/Icon';
 import ClayLink from '@clayui/link';
 import ClayNavigationBar from '@clayui/navigation-bar';
 import InterestPagesList from 'contacts/components/InterestPagesList';
@@ -231,7 +231,7 @@ const BaseInterestDetails: React.FC<IBaseInterestDetailsProps> = ({
 						))}
 					</ClayNavigationBar>
 
-					<div className="h4 list-title">
+					<div className="h4 list-title pb-3 pt-4 px-0">
 						{tabId === tabIds.INDIVIDUALS
 							? sub(
 									Liferay.Language.get(

@@ -41,7 +41,8 @@ import org.osgi.service.component.annotations.Reference;
 	enabled = true,
 	property = {
 		"frontend.data.set.name=" + FDSSampleFDSNames.ADVANCED,
-		"frontend.data.set.name=" + FDSSampleFDSNames.DELEGATED_FILTERS
+		"frontend.data.set.name=" + FDSSampleFDSNames.DELEGATED_FILTERS,
+		"frontend.data.set.name=" + FDSSampleFDSNames.FDS_VISUALIZATION_MODE_CET
 	},
 	service = FDSView.class
 )
@@ -111,14 +112,16 @@ public class AdvancedTableFDSView extends BaseTableFDSView {
 					for (FDSCellRendererCET fdsCellRendererCET :
 							fdsCellRendererCETs) {
 
-						if (Objects.equals(
+						if (!Objects.equals(
 								fdsCellRendererCET.getExternalReferenceCode(),
 								"LXC:liferay-sample-fds-cell-renderer")) {
 
-							clientExtension = true;
-							moduleName =
-								"default from " + fdsCellRendererCET.getURL();
+							continue;
 						}
+
+						clientExtension = true;
+						moduleName =
+							"default from " + fdsCellRendererCET.getURL();
 					}
 				}
 

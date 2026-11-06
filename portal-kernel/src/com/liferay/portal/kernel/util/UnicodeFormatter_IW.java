@@ -13,10 +13,6 @@ public class UnicodeFormatter_IW {
 		return _instance;
 	}
 
-	public java.lang.String bytesToHex(byte[] bytes) {
-		return UnicodeFormatter.bytesToHex(bytes);
-	}
-
 	public java.lang.String byteToHex(byte b) {
 		return UnicodeFormatter.byteToHex(b);
 	}
@@ -29,8 +25,16 @@ public class UnicodeFormatter_IW {
 		return UnicodeFormatter.byteToHex(b, hexes, upperCase);
 	}
 
+	public java.lang.String bytesToHex(byte[] bytes) {
+		return UnicodeFormatter.bytesToHex(bytes);
+	}
+
 	public java.lang.String charToHex(char c) {
 		return UnicodeFormatter.charToHex(c);
+	}
+
+	public java.lang.String charToHex(char c, boolean upperCase) {
+		return UnicodeFormatter.charToHex(c, upperCase);
 	}
 
 	public byte[] hexToBytes(java.lang.String hexString) {

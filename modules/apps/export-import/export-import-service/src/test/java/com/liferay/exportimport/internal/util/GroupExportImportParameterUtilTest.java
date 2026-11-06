@@ -8,10 +8,14 @@ package com.liferay.exportimport.internal.util;
 import com.liferay.exportimport.kernel.lar.PortletDataContext;
 import com.liferay.exportimport.kernel.lar.PortletDataHandlerKeys;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
+import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
+import com.liferay.staging.StagingGroupHelper;
+import com.liferay.staging.StagingGroupHelperUtil;
 
 import java.util.Collections;
 import java.util.Map;
@@ -21,6 +25,7 @@ import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 /**
@@ -215,6 +220,75 @@ public class GroupExportImportParameterUtilTest {
 	}
 
 	@Test
+	@TestInfo("LPD-109895")
+	public void testGetPhasesCountWhenGroupExportImportIsDisabled() {
+		Assert.assertEquals(
+			1,
+			_getPhasesCount(
+				false,
+				HashMapBuilder.put(
+					PortletDataHandlerKeys.GROUP_EXTERNAL_REFERENCE_CODES,
+					new String[] {RandomTestUtil.randomString()}
+				).build()));
+	}
+
+	@Test
+	@TestInfo("LPD-111134")
+	public void testGetPhasesCountWhenGroupIsNotTheInstanceGroup() {
+		Assert.assertEquals(
+			1,
+			_getPhasesCount(
+				false, true,
+				HashMapBuilder.put(
+					PortletDataHandlerKeys.GROUP_EXTERNAL_REFERENCE_CODES,
+					new String[] {RandomTestUtil.randomString()}
+				).build()));
+	}
+
+	@Test
+	@TestInfo("LPD-109895")
+	public void testGetPhasesCountWhenGroupScoped() {
+		Assert.assertEquals(
+			1,
+			_getPhasesCount(
+				true,
+				GroupExportImportParameterUtil.getGroupExportParameterMap(
+					RandomTestUtil.randomString(),
+					HashMapBuilder.put(
+						PortletDataHandlerKeys.GROUP_EXTERNAL_REFERENCE_CODES,
+						new String[] {RandomTestUtil.randomString()}
+					).build())));
+	}
+
+	@Test
+	@TestInfo("LPD-109895")
+	public void testGetPhasesCountWhenParameterMapIsNull() {
+		Assert.assertEquals(1, _getPhasesCount(true, null));
+	}
+
+	@Test
+	@TestInfo("LPD-109895")
+	public void testGetPhasesCountWithSelectedGroups() {
+		Assert.assertEquals(
+			3,
+			_getPhasesCount(
+				true,
+				HashMapBuilder.put(
+					PortletDataHandlerKeys.GROUP_EXTERNAL_REFERENCE_CODES,
+					new String[] {
+						RandomTestUtil.randomString(),
+						RandomTestUtil.randomString()
+					}
+				).build()));
+	}
+
+	@Test
+	@TestInfo("LPD-109895")
+	public void testGetPhasesCountWithoutSelectedGroups() {
+		Assert.assertEquals(1, _getPhasesCount(true, Collections.emptyMap()));
+	}
+
+	@Test
 	public void testGetSelectedGroupExternalReferenceCodesWhenMissing() {
 		Assert.assertArrayEquals(
 			new String[0],
@@ -236,6 +310,15 @@ public class GroupExportImportParameterUtilTest {
 						PortletDataHandlerKeys.GROUP_EXTERNAL_REFERENCE_CODES,
 						externalReferenceCodes
 					).build()));
+	}
+
+	@Test
+	public void testIsGroupExportImportEnabled() {
+		Assert.assertFalse(
+			_isGroupExportImportEnabled(false, "LPD-41307", "LPD-85946"));
+		Assert.assertFalse(_isGroupExportImportEnabled(true));
+		Assert.assertTrue(_isGroupExportImportEnabled(true, "LPD-41307"));
+		Assert.assertTrue(_isGroupExportImportEnabled(true, "LPD-85946"));
 	}
 
 	@Test
@@ -262,6 +345,92 @@ public class GroupExportImportParameterUtilTest {
 					PortletDataHandlerKeys.GROUP_EXTERNAL_REFERENCE_CODES,
 					new String[] {RandomTestUtil.randomString()}
 				).build()));
+	}
+
+	private int _getPhasesCount(
+		boolean companyGroup, boolean groupExportImportEnabled,
+		Map<String, String[]> parameterMap) {
+
+		long companyId = RandomTestUtil.randomLong();
+		long groupId = RandomTestUtil.randomLong();
+		StagingGroupHelper stagingGroupHelper = Mockito.mock(
+			StagingGroupHelper.class);
+
+		Mockito.when(
+			stagingGroupHelper.isCompanyGroup(companyId, groupId)
+		).thenReturn(
+			companyGroup
+		);
+
+		try (MockedStatic<FeatureFlagManagerUtil>
+				featureFlagManagerUtilMockedStatic = Mockito.mockStatic(
+					FeatureFlagManagerUtil.class);
+			MockedStatic<StagingGroupHelperUtil>
+				stagingGroupHelperUtilMockedStatic = Mockito.mockStatic(
+					StagingGroupHelperUtil.class)) {
+
+			featureFlagManagerUtilMockedStatic.when(
+				() -> FeatureFlagManagerUtil.isEnabled(companyId, "LPD-85946")
+			).thenReturn(
+				groupExportImportEnabled
+			);
+
+			stagingGroupHelperUtilMockedStatic.when(
+				StagingGroupHelperUtil::getStagingGroupHelper
+			).thenReturn(
+				stagingGroupHelper
+			);
+
+			return GroupExportImportParameterUtil.getPhasesCount(
+				companyId, groupId, parameterMap);
+		}
+	}
+
+	private int _getPhasesCount(
+		boolean groupExportImportEnabled, Map<String, String[]> parameterMap) {
+
+		return _getPhasesCount(true, groupExportImportEnabled, parameterMap);
+	}
+
+	private boolean _isGroupExportImportEnabled(
+		boolean companyGroup, String... featureFlagKeys) {
+
+		long companyId = RandomTestUtil.randomLong();
+		long groupId = RandomTestUtil.randomLong();
+		StagingGroupHelper stagingGroupHelper = Mockito.mock(
+			StagingGroupHelper.class);
+
+		Mockito.when(
+			stagingGroupHelper.isCompanyGroup(companyId, groupId)
+		).thenReturn(
+			companyGroup
+		);
+
+		try (MockedStatic<FeatureFlagManagerUtil>
+				featureFlagManagerUtilMockedStatic = Mockito.mockStatic(
+					FeatureFlagManagerUtil.class);
+			MockedStatic<StagingGroupHelperUtil>
+				stagingGroupHelperUtilMockedStatic = Mockito.mockStatic(
+					StagingGroupHelperUtil.class)) {
+
+			for (String featureFlagKey : featureFlagKeys) {
+				featureFlagManagerUtilMockedStatic.when(
+					() -> FeatureFlagManagerUtil.isEnabled(
+						companyId, featureFlagKey)
+				).thenReturn(
+					true
+				);
+			}
+
+			stagingGroupHelperUtilMockedStatic.when(
+				StagingGroupHelperUtil::getStagingGroupHelper
+			).thenReturn(
+				stagingGroupHelper
+			);
+
+			return GroupExportImportParameterUtil.isGroupExportImportEnabled(
+				companyId, groupId);
+		}
 	}
 
 }

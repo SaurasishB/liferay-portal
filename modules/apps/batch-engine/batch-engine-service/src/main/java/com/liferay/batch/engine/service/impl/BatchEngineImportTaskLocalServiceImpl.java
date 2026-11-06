@@ -5,27 +5,49 @@
 
 package com.liferay.batch.engine.service.impl;
 
+import com.liferay.batch.engine.BatchEngineTaskExecuteStatus;
 import com.liferay.batch.engine.BatchEngineTaskItemDelegate;
 import com.liferay.batch.engine.BatchEngineTaskItemDelegateRegistry;
+import com.liferay.batch.engine.BatchEngineTaskItemDelegateRegistry.BatchEngineTaskItemDelegateSafeCloseable;
+import com.liferay.batch.engine.ItemClassRegistry;
 import com.liferay.batch.engine.exception.BatchEngineImportTaskParametersException;
+import com.liferay.batch.engine.internal.sanitizer.BatchEngineTaskContentSanitizer;
+import com.liferay.batch.engine.internal.util.PasswordFieldUtil;
 import com.liferay.batch.engine.model.BatchEngineImportTask;
 import com.liferay.batch.engine.service.base.BatchEngineImportTaskLocalServiceBaseImpl;
 import com.liferay.batch.engine.service.persistence.BatchEngineImportTaskErrorPersistence;
+import com.liferay.petra.function.UnsafeFunction;
+import com.liferay.petra.function.UnsafeSupplier;
+import com.liferay.petra.io.AutoDeleteFileInputStream;
 import com.liferay.petra.io.unsync.UnsyncByteArrayInputStream;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.aop.AopService;
+import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
 import com.liferay.portal.kernel.change.tracking.CTAware;
 import com.liferay.portal.kernel.dao.jdbc.OutputBlob;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.transaction.Transactional;
-import com.liferay.portal.kernel.util.OrderByComparator;
+import com.liferay.portal.kernel.util.FileUtil;
+import com.liferay.portal.kernel.util.PropsValues;
+import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.Serializable;
+
+import java.sql.Blob;
+import java.sql.SQLException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -52,15 +74,20 @@ public class BatchEngineImportTaskLocalServiceImpl
 			String taskItemDelegateName)
 		throws PortalException {
 
-		BatchEngineTaskItemDelegate<?> batchEngineTaskItemDelegate =
-			_batchEngineTaskItemDelegateRegistry.getBatchEngineTaskItemDelegate(
-				companyId, className, taskItemDelegateName);
+		try (BatchEngineTaskItemDelegateSafeCloseable
+				batchEngineTaskItemDelegateSafeCloseable =
+					_batchEngineTaskItemDelegateRegistry.
+						getBatchEngineTaskItemDelegateWithSafeCloseable(
+							companyId, className, taskItemDelegateName)) {
 
-		return addBatchEngineImportTask(
-			externalReferenceCode, companyId, userId, batchSize, callbackURL,
-			className, content, contentType, executeStatus, fieldNameMappingMap,
-			importStrategy, operation, parameters, taskItemDelegateName,
-			batchEngineTaskItemDelegate);
+			return addBatchEngineImportTask(
+				externalReferenceCode, companyId, userId, batchSize,
+				callbackURL, className, content, contentType, executeStatus,
+				fieldNameMappingMap, importStrategy, operation, parameters,
+				taskItemDelegateName,
+				batchEngineTaskItemDelegateSafeCloseable.
+					getBatchEngineTaskItemDelegate());
+		}
 	}
 
 	@Override
@@ -97,9 +124,6 @@ public class BatchEngineImportTaskLocalServiceImpl
 		batchEngineImportTask.setBatchSize(batchSize);
 		batchEngineImportTask.setCallbackURL(callbackURL);
 		batchEngineImportTask.setClassName(className);
-		batchEngineImportTask.setContent(
-			new OutputBlob(
-				new UnsyncByteArrayInputStream(content), content.length));
 		batchEngineImportTask.setContentType(contentType);
 		batchEngineImportTask.setExecuteStatus(executeStatus);
 
@@ -112,7 +136,8 @@ public class BatchEngineImportTaskLocalServiceImpl
 		batchEngineImportTask.setParameters(parameters);
 		batchEngineImportTask.setTaskItemDelegateName(taskItemDelegateName);
 
-		return batchEngineImportTaskPersistence.update(batchEngineImportTask);
+		return _updateBatchEngineImportTask(
+			batchEngineImportTask, _getBlob(batchEngineImportTask, content));
 	}
 
 	@Override
@@ -128,23 +153,6 @@ public class BatchEngineImportTaskLocalServiceImpl
 
 	@Override
 	public List<BatchEngineImportTask> getBatchEngineImportTasks(
-		long companyId, int start, int end) {
-
-		return batchEngineImportTaskPersistence.findByCompanyId(
-			companyId, start, end);
-	}
-
-	@Override
-	public List<BatchEngineImportTask> getBatchEngineImportTasks(
-		long companyId, int start, int end,
-		OrderByComparator<BatchEngineImportTask> orderByComparator) {
-
-		return batchEngineImportTaskPersistence.findByCompanyId(
-			companyId, start, end, orderByComparator);
-	}
-
-	@Override
-	public List<BatchEngineImportTask> getBatchEngineImportTasks(
 		String executeStatus) {
 
 		return batchEngineImportTaskPersistence.findByExecuteStatus(
@@ -152,16 +160,134 @@ public class BatchEngineImportTaskLocalServiceImpl
 	}
 
 	@Override
-	public int getBatchEngineImportTasksCount(long companyId) {
-		return batchEngineImportTaskPersistence.countByCompanyId(companyId);
-	}
-
-	@Override
 	@Transactional(propagation = Propagation.NESTED)
 	public BatchEngineImportTask updateBatchEngineImportTask(
 		BatchEngineImportTask batchEngineImportTask) {
 
-		return super.updateBatchEngineImportTask(batchEngineImportTask);
+		if (!StringUtil.equals(
+				batchEngineImportTask.getExecuteStatus(),
+				BatchEngineTaskExecuteStatus.COMPLETED.toString()) &&
+			!StringUtil.equals(
+				batchEngineImportTask.getExecuteStatus(),
+				BatchEngineTaskExecuteStatus.FAILED.toString())) {
+
+			return super.updateBatchEngineImportTask(batchEngineImportTask);
+		}
+
+		Blob blob = null;
+
+		try {
+			blob = _getBatchEngineImportTaskSanitizedContentBlob(
+				batchEngineImportTask,
+				() -> openContentInputStream(
+					batchEngineImportTask.getBatchEngineImportTaskId()),
+				value -> null);
+		}
+		catch (Exception exception) {
+			Class<?> clazz = exception.getClass();
+
+			_log.error(
+				StringBundler.concat(
+					"Unable to remove password fields from batch engine ",
+					"import task ",
+					batchEngineImportTask.getBatchEngineImportTaskId(), ": ",
+					clazz.getName()));
+
+			batchEngineImportTask.setContent(null);
+		}
+
+		if (blob == null) {
+			return super.updateBatchEngineImportTask(batchEngineImportTask);
+		}
+
+		return _updateBatchEngineImportTask(batchEngineImportTask, blob);
+	}
+
+	private Blob _getBatchEngineImportTaskSanitizedContentBlob(
+			BatchEngineImportTask batchEngineImportTask,
+			UnsafeSupplier<InputStream, Exception> inputStreamUnsafeSupplier,
+			UnsafeFunction<String, String, Exception>
+				passwordFieldValueUnsafeFunction)
+		throws Exception {
+
+		Set<String> passwordFieldNames =
+			PasswordFieldUtil.getPasswordFieldNames(
+				_itemClassRegistry.getItemClass(
+					batchEngineImportTask.getClassName()));
+
+		if (passwordFieldNames.isEmpty()) {
+			return null;
+		}
+
+		File file = FileUtil.createTempFile();
+
+		try (InputStream inputStream = inputStreamUnsafeSupplier.get();
+			OutputStream outputStream = new FileOutputStream(file)) {
+
+			BatchEngineTaskContentSanitizer batchEngineTaskContentSanitizer =
+				new BatchEngineTaskContentSanitizer(
+					batchEngineImportTask, _configurationProvider,
+					passwordFieldNames, passwordFieldValueUnsafeFunction);
+
+			batchEngineTaskContentSanitizer.sanitize(inputStream, outputStream);
+
+			return new OutputBlob(
+				new AutoDeleteFileInputStream(file), file.length());
+		}
+		catch (Exception exception) {
+			FileUtil.delete(file);
+
+			throw exception;
+		}
+	}
+
+	private Blob _getBlob(
+			BatchEngineImportTask batchEngineImportTask, byte[] content)
+		throws PortalException {
+
+		if (Validator.isNull(PropsValues.BATCH_ENGINE_ENCRYPTION_KEY)) {
+			return new OutputBlob(
+				new UnsyncByteArrayInputStream(content), content.length);
+		}
+
+		try {
+			Blob blob = _getBatchEngineImportTaskSanitizedContentBlob(
+				batchEngineImportTask,
+				() -> new UnsyncByteArrayInputStream(content),
+				PasswordFieldUtil::encrypt);
+
+			if (blob == null) {
+				return new OutputBlob(
+					new UnsyncByteArrayInputStream(content), content.length);
+			}
+
+			return blob;
+		}
+		catch (Exception exception) {
+			throw new PortalException(
+				"Unable to encrypt password fields of the batch engine " +
+					"import task",
+				exception);
+		}
+	}
+
+	private BatchEngineImportTask _updateBatchEngineImportTask(
+		BatchEngineImportTask batchEngineImportTask, Blob blob) {
+
+		try {
+			batchEngineImportTask.setContent(blob);
+
+			return batchEngineImportTaskPersistence.update(
+				batchEngineImportTask);
+		}
+		finally {
+			try {
+				blob.free();
+			}
+			catch (SQLException sqlException) {
+				_log.error(sqlException);
+			}
+		}
 	}
 
 	private void _validateDelimiter(String delimiter)
@@ -213,6 +339,9 @@ public class BatchEngineImportTaskLocalServiceImpl
 	private static final String _INVALID_ENCLOSING_CHARACTERS =
 		StringPool.APOSTROPHE + StringPool.QUOTE;
 
+	private static final Log _log = LogFactoryUtil.getLog(
+		BatchEngineImportTaskLocalServiceImpl.class);
+
 	@Reference
 	private BatchEngineImportTaskErrorPersistence
 		_batchEngineImportTaskErrorPersistence;
@@ -220,5 +349,11 @@ public class BatchEngineImportTaskLocalServiceImpl
 	@Reference
 	private BatchEngineTaskItemDelegateRegistry
 		_batchEngineTaskItemDelegateRegistry;
+
+	@Reference
+	private ConfigurationProvider _configurationProvider;
+
+	@Reference
+	private ItemClassRegistry _itemClassRegistry;
 
 }

@@ -25,6 +25,7 @@ renderResponse.setTitle(exportImportProcessDisplayContext.getImportTitle());
 
 <clay:container-fluid
 	cssClass="container-form-lg"
+	size="lg"
 >
 	<div class="sheet">
 		<span aria-hidden="true" class="loading-animation mb-9 mt-8"></span>
@@ -41,8 +42,6 @@ renderResponse.setTitle(exportImportProcessDisplayContext.getImportTitle());
 				"importPreviewAPIURL", exportImportProcessDisplayContext.getImportPreviewAPIURL()
 			).put(
 				"importProcessAPIURL", exportImportProcessDisplayContext.getImportProcessAPIURL()
-			).put(
-				"lookAndFeelEnabled", exportImportProcessDisplayContext.isLookAndFeelEnabled()
 			).put(
 				"scope", exportImportProcessDisplayContext.getScope()
 			).put(

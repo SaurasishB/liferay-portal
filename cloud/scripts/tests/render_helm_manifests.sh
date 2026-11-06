@@ -17,18 +17,18 @@ function main {
 
 	local charts=(
 		aws
-		aws-infrastructure
 		aws-infrastructure-provider
 		aws-marketplace
 		azure
 		azure-infrastructure-provider
+		client-extension
 		default
 		dxp-operator
 		gcp
-		gcp-infrastructure
 		gcp-infrastructure-provider
 		infrastructure
 		observability
+		observability-paas
 		platform
 		platform-components
 	)
@@ -47,7 +47,7 @@ function main {
 
 	for chart in "${charts[@]}"
 	do
-		helm dependency update "${cloud_dir}/helm/${chart}"
+		"${cloud_dir}/scripts/update_helm_dependencies.sh" "${cloud_dir}/helm/${chart}"
 
 		local helm_template_args=()
 
@@ -59,7 +59,7 @@ function main {
 		helm template liferay "${cloud_dir}/helm/${chart}" "${helm_template_args[@]}" | kubeconform \
 			--schema-location default \
 			--schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
-			--skip ClusterProviderConfig,LiferayEnvironment,LiferayInfrastructure,LiferayOverlay,PrivateDNSZone,PrivateDNSZoneVirtualNetworkLink,Subnet \
+			--skip ClientExtension,ClusterProviderConfig,LiferayEnvironment,LiferayInfrastructure,LiferayOverlay,PrivateDNSZone,PrivateDNSZoneVirtualNetworkLink,Subnet \
 			--strict \
 			--summary
 	done

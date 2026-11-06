@@ -16,9 +16,19 @@ describe('useLifecycleStageOptions', () => {
 
 		API.lifecycle.fetchLifecycle.mockReturnValueOnce(
 			Promise.resolve({
-				stages: [
-					{displayOrder: 2, id: '1002', stageType: 'ENGAGED'},
-					{displayOrder: 1, id: '1001', stageType: 'AWARE'}
+				accountLifecycleStages: [
+					{
+						externalReferenceCode: 'erc-stage-1002',
+						id: '1002',
+						name: 'Engaged',
+						position: 2
+					},
+					{
+						externalReferenceCode: 'erc-stage-1001',
+						id: '1001',
+						name: 'Aware',
+						position: 1
+					}
 				]
 			})
 		);
@@ -29,34 +39,12 @@ describe('useLifecycleStageOptions', () => {
 
 		await waitFor(() =>
 			expect(result.current.options).toEqual([
-				{label: 'Aware', value: '1001'},
-				{label: 'Engaged', value: '1002'}
+				{label: 'Aware', value: 'erc-stage-1001'},
+				{label: 'Engaged', value: 'erc-stage-1002'}
 			])
 		);
 
 		expect(result.current.loading).toBe(false);
-	});
-
-	it('should return the stage type of an unknown stage', async () => {
-		API.lifecycle.fetchAccountLifecycles.mockReturnValueOnce(
-			Promise.resolve([{id: '1'}])
-		);
-
-		API.lifecycle.fetchLifecycle.mockReturnValueOnce(
-			Promise.resolve({
-				stages: [{displayOrder: 1, id: '1001', stageType: 'CONVERTED'}]
-			})
-		);
-
-		const {result} = renderHook(() =>
-			useLifecycleStageOptions({groupId: '123'})
-		);
-
-		await waitFor(() =>
-			expect(result.current.options).toEqual([
-				{label: 'CONVERTED', value: '1001'}
-			])
-		);
 	});
 
 	it('should return no options without a lifecycle', async () => {
@@ -69,5 +57,22 @@ describe('useLifecycleStageOptions', () => {
 		expect(result.current.options).toEqual([]);
 
 		expect(API.lifecycle.fetchLifecycle).not.toHaveBeenCalled();
+	});
+
+	it('should read the default lifecycle of the channel', async () => {
+		API.lifecycle.fetchAccountLifecycles.mockReturnValueOnce(
+			Promise.resolve([])
+		);
+
+		renderHook(() =>
+			useLifecycleStageOptions({channelId: '456', groupId: '123'})
+		);
+
+		await waitFor(() =>
+			expect(API.lifecycle.fetchAccountLifecycles).toHaveBeenCalledWith({
+				channelId: '456',
+				groupId: '123'
+			})
+		);
 	});
 });

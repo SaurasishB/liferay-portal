@@ -119,6 +119,40 @@ public class ObjectEntryTrashHandlerTest extends BaseTrashHandlerTestCase {
 		_testCheckEntriesWithPermissions();
 	}
 
+	@Test
+	public void testGetTrashedModel() throws Exception {
+		baseModel = addBaseModel(
+			group,
+			ServiceContextTestUtil.getServiceContext(group.getGroupId()));
+
+		long primaryKey = (Long)baseModel.getPrimaryKeyObj();
+
+		moveBaseModelToTrash(primaryKey);
+
+		TrashHandler trashHandler = getTrashHandler(getBaseModelClassName());
+
+		PermissionChecker originalPermissionChecker =
+			PermissionThreadLocal.getPermissionChecker();
+
+		try {
+			PermissionThreadLocal.setPermissionChecker(
+				PermissionCheckerFactoryUtil.create(
+					UserLocalServiceUtil.getGuestUser(
+						TestPropsValues.getCompanyId())));
+
+			TrashedModel trashedModel = trashHandler.getTrashedModel(
+				primaryKey);
+
+			Assert.assertTrue(trashedModel.isInTrash());
+
+			Assert.assertTrue(trashHandler.isInTrash(primaryKey));
+		}
+		finally {
+			PermissionThreadLocal.setPermissionChecker(
+				originalPermissionChecker);
+		}
+	}
+
 	@Override
 	@Test
 	public void testMoveBaseModelToTrash() throws Exception {
@@ -250,7 +284,7 @@ public class ObjectEntryTrashHandlerTest extends BaseTrashHandlerTestCase {
 			_systemEventLocalService.getSystemEvents(
 				groupId,
 				_portal.getClassNameId(objectEntry.getModelClassName()),
-				primaryKey);
+				primaryKey, SystemEventConstants.TYPE_DELETE);
 
 		Assert.assertEquals(systemEvents.toString(), 1, systemEvents.size());
 
@@ -259,8 +293,6 @@ public class ObjectEntryTrashHandlerTest extends BaseTrashHandlerTestCase {
 		Assert.assertEquals(
 			objectEntry.getExternalReferenceCode(),
 			systemEvent.getClassExternalReferenceCode());
-		Assert.assertEquals(
-			SystemEventConstants.TYPE_DELETE, systemEvent.getType());
 	}
 
 	private void _testCheckEntriesWithPermissions() throws Exception {

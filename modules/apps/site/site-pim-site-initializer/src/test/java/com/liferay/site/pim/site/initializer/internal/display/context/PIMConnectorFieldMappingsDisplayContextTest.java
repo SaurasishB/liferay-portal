@@ -8,6 +8,7 @@ package com.liferay.site.pim.site.initializer.internal.display.context;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.service.ObjectEntryLocalService;
+import com.liferay.object.service.ObjectRelationshipLocalServiceUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.json.JSONFactoryImpl;
 import com.liferay.portal.kernel.json.JSONArray;
@@ -22,11 +23,15 @@ import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.URLCodec;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
+import com.liferay.site.pim.site.initializer.connector.PIMConnector;
+import com.liferay.site.pim.site.initializer.connector.PIMConnectorChannelField;
+import com.liferay.site.pim.site.initializer.connector.PIMConnectorRegistry;
 
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.io.Serializable;
 
+import java.util.Collections;
 import java.util.Map;
 
 import org.junit.Assert;
@@ -35,6 +40,7 @@ import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 /**
@@ -129,6 +135,22 @@ public class PIMConnectorFieldMappingsDisplayContextTest {
 		);
 
 		Mockito.when(
+			language.get(_httpServletRequest, "execute")
+		).thenReturn(
+			"execute"
+		);
+
+		Mockito.when(
+			language.get(
+				_httpServletRequest,
+				"execution-has-started-successfully-and-will-continue-in-the-" +
+					"background")
+		).thenReturn(
+			"Execution has started successfully and will continue in the " +
+				"background."
+		);
+
+		Mockito.when(
 			language.get(_httpServletRequest, "field-mappings")
 		).thenReturn(
 			"Field Mappings"
@@ -138,6 +160,12 @@ public class PIMConnectorFieldMappingsDisplayContextTest {
 			language.get(_httpServletRequest, "no-fields-were-found")
 		).thenReturn(
 			"No fields were found."
+		);
+
+		Mockito.when(
+			language.get(_httpServletRequest, "schedule")
+		).thenReturn(
+			"schedule"
 		);
 
 		Mockito.when(
@@ -157,15 +185,22 @@ public class PIMConnectorFieldMappingsDisplayContextTest {
 		);
 
 		languageUtil.setLanguage(language);
+
+		Mockito.when(
+			_pimConnectorRegistry.getPIMConnector(Mockito.anyString())
+		).thenReturn(
+			Mockito.mock(PIMConnector.class)
+		);
 	}
 
 	@Test
-	public void testGetBreadcrumbProps() {
+	public void testGetBreadcrumbProps() throws Exception {
 		PIMConnectorFieldMappingsDisplayContext
 			pimConnectorFieldMappingsDisplayContext =
 				new PIMConnectorFieldMappingsDisplayContext(
 					_httpServletRequest, _mockObjectDefinition(),
-					Mockito.mock(ObjectEntryLocalService.class));
+					Mockito.mock(ObjectEntryLocalService.class),
+					_pimConnectorRegistry);
 
 		Map<String, Object> breadcrumbProps =
 			pimConnectorFieldMappingsDisplayContext.getBreadcrumbProps();
@@ -189,7 +224,7 @@ public class PIMConnectorFieldMappingsDisplayContextTest {
 
 		jsonArray = (JSONArray)breadcrumbProps.get("actionItems");
 
-		Assert.assertEquals(jsonArray.toString(), 2, jsonArray.length());
+		Assert.assertEquals(jsonArray.toString(), 3, jsonArray.length());
 
 		jsonObject = jsonArray.getJSONObject(0);
 
@@ -200,8 +235,20 @@ public class PIMConnectorFieldMappingsDisplayContextTest {
 				_OBJECT_ENTRY_ID),
 			jsonObject.getString("href"));
 		Assert.assertEquals("edit", jsonObject.getString("label"));
+		Assert.assertEquals("pencil", jsonObject.getString("symbolLeft"));
 
 		jsonObject = jsonArray.getJSONObject(1);
+
+		Assert.assertEquals(
+			StringBundler.concat(
+				"/o/pim/connector/schedule?backURL=",
+				URLCodec.encodeURL(_URL_CURRENT), "&objectEntryId=",
+				_OBJECT_ENTRY_ID),
+			jsonObject.getString("href"));
+		Assert.assertEquals("schedule", jsonObject.getString("label"));
+		Assert.assertEquals("date-time", jsonObject.getString("symbolLeft"));
+
+		jsonObject = jsonArray.getJSONObject(2);
 
 		Assert.assertEquals("text-danger", jsonObject.getString("className"));
 		Assert.assertEquals(
@@ -216,6 +263,7 @@ public class PIMConnectorFieldMappingsDisplayContextTest {
 		Assert.assertEquals("delete", jsonObject.getString("label"));
 		Assert.assertEquals(
 			"/web/cms/connectors", jsonObject.getString("redirect"));
+		Assert.assertEquals("trash", jsonObject.getString("symbolLeft"));
 		Assert.assertEquals("asyncDelete", jsonObject.getString("target"));
 
 		jsonArray = (JSONArray)breadcrumbProps.get("breadcrumbItems");
@@ -236,7 +284,39 @@ public class PIMConnectorFieldMappingsDisplayContextTest {
 		Assert.assertEquals(name, jsonObject.getString("label"));
 
 		Assert.assertEquals(Boolean.TRUE, breadcrumbProps.get("hideSpace"));
+		Assert.assertEquals("complete", breadcrumbProps.get("mappingStatus"));
 		Assert.assertEquals("lg", breadcrumbProps.get("size"));
+
+		pimConnectorFieldMappingsDisplayContext =
+			_createPIMConnectorFieldMappingsDisplayContext(
+				HashMapBuilder.<String, Serializable>put(
+					"active", true
+				).put(
+					"name", name
+				).build());
+
+		breadcrumbProps =
+			pimConnectorFieldMappingsDisplayContext.getBreadcrumbProps();
+
+		jsonArray = (JSONArray)breadcrumbProps.get("actionItems");
+
+		Assert.assertEquals(jsonArray.toString(), 4, jsonArray.length());
+
+		jsonObject = jsonArray.getJSONObject(1);
+
+		Assert.assertEquals(
+			"/o/pim/connector/execute?objectEntryId=" + _OBJECT_ENTRY_ID,
+			jsonObject.getString("href"));
+		Assert.assertEquals("execute", jsonObject.getString("id"));
+		Assert.assertEquals("execute", jsonObject.getString("label"));
+		Assert.assertEquals(
+			"Execution has started successfully and will continue in the " +
+				"background.",
+			jsonObject.getString("successMessage"));
+		Assert.assertEquals("play", jsonObject.getString("symbolLeft"));
+		Assert.assertEquals("asyncPost", jsonObject.getString("target"));
+
+		_testGetBreadcrumbPropsWithIncompleteMapping();
 	}
 
 	@Test
@@ -303,7 +383,7 @@ public class PIMConnectorFieldMappingsDisplayContextTest {
 
 		return new PIMConnectorFieldMappingsDisplayContext(
 			_httpServletRequest, _mockObjectDefinition(),
-			objectEntryLocalService);
+			objectEntryLocalService, _pimConnectorRegistry);
 	}
 
 	private ObjectDefinition _mockObjectDefinition() {
@@ -319,11 +399,74 @@ public class PIMConnectorFieldMappingsDisplayContextTest {
 		return objectDefinition;
 	}
 
+	private void _testGetBreadcrumbPropsWithIncompleteMapping()
+		throws Exception {
+
+		PIMConnector pimConnector = Mockito.mock(PIMConnector.class);
+
+		Mockito.when(
+			pimConnector.getPIMConnectorChannelFields()
+		).thenReturn(
+			Collections.singletonList(
+				new PIMConnectorChannelField(
+					RandomTestUtil.randomString(), false,
+					RandomTestUtil.randomString(), true,
+					RandomTestUtil.randomString()))
+		);
+
+		Mockito.when(
+			_pimConnectorRegistry.getPIMConnector(Mockito.anyString())
+		).thenReturn(
+			pimConnector
+		);
+
+		try (MockedStatic<ObjectRelationshipLocalServiceUtil>
+				objectRelationshipLocalServiceUtilMockedStatic =
+					Mockito.mockStatic(
+						ObjectRelationshipLocalServiceUtil.class)) {
+
+			PIMConnectorFieldMappingsDisplayContext
+				pimConnectorFieldMappingsDisplayContext =
+					_createPIMConnectorFieldMappingsDisplayContext(
+						HashMapBuilder.<String, Serializable>put(
+							"active", true
+						).put(
+							"key", RandomTestUtil.randomString()
+						).put(
+							"name", RandomTestUtil.randomString()
+						).build());
+
+			Map<String, Object> breadcrumbProps =
+				pimConnectorFieldMappingsDisplayContext.getBreadcrumbProps();
+
+			JSONArray jsonArray = (JSONArray)breadcrumbProps.get("actionItems");
+
+			Assert.assertEquals(jsonArray.toString(), 3, jsonArray.length());
+
+			JSONObject jsonObject = jsonArray.getJSONObject(0);
+
+			Assert.assertEquals("edit", jsonObject.getString("label"));
+
+			jsonObject = jsonArray.getJSONObject(1);
+
+			Assert.assertEquals("schedule", jsonObject.getString("label"));
+
+			jsonObject = jsonArray.getJSONObject(2);
+
+			Assert.assertEquals("delete", jsonObject.getString("label"));
+
+			Assert.assertEquals(
+				"incomplete", breadcrumbProps.get("mappingStatus"));
+		}
+	}
+
 	private static final long _OBJECT_ENTRY_ID = RandomTestUtil.randomLong();
 
 	private static final String _URL_CURRENT =
 		"/web/cms/field-mappings?objectEntryId=" + _OBJECT_ENTRY_ID;
 
 	private HttpServletRequest _httpServletRequest;
+	private final PIMConnectorRegistry _pimConnectorRegistry = Mockito.mock(
+		PIMConnectorRegistry.class);
 
 }

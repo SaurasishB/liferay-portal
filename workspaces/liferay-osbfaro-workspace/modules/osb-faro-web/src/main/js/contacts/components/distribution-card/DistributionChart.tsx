@@ -1,5 +1,5 @@
 import Card from 'shared/components/Card';
-import ClayIcon from '@clayui/icon';
+import ClayIcon from 'shared/components/Icon';
 import ClayLink from '@clayui/link';
 import ErrorDisplay from 'shared/components/ErrorDisplay';
 import Loading from 'shared/components/Loading';
@@ -115,13 +115,12 @@ class DistributionChart extends React.Component<
 			fetchDistribution,
 			groupId,
 			id,
-			selectedTab: {context, numberOfBins, propertyId},
+			selectedTab: {numberOfBins, propertyId},
 		} = this.props;
 
 		return fetchDistribution(
 			pickBy({
 				channelId,
-				context,
 				count: MAX_BARS,
 				fieldMappingFieldName: propertyId,
 				groupId,

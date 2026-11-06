@@ -53,7 +53,6 @@ test(
 		test.setTimeout(240000);
 
 		const dptName = `DPT ${getRandomString()}`;
-		const spaceName = `Space ${getRandomString()}`;
 		const fileTitle = `File ${getRandomString()}`;
 		const friendlyUrlPath = `restricted-${getRandomString()}`.toLowerCase();
 
@@ -104,10 +103,7 @@ test(
 			await displayPageTemplatesPage.markAsDefault(dptName);
 		});
 
-		const space = await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		await apiHelpers.headlessAssetLibrary.connectSite(
 			space.externalReferenceCode,
@@ -122,7 +118,7 @@ test(
 				title: fileTitle,
 			},
 			APPLICATION_NAME,
-			spaceName
+			space.name
 		);
 
 		const downloadHref = entry.file.link.href;
@@ -138,7 +134,7 @@ test(
 			[{actionIds: ['DOWNLOAD_FILE', 'VIEW'], roleName: role.name}]
 		);
 
-		const displayUrl = `/web${site.friendlyUrlPath}/${SEPARATOR}/asset-library-${space.id}/${friendlyUrlPath}`;
+		const displayUrl = `/web${site.friendlyUrlPath}/${SEPARATOR}/${space.friendlyURL.substring(1)}/${friendlyUrlPath}`;
 
 		await test.step('A member USER sees the file page and can download the binary', async () => {
 			const member = await apiHelpers.headlessAdminUser.postUserAccount();

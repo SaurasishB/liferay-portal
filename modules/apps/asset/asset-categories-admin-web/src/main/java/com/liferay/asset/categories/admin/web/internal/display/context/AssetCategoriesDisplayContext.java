@@ -89,6 +89,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -540,10 +541,12 @@ public class AssetCategoriesDisplayContext {
 					QueryUtil.ALL_POS,
 					AssetVocabularyCreateDateComparator.getInstance(true));
 
-			if (ListUtil.isNotEmpty(groupAssetVocabularies)) {
-				_inheritedVocabularies.put(
-					group.getGroupId(), groupAssetVocabularies);
+			if (ListUtil.isEmpty(groupAssetVocabularies)) {
+				continue;
 			}
+
+			_inheritedVocabularies.put(
+				group.getGroupId(), groupAssetVocabularies);
 		}
 
 		return _inheritedVocabularies;
@@ -862,6 +865,24 @@ public class AssetCategoriesDisplayContext {
 
 		if (vocabularyCategoriesCount >=
 				getMaximumNumberOfCategoriesPerVocabulary()) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	public boolean isExternalReferenceCodeInputDisabled(
+		AssetVocabulary vocabulary) {
+
+		if (vocabulary == null) {
+			return false;
+		}
+
+		if (vocabulary.isSystem() ||
+			Objects.equals(
+				vocabulary.getExternalReferenceCode(),
+				AssetVocabularyConstants.EXTERNAL_REFERENCE_CODE_TOPIC)) {
 
 			return true;
 		}

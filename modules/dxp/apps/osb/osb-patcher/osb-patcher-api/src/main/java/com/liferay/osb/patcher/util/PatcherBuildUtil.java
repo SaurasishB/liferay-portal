@@ -43,9 +43,6 @@ import com.liferay.portal.kernel.search.Indexer;
 import com.liferay.portal.kernel.search.IndexerRegistryUtil;
 import com.liferay.portal.kernel.service.UserLocalServiceUtil;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
-import com.liferay.portal.kernel.transaction.Isolation;
-import com.liferay.portal.kernel.transaction.Propagation;
-import com.liferay.portal.kernel.transaction.Transactional;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.BigDecimalUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
@@ -458,15 +455,14 @@ public class PatcherBuildUtil {
 		List<PatcherFix> incompletePatcherFixes = new ArrayList<>();
 
 		for (PatcherFix patcherFix : patcherFixes) {
-			if ((skipPatcherFixId == patcherFix.getPatcherFixId()) &&
-				(patcherFixes.size() > 1)) {
+			if (((skipPatcherFixId == patcherFix.getPatcherFixId()) &&
+				 (patcherFixes.size() > 1)) ||
+				!PatcherFixUtil.isIncomplete(patcherFix)) {
 
 				continue;
 			}
 
-			if (PatcherFixUtil.isIncomplete(patcherFix)) {
-				incompletePatcherFixes.add(patcherFix);
-			}
+			incompletePatcherFixes.add(patcherFix);
 		}
 
 		return incompletePatcherFixes;
@@ -948,10 +944,6 @@ public class PatcherBuildUtil {
 		}
 	}
 
-	@Transactional(
-		isolation = Isolation.PORTAL, propagation = Propagation.REQUIRES_NEW,
-		rollbackFor = Exception.class
-	)
 	public static void processOSBPatcherBuildCompileJenkinsStatus(
 			User user, long patcherBuildId, String jenkinsStatusJSON)
 		throws Exception {
@@ -998,10 +990,6 @@ public class PatcherBuildUtil {
 		sendTestJenkinsRequest(user, patcherBuild);
 	}
 
-	@Transactional(
-		isolation = Isolation.PORTAL, propagation = Propagation.REQUIRES_NEW,
-		rollbackFor = Exception.class
-	)
 	public static void processOSBPatcherBuildMergeJenkinsStatus(
 			User user, long patcherFixId, String jenkinsStatusJSON)
 		throws Exception {
@@ -1052,10 +1040,6 @@ public class PatcherBuildUtil {
 		}
 	}
 
-	@Transactional(
-		isolation = Isolation.PORTAL, propagation = Propagation.REQUIRES_NEW,
-		rollbackFor = Exception.class
-	)
 	public static void processOSBPatcherBuildTestJenkinsStatus(
 			User user, long patcherBuildId, String jenkinsStatusJSON)
 		throws Exception {
@@ -1218,12 +1202,14 @@ public class PatcherBuildUtil {
 			PatcherFixUtil.getPreviousVersionsPatcherFixIds(patcherFix);
 
 		for (long previousVersionPatcherFixId : previousVersionPatcherFixIds) {
-			if (patcherBuildPatcherFixIds.contains(
+			if (!patcherBuildPatcherFixIds.contains(
 					previousVersionPatcherFixId)) {
 
-				PatcherFixLocalServiceUtil.deletePatcherBuildPatcherFix(
-					patcherBuildId, patcherFix.getPatcherFixId());
+				continue;
 			}
+
+			PatcherFixLocalServiceUtil.deletePatcherBuildPatcherFix(
+				patcherBuildId, patcherFix.getPatcherFixId());
 		}
 	}
 
@@ -1817,11 +1803,13 @@ public class PatcherBuildUtil {
 			patcherBuild = PatcherBuildLocalServiceUtil.updateStatus(
 				user.getUserId(), patcherBuild.getPatcherBuildId(), status);
 
-			if (patcherBuild.isChildBuild() ||
-				!PatcherBuildRelUtil.hasChildPatcherBuilds(patcherBuild)) {
+			if (!patcherBuild.isChildBuild() &&
+				PatcherBuildRelUtil.hasChildPatcherBuilds(patcherBuild)) {
 
-				sendToJenkinsBaseModels.add(patcherBuild);
+				continue;
 			}
+
+			sendToJenkinsBaseModels.add(patcherBuild);
 		}
 
 		return sendToJenkinsBaseModels;
@@ -2184,11 +2172,13 @@ public class PatcherBuildUtil {
 			List<String> patcherBuildPatcherFixTickets = PatcherUtil.getTickets(
 				patcherBuildPatcherFix.getName());
 
-			if (patcherFixTickets.containsAll(patcherBuildPatcherFixTickets)) {
-				PatcherBuildLocalServiceUtil.deletePatcherFixPatcherBuild(
-					patcherBuildPatcherFix.getPatcherFixId(),
-					patcherBuild.getPatcherBuildId());
+			if (!patcherFixTickets.containsAll(patcherBuildPatcherFixTickets)) {
+				continue;
 			}
+
+			PatcherBuildLocalServiceUtil.deletePatcherFixPatcherBuild(
+				patcherBuildPatcherFix.getPatcherFixId(),
+				patcherBuild.getPatcherBuildId());
 		}
 	}
 

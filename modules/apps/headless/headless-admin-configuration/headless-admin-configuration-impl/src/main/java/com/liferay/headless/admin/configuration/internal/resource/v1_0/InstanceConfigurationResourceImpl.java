@@ -16,7 +16,6 @@ import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMap;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClassDefinition;
-import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.security.auth.PrincipalException;
@@ -65,8 +64,6 @@ public class InstanceConfigurationResourceImpl
 			String instanceConfigurationExternalReferenceCode)
 		throws Exception {
 
-		_checkFeatureFlag();
-
 		_checkPermission();
 
 		ConfigurationScreen configurationScreen = _serviceTrackerMap.getService(
@@ -85,8 +82,6 @@ public class InstanceConfigurationResourceImpl
 	public Page<InstanceConfiguration> getInstanceConfigurationsPage(
 			Pagination pagination)
 		throws Exception {
-
-		_checkFeatureFlag();
 
 		_checkPermission();
 
@@ -118,8 +113,6 @@ public class InstanceConfigurationResourceImpl
 			String instanceConfigurationExternalReferenceCode,
 			InstanceConfiguration instanceConfiguration)
 		throws Exception {
-
-		_checkFeatureFlag();
 
 		_checkPermission();
 
@@ -204,14 +197,6 @@ public class InstanceConfigurationResourceImpl
 			}
 
 			instanceConfigurations.add(instanceConfiguration);
-		}
-	}
-
-	private void _checkFeatureFlag() {
-		if (!FeatureFlagManagerUtil.isEnabled(
-				contextCompany.getCompanyId(), "LPD-65399")) {
-
-			throw new UnsupportedOperationException();
 		}
 	}
 
@@ -320,17 +305,17 @@ public class InstanceConfigurationResourceImpl
 
 		long companyId = contextCompany.getCompanyId();
 
-		String filterString =
-			ConfigurationFilterStringUtil.getCompanyScopedFilterString(
-				companyId, instanceConfiguration.getExternalReferenceCode(),
-				contextCompany.getDefaultWebId());
-
 		try {
 			Configuration configuration =
 				ConfigurationUtil.addOrUpdateConfiguration(
 					companyId, _configurationAdmin,
 					instanceConfiguration.getExternalReferenceCode(),
-					filterString, instanceConfiguration.getProperties(),
+					pid ->
+						ConfigurationFilterStringUtil.
+							getCompanyScopedFilterString(
+								companyId, pid,
+								contextCompany.getDefaultWebId()),
+					instanceConfiguration.getProperties(),
 					ExtendedObjectClassDefinition.Scope.COMPANY,
 					_settingsLocatorHelper);
 

@@ -104,6 +104,19 @@ public class GenerateReportsBuildRunner extends BaseBuildRunner<BuildData> {
 		SPOT_INTERRUPTION("Spot Interruption"),
 		UPSTREAM_HISTORY("Upstream History"), UTILIZATION("Utilization");
 
+		public File getDataFile() {
+			String dataFileName = _reportDataFileNames.get(_string);
+
+			if (dataFileName == null) {
+				return null;
+			}
+
+			return new File(
+				JenkinsResultsParserUtil.combine(
+					_REPORT_RSYNC_DESTINATION_DIR_PATH, getDirName(), "/js/",
+					dataFileName));
+		}
+
 		public String getDirName() {
 			return _reportDirNames.get(_string);
 		}
@@ -234,9 +247,11 @@ public class GenerateReportsBuildRunner extends BaseBuildRunner<BuildData> {
 			File nodeDataFile = new File(
 				_TMP_BASE_DIR_PATH + "/nodes/" + dateString, "node.json");
 
-			if (nodeDataArchiveFile.exists()) {
-				FileUtils.copyFile(nodeDataArchiveFile, nodeDataFile);
+			if (!nodeDataArchiveFile.exists()) {
+				continue;
 			}
+
+			FileUtils.copyFile(nodeDataArchiveFile, nodeDataFile);
 		}
 	}
 
@@ -336,11 +351,13 @@ public class GenerateReportsBuildRunner extends BaseBuildRunner<BuildData> {
 				_getTestrayBucketBuildReportJSONFilePaths(
 					currentMonthString, jenkinsMasterName, jobName));
 
-			if (startMonthString != null) {
-				keys.addAll(
-					_getTestrayBucketBuildReportJSONFilePaths(
-						startMonthString, jenkinsMasterName, jobName));
+			if (startMonthString == null) {
+				continue;
 			}
+
+			keys.addAll(
+				_getTestrayBucketBuildReportJSONFilePaths(
+					startMonthString, jenkinsMasterName, jobName));
 		}
 
 		try {
@@ -612,10 +629,12 @@ public class GenerateReportsBuildRunner extends BaseBuildRunner<BuildData> {
 					_generateUtilizationReport(reportName);
 				}
 			}
-			catch (IOException ioException) {
+			catch (Exception exception) {
 				System.out.println(
 					"Unable to write " + reportName + " to " +
 						_getReportFilePath(reportName));
+
+				exception.printStackTrace();
 
 				BuildData buildData = getBuildData();
 
@@ -624,7 +643,7 @@ public class GenerateReportsBuildRunner extends BaseBuildRunner<BuildData> {
 					"ci-notifications",
 					"Unable to generate " + reportName + " report");
 
-				continue;
+				throw new RuntimeException(exception);
 			}
 
 			sb.append("<a href=\"");
@@ -906,32 +925,36 @@ public class GenerateReportsBuildRunner extends BaseBuildRunner<BuildData> {
 
 				matcher = _linkElementPattern.matcher(line);
 
-				if (matcher.find()) {
-					String hrefValue = matcher.group("hrefValue");
-
-					if (hrefValue.startsWith("http://") ||
-						hrefValue.startsWith("https://")) {
-
-						continue;
-					}
-
-					File cssFile = new File(reportDir, hrefValue);
-
-					if (!cssFile.exists()) {
-						continue;
-					}
-
-					String styleElementContent =
-						"<style>" + JenkinsResultsParserUtil.read(cssFile) +
-							"</style>";
-
-					newReportFileContent = newReportFileContent.replace(
-						line, styleElementContent);
-
-					if (deleteFrontendFiles) {
-						cssFile.delete();
-					}
+				if (!matcher.find()) {
+					continue;
 				}
+
+				String hrefValue = matcher.group("hrefValue");
+
+				if (hrefValue.startsWith("http://") ||
+					hrefValue.startsWith("https://")) {
+
+					continue;
+				}
+
+				File cssFile = new File(reportDir, hrefValue);
+
+				if (!cssFile.exists()) {
+					continue;
+				}
+
+				String styleElementContent =
+					"<style>" + JenkinsResultsParserUtil.read(cssFile) +
+						"</style>";
+
+				newReportFileContent = newReportFileContent.replace(
+					line, styleElementContent);
+
+				if (!deleteFrontendFiles) {
+					continue;
+				}
+
+				cssFile.delete();
 			}
 
 			if (!reportFileContent.equals(newReportFileContent)) {
@@ -1147,6 +1170,24 @@ public class GenerateReportsBuildRunner extends BaseBuildRunner<BuildData> {
 		DateTimeFormatter.ofPattern("yyyyMMdd");
 	private static final Pattern _linkElementPattern = Pattern.compile(
 		_LINK_ELEMENT_REGEX);
+	private static final Map<String, String> _reportDataFileNames =
+		new HashMap<String, String>() {
+			{
+				put(Report.BUILD_HISTORY.toString(), "table-data.js");
+				put(Report.CI_SYSTEM_HISTORY.toString(), "all-durations.js");
+				put(Report.CI_SYSTEM_STATUS.toString(), "jenkins-data.js");
+				put(Report.FLAKY_TEST_7_0_x.toString(), "flaky-test-data.js");
+				put(Report.FLAKY_TEST_7_1_x.toString(), "flaky-test-data.js");
+				put(Report.FLAKY_TEST_7_2_x.toString(), "flaky-test-data.js");
+				put(Report.FLAKY_TEST_7_3_x.toString(), "flaky-test-data.js");
+				put(Report.FLAKY_TEST_MASTER.toString(), "flaky-test-data.js");
+				put(Report.PULL_REQUEST_HISTORY.toString(), "table-data.js");
+				put(Report.RELEASE_HISTORY.toString(), "table-data.js");
+				put(Report.SPOT_INTERRUPTION.toString(), "table-data.js");
+				put(Report.UPSTREAM_HISTORY.toString(), "table-data.js");
+				put(Report.UTILIZATION.toString(), "table-data.js");
+			}
+		};
 	private static final Map<String, String> _reportDirNames =
 		new HashMap<String, String>() {
 			{

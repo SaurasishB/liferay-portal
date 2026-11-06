@@ -18,6 +18,8 @@ import com.liferay.object.exception.DuplicateObjectRelationshipExternalReference
 import com.liferay.object.exception.NoSuchObjectRelationshipException;
 import com.liferay.object.exception.ObjectDefinitionScopeException;
 import com.liferay.object.exception.ObjectEntryGroupIdException;
+import com.liferay.object.exception.ObjectFieldDBColumnNameException;
+import com.liferay.object.exception.ObjectFieldNameException;
 import com.liferay.object.exception.ObjectRelationshipDeletionTypeException;
 import com.liferay.object.exception.ObjectRelationshipEdgeException;
 import com.liferay.object.exception.ObjectRelationshipNameException;
@@ -65,6 +67,7 @@ import com.liferay.petra.sql.dsl.Column;
 import com.liferay.petra.sql.dsl.DSLQueryFactoryUtil;
 import com.liferay.petra.sql.dsl.expression.Predicate;
 import com.liferay.petra.sql.dsl.query.DSLQuery;
+import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.aop.AopService;
@@ -101,6 +104,7 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowInstance;
 import com.liferay.portal.kernel.workflow.WorkflowInstanceManagerUtil;
+import com.liferay.portal.util.PortalInstances;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
 
 import java.io.Serializable;
@@ -383,7 +387,9 @@ public class ObjectRelationshipLocalServiceImpl
 
 		// TODO When should we allow an object relationship to be deleted?
 
-		if (objectRelationship.isEdge()) {
+		if (!PortalInstances.isCurrentCompanyInDeletionProcess() &&
+			objectRelationship.isEdge()) {
+
 			throw new ObjectRelationshipEdgeException(
 				"Edge object relationships cannot be deleted",
 				"edge-object-relationships-cannot-be-deleted");
@@ -730,14 +736,16 @@ public class ObjectRelationshipLocalServiceImpl
 				objectRelationshipPersistence.findByCompanyId(
 					objectDefinition.getCompanyId())) {
 
-			if (((objectRelationship.getObjectDefinitionId1() ==
-					objectDefinitionId) ||
-				 (objectRelationship.getObjectDefinitionId2() ==
-					 objectDefinitionId)) &&
-				!objectRelationship.isReverse()) {
+			if (((objectRelationship.getObjectDefinitionId1() !=
+					objectDefinitionId) &&
+				 (objectRelationship.getObjectDefinitionId2() !=
+					 objectDefinitionId)) ||
+				objectRelationship.isReverse()) {
 
-				objectRelationships.add(objectRelationship);
+				continue;
 			}
+
+			objectRelationships.add(objectRelationship);
 		}
 
 		return objectRelationships;
@@ -1218,6 +1226,11 @@ public class ObjectRelationshipLocalServiceImpl
 				ObjectRelationshipUtil.getObjectRelationshipFieldName(
 					objectDefinition1, name);
 		}
+		else {
+			_validateObjectFieldDBColumnName(dbColumnName);
+			_validateObjectFieldName(
+				objectDefinition1, objectDefinition2, dbColumnName, name);
+		}
 
 		_validateRelationshipName(dbColumnName, name);
 
@@ -1265,15 +1278,6 @@ public class ObjectRelationshipLocalServiceImpl
 			DynamicObjectDefinitionTableUtil.getAlterTableAddColumnSQL(
 				dbTableName, objectField.getBusinessType(),
 				objectField.getDBColumnName(), "Long"));
-
-		if (!objectDefinition2.isUnmodifiableSystemObject()) {
-			runSQL(
-				DynamicObjectDefinitionTableUtil.
-					getInsertMissingExtensionTableRowsSQL(
-						dbTableName,
-						objectDefinition2.getPKObjectFieldDBColumnName(),
-						objectDefinition2.getDBTableName()));
-		}
 
 		_objectEntryPersistence.clearCache();
 
@@ -1473,14 +1477,16 @@ public class ObjectRelationshipLocalServiceImpl
 				_objectFieldSettingPersistence.fetchByOFI_N(
 					objectField.getObjectFieldId(), "objectRelationshipName");
 
-			if ((objectFieldSetting != null) &&
-				StringUtil.equals(
+			if ((objectFieldSetting == null) ||
+				!StringUtil.equals(
 					objectFieldSetting.getValue(),
 					objectRelationship.getName())) {
 
-				_objectFieldLocalService.deleteObjectField(
-					objectField.getObjectFieldId());
+				continue;
 			}
+
+			_objectFieldLocalService.deleteObjectField(
+				objectField.getObjectFieldId());
 		}
 	}
 
@@ -1865,9 +1871,11 @@ public class ObjectRelationshipLocalServiceImpl
 
 			Node node = tree.getNode(objectDefinition1.getObjectDefinitionId());
 
-			if (node.getDepth() > objectDefinition1MaxDepth) {
-				objectDefinition1MaxDepth = node.getDepth();
+			if (node.getDepth() <= objectDefinition1MaxDepth) {
+				continue;
 			}
+
+			objectDefinition1MaxDepth = node.getDepth();
 		}
 
 		int objectDefinition2MaxHeight = 0;
@@ -1881,9 +1889,11 @@ public class ObjectRelationshipLocalServiceImpl
 			int height = tree.getHeight(
 				tree.getNode(objectDefinition2.getObjectDefinitionId()));
 
-			if (height > objectDefinition2MaxHeight) {
-				objectDefinition2MaxHeight = height;
+			if (height <= objectDefinition2MaxHeight) {
+				continue;
 			}
+
+			objectDefinition2MaxHeight = height;
 		}
 
 		treeHeight += objectDefinition1MaxDepth + objectDefinition2MaxHeight;
@@ -2107,6 +2117,51 @@ public class ObjectRelationshipLocalServiceImpl
 		else {
 			_objectEntryPersistence.findByPrimaryKey(primaryKey);
 		}
+	}
+
+	private void _validateObjectFieldDBColumnName(
+			String objectFieldDBColumnName)
+		throws PortalException {
+
+		for (char c : objectFieldDBColumnName.toCharArray()) {
+			if (!Validator.isChar(c) && !Validator.isDigit(c) &&
+				(c != CharPool.UNDERLINE)) {
+
+				throw new ObjectFieldDBColumnNameException(
+					"DB column name must only contain letters, digits, and " +
+						"underscores");
+			}
+		}
+	}
+
+	private void _validateObjectFieldName(
+			ObjectDefinition objectDefinition1,
+			ObjectDefinition objectDefinition2, String objectFieldName,
+			String objectRelationshipName)
+		throws PortalException {
+
+		if (objectFieldName.equals(objectRelationshipName)) {
+			throw new ObjectFieldNameException.
+				MustNotBeEqualToObjectRelationshipName(
+					objectDefinition1.getShortName());
+		}
+
+		ObjectRelationship objectRelationship =
+			objectRelationshipLocalService.
+				fetchObjectRelationshipByObjectDefinitionId(
+					objectDefinition2.getObjectDefinitionId(), objectFieldName);
+
+		if (objectRelationship == null) {
+			return;
+		}
+
+		ObjectDefinition objectDefinition3 =
+			_objectDefinitionPersistence.findByPrimaryKey(
+				objectRelationship.getObjectDefinitionId1());
+
+		throw new ObjectFieldNameException.
+			MustNotBeEqualToObjectRelationshipName(
+				objectDefinition3.getShortName());
 	}
 
 	private void _validateParameterObjectFieldId(

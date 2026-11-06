@@ -119,9 +119,6 @@ public interface CommerceDiscountUsageEntryLocalService
 			long commerceDiscountUsageEntryId)
 		throws PortalException;
 
-	public void deleteCommerceUsageEntry(
-		long commerceAccountId, long commerceOrderId, long commerceDiscountId);
-
 	public void deleteCommerceUsageEntryByDiscountId(long commerceDiscountId);
 
 	/**
@@ -237,16 +234,8 @@ public interface CommerceDiscountUsageEntryLocalService
 	public int getCommerceDiscountUsageEntriesCount(long commerceDiscountId);
 
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public int getCommerceDiscountUsageEntriesCount(
-		long commerceAccountId, long commerceOrderId, long commerceDiscountId);
-
-	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public int getCommerceDiscountUsageEntriesCountByAccountId(
 		long commerceAccountId, long commerceDiscountId);
-
-	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public int getCommerceDiscountUsageEntriesCountByOrderId(
-		long commerceOrderId, long commerceDiscountId);
 
 	/**
 	 * Returns the commerce discount usage entry with the primary key.
@@ -297,4 +286,4 @@ public interface CommerceDiscountUsageEntryLocalService
 		throws PortalException;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1678673860
+// LIFERAY-SERVICE-BUILDER-HASH:-695585541

@@ -45,11 +45,6 @@ test(
 			objectEntry.title,
 			'Table'
 		);
-
-		await apiHelpers.objectEntry.deleteObjectEntry(
-			applicationName,
-			String(objectEntry.id)
-		);
 	}
 );
 
@@ -90,11 +85,6 @@ test(
 			objectEntry.title,
 			'Gallery'
 		);
-
-		await apiHelpers.objectEntry.deleteObjectEntry(
-			applicationName,
-			String(objectEntry.id)
-		);
 	}
 );
 
@@ -103,25 +93,18 @@ test(
 	{tag: '@LPD-83845'},
 	async ({apiHelpers, assetsPage, contentsPage, page, spaceSummaryPage}) => {
 		const fileTitle = `title ${getRandomString()}`;
-		const spaceName = `Space ${getRandomString()}`;
-
-		let assetLibrary;
+		let space;
 
 		await test.step('Create a new Space', async () => {
-			assetLibrary =
-				await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-					name: spaceName,
-					settings: {},
-					type: 'Space',
-				});
+			space = await apiHelpers.headlessAssetLibrary.createSpace();
 		});
 
 		await test.step('Create a file entry via UI', async () => {
-			await spaceSummaryPage.goto(spaceName);
+			await spaceSummaryPage.goto(space.name);
 
 			await assetsPage.gotoFiles();
 
-			await contentsPage.createContent('Single File', spaceName);
+			await contentsPage.createContent('Single File', space.name);
 
 			await contentsPage.fillData([{label: 'Title', value: fileTitle}]);
 
@@ -154,12 +137,12 @@ test(
 			};
 
 			await apiHelpers.headlessAssetLibrary.putAssetLibraryUserAccount(
-				assetLibrary.externalReferenceCode,
+				space.externalReferenceCode,
 				user.externalReferenceCode
 			);
 
 			await apiHelpers.headlessAssetLibrary.putAssetLibraryUserAccountRoles(
-				assetLibrary.externalReferenceCode,
+				space.externalReferenceCode,
 				user.externalReferenceCode,
 				['Asset Library Administrator']
 			);
@@ -286,11 +269,6 @@ test(
 		await expect(
 			page.getByRole('menuitem', {exact: true, name: 'Delete'})
 		).toHaveCount(0);
-
-		await apiHelpers.objectEntry.deleteObjectEntry(
-			applicationName,
-			String(objectEntry.id)
-		);
 	}
 );
 
@@ -302,7 +280,7 @@ test(
 		const spaceName = 'Default';
 		const title = `title ${getRandomString()}`;
 
-		const objectEntry = await apiHelpers.objectEntry.postObjectEntry(
+		await apiHelpers.objectEntry.postObjectEntry(
 			{
 				objectEntryFolderExternalReferenceCode: 'L_CONTENTS',
 				title,
@@ -334,11 +312,6 @@ test(
 		await expect(
 			page.getByRole('menuitem', {exact: true, name: 'Download'})
 		).toHaveCount(0);
-
-		await apiHelpers.objectEntry.deleteObjectEntry(
-			applicationName,
-			String(objectEntry.id)
-		);
 	}
 );
 

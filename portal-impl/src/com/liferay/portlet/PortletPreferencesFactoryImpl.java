@@ -100,19 +100,23 @@ public class PortletPreferencesFactoryImpl
 			while (xmlEventReader.hasNext()) {
 				XMLEvent xmlEvent = xmlEventReader.nextEvent();
 
-				if (xmlEvent.isStartElement()) {
-					StartElement startElement = xmlEvent.asStartElement();
-
-					QName startElementName = startElement.getName();
-
-					String elementName = startElementName.getLocalPart();
-
-					if (elementName.equals("preference")) {
-						Preference preference = readPreference(xmlEventReader);
-
-						preferencesMap.put(preference.getName(), preference);
-					}
+				if (!xmlEvent.isStartElement()) {
+					continue;
 				}
+
+				StartElement startElement = xmlEvent.asStartElement();
+
+				QName startElementName = startElement.getName();
+
+				String elementName = startElementName.getLocalPart();
+
+				if (!elementName.equals("preference")) {
+					continue;
+				}
+
+				Preference preference = readPreference(xmlEventReader);
+
+				preferencesMap.put(preference.getName(), preference);
 			}
 		}
 		catch (XMLStreamException xmlStreamException) {
@@ -295,13 +299,29 @@ public class PortletPreferencesFactoryImpl
 	public PortalPreferences getPortalPreferences(
 		HttpServletRequest httpServletRequest) {
 
+		PortalPreferences portalPreferences =
+			(PortalPreferences)httpServletRequest.getAttribute(
+				WebKeys.HTTP_SERVLET_REQUEST_PORTAL_PREFERENCES);
+
 		ThemeDisplay themeDisplay =
 			(ThemeDisplay)httpServletRequest.getAttribute(
 				WebKeys.THEME_DISPLAY);
 
-		return getPortalPreferences(
+		if ((portalPreferences != null) &&
+			(portalPreferences.getUserId() == themeDisplay.getUserId()) &&
+			(portalPreferences.isSignedIn() == themeDisplay.isSignedIn())) {
+
+			return portalPreferences;
+		}
+
+		portalPreferences = getPortalPreferences(
 			httpServletRequest.getSession(), themeDisplay.getUserId(),
 			themeDisplay.isSignedIn());
+
+		httpServletRequest.setAttribute(
+			WebKeys.HTTP_SERVLET_REQUEST_PORTAL_PREFERENCES, portalPreferences);
+
+		return portalPreferences;
 	}
 
 	@Override
@@ -310,14 +330,8 @@ public class PortletPreferencesFactoryImpl
 
 		PortalPreferences portalPreferences = null;
 
-		PortalPreferencesWrapper portalPreferencesWrapper =
-			(PortalPreferencesWrapper)
-				PortalPreferencesLocalServiceUtil.getPreferences(
-					userId, PortletKeys.PREFS_OWNER_TYPE_USER);
-
 		if (signedIn) {
-			portalPreferences =
-				portalPreferencesWrapper.getPortalPreferencesImpl();
+			portalPreferences = _getPortalPreferences(userId);
 		}
 		else {
 			if (httpSession != null) {
@@ -326,8 +340,7 @@ public class PortletPreferencesFactoryImpl
 			}
 
 			if (portalPreferences == null) {
-				portalPreferences =
-					portalPreferencesWrapper.getPortalPreferencesImpl();
+				portalPreferences = _getPortalPreferences(userId);
 
 				if (httpSession != null) {
 					httpSession.setAttribute(
@@ -856,6 +869,15 @@ public class PortletPreferencesFactoryImpl
 		return String.valueOf(cacheKeyGenerator.getCacheKey(xml));
 	}
 
+	private PortalPreferences _getPortalPreferences(long userId) {
+		PortalPreferencesWrapper portalPreferencesWrapper =
+			(PortalPreferencesWrapper)
+				PortalPreferencesLocalServiceUtil.getPreferences(
+					userId, PortletKeys.PREFS_OWNER_TYPE_USER);
+
+		return portalPreferencesWrapper.getPortalPreferencesImpl();
+	}
+
 	private PortletPreferencesIds _getPortletPreferencesIds(
 			ThemeDisplay themeDisplay, long siteGroupId, long userId,
 			Layout layout, String portletId, boolean modeEditGuest)
@@ -907,19 +929,20 @@ public class PortletPreferencesFactoryImpl
 			if (portlet.isPreferencesUniquePerLayout()) {
 				ownerId = PortletKeys.PREFS_OWNER_ID_DEFAULT;
 
+				plid = layout.getPlid();
+
 				long masterLayoutPlid = layout.getMasterLayoutPlid();
 
-				long portletPreferencesCount =
-					PortletPreferencesLocalServiceUtil.
-						getPortletPreferencesCount(
-							PortletKeys.PREFS_OWNER_TYPE_LAYOUT,
-							masterLayoutPlid, portletId);
+				if (masterLayoutPlid > 0) {
+					long portletPreferencesCount =
+						PortletPreferencesLocalServiceUtil.
+							getPortletPreferencesCount(
+								PortletKeys.PREFS_OWNER_TYPE_LAYOUT,
+								masterLayoutPlid, portletId);
 
-				if ((masterLayoutPlid > 0) && (portletPreferencesCount > 0)) {
-					plid = masterLayoutPlid;
-				}
-				else {
-					plid = layout.getPlid();
+					if (portletPreferencesCount > 0) {
+						plid = masterLayoutPlid;
+					}
 				}
 
 				if (themeDisplay != null) {

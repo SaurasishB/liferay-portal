@@ -297,9 +297,11 @@ public class ProjectTemplateFilesTest {
 
 				definitionsVmPath = projectTemplateDirPath.resolve(fileName);
 
-				if (Files.exists(definitionsVmPath)) {
-					definitionsVmPaths.add(definitionsVmPath);
+				if (!Files.exists(definitionsVmPath)) {
+					continue;
 				}
+
+				definitionsVmPaths.add(definitionsVmPath);
 			}
 		}
 
@@ -321,9 +323,11 @@ public class ProjectTemplateFilesTest {
 
 			messageSuffix.append(", ");
 
-			if (i == (definitionsVmPaths.size() - 1)) {
-				messageSuffix.append("or ");
+			if (i != (definitionsVmPaths.size() - 1)) {
+				continue;
 			}
+
+			messageSuffix.append("or ");
 		}
 
 		Path archetypePomXmlPath = projectTemplateDirPath.resolve(
@@ -618,22 +622,24 @@ public class ProjectTemplateFilesTest {
 			Element idElement = XMLTestUtil.getChildElement(
 				executionElement, "id");
 
-			if (idElement != null) {
-				String id = idElement.getTextContent();
-
-				Assert.assertFalse(
-					"Execution ID \"" + id + "\" in " + pomXmlPath +
-						" cannot start with \"default-\"",
-					id.startsWith("default-"));
-
-				Matcher matcher = _pomXmlExecutionIdPattern.matcher(id);
-
-				Assert.assertTrue(
-					"Execution ID \"" + id + "\" in " + pomXmlPath +
-						" must match pattern \"" +
-							_pomXmlExecutionIdPattern.pattern() + "\"",
-					matcher.matches());
+			if (idElement == null) {
+				continue;
 			}
+
+			String id = idElement.getTextContent();
+
+			Assert.assertFalse(
+				"Execution ID \"" + id + "\" in " + pomXmlPath +
+					" cannot start with \"default-\"",
+				id.startsWith("default-"));
+
+			Matcher matcher = _pomXmlExecutionIdPattern.matcher(id);
+
+			Assert.assertTrue(
+				"Execution ID \"" + id + "\" in " + pomXmlPath +
+					" must match pattern \"" +
+						_pomXmlExecutionIdPattern.pattern() + "\"",
+				matcher.matches());
 		}
 
 		Path buildGradlePath = archetypeResourcesDirPath.resolve(
@@ -722,15 +728,17 @@ public class ProjectTemplateFilesTest {
 
 			String key = artifactId + ".version";
 
-			if (systemProperties.containsKey(key)) {
-				Element versionElement = XMLTestUtil.getChildElement(
-					element, "version");
-
-				Assert.assertEquals(
-					"Incorrect version of " + name + " \"" + artifactId +
-						"\" in " + pomXmlPath,
-					"@" + key + "@", versionElement.getTextContent());
+			if (!systemProperties.containsKey(key)) {
+				continue;
 			}
+
+			Element versionElement = XMLTestUtil.getChildElement(
+				element, "version");
+
+			Assert.assertEquals(
+				"Incorrect version of " + name + " \"" + artifactId + "\" in " +
+					pomXmlPath,
+				"@" + key + "@", versionElement.getTextContent());
 		}
 	}
 
@@ -809,9 +817,7 @@ public class ProjectTemplateFilesTest {
 
 		String pathString = archetypeResourcesDirPath.toString();
 
-		if (!pathString.contains("ext") && !pathString.contains("spring-mvc") &&
-			!pathString.contains("form-field")) {
-
+		if (!pathString.contains("ext") && !pathString.contains("spring-mvc")) {
 			_testPomXml(archetypeResourcesDirPath, documentBuilder);
 		}
 
@@ -898,13 +904,11 @@ public class ProjectTemplateFilesTest {
 		String archetypePostGenerateGroovy = _testArchetypePostGenerateGroovy(
 			projectTemplateDirPath);
 
-		if (!pathString.contains("form-field")) {
-			_testArchetypeMetadataXml(
-				projectTemplateDirPath, projectTemplateDirName,
-				archetypeResourcesDirPath, bndProperties,
-				requireAuthorProperty.get(), archetypePostGenerateGroovy,
-				archetypeResourceExpressions, documentBuilder);
-		}
+		_testArchetypeMetadataXml(
+			projectTemplateDirPath, projectTemplateDirName,
+			archetypeResourcesDirPath, bndProperties,
+			requireAuthorProperty.get(), archetypePostGenerateGroovy,
+			archetypeResourceExpressions, documentBuilder);
 	}
 
 	private void _testPropertyValue(
@@ -985,9 +989,11 @@ public class ProjectTemplateFilesTest {
 			while (matcher.find()) {
 				String name = matcher.group(1);
 
-				if (!text.contains("#set ($" + name + " = ")) {
-					archetypeResourceExpressions.add(name);
+				if (text.contains("#set ($" + name + " = ")) {
+					continue;
 				}
+
+				archetypeResourceExpressions.add(name);
 			}
 		}
 	}

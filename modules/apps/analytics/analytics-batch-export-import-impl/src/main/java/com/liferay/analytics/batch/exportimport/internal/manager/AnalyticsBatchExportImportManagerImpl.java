@@ -59,6 +59,7 @@ import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.UnicodePropertiesBuilder;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.zip.ZipReaderFactory;
+import com.liferay.portal.security.key.secret.SecretResolver;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -156,43 +157,38 @@ public class AnalyticsBatchExportImportManagerImpl
 				BatchEngineTaskExecuteStatus.valueOf(
 					batchEngineExportTask.getExecuteStatus());
 
-			if (batchEngineTaskExecuteStatus.equals(
+			if (!batchEngineTaskExecuteStatus.equals(
 					BatchEngineTaskExecuteStatus.COMPLETED)) {
 
-				_notify(
-					StringBundler.concat(
-						"Exported ", batchEngineExportTask.getTotalItemsCount(),
-						" items from task ",
-						batchEngineExportTaskItemDelegateName),
-					notificationUnsafeConsumer);
-
-				if (batchEngineExportTask.getTotalItemsCount() == 0) {
-					_notify(
-						"There are no items from task " +
-							batchEngineExportTaskItemDelegateName,
-						notificationUnsafeConsumer);
-
-					continue;
-				}
-
-				skipUpload = false;
-
-				try (ZipInputStream zipInputStream = new ZipInputStream(
-						_batchEngineExportTaskLocalService.
-							openContentInputStream(
-								batchEngineExportTask.
-									getBatchEngineExportTaskId()))) {
-
-					zipInputStream.getNextEntry();
-
-					StreamUtil.transfer(
-						zipInputStream, gzipOutputStream, false);
-				}
-			}
-			else {
 				throw new PortalException(
 					"Unable to export resource " +
 						batchEngineExportTaskItemDelegateName);
+			}
+
+			_notify(
+				StringBundler.concat(
+					"Exported ", batchEngineExportTask.getTotalItemsCount(),
+					" items from task ", batchEngineExportTaskItemDelegateName),
+				notificationUnsafeConsumer);
+
+			if (batchEngineExportTask.getTotalItemsCount() == 0) {
+				_notify(
+					"There are no items from task " +
+						batchEngineExportTaskItemDelegateName,
+					notificationUnsafeConsumer);
+
+				continue;
+			}
+
+			skipUpload = false;
+
+			try (ZipInputStream zipInputStream = new ZipInputStream(
+					_batchEngineExportTaskLocalService.openContentInputStream(
+						batchEngineExportTask.getBatchEngineExportTaskId()))) {
+
+				zipInputStream.getNextEntry();
+
+				StreamUtil.transfer(zipInputStream, gzipOutputStream, false);
 			}
 		}
 
@@ -442,8 +438,10 @@ public class AnalyticsBatchExportImportManagerImpl
 
 		HttpUriRequest httpUriRequest = _buildHttpUriRequest(
 			null, analyticsConfiguration.liferayAnalyticsDataSourceId(),
-			analyticsConfiguration.
-				liferayAnalyticsFaroBackendSecuritySignature(),
+			_secretResolver.resolve(
+				companyId,
+				analyticsConfiguration.
+					liferayAnalyticsFaroBackendSecuritySignature()),
 			HttpMethods.GET, analyticsConfiguration.liferayAnalyticsProjectId(),
 			analyticsConfiguration.liferayAnalyticsFaroBackendURL() +
 				"/api/1.0/data-sources/" +
@@ -612,7 +610,10 @@ public class AnalyticsBatchExportImportManagerImpl
 				oAuth2Application));
 
 		JSONObject jsonObject = _jsonFactory.createJSONObject(
-			new String(Base64.decode(analyticsConfiguration.token())));
+			new String(
+				Base64.decode(
+					_secretResolver.resolve(
+						companyId, analyticsConfiguration.token()))));
 
 		options.setLocation(
 			StringUtil.replace(
@@ -813,8 +814,10 @@ public class AnalyticsBatchExportImportManagerImpl
 			analyticsConfiguration.liferayAnalyticsDataSourceId());
 		options.addHeader(
 			"OSB-Asah-Faro-Backend-Security-Signature",
-			analyticsConfiguration.
-				liferayAnalyticsFaroBackendSecuritySignature());
+			_secretResolver.resolve(
+				companyId,
+				analyticsConfiguration.
+					liferayAnalyticsFaroBackendSecuritySignature()));
 		options.addHeader(
 			"OSB-Asah-Project-ID",
 			analyticsConfiguration.liferayAnalyticsProjectId());
@@ -973,8 +976,10 @@ public class AnalyticsBatchExportImportManagerImpl
 			analyticsConfiguration.liferayAnalyticsDataSourceId());
 		httpPost.setHeader(
 			"OSB-Asah-Faro-Backend-Security-Signature",
-			analyticsConfiguration.
-				liferayAnalyticsFaroBackendSecuritySignature());
+			_secretResolver.resolve(
+				companyId,
+				analyticsConfiguration.
+					liferayAnalyticsFaroBackendSecuritySignature()));
 		httpPost.setHeader(
 			"OSB-Asah-Project-ID",
 			analyticsConfiguration.liferayAnalyticsProjectId());
@@ -1226,6 +1231,9 @@ public class AnalyticsBatchExportImportManagerImpl
 
 	@Reference
 	private OAuth2ApplicationLocalService _oAuth2ApplicationLocalService;
+
+	@Reference
+	private SecretResolver _secretResolver;
 
 	@Reference
 	private SettingsLocatorHelper _settingsLocatorHelper;

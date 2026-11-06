@@ -50,13 +50,15 @@ public class OrphanReferencesDataCleanupUtil {
 
 		if (firstIndexColumnNames != null) {
 			for (String columnName : columnNames) {
-				if (!firstIndexColumnNames.contains(
+				if (firstIndexColumnNames.contains(
 						StringUtil.toLowerCase(columnName))) {
 
-					safeCloseables.add(
-						db.addTemporaryIndex(
-							connection, tableName, false, columnName));
+					continue;
 				}
+
+				safeCloseables.add(
+					db.addTemporaryIndex(
+						connection, tableName, false, columnName));
 			}
 		}
 
@@ -250,11 +252,16 @@ public class OrphanReferencesDataCleanupUtil {
 
 				retryCount++;
 
-				if (_log.isWarnEnabled()) {
-					_log.warn(
+				if (_log.isDebugEnabled()) {
+					_log.debug(
 						"Retrying delete after a database deadlock: " +
 							deleteSQL,
 						sqlException);
+				}
+				else if (_log.isInfoEnabled()) {
+					_log.info(
+						"Retrying delete after a database deadlock: " +
+							deleteSQL);
 				}
 
 				try {
@@ -289,18 +296,19 @@ public class OrphanReferencesDataCleanupUtil {
 			while (resultSet.next()) {
 				String indexName = resultSet.getString("INDEX_NAME");
 
-				if (indexName == null) {
+				if ((indexName == null) ||
+					(resultSet.getShort("ORDINAL_POSITION") != 1)) {
+
 					continue;
 				}
 
-				if (resultSet.getShort("ORDINAL_POSITION") == 1) {
-					String columnName = resultSet.getString("COLUMN_NAME");
+				String columnName = resultSet.getString("COLUMN_NAME");
 
-					if (columnName != null) {
-						firstIndexColumnNames.add(
-							StringUtil.lowerCase(columnName));
-					}
+				if (columnName == null) {
+					continue;
 				}
+
+				firstIndexColumnNames.add(StringUtil.lowerCase(columnName));
 			}
 		}
 
@@ -473,8 +481,7 @@ public class OrphanReferencesDataCleanupUtil {
 		OrphanReferencesDataCleanupUtil.class);
 
 	private static final List<String> _excludedTableNames = new ArrayList<>(
-		Arrays.asList(
-			"Audit_AuditEvent", "CyrusUser", "CyrusVirtual", "SystemEvent"));
+		Arrays.asList("Audit_AuditEvent", "SystemEvent"));
 	private static final List<String> _normalizedExcludedTableNames =
 		new ArrayList<>();
 	private static final RetryAcceptor _retryAcceptor = new SQLStateAcceptor();

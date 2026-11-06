@@ -21,6 +21,8 @@ import {DLFILE_STATUS} from '../../../helpers/json-web-services/JSONWebServicesD
 import {checkAccessibility} from '../../../utils/checkAccessibility';
 import {clickAndExpectToBeHidden} from '../../../utils/clickAndExpectToBeHidden';
 import {clickAndExpectToBeVisible} from '../../../utils/clickAndExpectToBeVisible';
+import {expandSection} from '../../../utils/expandSection';
+import getGlobalSiteId from '../../../utils/getGlobalSiteId';
 import getRandomString from '../../../utils/getRandomString';
 import {performLogout} from '../../../utils/performLogin';
 import getBasicWebContentStructureId from '../../../utils/structured-content/getBasicWebContentStructureId';
@@ -215,7 +217,7 @@ test(
 
 		const toastAlertContainer = page.locator('[id="ToastAlertContainer"]');
 
-		await expect(toastAlertContainer).toBeVisible();
+		await expect(toastAlertContainer.locator('.alert')).toBeVisible();
 
 		await expect(toastAlertContainer).toContainText(`Success:${title}`);
 
@@ -463,6 +465,54 @@ test(
 );
 
 test(
+	'Internal and global vocabularies are available in the multiple files upload',
+	{
+		tag: '@LPD-111333',
+	},
+	async ({apiHelpers, documentLibraryEditFilePage, page, site}) => {
+		const globalVocabularyName = getRandomString();
+		const internalVocabularyName = getRandomString();
+
+		await createCategories({
+			apiHelpers,
+			categoryNames: [{name: getRandomString()}],
+			siteId: site.id,
+			vocabularyName: internalVocabularyName,
+			vocabularyVisibility: true,
+		});
+		await createCategories({
+			apiHelpers,
+			categoryNames: [{name: getRandomString()}],
+			siteId: String(await getGlobalSiteId(apiHelpers)),
+			vocabularyName: globalVocabularyName,
+		});
+
+		await documentLibraryEditFilePage.goToNewFileDifferentType(
+			'Multiple Files Upload',
+			site.friendlyUrlPath
+		);
+
+		const fileName = getRandomString();
+
+		await page.getByRole('button', {name: 'Select Files'}).waitFor();
+		await page.locator('input[type="file"]').setInputFiles({
+			buffer: Buffer.from(fileName),
+			mimeType: 'text/plain',
+			name: `${fileName}.txt`,
+		});
+
+		await expect(
+			page.getByRole('checkbox', {name: `${fileName}.txt`})
+		).toBeEnabled();
+
+		await expandSection(page.getByRole('button', {name: 'Categorization'}));
+
+		await expect(page.getByText(internalVocabularyName)).toBeVisible();
+		await expect(page.getByText(globalVocabularyName)).toBeVisible();
+	}
+);
+
+test(
 	'Unable to filter by category if their vocabulary is related with a specific document type',
 	{
 		tag: '@LPD-50971',
@@ -578,6 +628,56 @@ test(
 			expect(firstAlertAppear).toBe(true);
 			expect(moreAlertsAppear).toBe(false);
 		}).toPass();
+	}
+);
+
+test(
+	'Only one success message on publishing a file edit from widget page',
+	{tag: '@LPD-112410'},
+	async ({apiHelpers, documentLibraryEditFilePage, page, site}) => {
+		const layout = await apiHelpers.headlessDelivery.createSitePage({
+			pageDefinition: getPageDefinition([
+				getWidgetDefinition({
+					id: getRandomString(),
+					widgetName:
+						'com_liferay_document_library_web_portlet_DLPortlet',
+				}),
+			]),
+			siteId: site.id,
+			title: getRandomString(),
+		});
+
+		const title = getRandomString();
+
+		await apiHelpers.headlessDelivery.postDocument(
+			site.id,
+			createReadStream(path.join(__dirname, '/dependencies/image1.jpeg')),
+			{title}
+		);
+
+		await page.goto(`/web/${site.name}${layout.friendlyUrlPath}`);
+
+		await page.getByRole('link', {exact: true, name: title}).click();
+
+		await expect(page.getByRole('heading', {name: title})).toBeVisible();
+
+		await clickAndExpectToBeVisible({
+			autoClick: true,
+			target: page.getByRole('menuitem', {exact: true, name: 'Edit'}),
+			trigger: page.getByRole('button', {name: 'Show Actions'}),
+		});
+
+		await documentLibraryEditFilePage.titleSelector.fill(getRandomString());
+
+		await documentLibraryEditFilePage.publishButton.click();
+
+		const successAlerts = page.locator('.alert-success');
+
+		await expect(successAlerts.first()).toBeVisible();
+
+		await page.waitForLoadState('networkidle');
+
+		expect(await successAlerts.count()).toBe(1);
 	}
 );
 
@@ -1503,5 +1603,61 @@ test(
 				page.getByRole('link', {name: documentTitle3})
 			).toBeHidden();
 		});
+	}
+);
+
+test(
+	'Folder links do not nest the redirect parameter',
+	{tag: '@LPD-113087'},
+	async ({apiHelpers, page, site}) => {
+		const layout = await apiHelpers.headlessDelivery.createSitePage({
+			pageDefinition: getPageDefinition([
+				getWidgetDefinition({
+					id: getRandomString(),
+					widgetName:
+						'com_liferay_document_library_web_portlet_DLPortlet',
+				}),
+			]),
+			siteId: site.id,
+			title: getRandomString(),
+		});
+
+		const documentFolder =
+			await apiHelpers.headlessDelivery.postDocumentFolder(site.id);
+
+		const title = getRandomString();
+
+		await apiHelpers.headlessDelivery.postDocumentFolderDocument(
+			documentFolder.id,
+			createReadStream(path.join(__dirname, '/dependencies/image1.jpeg')),
+			{title}
+		);
+
+		await page.goto(`/web/${site.name}${layout.friendlyUrlPath}`);
+
+		await page
+			.getByRole('link', {exact: true, name: documentFolder.name})
+			.click();
+
+		const fileLink = page.getByRole('link', {exact: true, name: title});
+
+		expect(
+			decodeURIComponent(await fileLink.getAttribute('href')).match(
+				/redirect=/g
+			)
+		).toHaveLength(1);
+
+		await fileLink.click();
+
+		await expect(page.getByRole('heading', {name: title})).toBeVisible();
+
+		const locationLink = page.locator('.sidebar-dd').getByRole('link', {
+			includeHidden: true,
+			name: documentFolder.name,
+		});
+
+		expect(await locationLink.getAttribute('href')).not.toContain(
+			'redirect'
+		);
 	}
 );

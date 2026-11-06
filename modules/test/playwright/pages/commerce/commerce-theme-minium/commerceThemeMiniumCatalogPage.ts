@@ -9,6 +9,8 @@ import {clickAndExpectToBeVisible} from '../../../utils/clickAndExpectToBeVisibl
 
 export class CommerceThemeMiniumCatalogPage {
 	readonly accountSelectorAccount: (accountName: string) => Locator;
+	readonly accountSelectorAccounts: Locator;
+	readonly accountSelectorAccountsScroller: Locator;
 	readonly accountSelectorBackButton: Locator;
 	readonly accountSelectorButton: Locator;
 	readonly accountSelectorDropdownMenu: Locator;
@@ -33,6 +35,8 @@ export class CommerceThemeMiniumCatalogPage {
 	readonly createNewAccountButton: Locator;
 	readonly createNewAccountModal: Locator;
 	readonly createNewAccountModalCancelButton: Locator;
+	readonly createNewAccountModalCreateButton: Locator;
+	readonly createNewAccountModalExternalReferenceCodeInput: Locator;
 	readonly createNewAccountModalNameInput: Locator;
 	readonly createNewOrderButton: Locator;
 	readonly firstCardItem: Locator;
@@ -60,6 +64,7 @@ export class CommerceThemeMiniumCatalogPage {
 	) => Locator;
 	readonly productCardAddToCartButton: (productName: string) => Locator;
 	readonly productCardAddToWishListButton: (productName: string) => Locator;
+	readonly productCardCompareCheckbox: (productName: string) => Locator;
 	readonly productCardViewAllVariantsButton: (productName: string) => Locator;
 	readonly productCardFragment: Locator;
 	readonly productCardFragmentAddToCartButton: (
@@ -107,12 +112,19 @@ export class CommerceThemeMiniumCatalogPage {
 	) => Locator;
 	readonly productCards: Locator;
 	readonly productLink: (productName: string) => Locator;
+	readonly userNavName: Locator;
 
 	constructor(page: Page) {
 		this.accountSelectorAccount = (accountName: string) =>
 			page
 				.locator('.dropdown-menu.show')
 				.getByText(accountName, {exact: false});
+		this.accountSelectorAccounts = page.locator(
+			'.account-selector-dropdown-menu.show .accounts-list .dropdown-item'
+		);
+		this.accountSelectorAccountsScroller = page.locator(
+			'.account-selector-dropdown-menu.show .accounts-list-container .inline-scroller'
+		);
 		this.accountSelectorBackButton = page
 			.locator('.dropdown-menu.show')
 			.getByRole('button', {exact: true, name: 'Back to Accounts'});
@@ -179,6 +191,13 @@ export class CommerceThemeMiniumCatalogPage {
 		this.createNewAccountModal = page.locator('.modal-content');
 		this.createNewAccountModalCancelButton =
 			this.createNewAccountModal.getByRole('button', {name: 'Cancel'});
+		this.createNewAccountModalCreateButton =
+			this.createNewAccountModal.getByRole('button', {
+				exact: true,
+				name: 'Create',
+			});
+		this.createNewAccountModalExternalReferenceCodeInput =
+			this.createNewAccountModal.locator('input[name="accountERC"]');
 		this.createNewAccountModalNameInput =
 			this.createNewAccountModal.locator('input[name="accountName"]');
 		this.createNewOrderButton = page.getByRole('button', {
@@ -194,7 +213,7 @@ export class CommerceThemeMiniumCatalogPage {
 			.first();
 		this.globalSearchBarInput = page
 			.locator('#search-bar')
-			.getByPlaceholder('Search');
+			.getByRole('textbox');
 		this.globalSearchBarCommerceItemLink = (text) =>
 			page.getByRole('link', {name: text});
 		this.globalSearchBarCommerceOrderLink = (
@@ -236,6 +255,11 @@ export class CommerceThemeMiniumCatalogPage {
 			this.productCard(productName).getByRole('button', {
 				exact: true,
 				name: 'Add to List',
+			});
+		this.productCardCompareCheckbox = (productName: string) =>
+			this.productCard(productName).getByRole('checkbox', {
+				exact: true,
+				name: 'Compare',
 			});
 		this.productCardViewAllVariantsButton = (productName: string) =>
 			this.productCard(productName).getByRole('button', {
@@ -306,6 +330,7 @@ export class CommerceThemeMiniumCatalogPage {
 				exact: true,
 				name: productName,
 			});
+		this.userNavName = page.locator('.minium-user-nav__name');
 	}
 
 	getProductMinQuantity(

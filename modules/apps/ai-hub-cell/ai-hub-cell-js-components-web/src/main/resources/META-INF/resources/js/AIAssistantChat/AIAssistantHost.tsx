@@ -35,6 +35,9 @@ const AIAssistantHost: React.FC = () => {
 	const [lastCommand, setLastCommand] =
 		useState<AIAssistantOpenCommand | null>(null);
 
+	const [sessionCommand, setSessionCommand] =
+		useState<AIAssistantOpenCommand | null>(null);
+
 	const [openedByEvent, setOpenedByEvent] = useState<boolean>(false);
 
 	const [expanded, setExpanded] = useState<boolean>(false);
@@ -44,7 +47,7 @@ const AIAssistantHost: React.FC = () => {
 	);
 
 	// Drives Clay's SidePanel open prop. It starts false so the panel mounts
-	// closed and then opens on the next frame, letting Clay play its own
+	// closed and then opens once mounted, letting Clay play its own
 	// slide-in instead of appearing already open.
 
 	const [sidebarMounted, setSidebarMounted] = useState<boolean>(false);
@@ -59,14 +62,24 @@ const AIAssistantHost: React.FC = () => {
 		return element;
 	});
 
+	const [sessionKey, setSessionKey] = useState<number>(0);
+
 	const sidebarId = useId();
 	const anchorRef = useRef<HTMLElement | null>(null);
 	const triggerElementRef = useRef<HTMLElement | null>(null);
+	const sessionActiveRef = useRef<boolean>(false);
 
 	useEffect(() => releaseHost, []);
 
 	useEffect(() => {
 		if (command) {
+			if (command.newSession && sessionActiveRef.current) {
+				setSessionKey((previousSessionKey) => previousSessionKey + 1);
+			}
+			if (command.newSession || !sessionActiveRef.current) {
+				setSessionCommand(command);
+			}
+			sessionActiveRef.current = true;
 			setLastCommand(command);
 			setExpanded(false);
 		}
@@ -75,6 +88,7 @@ const AIAssistantHost: React.FC = () => {
 
 	const activeCommand = command ?? lastCommand;
 	const anchorId = activeCommand?.anchorId;
+	const startCommand = sessionCommand ?? command;
 	const triggerId = activeCommand?.triggerId;
 
 	const isOpen = command !== null || openedByEvent;
@@ -104,14 +118,8 @@ const AIAssistantHost: React.FC = () => {
 	}, [showSidebar]);
 
 	useEffect(() => {
-		if (showSidebar) {
-			const frame = requestAnimationFrame(() => setSidebarOpen(true));
-
-			return () => cancelAnimationFrame(frame);
-		}
-
-		setSidebarOpen(false);
-	}, [showSidebar]);
+		setSidebarOpen(showSidebar && sidebarMounted);
+	}, [showSidebar, sidebarMounted]);
 
 	const handleClose = () => {
 		setOpenedByEvent(false);
@@ -136,20 +144,22 @@ const AIAssistantHost: React.FC = () => {
 		enableFreeFormCategorization:
 			activeCommand?.enableFreeFormCategorization,
 		getContext: activeCommand?.getContext,
-		initialMessage: activeCommand?.initialMessage,
+		initialMessage: startCommand?.initialMessage,
 		instructionDefinitionScope:
 			activeCommand?.instructionDefinitionScope ?? '',
 		onAction: activeCommand?.onAction,
 		onCloseRequested: handleClose,
 		onOpenRequested: () => setOpenedByEvent(true),
+		sessionKey,
 		triggerRef: anchorRef as React.RefObject<HTMLButtonElement | null>,
 	});
 
 	const chatBody = (
 		<AIAssistantChatBody
 			chat={chat}
+			greeting={startCommand?.greeting}
 			quickActions={activeCommand?.quickActions}
-			showGreeting={!activeCommand?.initialMessage}
+			showGreeting={!startCommand?.initialMessage}
 		/>
 	);
 

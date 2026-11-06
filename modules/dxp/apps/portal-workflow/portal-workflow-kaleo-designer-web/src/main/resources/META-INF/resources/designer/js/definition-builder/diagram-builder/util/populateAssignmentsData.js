@@ -5,8 +5,9 @@
 
 import {
 	retrieveAccountRoles,
-	retrieveRoleById,
+	retrieveRole,
 	retrieveRoles,
+	retrieveUser,
 	retrieveUsersBy,
 } from '../../util/fetchUtil';
 import {getAssignmentType} from '../components/sidebar/sections/assignments/utils';
@@ -79,7 +80,10 @@ const populateAssignmentsData = (
 		const assignmentType = getAssignmentType(taskNode.data.assignments);
 
 		if (assignmentType === 'roleId') {
-			retrieveRoleById(taskNode.data.assignments.roleId)
+			retrieveRole(
+				taskNode.data.assignments.roleExternalReferenceCode,
+				taskNode.data.assignments.roleId
+			)
 				.then((response) => response.json())
 				.then((response) => {
 					taskNode.data.assignments.sectionsData = {
@@ -129,6 +133,37 @@ const populateAssignmentsData = (
 				)
 			);
 		}
+		else if (
+			assignmentType === 'user' &&
+			taskNode.data.assignments.userId
+		) {
+			Promise.all(
+				taskNode.data.assignments.userId.map((userId, index) =>
+					retrieveUser(
+						taskNode.data.assignments.userExternalReferenceCode?.[
+							index
+						],
+						userId
+					).then((response) => response.json())
+				)
+			).then((users) =>
+				verifySectionsData(
+					initialElements,
+					users
+						.filter((user) => user.id)
+						.map((user, index) => ({
+							emailAddress: user.emailAddress,
+							identifier: `${Date.now()}-${index}`,
+							name: user.name,
+							screenName: user.alternateName,
+							userId: user.id,
+						})),
+					setBlockingError,
+					setElements,
+					taskNode
+				)
+			);
+		}
 		else if (assignmentType === 'user') {
 			const sectionsData = [];
 
@@ -141,11 +176,6 @@ const populateAssignmentsData = (
 
 			if (filterTypeRetrieveUsersBy === 'screenName') {
 				filterTypeRetrieveUsersBy = 'alternateName';
-			}
-			else if (filterTypeRetrieveUsersBy === 'userId') {
-				filterTypeRetrieveUsersBy = filterTypeRetrieveUsersBy
-					.toLocaleLowerCase()
-					.replace('user', '');
 			}
 
 			retrieveUsersBy(filterTypeRetrieveUsersBy, keywordRetrieveUsersBy)

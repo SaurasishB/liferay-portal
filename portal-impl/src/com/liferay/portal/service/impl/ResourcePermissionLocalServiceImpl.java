@@ -7,6 +7,8 @@ package com.liferay.portal.service.impl;
 
 import com.liferay.exportimport.kernel.lar.ExportImportThreadLocal;
 import com.liferay.exportimport.kernel.staging.MergeLayoutPrototypesThreadLocal;
+import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMap;
+import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMapFactory;
 import com.liferay.petra.concurrent.DCLSingleton;
 import com.liferay.petra.reflect.ReflectionUtil;
 import com.liferay.petra.sql.dsl.DSLFunctionFactoryUtil;
@@ -41,13 +43,13 @@ import com.liferay.portal.kernel.model.ResourcePermissionConstants;
 import com.liferay.portal.kernel.model.ResourcePermissionTable;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.role.RoleConstants;
+import com.liferay.portal.kernel.module.util.SystemBundleUtil;
 import com.liferay.portal.kernel.search.IndexWriterHelperUtil;
 import com.liferay.portal.kernel.search.ReindexCacheThreadLocal;
 import com.liferay.portal.kernel.security.auth.PrincipalException;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.security.permission.PermissionUpdateHandler;
-import com.liferay.portal.kernel.security.permission.PermissionUpdateHandlerRegistryUtil;
 import com.liferay.portal.kernel.security.permission.ResourceActionsUtil;
 import com.liferay.portal.kernel.service.ResourceActionLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
@@ -752,15 +754,19 @@ public class ResourcePermissionLocalServiceImpl
 			Set<String> availableActionIds = new HashSet<>();
 
 			for (String actionId : actionIds) {
-				if (resourcePermission.hasActionId(actionId)) {
-					availableActionIds.add(actionId);
+				if (!resourcePermission.hasActionId(actionId)) {
+					continue;
 				}
+
+				availableActionIds.add(actionId);
 			}
 
-			if (!availableActionIds.isEmpty()) {
-				roleIdsToActionIds.put(
-					resourcePermission.getRoleId(), availableActionIds);
+			if (availableActionIds.isEmpty()) {
+				continue;
 			}
+
+			roleIdsToActionIds.put(
+				resourcePermission.getRoleId(), availableActionIds);
 		}
 
 		return roleIdsToActionIds;
@@ -797,12 +803,14 @@ public class ResourcePermissionLocalServiceImpl
 		List<String> availableActionIds = new ArrayList<>(actionIds.size());
 
 		for (String actionId : actionIds) {
-			if (resourcePermission.hasAction(
+			if (!resourcePermission.hasAction(
 					_resourceActionLocalService.getResourceAction(
 						name, actionId))) {
 
-				availableActionIds.add(actionId);
+				continue;
 			}
+
+			availableActionIds.add(actionId);
 		}
 
 		return availableActionIds;
@@ -886,24 +894,6 @@ public class ResourcePermissionLocalServiceImpl
 
 		return resourcePermissionPersistence.countByC_N_S_P(
 			companyId, name, scope, primKey);
-	}
-
-	/**
-	 * Returns the resource permissions that apply to the resource.
-	 *
-	 * @param  companyId the primary key of the resource's company
-	 * @param  groupId the primary key of the resource's group
-	 * @param  name the resource's name, which can be either a class name or a
-	 *         portlet ID
-	 * @param  primKey the primary key of the resource
-	 * @return the resource permissions associated with the resource
-	 */
-	@Override
-	public List<ResourcePermission> getResourceResourcePermissions(
-		long companyId, long groupId, String name, String primKey) {
-
-		return resourcePermissionFinder.findByResource(
-			companyId, groupId, name, primKey);
 	}
 
 	/**
@@ -1070,13 +1060,23 @@ public class ResourcePermissionLocalServiceImpl
 		// one SQL call may actually slow things down since most of the calls
 		// will pull from the cache after the first request.
 
+		ResourceAction resourceAction = null;
+
 		for (int i = size - 1; i >= 0; i--) {
 			Resource resource = resources.get(i);
 
-			if (hasResourcePermission(
+			if ((resourceAction == null) ||
+				!StringUtil.equals(
+					resource.getName(), resourceAction.getName())) {
+
+				resourceAction = _resourceActionLocalService.getResourceAction(
+					resource.getName(), actionId);
+			}
+
+			if (_hasResourcePermission(
 					resource.getCompanyId(), resource.getName(),
 					resource.getScope(), resource.getPrimKey(), roleIds,
-					actionId)) {
+					resourceAction)) {
 
 				return true;
 			}
@@ -1153,38 +1153,9 @@ public class ResourcePermissionLocalServiceImpl
 			return false;
 		}
 
-		ResourceAction resourceAction =
-			_resourceActionLocalService.getResourceAction(name, actionId);
-
-		if (roleIds.length >
-				PropsValues.
-					PERMISSIONS_ROLE_RESOURCE_PERMISSION_QUERY_THRESHOLD) {
-
-			int count = resourcePermissionFinder.countByC_N_S_P_R_A(
-				companyId, name, scope, primKey, roleIds,
-				resourceAction.getBitwiseValue());
-
-			if (count > 0) {
-				return true;
-			}
-		}
-		else {
-			List<ResourcePermission> resourcePermissions =
-				resourcePermissionPersistence.findByC_N_S_P_R(
-					companyId, name, scope, primKey, roleIds);
-
-			if (resourcePermissions.isEmpty()) {
-				return false;
-			}
-
-			for (ResourcePermission resourcePermission : resourcePermissions) {
-				if (resourcePermission.hasAction(resourceAction)) {
-					return true;
-				}
-			}
-		}
-
-		return false;
+		return _hasResourcePermission(
+			companyId, name, scope, primKey, roleIds,
+			_resourceActionLocalService.getResourceAction(name, actionId));
 	}
 
 	/**
@@ -1877,8 +1848,7 @@ public class ResourcePermissionLocalServiceImpl
 				!ExportImportThreadLocal.isImportInProcess()) {
 
 				PermissionUpdateHandler permissionUpdateHandler =
-					PermissionUpdateHandlerRegistryUtil.
-						getPermissionUpdateHandler(name);
+					_permissionUpdateHandlers.getService(name);
 
 				if (permissionUpdateHandler != null) {
 					permissionUpdateHandler.updatedPermission(primKey);
@@ -2262,12 +2232,14 @@ public class ResourcePermissionLocalServiceImpl
 								return localRole;
 							});
 
-						if (role != _dummyRole) {
-							List<Role> roles = localRolesMap.computeIfAbsent(
-								(String)values[0], roleId -> new ArrayList<>());
-
-							roles.add(role);
+						if (role == _dummyRole) {
+							continue;
 						}
+
+						List<Role> roles = localRolesMap.computeIfAbsent(
+							(String)values[0], roleId -> new ArrayList<>());
+
+						roles.add(role);
 					}
 
 					return localRolesMap;
@@ -2280,9 +2252,11 @@ public class ResourcePermissionLocalServiceImpl
 					resourcePermissionPersistence.findByC_N_S_P(
 						companyId, name, scope, primKey)) {
 
-				if ((resourcePermission.getActionIds() & bitwiseValue) != 0) {
-					roleIds.add(resourcePermission.getRoleId());
+				if ((resourcePermission.getActionIds() & bitwiseValue) == 0) {
+					continue;
 				}
+
+				roleIds.add(resourcePermission.getRoleId());
 			}
 
 			Map<Serializable, Role> rolesMapByRoleIds =
@@ -2298,6 +2272,41 @@ public class ResourcePermissionLocalServiceImpl
 		}
 
 		return roles;
+	}
+
+	private boolean _hasResourcePermission(
+		long companyId, String name, int scope, String primKey, long[] roleIds,
+		ResourceAction resourceAction) {
+
+		if (roleIds.length >
+				PropsValues.
+					PERMISSIONS_ROLE_RESOURCE_PERMISSION_QUERY_THRESHOLD) {
+
+			int count = resourcePermissionFinder.countByC_N_S_P_R_A(
+				companyId, name, scope, primKey, roleIds,
+				resourceAction.getBitwiseValue());
+
+			if (count > 0) {
+				return true;
+			}
+		}
+		else {
+			List<ResourcePermission> resourcePermissions =
+				resourcePermissionPersistence.findByC_N_S_P_R(
+					companyId, name, scope, primKey, roleIds);
+
+			if (resourcePermissions.isEmpty()) {
+				return false;
+			}
+
+			for (ResourcePermission resourcePermission : resourcePermissions) {
+				if (resourcePermission.hasAction(resourceAction)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	private void _initDefaultPermissions(
@@ -2589,6 +2598,10 @@ public class ResourcePermissionLocalServiceImpl
 		ResourcePermissionLocalServiceImpl.class);
 
 	private static final Role _dummyRole = new RoleImpl();
+	private static final ServiceTrackerMap<String, PermissionUpdateHandler>
+		_permissionUpdateHandlers = ServiceTrackerMapFactory.openSingleValueMap(
+			SystemBundleUtil.getBundleContext(), PermissionUpdateHandler.class,
+			"model.class.name");
 
 	private FinderPath _finderPathWithoutPaginationFindByC_N_S_P;
 

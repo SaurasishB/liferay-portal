@@ -107,6 +107,16 @@ public class AssetStatisticsSerDes {
 			sb.append(assetStatistics.getLongStandingDraftsCount());
 		}
 
+		if (assetStatistics.getMissingRequiredFieldsCount() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"missingRequiredFieldsCount\": ");
+
+			sb.append(assetStatistics.getMissingRequiredFieldsCount());
+		}
+
 		if (assetStatistics.getOverdueWorkflowTasksCount() != null) {
 			if (sb.length() > 1) {
 				sb.append(", ");
@@ -147,6 +157,16 @@ public class AssetStatisticsSerDes {
 			sb.append(assetStatistics.getScheduledCount());
 		}
 
+		if (assetStatistics.getSlaBreachedWorkflowTasksCount() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"slaBreachedWorkflowTasksCount\": ");
+
+			sb.append(assetStatistics.getSlaBreachedWorkflowTasksCount());
+		}
+
 		if (assetStatistics.getTotalCount() != null) {
 			if (sb.length() > 1) {
 				sb.append(", ");
@@ -155,6 +175,16 @@ public class AssetStatisticsSerDes {
 			sb.append("\"totalCount\": ");
 
 			sb.append(assetStatistics.getTotalCount());
+		}
+
+		if (assetStatistics.getUnlinkedCount() != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"unlinkedCount\": ");
+
+			sb.append(assetStatistics.getUnlinkedCount());
 		}
 
 		if (assetStatistics.getUpcomingReviewCount() != null) {
@@ -250,6 +280,16 @@ public class AssetStatisticsSerDes {
 				String.valueOf(assetStatistics.getLongStandingDraftsCount()));
 		}
 
+		if (assetStatistics.getMissingRequiredFieldsCount() == null) {
+			map.put("missingRequiredFieldsCount", null);
+		}
+		else {
+			map.put(
+				"missingRequiredFieldsCount",
+				String.valueOf(
+					assetStatistics.getMissingRequiredFieldsCount()));
+		}
+
 		if (assetStatistics.getOverdueWorkflowTasksCount() == null) {
 			map.put("overdueWorkflowTasksCount", null);
 		}
@@ -286,12 +326,31 @@ public class AssetStatisticsSerDes {
 				String.valueOf(assetStatistics.getScheduledCount()));
 		}
 
+		if (assetStatistics.getSlaBreachedWorkflowTasksCount() == null) {
+			map.put("slaBreachedWorkflowTasksCount", null);
+		}
+		else {
+			map.put(
+				"slaBreachedWorkflowTasksCount",
+				String.valueOf(
+					assetStatistics.getSlaBreachedWorkflowTasksCount()));
+		}
+
 		if (assetStatistics.getTotalCount() == null) {
 			map.put("totalCount", null);
 		}
 		else {
 			map.put(
 				"totalCount", String.valueOf(assetStatistics.getTotalCount()));
+		}
+
+		if (assetStatistics.getUnlinkedCount() == null) {
+			map.put("unlinkedCount", null);
+		}
+		else {
+			map.put(
+				"unlinkedCount",
+				String.valueOf(assetStatistics.getUnlinkedCount()));
 		}
 
 		if (assetStatistics.getUpcomingReviewCount() == null) {
@@ -351,6 +410,11 @@ public class AssetStatisticsSerDes {
 				return false;
 			}
 			else if (Objects.equals(
+						jsonParserFieldName, "missingRequiredFieldsCount")) {
+
+				return false;
+			}
+			else if (Objects.equals(
 						jsonParserFieldName, "overdueWorkflowTasksCount")) {
 
 				return false;
@@ -366,7 +430,15 @@ public class AssetStatisticsSerDes {
 			else if (Objects.equals(jsonParserFieldName, "scheduledCount")) {
 				return false;
 			}
+			else if (Objects.equals(
+						jsonParserFieldName, "slaBreachedWorkflowTasksCount")) {
+
+				return false;
+			}
 			else if (Objects.equals(jsonParserFieldName, "totalCount")) {
+				return false;
+			}
+			else if (Objects.equals(jsonParserFieldName, "unlinkedCount")) {
 				return false;
 			}
 			else if (Objects.equals(
@@ -427,6 +499,14 @@ public class AssetStatisticsSerDes {
 				}
 			}
 			else if (Objects.equals(
+						jsonParserFieldName, "missingRequiredFieldsCount")) {
+
+				if (jsonParserFieldValue != null) {
+					assetStatistics.setMissingRequiredFieldsCount(
+						Long.valueOf((String)jsonParserFieldValue));
+				}
+			}
+			else if (Objects.equals(
 						jsonParserFieldName, "overdueWorkflowTasksCount")) {
 
 				if (jsonParserFieldValue != null) {
@@ -454,9 +534,23 @@ public class AssetStatisticsSerDes {
 						Long.valueOf((String)jsonParserFieldValue));
 				}
 			}
+			else if (Objects.equals(
+						jsonParserFieldName, "slaBreachedWorkflowTasksCount")) {
+
+				if (jsonParserFieldValue != null) {
+					assetStatistics.setSlaBreachedWorkflowTasksCount(
+						Long.valueOf((String)jsonParserFieldValue));
+				}
+			}
 			else if (Objects.equals(jsonParserFieldName, "totalCount")) {
 				if (jsonParserFieldValue != null) {
 					assetStatistics.setTotalCount(
+						Long.valueOf((String)jsonParserFieldValue));
+				}
+			}
+			else if (Objects.equals(jsonParserFieldName, "unlinkedCount")) {
+				if (jsonParserFieldValue != null) {
+					assetStatistics.setUnlinkedCount(
 						Long.valueOf((String)jsonParserFieldValue));
 				}
 			}
@@ -563,4 +657,4 @@ public class AssetStatisticsSerDes {
 	}
 
 }
-// LIFERAY-REST-BUILDER-HASH:-1791730640
+// LIFERAY-REST-BUILDER-HASH:-1892684324

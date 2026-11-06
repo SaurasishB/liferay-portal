@@ -70,14 +70,16 @@ public class RefreshProjectMVCActionCommand extends BaseMVCActionCommand {
 					_faroProjectLocalService.getFaroProjects(
 						QueryUtil.ALL_POS, QueryUtil.ALL_POS)) {
 
-				if (StringUtil.equals(
+				if (!StringUtil.equals(
 						faroProject.getState(),
 						FaroProjectConstants.STATE_READY)) {
 
-					sendRequest(
-						actionRequest, options, themeDisplay.getPortalURL(),
-						faroProject.getGroupId());
+					continue;
 				}
+
+				sendRequest(
+					actionRequest, options, themeDisplay.getPortalURL(),
+					faroProject.getGroupId());
 			}
 		}
 	}
@@ -99,21 +101,16 @@ public class RefreshProjectMVCActionCommand extends BaseMVCActionCommand {
 		return headers;
 	}
 
-	protected String getURL(String portalURL, long groupId) {
-		String url = StringBundler.concat(
-			portalURL, "/o/faro/main/project/", groupId);
-
-		url = HttpComponentsUtil.addParameter(url, "forceUpdate", true);
-
-		return HttpComponentsUtil.addParameter(url, "updateLastAccess", false);
-	}
-
 	protected void sendRequest(
 		ActionRequest actionRequest, Http.Options options, String portalURL,
 		long groupId) {
 
 		try {
-			options.setLocation(getURL(portalURL, groupId));
+			options.setLocation(
+				HttpComponentsUtil.addParameters(
+					StringBundler.concat(
+						portalURL, "/o/faro/main/project/", groupId),
+					"forceUpdate", true, "updateLastAccess", false));
 
 			_http.URLtoString(options);
 		}

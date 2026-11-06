@@ -10,6 +10,7 @@ import com.liferay.commerce.price.list.exception.CommerceTierPriceEntryMinQuanti
 import com.liferay.commerce.price.list.exception.DuplicateCommerceTierPriceEntryException;
 import com.liferay.commerce.price.list.exception.NoSuchPriceEntryException;
 import com.liferay.commerce.price.list.model.CommercePriceEntry;
+import com.liferay.commerce.price.list.model.CommercePriceList;
 import com.liferay.commerce.price.list.model.CommerceTierPriceEntry;
 import com.liferay.commerce.price.list.service.CommercePriceEntryLocalService;
 import com.liferay.commerce.price.list.service.CommercePriceListLocalService;
@@ -24,12 +25,15 @@ import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.CompanyTestUtil;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
+import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 
 import java.math.BigDecimal;
 
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.List;
 
 import org.frutilla.FrutillaRule;
@@ -74,8 +78,18 @@ public class CommerceTierPriceEntryLocalServiceTest {
 
 	@After
 	public void tearDown() throws Exception {
-		_commercePriceListLocalService.deleteCommercePriceLists(
-			_company.getCompanyId());
+		List<CommercePriceList> commercePriceLists =
+			_commercePriceListLocalService.getCommercePriceLists(
+				QueryUtil.ALL_POS, QueryUtil.ALL_POS);
+
+		for (CommercePriceList commercePriceList : commercePriceLists) {
+			if (commercePriceList.getCompanyId() != _company.getCompanyId()) {
+				continue;
+			}
+
+			_commercePriceListLocalService.forceDeleteCommercePriceList(
+				commercePriceList);
+		}
 	}
 
 	@Test
@@ -445,6 +459,83 @@ public class CommerceTierPriceEntryLocalServiceTest {
 			commercePriceEntry.getCommercePriceEntryId(), -1,
 			RandomTestUtil.randomDouble(), RandomTestUtil.randomDouble(), null,
 			null);
+	}
+
+	@Test
+	public void testAddOrUpdateCommerceTierPriceEntryWithPastExpirationDate()
+		throws Exception {
+
+		CommercePriceEntry commercePriceEntry =
+			CommercePriceEntryTestUtil.addCommercePriceEntry(
+				_group.getGroupId());
+
+		CommercePriceList commercePriceList =
+			commercePriceEntry.getCommercePriceList();
+
+		Calendar displayCalendar = new GregorianCalendar();
+
+		Calendar expirationCalendar = new GregorianCalendar();
+
+		expirationCalendar.add(Calendar.DAY_OF_MONTH, -1);
+
+		double minQuantity = RandomTestUtil.randomInt(1, 100);
+
+		CommerceTierPriceEntry commerceTierPriceEntry =
+			_commerceTierPriceEntryLocalService.
+				addOrUpdateCommerceTierPriceEntry(
+					null, 0L, commercePriceEntry.getCommercePriceEntryId(),
+					BigDecimal.valueOf(RandomTestUtil.randomDouble()),
+					BigDecimal.valueOf(RandomTestUtil.randomDouble()),
+					BigDecimal.valueOf(minQuantity), true, true, null, null,
+					null, null, displayCalendar.get(Calendar.MONTH),
+					displayCalendar.get(Calendar.DAY_OF_MONTH),
+					displayCalendar.get(Calendar.YEAR),
+					displayCalendar.get(Calendar.HOUR),
+					displayCalendar.get(Calendar.MINUTE),
+					expirationCalendar.get(Calendar.MONTH),
+					expirationCalendar.get(Calendar.DAY_OF_MONTH),
+					expirationCalendar.get(Calendar.YEAR),
+					expirationCalendar.get(Calendar.HOUR),
+					expirationCalendar.get(Calendar.MINUTE), false, null,
+					ServiceContextTestUtil.getServiceContext(
+						commercePriceList.getGroupId()));
+
+		Assert.assertNotNull(commerceTierPriceEntry.getExpirationDate());
+		Assert.assertTrue(commerceTierPriceEntry.isExpired());
+
+		commerceTierPriceEntry =
+			CommerceTierPriceEntryTestUtil.addOrUpdateCommerceTierPriceEntry(
+				_company.getCompanyId(), 0L,
+				commercePriceEntry.getCommercePriceEntryId(), minQuantity + 1,
+				RandomTestUtil.randomDouble(), RandomTestUtil.randomDouble(),
+				null, null);
+
+		Assert.assertTrue(commerceTierPriceEntry.isApproved());
+		Assert.assertNull(commerceTierPriceEntry.getExpirationDate());
+
+		commerceTierPriceEntry =
+			_commerceTierPriceEntryLocalService.
+				addOrUpdateCommerceTierPriceEntry(
+					null, commerceTierPriceEntry.getCommerceTierPriceEntryId(),
+					commercePriceEntry.getCommercePriceEntryId(),
+					BigDecimal.valueOf(RandomTestUtil.randomDouble()),
+					BigDecimal.valueOf(RandomTestUtil.randomDouble()),
+					BigDecimal.valueOf(minQuantity + 1), true, true, null, null,
+					null, null, displayCalendar.get(Calendar.MONTH),
+					displayCalendar.get(Calendar.DAY_OF_MONTH),
+					displayCalendar.get(Calendar.YEAR),
+					displayCalendar.get(Calendar.HOUR),
+					displayCalendar.get(Calendar.MINUTE),
+					expirationCalendar.get(Calendar.MONTH),
+					expirationCalendar.get(Calendar.DAY_OF_MONTH),
+					expirationCalendar.get(Calendar.YEAR),
+					expirationCalendar.get(Calendar.HOUR),
+					expirationCalendar.get(Calendar.MINUTE), false, null,
+					ServiceContextTestUtil.getServiceContext(
+						commercePriceList.getGroupId()));
+
+		Assert.assertNotNull(commerceTierPriceEntry.getExpirationDate());
+		Assert.assertTrue(commerceTierPriceEntry.isExpired());
 	}
 
 	@Rule

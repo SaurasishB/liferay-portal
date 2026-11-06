@@ -452,89 +452,6 @@ public class BlogsEntryPersistenceImpl
 			finderCache, new Object[] {groupId}, groupId);
 	}
 
-	private CollectionPersistenceFinder<BlogsEntry, NoSuchEntryException>
-		_collectionPersistenceFinderByCompanyId;
-
-	/**
-	 * Returns an ordered range of all the blogs entries where companyId = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByCompanyId(
-		long companyId, int start, int end,
-		OrderByComparator<BlogsEntry> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByCompanyId.find(
-			finderCache, new Object[] {companyId}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where companyId = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry
-	 * @throws NoSuchEntryException if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry findByCompanyId_First(
-			long companyId, OrderByComparator<BlogsEntry> orderByComparator)
-		throws NoSuchEntryException {
-
-		return _collectionPersistenceFinderByCompanyId.findFirst(
-			finderCache, new Object[] {companyId}, orderByComparator);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where companyId = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry, or <code>null</code> if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry fetchByCompanyId_First(
-		long companyId, OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return _collectionPersistenceFinderByCompanyId.fetchFirst(
-			finderCache, new Object[] {companyId}, orderByComparator);
-	}
-
-	/**
-	 * Removes all the blogs entries where companyId = &#63; from the database.
-	 *
-	 * @param companyId the company ID
-	 */
-	@Override
-	public void removeByCompanyId(long companyId) {
-		_collectionPersistenceFinderByCompanyId.remove(
-			finderCache, new Object[] {companyId});
-	}
-
-	/**
-	 * Returns the number of blogs entries where companyId = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @return the number of matching blogs entries
-	 */
-	@Override
-	public int countByCompanyId(long companyId) {
-		return _collectionPersistenceFinderByCompanyId.count(
-			finderCache, new Object[] {companyId});
-	}
-
 	private UniquePersistenceFinder<BlogsEntry, NoSuchEntryException>
 		_uniquePersistenceFinderByG_UT;
 
@@ -597,224 +514,6 @@ public class BlogsEntryPersistenceImpl
 	public int countByG_UT(long groupId, String urlTitle) {
 		return _uniquePersistenceFinderByG_UT.count(
 			finderCache, new Object[] {groupId, urlTitle});
-	}
-
-	private FilterCollectionPersistenceFinder<BlogsEntry, NoSuchEntryException>
-		_collectionPersistenceFinderByG_LtD;
-
-	/**
-	 * Returns all the blogs entries where groupId = &#63; and displayDate &lt; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param displayDate the display date
-	 * @return the matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByG_LtD(long groupId, Date displayDate) {
-		return findByG_LtD(
-			groupId, displayDate, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
-	}
-
-	/**
-	 * Returns a range of all the blogs entries where groupId = &#63; and displayDate &lt; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param displayDate the display date
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @return the range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByG_LtD(
-		long groupId, Date displayDate, int start, int end) {
-
-		return findByG_LtD(groupId, displayDate, start, end, null);
-	}
-
-	/**
-	 * Returns an ordered range of all the blogs entries where groupId = &#63; and displayDate &lt; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param displayDate the display date
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByG_LtD(
-		long groupId, Date displayDate, int start, int end,
-		OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return findByG_LtD(
-			groupId, displayDate, start, end, orderByComparator, true);
-	}
-
-	/**
-	 * Returns an ordered range of all the blogs entries where groupId = &#63; and displayDate &lt; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param displayDate the display date
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByG_LtD(
-		long groupId, Date displayDate, int start, int end,
-		OrderByComparator<BlogsEntry> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByG_LtD.find(
-			finderCache, new Object[] {groupId, displayDate}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where groupId = &#63; and displayDate &lt; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param displayDate the display date
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry
-	 * @throws NoSuchEntryException if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry findByG_LtD_First(
-			long groupId, Date displayDate,
-			OrderByComparator<BlogsEntry> orderByComparator)
-		throws NoSuchEntryException {
-
-		return _collectionPersistenceFinderByG_LtD.findFirst(
-			finderCache, new Object[] {groupId, displayDate},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where groupId = &#63; and displayDate &lt; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param displayDate the display date
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry, or <code>null</code> if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry fetchByG_LtD_First(
-		long groupId, Date displayDate,
-		OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_LtD.fetchFirst(
-			finderCache, new Object[] {groupId, displayDate},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns all the blogs entries that the user has permission to view where groupId = &#63; and displayDate &lt; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param displayDate the display date
-	 * @return the matching blogs entries that the user has permission to view
-	 */
-	@Override
-	public List<BlogsEntry> filterFindByG_LtD(long groupId, Date displayDate) {
-		return filterFindByG_LtD(
-			groupId, displayDate, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
-	}
-
-	/**
-	 * Returns a range of all the blogs entries that the user has permission to view where groupId = &#63; and displayDate &lt; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param displayDate the display date
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @return the range of matching blogs entries that the user has permission to view
-	 */
-	@Override
-	public List<BlogsEntry> filterFindByG_LtD(
-		long groupId, Date displayDate, int start, int end) {
-
-		return filterFindByG_LtD(groupId, displayDate, start, end, null);
-	}
-
-	/**
-	 * Returns an ordered range of all the blogs entries that the user has permissions to view where groupId = &#63; and displayDate &lt; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param displayDate the display date
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching blogs entries that the user has permission to view
-	 */
-	@Override
-	public List<BlogsEntry> filterFindByG_LtD(
-		long groupId, Date displayDate, int start, int end,
-		OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_LtD.filterFind(
-			finderCache, new Object[] {groupId, displayDate}, start, end,
-			orderByComparator, groupId);
-	}
-
-	/**
-	 * Removes all the blogs entries where groupId = &#63; and displayDate &lt; &#63; from the database.
-	 *
-	 * @param groupId the group ID
-	 * @param displayDate the display date
-	 */
-	@Override
-	public void removeByG_LtD(long groupId, Date displayDate) {
-		_collectionPersistenceFinderByG_LtD.remove(
-			finderCache, new Object[] {groupId, displayDate});
-	}
-
-	/**
-	 * Returns the number of blogs entries where groupId = &#63; and displayDate &lt; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param displayDate the display date
-	 * @return the number of matching blogs entries
-	 */
-	@Override
-	public int countByG_LtD(long groupId, Date displayDate) {
-		return _collectionPersistenceFinderByG_LtD.count(
-			finderCache, new Object[] {groupId, displayDate});
-	}
-
-	/**
-	 * Returns the number of blogs entries that the user has permission to view where groupId = &#63; and displayDate &lt; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param displayDate the display date
-	 * @return the number of matching blogs entries that the user has permission to view
-	 */
-	@Override
-	public int filterCountByG_LtD(long groupId, Date displayDate) {
-		return _collectionPersistenceFinderByG_LtD.filterCount(
-			finderCache, new Object[] {groupId, displayDate}, groupId);
 	}
 
 	private FilterCollectionPersistenceFinder<BlogsEntry, NoSuchEntryException>
@@ -1161,96 +860,6 @@ public class BlogsEntryPersistenceImpl
 	}
 
 	private CollectionPersistenceFinder<BlogsEntry, NoSuchEntryException>
-		_collectionPersistenceFinderByC_U;
-
-	/**
-	 * Returns an ordered range of all the blogs entries where companyId = &#63; and userId = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByC_U(
-		long companyId, long userId, int start, int end,
-		OrderByComparator<BlogsEntry> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByC_U.find(
-			finderCache, new Object[] {companyId, userId}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where companyId = &#63; and userId = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry
-	 * @throws NoSuchEntryException if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry findByC_U_First(
-			long companyId, long userId,
-			OrderByComparator<BlogsEntry> orderByComparator)
-		throws NoSuchEntryException {
-
-		return _collectionPersistenceFinderByC_U.findFirst(
-			finderCache, new Object[] {companyId, userId}, orderByComparator);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where companyId = &#63; and userId = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry, or <code>null</code> if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry fetchByC_U_First(
-		long companyId, long userId,
-		OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return _collectionPersistenceFinderByC_U.fetchFirst(
-			finderCache, new Object[] {companyId, userId}, orderByComparator);
-	}
-
-	/**
-	 * Removes all the blogs entries where companyId = &#63; and userId = &#63; from the database.
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 */
-	@Override
-	public void removeByC_U(long companyId, long userId) {
-		_collectionPersistenceFinderByC_U.remove(
-			finderCache, new Object[] {companyId, userId});
-	}
-
-	/**
-	 * Returns the number of blogs entries where companyId = &#63; and userId = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @return the number of matching blogs entries
-	 */
-	@Override
-	public int countByC_U(long companyId, long userId) {
-		return _collectionPersistenceFinderByC_U.count(
-			finderCache, new Object[] {companyId, userId});
-	}
-
-	private CollectionPersistenceFinder<BlogsEntry, NoSuchEntryException>
 		_collectionPersistenceFinderByC_LtD;
 
 	/**
@@ -1396,242 +1005,6 @@ public class BlogsEntryPersistenceImpl
 	public int countByC_LtD(long companyId, Date displayDate) {
 		return _collectionPersistenceFinderByC_LtD.count(
 			finderCache, new Object[] {companyId, displayDate});
-	}
-
-	private CollectionPersistenceFinder<BlogsEntry, NoSuchEntryException>
-		_collectionPersistenceFinderByC_S;
-
-	/**
-	 * Returns an ordered range of all the blogs entries where companyId = &#63; and status = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByC_S(
-		long companyId, int status, int start, int end,
-		OrderByComparator<BlogsEntry> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByC_S.find(
-			finderCache, new Object[] {companyId, status}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where companyId = &#63; and status = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry
-	 * @throws NoSuchEntryException if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry findByC_S_First(
-			long companyId, int status,
-			OrderByComparator<BlogsEntry> orderByComparator)
-		throws NoSuchEntryException {
-
-		return _collectionPersistenceFinderByC_S.findFirst(
-			finderCache, new Object[] {companyId, status}, orderByComparator);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where companyId = &#63; and status = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry, or <code>null</code> if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry fetchByC_S_First(
-		long companyId, int status,
-		OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return _collectionPersistenceFinderByC_S.fetchFirst(
-			finderCache, new Object[] {companyId, status}, orderByComparator);
-	}
-
-	/**
-	 * Removes all the blogs entries where companyId = &#63; and status = &#63; from the database.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 */
-	@Override
-	public void removeByC_S(long companyId, int status) {
-		_collectionPersistenceFinderByC_S.remove(
-			finderCache, new Object[] {companyId, status});
-	}
-
-	/**
-	 * Returns the number of blogs entries where companyId = &#63; and status = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @return the number of matching blogs entries
-	 */
-	@Override
-	public int countByC_S(long companyId, int status) {
-		return _collectionPersistenceFinderByC_S.count(
-			finderCache, new Object[] {companyId, status});
-	}
-
-	private CollectionPersistenceFinder<BlogsEntry, NoSuchEntryException>
-		_collectionPersistenceFinderByC_NotS;
-
-	/**
-	 * Returns all the blogs entries where companyId = &#63; and status &ne; &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @return the matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByC_NotS(long companyId, int status) {
-		return findByC_NotS(
-			companyId, status, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
-	}
-
-	/**
-	 * Returns a range of all the blogs entries where companyId = &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @return the range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByC_NotS(
-		long companyId, int status, int start, int end) {
-
-		return findByC_NotS(companyId, status, start, end, null);
-	}
-
-	/**
-	 * Returns an ordered range of all the blogs entries where companyId = &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByC_NotS(
-		long companyId, int status, int start, int end,
-		OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return findByC_NotS(
-			companyId, status, start, end, orderByComparator, true);
-	}
-
-	/**
-	 * Returns an ordered range of all the blogs entries where companyId = &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByC_NotS(
-		long companyId, int status, int start, int end,
-		OrderByComparator<BlogsEntry> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByC_NotS.find(
-			finderCache, new Object[] {companyId, status}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where companyId = &#63; and status &ne; &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry
-	 * @throws NoSuchEntryException if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry findByC_NotS_First(
-			long companyId, int status,
-			OrderByComparator<BlogsEntry> orderByComparator)
-		throws NoSuchEntryException {
-
-		return _collectionPersistenceFinderByC_NotS.findFirst(
-			finderCache, new Object[] {companyId, status}, orderByComparator);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where companyId = &#63; and status &ne; &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry, or <code>null</code> if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry fetchByC_NotS_First(
-		long companyId, int status,
-		OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return _collectionPersistenceFinderByC_NotS.fetchFirst(
-			finderCache, new Object[] {companyId, status}, orderByComparator);
-	}
-
-	/**
-	 * Removes all the blogs entries where companyId = &#63; and status &ne; &#63; from the database.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 */
-	@Override
-	public void removeByC_NotS(long companyId, int status) {
-		_collectionPersistenceFinderByC_NotS.remove(
-			finderCache, new Object[] {companyId, status});
-	}
-
-	/**
-	 * Returns the number of blogs entries where companyId = &#63; and status &ne; &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param status the status
-	 * @return the number of matching blogs entries
-	 */
-	@Override
-	public int countByC_NotS(long companyId, int status) {
-		return _collectionPersistenceFinderByC_NotS.count(
-			finderCache, new Object[] {companyId, status});
 	}
 
 	private CollectionPersistenceFinder<BlogsEntry, NoSuchEntryException>
@@ -3331,262 +2704,6 @@ public class BlogsEntryPersistenceImpl
 	}
 
 	private CollectionPersistenceFinder<BlogsEntry, NoSuchEntryException>
-		_collectionPersistenceFinderByC_U_S;
-
-	/**
-	 * Returns an ordered range of all the blogs entries where companyId = &#63; and userId = &#63; and status = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByC_U_S(
-		long companyId, long userId, int status, int start, int end,
-		OrderByComparator<BlogsEntry> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByC_U_S.find(
-			finderCache, new Object[] {companyId, userId, status}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where companyId = &#63; and userId = &#63; and status = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry
-	 * @throws NoSuchEntryException if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry findByC_U_S_First(
-			long companyId, long userId, int status,
-			OrderByComparator<BlogsEntry> orderByComparator)
-		throws NoSuchEntryException {
-
-		return _collectionPersistenceFinderByC_U_S.findFirst(
-			finderCache, new Object[] {companyId, userId, status},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where companyId = &#63; and userId = &#63; and status = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry, or <code>null</code> if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry fetchByC_U_S_First(
-		long companyId, long userId, int status,
-		OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return _collectionPersistenceFinderByC_U_S.fetchFirst(
-			finderCache, new Object[] {companyId, userId, status},
-			orderByComparator);
-	}
-
-	/**
-	 * Removes all the blogs entries where companyId = &#63; and userId = &#63; and status = &#63; from the database.
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param status the status
-	 */
-	@Override
-	public void removeByC_U_S(long companyId, long userId, int status) {
-		_collectionPersistenceFinderByC_U_S.remove(
-			finderCache, new Object[] {companyId, userId, status});
-	}
-
-	/**
-	 * Returns the number of blogs entries where companyId = &#63; and userId = &#63; and status = &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param status the status
-	 * @return the number of matching blogs entries
-	 */
-	@Override
-	public int countByC_U_S(long companyId, long userId, int status) {
-		return _collectionPersistenceFinderByC_U_S.count(
-			finderCache, new Object[] {companyId, userId, status});
-	}
-
-	private CollectionPersistenceFinder<BlogsEntry, NoSuchEntryException>
-		_collectionPersistenceFinderByC_U_NotS;
-
-	/**
-	 * Returns all the blogs entries where companyId = &#63; and userId = &#63; and status &ne; &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param status the status
-	 * @return the matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByC_U_NotS(
-		long companyId, long userId, int status) {
-
-		return findByC_U_NotS(
-			companyId, userId, status, QueryUtil.ALL_POS, QueryUtil.ALL_POS,
-			null);
-	}
-
-	/**
-	 * Returns a range of all the blogs entries where companyId = &#63; and userId = &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @return the range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByC_U_NotS(
-		long companyId, long userId, int status, int start, int end) {
-
-		return findByC_U_NotS(companyId, userId, status, start, end, null);
-	}
-
-	/**
-	 * Returns an ordered range of all the blogs entries where companyId = &#63; and userId = &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByC_U_NotS(
-		long companyId, long userId, int status, int start, int end,
-		OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return findByC_U_NotS(
-			companyId, userId, status, start, end, orderByComparator, true);
-	}
-
-	/**
-	 * Returns an ordered range of all the blogs entries where companyId = &#63; and userId = &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByC_U_NotS(
-		long companyId, long userId, int status, int start, int end,
-		OrderByComparator<BlogsEntry> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByC_U_NotS.find(
-			finderCache, new Object[] {companyId, userId, status}, start, end,
-			orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where companyId = &#63; and userId = &#63; and status &ne; &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry
-	 * @throws NoSuchEntryException if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry findByC_U_NotS_First(
-			long companyId, long userId, int status,
-			OrderByComparator<BlogsEntry> orderByComparator)
-		throws NoSuchEntryException {
-
-		return _collectionPersistenceFinderByC_U_NotS.findFirst(
-			finderCache, new Object[] {companyId, userId, status},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where companyId = &#63; and userId = &#63; and status &ne; &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry, or <code>null</code> if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry fetchByC_U_NotS_First(
-		long companyId, long userId, int status,
-		OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return _collectionPersistenceFinderByC_U_NotS.fetchFirst(
-			finderCache, new Object[] {companyId, userId, status},
-			orderByComparator);
-	}
-
-	/**
-	 * Removes all the blogs entries where companyId = &#63; and userId = &#63; and status &ne; &#63; from the database.
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param status the status
-	 */
-	@Override
-	public void removeByC_U_NotS(long companyId, long userId, int status) {
-		_collectionPersistenceFinderByC_U_NotS.remove(
-			finderCache, new Object[] {companyId, userId, status});
-	}
-
-	/**
-	 * Returns the number of blogs entries where companyId = &#63; and userId = &#63; and status &ne; &#63;.
-	 *
-	 * @param companyId the company ID
-	 * @param userId the user ID
-	 * @param status the status
-	 * @return the number of matching blogs entries
-	 */
-	@Override
-	public int countByC_U_NotS(long companyId, long userId, int status) {
-		return _collectionPersistenceFinderByC_U_NotS.count(
-			finderCache, new Object[] {companyId, userId, status});
-	}
-
-	private CollectionPersistenceFinder<BlogsEntry, NoSuchEntryException>
 		_collectionPersistenceFinderByC_LtD_S;
 
 	/**
@@ -3907,526 +3024,6 @@ public class BlogsEntryPersistenceImpl
 	public int countByC_LtD_NotS(long companyId, Date displayDate, int status) {
 		return _collectionPersistenceFinderByC_LtD_NotS.count(
 			finderCache, new Object[] {companyId, displayDate, status});
-	}
-
-	private FilterCollectionPersistenceFinder<BlogsEntry, NoSuchEntryException>
-		_collectionPersistenceFinderByG_U_LtD_S;
-
-	/**
-	 * Returns all the blogs entries where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @return the matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByG_U_LtD_S(
-		long groupId, long userId, Date displayDate, int status) {
-
-		return findByG_U_LtD_S(
-			groupId, userId, displayDate, status, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
-	}
-
-	/**
-	 * Returns a range of all the blogs entries where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @return the range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByG_U_LtD_S(
-		long groupId, long userId, Date displayDate, int status, int start,
-		int end) {
-
-		return findByG_U_LtD_S(
-			groupId, userId, displayDate, status, start, end, null);
-	}
-
-	/**
-	 * Returns an ordered range of all the blogs entries where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByG_U_LtD_S(
-		long groupId, long userId, Date displayDate, int status, int start,
-		int end, OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return findByG_U_LtD_S(
-			groupId, userId, displayDate, status, start, end, orderByComparator,
-			true);
-	}
-
-	/**
-	 * Returns an ordered range of all the blogs entries where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByG_U_LtD_S(
-		long groupId, long userId, Date displayDate, int status, int start,
-		int end, OrderByComparator<BlogsEntry> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByG_U_LtD_S.find(
-			finderCache, new Object[] {groupId, userId, displayDate, status},
-			start, end, orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry
-	 * @throws NoSuchEntryException if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry findByG_U_LtD_S_First(
-			long groupId, long userId, Date displayDate, int status,
-			OrderByComparator<BlogsEntry> orderByComparator)
-		throws NoSuchEntryException {
-
-		return _collectionPersistenceFinderByG_U_LtD_S.findFirst(
-			finderCache, new Object[] {groupId, userId, displayDate, status},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry, or <code>null</code> if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry fetchByG_U_LtD_S_First(
-		long groupId, long userId, Date displayDate, int status,
-		OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_U_LtD_S.fetchFirst(
-			finderCache, new Object[] {groupId, userId, displayDate, status},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns all the blogs entries that the user has permission to view where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @return the matching blogs entries that the user has permission to view
-	 */
-	@Override
-	public List<BlogsEntry> filterFindByG_U_LtD_S(
-		long groupId, long userId, Date displayDate, int status) {
-
-		return filterFindByG_U_LtD_S(
-			groupId, userId, displayDate, status, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
-	}
-
-	/**
-	 * Returns a range of all the blogs entries that the user has permission to view where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @return the range of matching blogs entries that the user has permission to view
-	 */
-	@Override
-	public List<BlogsEntry> filterFindByG_U_LtD_S(
-		long groupId, long userId, Date displayDate, int status, int start,
-		int end) {
-
-		return filterFindByG_U_LtD_S(
-			groupId, userId, displayDate, status, start, end, null);
-	}
-
-	/**
-	 * Returns an ordered range of all the blogs entries that the user has permissions to view where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status = &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching blogs entries that the user has permission to view
-	 */
-	@Override
-	public List<BlogsEntry> filterFindByG_U_LtD_S(
-		long groupId, long userId, Date displayDate, int status, int start,
-		int end, OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_U_LtD_S.filterFind(
-			finderCache, new Object[] {groupId, userId, displayDate, status},
-			start, end, orderByComparator, groupId);
-	}
-
-	/**
-	 * Removes all the blogs entries where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status = &#63; from the database.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 */
-	@Override
-	public void removeByG_U_LtD_S(
-		long groupId, long userId, Date displayDate, int status) {
-
-		_collectionPersistenceFinderByG_U_LtD_S.remove(
-			finderCache, new Object[] {groupId, userId, displayDate, status});
-	}
-
-	/**
-	 * Returns the number of blogs entries where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @return the number of matching blogs entries
-	 */
-	@Override
-	public int countByG_U_LtD_S(
-		long groupId, long userId, Date displayDate, int status) {
-
-		return _collectionPersistenceFinderByG_U_LtD_S.count(
-			finderCache, new Object[] {groupId, userId, displayDate, status});
-	}
-
-	/**
-	 * Returns the number of blogs entries that the user has permission to view where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status = &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @return the number of matching blogs entries that the user has permission to view
-	 */
-	@Override
-	public int filterCountByG_U_LtD_S(
-		long groupId, long userId, Date displayDate, int status) {
-
-		return _collectionPersistenceFinderByG_U_LtD_S.filterCount(
-			finderCache, new Object[] {groupId, userId, displayDate, status},
-			groupId);
-	}
-
-	private FilterCollectionPersistenceFinder<BlogsEntry, NoSuchEntryException>
-		_collectionPersistenceFinderByG_U_LtD_NotS;
-
-	/**
-	 * Returns all the blogs entries where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status &ne; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @return the matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByG_U_LtD_NotS(
-		long groupId, long userId, Date displayDate, int status) {
-
-		return findByG_U_LtD_NotS(
-			groupId, userId, displayDate, status, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
-	}
-
-	/**
-	 * Returns a range of all the blogs entries where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @return the range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByG_U_LtD_NotS(
-		long groupId, long userId, Date displayDate, int status, int start,
-		int end) {
-
-		return findByG_U_LtD_NotS(
-			groupId, userId, displayDate, status, start, end, null);
-	}
-
-	/**
-	 * Returns an ordered range of all the blogs entries where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByG_U_LtD_NotS(
-		long groupId, long userId, Date displayDate, int status, int start,
-		int end, OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return findByG_U_LtD_NotS(
-			groupId, userId, displayDate, status, start, end, orderByComparator,
-			true);
-	}
-
-	/**
-	 * Returns an ordered range of all the blogs entries where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @param useFinderCache whether to use the finder cache
-	 * @return the ordered range of matching blogs entries
-	 */
-	@Override
-	public List<BlogsEntry> findByG_U_LtD_NotS(
-		long groupId, long userId, Date displayDate, int status, int start,
-		int end, OrderByComparator<BlogsEntry> orderByComparator,
-		boolean useFinderCache) {
-
-		return _collectionPersistenceFinderByG_U_LtD_NotS.find(
-			finderCache, new Object[] {groupId, userId, displayDate, status},
-			start, end, orderByComparator, useFinderCache);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status &ne; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry
-	 * @throws NoSuchEntryException if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry findByG_U_LtD_NotS_First(
-			long groupId, long userId, Date displayDate, int status,
-			OrderByComparator<BlogsEntry> orderByComparator)
-		throws NoSuchEntryException {
-
-		return _collectionPersistenceFinderByG_U_LtD_NotS.findFirst(
-			finderCache, new Object[] {groupId, userId, displayDate, status},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns the first blogs entry in the ordered set where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status &ne; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @param orderByComparator the comparator to order the set by (optionally <code>null</code>)
-	 * @return the first matching blogs entry, or <code>null</code> if a matching blogs entry could not be found
-	 */
-	@Override
-	public BlogsEntry fetchByG_U_LtD_NotS_First(
-		long groupId, long userId, Date displayDate, int status,
-		OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_U_LtD_NotS.fetchFirst(
-			finderCache, new Object[] {groupId, userId, displayDate, status},
-			orderByComparator);
-	}
-
-	/**
-	 * Returns all the blogs entries that the user has permission to view where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status &ne; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @return the matching blogs entries that the user has permission to view
-	 */
-	@Override
-	public List<BlogsEntry> filterFindByG_U_LtD_NotS(
-		long groupId, long userId, Date displayDate, int status) {
-
-		return filterFindByG_U_LtD_NotS(
-			groupId, userId, displayDate, status, QueryUtil.ALL_POS,
-			QueryUtil.ALL_POS, null);
-	}
-
-	/**
-	 * Returns a range of all the blogs entries that the user has permission to view where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @return the range of matching blogs entries that the user has permission to view
-	 */
-	@Override
-	public List<BlogsEntry> filterFindByG_U_LtD_NotS(
-		long groupId, long userId, Date displayDate, int status, int start,
-		int end) {
-
-		return filterFindByG_U_LtD_NotS(
-			groupId, userId, displayDate, status, start, end, null);
-	}
-
-	/**
-	 * Returns an ordered range of all the blogs entries that the user has permissions to view where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status &ne; &#63;.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end - start</code> instances. <code>start</code> and <code>end</code> are not primary keys, they are indexes in the result set. Thus, <code>0</code> refers to the first result in the set. Setting both <code>start</code> and <code>end</code> to <code>QueryUtil#ALL_POS</code> will return the full result set. If <code>orderByComparator</code> is specified, then the query will include the given ORDER BY logic. If <code>orderByComparator</code> is absent, then the query will include the default ORDER BY logic from <code>BlogsEntryModelImpl</code>.
-	 * </p>
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @param start the lower bound of the range of blogs entries
-	 * @param end the upper bound of the range of blogs entries (not inclusive)
-	 * @param orderByComparator the comparator to order the results by (optionally <code>null</code>)
-	 * @return the ordered range of matching blogs entries that the user has permission to view
-	 */
-	@Override
-	public List<BlogsEntry> filterFindByG_U_LtD_NotS(
-		long groupId, long userId, Date displayDate, int status, int start,
-		int end, OrderByComparator<BlogsEntry> orderByComparator) {
-
-		return _collectionPersistenceFinderByG_U_LtD_NotS.filterFind(
-			finderCache, new Object[] {groupId, userId, displayDate, status},
-			start, end, orderByComparator, groupId);
-	}
-
-	/**
-	 * Removes all the blogs entries where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status &ne; &#63; from the database.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 */
-	@Override
-	public void removeByG_U_LtD_NotS(
-		long groupId, long userId, Date displayDate, int status) {
-
-		_collectionPersistenceFinderByG_U_LtD_NotS.remove(
-			finderCache, new Object[] {groupId, userId, displayDate, status});
-	}
-
-	/**
-	 * Returns the number of blogs entries where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status &ne; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @return the number of matching blogs entries
-	 */
-	@Override
-	public int countByG_U_LtD_NotS(
-		long groupId, long userId, Date displayDate, int status) {
-
-		return _collectionPersistenceFinderByG_U_LtD_NotS.count(
-			finderCache, new Object[] {groupId, userId, displayDate, status});
-	}
-
-	/**
-	 * Returns the number of blogs entries that the user has permission to view where groupId = &#63; and userId = &#63; and displayDate &lt; &#63; and status &ne; &#63;.
-	 *
-	 * @param groupId the group ID
-	 * @param userId the user ID
-	 * @param displayDate the display date
-	 * @param status the status
-	 * @return the number of matching blogs entries that the user has permission to view
-	 */
-	@Override
-	public int filterCountByG_U_LtD_NotS(
-		long groupId, long userId, Date displayDate, int status) {
-
-		return _collectionPersistenceFinderByG_U_LtD_NotS.filterCount(
-			finderCache, new Object[] {groupId, userId, displayDate, status},
-			groupId);
 	}
 
 	private UniquePersistenceFinder<BlogsEntry, NoSuchEntryException>
@@ -4981,7 +3578,12 @@ public class BlogsEntryPersistenceImpl
 
 		_collectionPersistenceFinderByGroupId =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, BlogsEntry::getEntryId,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByGroupId",
+					new String[] {Long.class.getName()},
+					new String[] {"groupId"}, false),
+				"", BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByGroupId",
 					new String[] {
@@ -4990,46 +3592,15 @@ public class BlogsEntryPersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId"}, true),
+				_SQL_COUNT_BLOGSENTRY_WHERE, _SQL_SELECT_BLOGSENTRY_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByGroupId",
 					new String[] {Long.class.getName()},
 					new String[] {"groupId"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByGroupId",
-					new String[] {Long.class.getName()},
-					new String[] {"groupId"}, false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
+				"",
 				new FinderColumn<>(
 					"blogsEntry.", "groupId", FinderColumn.Type.LONG, "=", true,
 					true, BlogsEntry::getGroupId));
-
-		_collectionPersistenceFinderByCompanyId =
-			new CollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByCompanyId",
-					new String[] {
-						Long.class.getName(), Integer.class.getName(),
-						Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {"companyId"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION,
-					"findByCompanyId", new String[] {Long.class.getName()},
-					new String[] {"companyId"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION,
-					"countByCompanyId", new String[] {Long.class.getName()},
-					new String[] {"companyId"}, false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
-				new FinderColumn<>(
-					"blogsEntry.", "companyId", FinderColumn.Type.LONG, "=",
-					true, true, BlogsEntry::getCompanyId));
 
 		_uniquePersistenceFinderByG_UT = new UniquePersistenceFinder<>(
 			this,
@@ -5047,35 +3618,16 @@ public class BlogsEntryPersistenceImpl
 				"blogsEntry.", "urlTitle", FinderColumn.Type.STRING, "=", true,
 				true, BlogsEntry::getUrlTitle));
 
-		_collectionPersistenceFinderByG_LtD =
-			new FilterCollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_LtD",
-					new String[] {
-						Long.class.getName(), Date.class.getName(),
-						Integer.class.getName(), Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {"groupId", "displayDate"}, true),
-				null,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_LtD",
-					new String[] {Long.class.getName(), Date.class.getName()},
-					new String[] {"groupId", "displayDate"}, false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
-				new FinderColumn<>(
-					"blogsEntry.", "groupId", FinderColumn.Type.LONG, "=", true,
-					true, BlogsEntry::getGroupId),
-				new FinderColumn<>(
-					"blogsEntry.", "displayDate", FinderColumn.Type.DATE, "<",
-					true, true, BlogsEntry::getDisplayDate));
-
 		_collectionPersistenceFinderByG_S =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, BlogsEntry::getEntryId,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_S",
+					new String[] {
+						Long.class.getName(), Integer.class.getName()
+					},
+					new String[] {"groupId", "status"}, false),
+				"", BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_S",
 					new String[] {
@@ -5084,21 +3636,14 @@ public class BlogsEntryPersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "status"}, true),
+				_SQL_COUNT_BLOGSENTRY_WHERE, _SQL_SELECT_BLOGSENTRY_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_S",
 					new String[] {
 						Long.class.getName(), Integer.class.getName()
 					},
 					new String[] {"groupId", "status"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_S",
-					new String[] {
-						Long.class.getName(), Integer.class.getName()
-					},
-					new String[] {"groupId", "status"}, false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
+				"",
 				new FinderColumn<>(
 					"blogsEntry.", "groupId", FinderColumn.Type.LONG, "=", true,
 					true, BlogsEntry::getGroupId),
@@ -5108,7 +3653,14 @@ public class BlogsEntryPersistenceImpl
 
 		_collectionPersistenceFinderByG_NotS =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, BlogsEntry::getEntryId,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_NotS",
+					new String[] {
+						Long.class.getName(), Integer.class.getName()
+					},
+					new String[] {"groupId", "status"}, false),
+				"", BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_NotS",
 					new String[] {
@@ -5117,50 +3669,14 @@ public class BlogsEntryPersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "status"}, true),
-				null,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_NotS",
-					new String[] {
-						Long.class.getName(), Integer.class.getName()
-					},
-					new String[] {"groupId", "status"}, false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
+				_SQL_COUNT_BLOGSENTRY_WHERE, _SQL_SELECT_BLOGSENTRY_WHERE, null,
+				null, "",
 				new FinderColumn<>(
 					"blogsEntry.", "groupId", FinderColumn.Type.LONG, "=", true,
 					true, BlogsEntry::getGroupId),
 				new FinderColumn<>(
 					"blogsEntry.", "status", FinderColumn.Type.INTEGER, "!=",
 					true, true, BlogsEntry::getStatus));
-
-		_collectionPersistenceFinderByC_U = new CollectionPersistenceFinder<>(
-			this,
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_U",
-				new String[] {
-					Long.class.getName(), Long.class.getName(),
-					Integer.class.getName(), Integer.class.getName(),
-					OrderByComparator.class.getName()
-				},
-				new String[] {"companyId", "userId"}, true),
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByC_U",
-				new String[] {Long.class.getName(), Long.class.getName()},
-				new String[] {"companyId", "userId"}, true),
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_U",
-				new String[] {Long.class.getName(), Long.class.getName()},
-				new String[] {"companyId", "userId"}, false),
-			_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-			BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-			null,
-			new FinderColumn<>(
-				"blogsEntry.", "companyId", FinderColumn.Type.LONG, "=", true,
-				true, BlogsEntry::getCompanyId),
-			new FinderColumn<>(
-				"blogsEntry.", "userId", FinderColumn.Type.LONG, "=", true,
-				true, BlogsEntry::getUserId));
 
 		_collectionPersistenceFinderByC_LtD = new CollectionPersistenceFinder<>(
 			this,
@@ -5186,62 +3702,6 @@ public class BlogsEntryPersistenceImpl
 			new FinderColumn<>(
 				"blogsEntry.", "displayDate", FinderColumn.Type.DATE, "<", true,
 				true, BlogsEntry::getDisplayDate));
-
-		_collectionPersistenceFinderByC_S = new CollectionPersistenceFinder<>(
-			this,
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_S",
-				new String[] {
-					Long.class.getName(), Integer.class.getName(),
-					Integer.class.getName(), Integer.class.getName(),
-					OrderByComparator.class.getName()
-				},
-				new String[] {"companyId", "status"}, true),
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByC_S",
-				new String[] {Long.class.getName(), Integer.class.getName()},
-				new String[] {"companyId", "status"}, true),
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_S",
-				new String[] {Long.class.getName(), Integer.class.getName()},
-				new String[] {"companyId", "status"}, false),
-			_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-			BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-			null,
-			new FinderColumn<>(
-				"blogsEntry.", "companyId", FinderColumn.Type.LONG, "=", true,
-				true, BlogsEntry::getCompanyId),
-			new FinderColumn<>(
-				"blogsEntry.", "status", FinderColumn.Type.INTEGER, "=", true,
-				true, BlogsEntry::getStatus));
-
-		_collectionPersistenceFinderByC_NotS =
-			new CollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_NotS",
-					new String[] {
-						Long.class.getName(), Integer.class.getName(),
-						Integer.class.getName(), Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {"companyId", "status"}, true),
-				null,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByC_NotS",
-					new String[] {
-						Long.class.getName(), Integer.class.getName()
-					},
-					new String[] {"companyId", "status"}, false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
-				new FinderColumn<>(
-					"blogsEntry.", "companyId", FinderColumn.Type.LONG, "=",
-					true, true, BlogsEntry::getCompanyId),
-				new FinderColumn<>(
-					"blogsEntry.", "status", FinderColumn.Type.INTEGER, "!=",
-					true, true, BlogsEntry::getStatus));
 
 		_collectionPersistenceFinderByLtD_S = new CollectionPersistenceFinder<>(
 			this,
@@ -5270,7 +3730,15 @@ public class BlogsEntryPersistenceImpl
 
 		_collectionPersistenceFinderByG_U_LtD =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, BlogsEntry::getEntryId,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_U_LtD",
+					new String[] {
+						Long.class.getName(), Long.class.getName(),
+						Date.class.getName()
+					},
+					new String[] {"groupId", "userId", "displayDate"}, false),
+				"", BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_U_LtD",
 					new String[] {
@@ -5280,17 +3748,8 @@ public class BlogsEntryPersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "userId", "displayDate"}, true),
-				null,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_U_LtD",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						Date.class.getName()
-					},
-					new String[] {"groupId", "userId", "displayDate"}, false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
+				_SQL_COUNT_BLOGSENTRY_WHERE, _SQL_SELECT_BLOGSENTRY_WHERE, null,
+				null, "",
 				new FinderColumn<>(
 					"blogsEntry.", "groupId", FinderColumn.Type.LONG, "=", true,
 					true, BlogsEntry::getGroupId),
@@ -5303,7 +3762,15 @@ public class BlogsEntryPersistenceImpl
 
 		_collectionPersistenceFinderByG_U_S =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, BlogsEntry::getEntryId,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_U_S",
+					new String[] {
+						Long.class.getName(), Long.class.getName(),
+						Integer.class.getName()
+					},
+					new String[] {"groupId", "userId", "status"}, false),
+				"", BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_U_S",
 					new String[] {
@@ -5313,6 +3780,7 @@ public class BlogsEntryPersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "userId", "status"}, true),
+				_SQL_COUNT_BLOGSENTRY_WHERE, _SQL_SELECT_BLOGSENTRY_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_U_S",
 					new String[] {
@@ -5320,16 +3788,7 @@ public class BlogsEntryPersistenceImpl
 						Integer.class.getName()
 					},
 					new String[] {"groupId", "userId", "status"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_U_S",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						Integer.class.getName()
-					},
-					new String[] {"groupId", "userId", "status"}, false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
+				"",
 				new FinderColumn<>(
 					"blogsEntry.", "groupId", FinderColumn.Type.LONG, "=", true,
 					true, BlogsEntry::getGroupId),
@@ -5342,7 +3801,15 @@ public class BlogsEntryPersistenceImpl
 
 		_collectionPersistenceFinderByG_U_NotS =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, BlogsEntry::getEntryId,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_U_NotS",
+					new String[] {
+						Long.class.getName(), Long.class.getName(),
+						Integer.class.getName()
+					},
+					new String[] {"groupId", "userId", "status"}, false),
+				"", BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_U_NotS",
 					new String[] {
@@ -5352,17 +3819,8 @@ public class BlogsEntryPersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "userId", "status"}, true),
-				null,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_U_NotS",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						Integer.class.getName()
-					},
-					new String[] {"groupId", "userId", "status"}, false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
+				_SQL_COUNT_BLOGSENTRY_WHERE, _SQL_SELECT_BLOGSENTRY_WHERE, null,
+				null, "",
 				new FinderColumn<>(
 					"blogsEntry.", "groupId", FinderColumn.Type.LONG, "=", true,
 					true, BlogsEntry::getGroupId),
@@ -5375,7 +3833,15 @@ public class BlogsEntryPersistenceImpl
 
 		_collectionPersistenceFinderByG_D_S =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, BlogsEntry::getEntryId,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_D_S",
+					new String[] {
+						Long.class.getName(), Date.class.getName(),
+						Integer.class.getName()
+					},
+					new String[] {"groupId", "displayDate", "status"}, false),
+				"", BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_D_S",
 					new String[] {
@@ -5385,6 +3851,7 @@ public class BlogsEntryPersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "displayDate", "status"}, true),
+				_SQL_COUNT_BLOGSENTRY_WHERE, _SQL_SELECT_BLOGSENTRY_WHERE, null,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByG_D_S",
 					new String[] {
@@ -5392,16 +3859,7 @@ public class BlogsEntryPersistenceImpl
 						Integer.class.getName()
 					},
 					new String[] {"groupId", "displayDate", "status"}, true),
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByG_D_S",
-					new String[] {
-						Long.class.getName(), Date.class.getName(),
-						Integer.class.getName()
-					},
-					new String[] {"groupId", "displayDate", "status"}, false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
+				"",
 				new FinderColumn<>(
 					"blogsEntry.", "groupId", FinderColumn.Type.LONG, "=", true,
 					true, BlogsEntry::getGroupId),
@@ -5414,7 +3872,15 @@ public class BlogsEntryPersistenceImpl
 
 		_collectionPersistenceFinderByG_GtD_S =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, BlogsEntry::getEntryId,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_GtD_S",
+					new String[] {
+						Long.class.getName(), Date.class.getName(),
+						Integer.class.getName()
+					},
+					new String[] {"groupId", "displayDate", "status"}, false),
+				"", BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_GtD_S",
 					new String[] {
@@ -5424,17 +3890,8 @@ public class BlogsEntryPersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "displayDate", "status"}, true),
-				null,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_GtD_S",
-					new String[] {
-						Long.class.getName(), Date.class.getName(),
-						Integer.class.getName()
-					},
-					new String[] {"groupId", "displayDate", "status"}, false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
+				_SQL_COUNT_BLOGSENTRY_WHERE, _SQL_SELECT_BLOGSENTRY_WHERE, null,
+				null, "",
 				new FinderColumn<>(
 					"blogsEntry.", "groupId", FinderColumn.Type.LONG, "=", true,
 					true, BlogsEntry::getGroupId),
@@ -5447,7 +3904,15 @@ public class BlogsEntryPersistenceImpl
 
 		_collectionPersistenceFinderByG_LtD_S =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, BlogsEntry::getEntryId,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_LtD_S",
+					new String[] {
+						Long.class.getName(), Date.class.getName(),
+						Integer.class.getName()
+					},
+					new String[] {"groupId", "displayDate", "status"}, false),
+				"", BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_LtD_S",
 					new String[] {
@@ -5457,17 +3922,8 @@ public class BlogsEntryPersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "displayDate", "status"}, true),
-				null,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_LtD_S",
-					new String[] {
-						Long.class.getName(), Date.class.getName(),
-						Integer.class.getName()
-					},
-					new String[] {"groupId", "displayDate", "status"}, false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
+				_SQL_COUNT_BLOGSENTRY_WHERE, _SQL_SELECT_BLOGSENTRY_WHERE, null,
+				null, "",
 				new FinderColumn<>(
 					"blogsEntry.", "groupId", FinderColumn.Type.LONG, "=", true,
 					true, BlogsEntry::getGroupId),
@@ -5480,7 +3936,15 @@ public class BlogsEntryPersistenceImpl
 
 		_collectionPersistenceFinderByG_LtD_NotS =
 			new FilterCollectionPersistenceFinder<>(
-				this,
+				this, BlogsEntry::getEntryId,
+				new FinderPath(
+					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_LtD_NotS",
+					new String[] {
+						Long.class.getName(), Date.class.getName(),
+						Integer.class.getName()
+					},
+					new String[] {"groupId", "displayDate", "status"}, false),
+				"", BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX,
 				new FinderPath(
 					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_LtD_NotS",
 					new String[] {
@@ -5490,93 +3954,14 @@ public class BlogsEntryPersistenceImpl
 						OrderByComparator.class.getName()
 					},
 					new String[] {"groupId", "displayDate", "status"}, true),
-				null,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_LtD_NotS",
-					new String[] {
-						Long.class.getName(), Date.class.getName(),
-						Integer.class.getName()
-					},
-					new String[] {"groupId", "displayDate", "status"}, false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
+				_SQL_COUNT_BLOGSENTRY_WHERE, _SQL_SELECT_BLOGSENTRY_WHERE, null,
+				null, "",
 				new FinderColumn<>(
 					"blogsEntry.", "groupId", FinderColumn.Type.LONG, "=", true,
 					true, BlogsEntry::getGroupId),
 				new FinderColumn<>(
 					"blogsEntry.", "displayDate", FinderColumn.Type.DATE, "<",
 					true, true, BlogsEntry::getDisplayDate),
-				new FinderColumn<>(
-					"blogsEntry.", "status", FinderColumn.Type.INTEGER, "!=",
-					true, true, BlogsEntry::getStatus));
-
-		_collectionPersistenceFinderByC_U_S = new CollectionPersistenceFinder<>(
-			this,
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_U_S",
-				new String[] {
-					Long.class.getName(), Long.class.getName(),
-					Integer.class.getName(), Integer.class.getName(),
-					Integer.class.getName(), OrderByComparator.class.getName()
-				},
-				new String[] {"companyId", "userId", "status"}, true),
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "findByC_U_S",
-				new String[] {
-					Long.class.getName(), Long.class.getName(),
-					Integer.class.getName()
-				},
-				new String[] {"companyId", "userId", "status"}, true),
-			new FinderPath(
-				FINDER_CLASS_NAME_LIST_WITHOUT_PAGINATION, "countByC_U_S",
-				new String[] {
-					Long.class.getName(), Long.class.getName(),
-					Integer.class.getName()
-				},
-				new String[] {"companyId", "userId", "status"}, false),
-			_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-			BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-			null,
-			new FinderColumn<>(
-				"blogsEntry.", "companyId", FinderColumn.Type.LONG, "=", true,
-				true, BlogsEntry::getCompanyId),
-			new FinderColumn<>(
-				"blogsEntry.", "userId", FinderColumn.Type.LONG, "=", true,
-				true, BlogsEntry::getUserId),
-			new FinderColumn<>(
-				"blogsEntry.", "status", FinderColumn.Type.INTEGER, "=", true,
-				true, BlogsEntry::getStatus));
-
-		_collectionPersistenceFinderByC_U_NotS =
-			new CollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByC_U_NotS",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						Integer.class.getName(), Integer.class.getName(),
-						Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {"companyId", "userId", "status"}, true),
-				null,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByC_U_NotS",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						Integer.class.getName()
-					},
-					new String[] {"companyId", "userId", "status"}, false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
-				new FinderColumn<>(
-					"blogsEntry.", "companyId", FinderColumn.Type.LONG, "=",
-					true, true, BlogsEntry::getCompanyId),
-				new FinderColumn<>(
-					"blogsEntry.", "userId", FinderColumn.Type.LONG, "=", true,
-					true, BlogsEntry::getUserId),
 				new FinderColumn<>(
 					"blogsEntry.", "status", FinderColumn.Type.INTEGER, "!=",
 					true, true, BlogsEntry::getStatus));
@@ -5640,84 +4025,6 @@ public class BlogsEntryPersistenceImpl
 				new FinderColumn<>(
 					"blogsEntry.", "companyId", FinderColumn.Type.LONG, "=",
 					true, true, BlogsEntry::getCompanyId),
-				new FinderColumn<>(
-					"blogsEntry.", "displayDate", FinderColumn.Type.DATE, "<",
-					true, true, BlogsEntry::getDisplayDate),
-				new FinderColumn<>(
-					"blogsEntry.", "status", FinderColumn.Type.INTEGER, "!=",
-					true, true, BlogsEntry::getStatus));
-
-		_collectionPersistenceFinderByG_U_LtD_S =
-			new FilterCollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "findByG_U_LtD_S",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						Date.class.getName(), Integer.class.getName(),
-						Integer.class.getName(), Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {"groupId", "userId", "displayDate", "status"},
-					true),
-				null,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION, "countByG_U_LtD_S",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						Date.class.getName(), Integer.class.getName()
-					},
-					new String[] {"groupId", "userId", "displayDate", "status"},
-					false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
-				new FinderColumn<>(
-					"blogsEntry.", "groupId", FinderColumn.Type.LONG, "=", true,
-					true, BlogsEntry::getGroupId),
-				new FinderColumn<>(
-					"blogsEntry.", "userId", FinderColumn.Type.LONG, "=", true,
-					true, BlogsEntry::getUserId),
-				new FinderColumn<>(
-					"blogsEntry.", "displayDate", FinderColumn.Type.DATE, "<",
-					true, true, BlogsEntry::getDisplayDate),
-				new FinderColumn<>(
-					"blogsEntry.", "status", FinderColumn.Type.INTEGER, "=",
-					true, true, BlogsEntry::getStatus));
-
-		_collectionPersistenceFinderByG_U_LtD_NotS =
-			new FilterCollectionPersistenceFinder<>(
-				this,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION,
-					"findByG_U_LtD_NotS",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						Date.class.getName(), Integer.class.getName(),
-						Integer.class.getName(), Integer.class.getName(),
-						OrderByComparator.class.getName()
-					},
-					new String[] {"groupId", "userId", "displayDate", "status"},
-					true),
-				null,
-				new FinderPath(
-					FINDER_CLASS_NAME_LIST_WITH_PAGINATION,
-					"countByG_U_LtD_NotS",
-					new String[] {
-						Long.class.getName(), Long.class.getName(),
-						Date.class.getName(), Integer.class.getName()
-					},
-					new String[] {"groupId", "userId", "displayDate", "status"},
-					false),
-				_SQL_SELECT_BLOGSENTRY_WHERE, _SQL_COUNT_BLOGSENTRY_WHERE,
-				BlogsEntryModelImpl.ORDER_BY_JPQL, _ENTITY_ALIAS_PREFIX, "", "",
-				null,
-				new FinderColumn<>(
-					"blogsEntry.", "groupId", FinderColumn.Type.LONG, "=", true,
-					true, BlogsEntry::getGroupId),
-				new FinderColumn<>(
-					"blogsEntry.", "userId", FinderColumn.Type.LONG, "=", true,
-					true, BlogsEntry::getUserId),
 				new FinderColumn<>(
 					"blogsEntry.", "displayDate", FinderColumn.Type.DATE, "<",
 					true, true, BlogsEntry::getDisplayDate),
@@ -5808,4 +4115,4 @@ public class BlogsEntryPersistenceImpl
 	}
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1297789121
+// LIFERAY-SERVICE-BUILDER-HASH:1136945144

@@ -6,7 +6,6 @@
 import {expect, mergeTests} from '@playwright/test';
 
 import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
-import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {mcpServerWebPagesTest} from '../../../fixtures/mcpServerWebPagesTest';
 import {DataApiHelpers} from '../../../helpers/ApiHelpers';
@@ -22,9 +21,6 @@ import {
 
 const baseTest = mergeTests(
 	dataApiHelpersTest,
-	featureFlagsTest({
-		'LPD-63311': {enabled: true},
-	}),
 	loginTest(),
 	mcpServerWebPagesTest
 );
@@ -43,7 +39,7 @@ async function createCustomMask(
 	apiHelpers: DataApiHelpers,
 	name: string
 ): Promise<ObjectEntry> {
-	const dataMask = await apiHelpers.objectEntry.postObjectEntry(
+	return apiHelpers.objectEntry.postObjectEntry(
 		{
 			description: 'Created by Playwright',
 			detectionRegex: '\\bzz\\b',
@@ -53,14 +49,6 @@ async function createCustomMask(
 		},
 		DATA_MASKS_API
 	);
-
-	apiHelpers.data.push({
-		applicationName: DATA_MASKS_API,
-		id: dataMask.id,
-		type: 'objectEntry',
-	});
-
-	return dataMask;
 }
 
 async function associateMaskWithProfile(
@@ -71,7 +59,7 @@ async function associateMaskWithProfile(
 		`${apiHelpers.baseUrl}mcp/server-profiles?pageSize=1`
 	);
 
-	const association = await apiHelpers.objectEntry.postObjectEntry(
+	return apiHelpers.objectEntry.postObjectEntry(
 		{
 			dataMaskExternalReferenceCode,
 			mcpServerProfileExternalReferenceCode:
@@ -79,14 +67,6 @@ async function associateMaskWithProfile(
 		},
 		PROFILE_DATA_MASKS_API
 	);
-
-	apiHelpers.data.push({
-		applicationName: PROFILE_DATA_MASKS_API,
-		id: association.id,
-		type: 'objectEntry',
-	});
-
-	return association;
 }
 
 const test = baseTest.extend<{
@@ -357,6 +337,8 @@ test.describe('Data Masks - List View', () => {
 			await dataMasksPage.goto();
 			await dataMasksPage.newDataMaskButton.click();
 
+			await expect(dataMasksPage.formHeading).toHaveText('New Data Mask');
+
 			await dataMasksPage.nameInput.fill(name);
 			await dataMasksPage.regexPatternInput.fill('\\bzz\\b');
 			await dataMasksPage.replacementInput.fill('[ZZ]');
@@ -432,23 +414,6 @@ test.describe('Data Masks - Detail (Create / Edit / View)', () => {
 	);
 
 	test(
-		'Requires Title, Regex Pattern, and Replacement when creating a mask',
-		{tag: '@LPD-90205'},
-		async ({dataMasksPage}) => {
-			await dataMasksPage.goto();
-			await dataMasksPage.newDataMaskButton.click();
-
-			await dataMasksPage.saveButton.click();
-
-			await expect(dataMasksPage.formHeading).toHaveText('New Data Mask');
-			await expect(dataMasksPage.nameInput).toHaveJSProperty(
-				'validity.valueMissing',
-				true
-			);
-		}
-	);
-
-	test(
 		'Shows a required-field error on Title, Regex Pattern, and Replacement',
 		{tag: '@LPD-90205'},
 		async ({dataMasksPage}) => {
@@ -466,47 +431,6 @@ test.describe('Data Masks - Detail (Create / Edit / View)', () => {
 			await expect(
 				dataMasksPage.replacementInput
 			).toHaveAccessibleDescription(/This field is required\./);
-		}
-	);
-
-	test(
-		'Clears the required error once the field is filled',
-		{tag: '@LPD-90205'},
-		async ({dataMasksPage}) => {
-			await dataMasksPage.goto();
-			await dataMasksPage.newDataMaskButton.click();
-
-			await dataMasksPage.saveButton.click();
-
-			await expect(dataMasksPage.nameInput).toHaveAccessibleDescription(
-				/This field is required\./
-			);
-
-			await dataMasksPage.nameInput.fill(maskName());
-
-			await expect(
-				dataMasksPage.nameInput
-			).not.toHaveAccessibleDescription(/This field is required\./);
-		}
-	);
-
-	test(
-		'Links field help text to its input as an accessible description',
-		{tag: '@LPD-90205'},
-		async ({dataMasksPage}) => {
-			await dataMasksPage.goto();
-			await dataMasksPage.newDataMaskButton.click();
-
-			await expect(
-				dataMasksPage.regexPatternInput
-			).toHaveAccessibleDescription(
-				'Use a standard regular expression. Named capture groups are supported.'
-			);
-			await expect(
-				dataMasksPage.matchPatternInput
-			).toHaveAccessibleDescription(
-				'Leave empty to replace the entire detected value with the replacement token.'
-			);
 		}
 	);
 

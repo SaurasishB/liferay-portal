@@ -101,8 +101,7 @@ type: 'warning'
 },
 ],
 },
-FeatureFlags: {
-},
+FeatureFlags: {'LPD-00042': true, 'LPD-00042': true, },
 Language: {
 	_cache:
 		window?.Liferay?.Language?._cache
@@ -161,6 +160,7 @@ getPathContext: () => '',
 getPathImage: () => '/image',
 getPathJavaScript: () => '/o/frontend-js-web',
 getPathMain: () => 'c',
+getPathThemeEmptyStatesSpritemap: () => 'http://localhost:8080/o/classic-theme/images/clay/empty_states.svg',
 getPathThemeImages: () => 'http://localhost:8080/o/classic-theme/images',
 getPathThemeRoot: () => '/o/classic-theme',
 getPlid: () => '0',

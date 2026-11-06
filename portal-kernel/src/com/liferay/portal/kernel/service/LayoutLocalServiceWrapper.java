@@ -679,6 +679,11 @@ public class LayoutLocalServiceWrapper
 	}
 
 	@Override
+	public Layout fetchDraftLayout(long plid, long launchSetId) {
+		return _layoutLocalService.fetchDraftLayout(plid, launchSetId);
+	}
+
+	@Override
 	public java.util.Map<Layout, Layout> fetchDraftLayouts(
 		java.util.List<Layout> layouts) {
 
@@ -1609,13 +1614,6 @@ public class LayoutLocalServiceWrapper
 	}
 
 	@Override
-	public boolean hasLayouts(com.liferay.portal.kernel.model.Group group)
-		throws com.liferay.portal.kernel.exception.PortalException {
-
-		return _layoutLocalService.hasLayouts(group);
-	}
-
-	@Override
 	public boolean hasLayouts(
 			com.liferay.portal.kernel.model.Group group, boolean privateLayout)
 		throws com.liferay.portal.kernel.exception.PortalException {
@@ -2319,4 +2317,4 @@ public class LayoutLocalServiceWrapper
 	private LayoutLocalService _layoutLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1295318816
+// LIFERAY-SERVICE-BUILDER-HASH:1614129247

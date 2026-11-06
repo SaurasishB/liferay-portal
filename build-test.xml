@@ -2056,7 +2056,26 @@ jdbc.default.connectionProperties=oracle.jdbc.ReadTimeout=0;oracle.net.CONNECT_T
 
 					Properties gradleProperties = JenkinsResultsParserUtil.getProperties(new File[] {new File("@{workspace.dir}", "gradle.properties")});
 
-					String product = gradleProperties.getProperty("liferay.workspace.product");
+					String workspaceBundleURL = JenkinsResultsParserUtil.getProperty(gradleProperties, "liferay.workspace.bundle.url");
+
+					if (!JenkinsResultsParserUtil.isNullOrEmpty(workspaceBundleURL)) {
+						File bundleFile = new File(mirrorDirName, workspaceBundleURL.replaceFirst("^https?://[^/]+/", ""));
+
+						if (bundleFile.exists()) {
+							project.setProperty("workspace.bundle.url", "file:" + bundleFile.getAbsolutePath());
+
+							System.out.println("Using the mirrored bundle at " + bundleFile);
+						}
+						else {
+							project.setProperty("workspace.bundle.url", workspaceBundleURL);
+
+							System.out.println("Using the workspace bundle at " + workspaceBundleURL);
+						}
+
+						return;
+					}
+
+					String product = JenkinsResultsParserUtil.getProperty(gradleProperties, "liferay.workspace.product");
 
 					if (JenkinsResultsParserUtil.isNullOrEmpty(product)) {
 						return;
@@ -4040,6 +4059,36 @@ tell application "Safari" to quit
 							<echo append="true" file="${test.ext.properties.file}">
 								browser.chrome.bin.file=${browser.chrome.bin.file}
 							</echo>
+						</then>
+					</if>
+
+					<get-testcase-property property.name="test.liferay.virtual.instance" />
+
+					<if>
+						<equals arg1="${test.liferay.virtual.instance}" arg2="true" />
+						<then>
+							<propertyregex
+								input="${test.url}"
+								override="true"
+								property="test.url.origin"
+								regexp="(https?:\/\/[^\/]+)"
+								select="\1"
+							/>
+
+							<if>
+								<isset property="test.url.origin" />
+								<then>
+									<if>
+										<isset property="browser.chrome.bin.args" />
+										<then>
+											<var name="browser.chrome.bin.args" value="${browser.chrome.bin.args} --unsafely-treat-insecure-origin-as-secure=${test.url.origin}" />
+										</then>
+										<else>
+											<var name="browser.chrome.bin.args" value="--unsafely-treat-insecure-origin-as-secure=${test.url.origin}" />
+										</else>
+									</if>
+								</then>
+							</if>
 						</then>
 					</if>
 				</then>
@@ -7509,7 +7558,7 @@ log.sanitizer.enabled=false</echo>
 					</then>
 				</elseif>
 				<else>
-					<var name="app.server.tomcat.version" value="10.1.59" />
+					<var name="app.server.tomcat.version" value="10.1.61" />
 				</else>
 			</if>
 
@@ -8106,7 +8155,7 @@ org.apache.catalina.startup.ClassLoaderFactory.level=INFO]]>
 				--add-host www.dog.com:127.0.0.1 \
 				--add-host www.easy.com:127.0.0.1 \
 				--add-host www.fox.com:127.0.0.1 \
-				--env=SE_NODE_SESSION_TIMEOUT=600 \
+				--env=SE_NODE_SESSION_TIMEOUT=${timeout.app.server.wait} \
 				--mount type=bind,source=${host.git.dir}/${portal.dir.name},target=${portal.dir} \
 			</start-docker-container>
 
@@ -8369,7 +8418,7 @@ ${docker.start.error}</fail>
 						<equals arg1="${database.type}" arg2="mariadb" />
 					</and>
 					<then>
-						<property name="docker.database.wait.condition">mariadb-admin ping > /dev/null 2>&amp;1</property>
+						<property name="docker.database.wait.condition">mariadb-admin --host=${database.host} --protocol=TCP ping > /dev/null 2>&amp;1</property>
 					</then>
 				</elseif>
 				<elseif>
@@ -8378,7 +8427,7 @@ ${docker.start.error}</fail>
 						<equals arg1="${database.type}" arg2="mysql" />
 					</or>
 					<then>
-						<property name="docker.database.wait.condition">mysqladmin ping > /dev/null 2>&amp;1</property>
+						<property name="docker.database.wait.condition">mysqladmin --host=${database.host} --protocol=TCP ping > /dev/null 2>&amp;1</property>
 					</then>
 				</elseif>
 				<elseif>
@@ -9991,10 +10040,39 @@ create database lportal${databases.size} encoding = 'UTF8';</echo>
 							</then>
 						</if>
 
-						<copy
-							file="${sql.dir}${sql.file}"
-							tofile="create.sql"
-						/>
+						<if>
+							<or>
+								<available file="${sql.dir}${sql.file}" />
+								<not>
+									<or>
+										<equals arg1="${database.type}" arg2="mariadb" />
+										<equals arg1="${database.type}" arg2="mysql" />
+										<equals arg1="${database.type}" arg2="postgresql" />
+									</or>
+								</not>
+							</or>
+							<then>
+								<copy
+									file="${sql.dir}${sql.file}"
+									tofile="create.sql"
+								/>
+							</then>
+							<elseif>
+								<equals arg1="${database.type}" arg2="postgresql" />
+								<then>
+									<echo file="create.sql">
+drop database if exists lportal;
+
+create database lportal encoding = 'UTF8';</echo>
+								</then>
+							</elseif>
+							<else>
+								<echo file="create.sql">
+drop database if exists lportal;
+
+create database lportal character set utf8mb4;</echo>
+							</else>
+						</if>
 					</else>
 				</if>
 
@@ -14097,28 +14175,12 @@ enterprise.product.enterprise.search.enabled=false</echo>
 	</target>
 
 	<target name="prepare-release-bundle">
-		<ant antfile="build-release-slim.xml" dir="${release.tool.dir}" inheritAll="false" target="dist" useNativeBasedir="true">
-			<property name="override.decrement.module.bnd.versions" value="true" />
+		<ant antfile="build-developer.xml" dir="${release.tool.dir}" inheritAll="false" target="all" useNativeBasedir="true">
+			<property name="build.profile" value="${build.profile}" />
+			<property name="portal.dir" value="${project.dir}" />
 			<property name="project.release.dir.native" value="${release.tool.dir}" />
+			<property name="skip.reset.git" value="true" />
 		</ant>
-
-		<copy
-			overwrite="true"
-			tofile="${project.dir}/liferay-portal-bundle-tomcat.tar.gz"
-		>
-			<fileset
-				dir="dist/"
-				includes="liferay-*-tomcat-*.tar.gz"
-			/>
-		</copy>
-
-		<untar
-			compression="gzip"
-			dest="./bundles"
-			src="liferay-portal-bundle-tomcat.tar.gz"
-		>
-			<cutdirsmapper dirs="1" />
-		</untar>
 
 		<antcall target="deploy-license-xml">
 			<param name="test.build.cmp.license.url" value="${test.cmp.license.url}" />
@@ -14135,6 +14197,7 @@ enterprise.product.enterprise.search.enabled=false</echo>
 		</antcall>
 
 		<prepare-selenium-login-config />
+		<prepare-selenium-required-properties />
 
 		<prepare-selenium-analytics-cloud-properties />
 		<prepare-selenium-app-server-properties />
@@ -14152,7 +14215,6 @@ enterprise.product.enterprise.search.enabled=false</echo>
 		<prepare-selenium-onedrive-properties />
 		<prepare-selenium-openid-properties />
 		<prepare-selenium-recaptcha-properties />
-		<prepare-selenium-required-properties />
 		<prepare-selenium-sharepoint-properties />
 		<prepare-selenium-script-management-config />
 		<prepare-selenium-site-initializer-raylife-d2c-paypal-properties />
@@ -15154,7 +15216,7 @@ cluster.link.bind.addr["cluster-link-udp"]=127.0.0.1</echo>
 	<target depends="build-sql-file" name="rebuild-database">
 		<trycatch property="rebuild.database.error">
 			<try>
-				<retry retrycount="2">
+				<retry retrycount="2" retrydelay="10000">
 					<sequential>
 						<if>
 							<equals arg1="${skip.delete.liferay.home}" arg2="true" />
@@ -15182,7 +15244,7 @@ cluster.link.bind.addr["cluster-link-udp"]=127.0.0.1</echo>
 	<target depends="build-sql-file-playwright" name="rebuild-database-playwright">
 		<trycatch property="rebuild.database.error">
 			<try>
-				<retry retrycount="2">
+				<retry retrycount="2" retrydelay="10000">
 					<sequential>
 						<rebuild-database skip.delete.liferay.home="true" />
 					</sequential>
@@ -16719,6 +16781,8 @@ sendBlacklist=[]
 			</then>
 		</if>
 
+		<antcall target="deploy-osgi-modules" />
+
 		<get-testcase-property property.name="legacy.database.file" />
 		<get-testcase-property property.name="portal.version" />
 		<get-testcase-property property.name="rebuild.staging.database" />
@@ -16974,8 +17038,6 @@ sendBlacklist=[]
 		<antcall if:set="osgi.app.includes" target="deploy-osgi-apps" />
 
 		<antcall target="hot-deploy-osgi-apps" />
-
-		<antcall target="deploy-osgi-modules" />
 
 		<antcall target="deploy-specific-plugins">
 			<param name="test.class" value="${test.class}" />

@@ -4,8 +4,6 @@
  */
 
 import ClayAlert from '@clayui/alert';
-import ClayButton from '@clayui/button';
-import ClayIcon from '@clayui/icon';
 import {Form, Formik, FormikValues} from 'formik';
 import {sub} from 'frontend-js-web';
 import React, {useEffect, useRef, useState} from 'react';
@@ -20,17 +18,21 @@ import {usePreview} from '../../hooks/usePreview';
 import {deleteScheduledPublishProcess} from '../../services/deleteScheduledPublishProcess';
 import {getScheduledPublishProcess} from '../../services/getScheduledPublishProcess';
 import {postPublishProcess} from '../../services/postPublishProcess';
+import {postScheduledPublishProcess} from '../../services/postScheduledPublishProcess';
+import {PublishProcessRequest} from '../../types/exportImportProcess';
 import {
 	getSelectedDeletionCount,
 	getSelectedItemsCount,
+	toPortletDataHandlerSections,
 	toProcessRequestFlags,
 	withSelectedLayoutSetCount,
 } from '../../utils/contentSelection';
 import {toWallClockDateTime, toZonedDate} from '../../utils/dateTime';
 import {getProcessFormErrors} from '../../utils/getProcessFormErrors';
+import {navigateToProcesses} from '../../utils/navigateToProcesses';
 import {toContentSelection} from '../../utils/toContentSelection';
 import {toDateFilterValues} from '../../utils/toDateFilterValues';
-import {toRequestPortletDataHandlers} from '../../utils/toRequestPortletDataHandlers';
+import {toPortletDataHandlers} from '../../utils/toPortletDataHandlers';
 import {FormikFieldPublishScheduler} from './components/scheduler/FormikFieldPublishScheduler';
 import {
 	fromCronExpression,
@@ -45,7 +47,7 @@ import {
 
 type PublishFormValues = {
 	contentSelection: ContentSelection | null | undefined;
-	dateFilter: DateFilterValues;
+	dateFilterValues: DateFilterValues;
 	deletions: boolean;
 	name: string;
 	permissions: boolean;
@@ -57,7 +59,6 @@ export function NewPublish({
 	commentsAndRatingsEnabled = false,
 	defaultScheduled = false,
 	lastPublishDate,
-	lookAndFeelEnabled = false,
 	pageTreeModalConfiguration,
 	processesBackURL,
 	publishPreviewAPIURL,
@@ -72,7 +73,6 @@ export function NewPublish({
 	commentsAndRatingsEnabled?: boolean;
 	defaultScheduled?: boolean;
 	lastPublishDate?: string;
-	lookAndFeelEnabled?: boolean;
 	pageTreeModalConfiguration: PageTreeModalConfiguration;
 	processesBackURL: string;
 	publishPreviewAPIURL: string;
@@ -94,7 +94,7 @@ export function NewPublish({
 	const [initialFormValues, setInitialFormValues] =
 		useState<PublishFormValues>(() => ({
 			contentSelection: undefined,
-			dateFilter: {range: Range.All},
+			dateFilterValues: {range: Range.All},
 			deletions: false,
 			name: '',
 			permissions: false,
@@ -127,15 +127,23 @@ export function NewPublish({
 			const scheduledPublishProcess =
 				scheduledPublishProcessResponse.data;
 
-			const publishParameters =
-				scheduledPublishProcess.publishParameters ?? {};
+			const scheduledPublishProcessRequest =
+				scheduledPublishProcess.scheduledPublishProcessRequest;
 
-			const dateFilter = toDateFilterValues(publishParameters);
+			const publishProcessRequest =
+				scheduledPublishProcessRequest?.publishProcessRequest ?? {
+					name: '',
+				};
 
-			handleApplyFilter(dateFilter);
+			const dateFilterValues = toDateFilterValues(
+				publishProcessRequest.dateFilter,
+				timeZoneId
+			);
+
+			handleApplyFilter(dateFilterValues);
 
 			const scheduledTimeZoneId =
-				publishParameters.timeZoneId?.[0] ?? timeZoneId;
+				scheduledPublishProcessRequest?.timeZoneId ?? timeZoneId;
 
 			const scheduleStartDate = scheduledPublishProcess.scheduleStartDate;
 
@@ -145,14 +153,16 @@ export function NewPublish({
 
 			setInitialFormValues((currentInitialFormValues) => ({
 				contentSelection: toContentSelection(
-					preview.previewPortletDataHandlerSections ?? [],
-					publishParameters,
-					{commentsAndRatingsEnabled, lookAndFeelEnabled}
+					toPortletDataHandlerSections(
+						preview.portletDataHandlers ?? []
+					),
+					publishProcessRequest,
+					{commentsAndRatingsEnabled}
 				),
-				dateFilter,
-				deletions: publishParameters.DELETIONS?.[0] === 'true',
+				dateFilterValues,
+				deletions: !!publishProcessRequest.deletions,
 				name: scheduledPublishProcess.name ?? '',
-				permissions: publishParameters.PERMISSIONS?.[0] === 'true',
+				permissions: !!publishProcessRequest.permissions,
 				scheduleValues: {
 					...currentInitialFormValues.scheduleValues,
 					enabled: true,
@@ -165,9 +175,9 @@ export function NewPublish({
 					neverEnd: !scheduledPublishProcess.scheduleEndDate,
 					startDateTime: scheduleStartDateTime,
 					timeZoneId: scheduledTimeZoneId,
-					...(scheduledPublishProcess.cronExpression
+					...(scheduledPublishProcessRequest?.cronExpression
 						? fromCronExpression(
-								scheduledPublishProcess.cronExpression,
+								scheduledPublishProcessRequest.cronExpression,
 								scheduleStartDateTime
 							)
 						: {}),
@@ -180,7 +190,6 @@ export function NewPublish({
 		commentsAndRatingsEnabled,
 		editedScheduledPublishProcessId,
 		handleApplyFilter,
-		lookAndFeelEnabled,
 		preview,
 		scheduledPublishProcessAPIURL,
 		setError,
@@ -202,50 +211,54 @@ export function NewPublish({
 		);
 	}
 
-	const previewPortletDataHandlerSections =
-		preview?.previewPortletDataHandlerSections ?? [];
+	const portletDataHandlerSections = toPortletDataHandlerSections(
+		preview?.portletDataHandlers ?? []
+	);
 
 	return (
 		<Formik
 			initialValues={initialFormValues}
-			onSubmit={async (values) => {
+			onSubmit={async (values, {setStatus}) => {
 				const scheduleValues = values.scheduleValues;
 
 				const scheduled = scheduleValues.enabled;
 
-				const scheduleFields = scheduled
-					? {
-							cronExpression: toCronExpression(scheduleValues),
-							scheduleEndDate: hasEndDate(scheduleValues)
-								? toZonedDate(
-										scheduleValues.endDateTime,
-										scheduleValues.timeZoneId
-									).toISOString()
-								: undefined,
-							scheduleStartDate: toZonedDate(
-								scheduleValues.startDateTime,
-								scheduleValues.timeZoneId
-							).toISOString(),
-							timeZoneId: scheduleValues.timeZoneId,
-						}
-					: {};
+				const publishProcessRequest: PublishProcessRequest = {
+					...toProcessRequestFlags(values.contentSelection),
+					dateFilter: appliedDateFilterRef.current,
+					deletions: values.deletions,
+					name: values.name,
+					permissions: values.permissions,
+					portletDataHandlers: toPortletDataHandlers(
+						portletDataHandlerSections,
+						values.contentSelection
+					),
+				};
 
-				const result = await postPublishProcess({
-					publishProcessRequest: {
-						...appliedDateFilterRef.current,
-						...toProcessRequestFlags(values.contentSelection),
-						...scheduleFields,
-						deletions: values.deletions,
-						name: values.name,
-						permissions: values.permissions,
-						requestPortletDataHandlers:
-							toRequestPortletDataHandlers(
-								previewPortletDataHandlerSections,
-								values.contentSelection
-							),
-					},
-					url: publishProcessAPIURL,
-				});
+				const result = scheduled
+					? await postScheduledPublishProcess({
+							scheduledPublishProcessRequest: {
+								cronExpression:
+									toCronExpression(scheduleValues),
+								publishProcessRequest,
+								scheduleEndDate: hasEndDate(scheduleValues)
+									? toZonedDate(
+											scheduleValues.endDateTime,
+											scheduleValues.timeZoneId
+										).toISOString()
+									: undefined,
+								scheduleStartDate: toZonedDate(
+									scheduleValues.startDateTime,
+									scheduleValues.timeZoneId
+								).toISOString(),
+								timeZoneId: scheduleValues.timeZoneId,
+							},
+							url: scheduledPublishProcessAPIURL,
+						})
+					: await postPublishProcess({
+							publishProcessRequest,
+							url: publishProcessAPIURL,
+						});
 
 				if (result.error) {
 					Liferay.Util.openToast({
@@ -269,7 +282,13 @@ export function NewPublish({
 					}
 				}
 
-				Liferay.Util.navigate(
+				navigateToProcesses(
+					setStatus,
+					scheduled
+						? Liferay.Language.get(
+								'the-publication-has-been-scheduled'
+							)
+						: Liferay.Language.get('the-process-has-started'),
 					scheduled ? scheduledBackURL : processesBackURL
 				);
 			}}
@@ -306,9 +325,6 @@ export function NewPublish({
 							placeholder={Liferay.Language.get(
 								'process-name-placeholder'
 							)}
-							subtitle={Liferay.Language.get(
-								'name-your-process-and-choose-when-to-publish'
-							)}
 							title={sub(
 								Liferay.Language.get('x-details'),
 								Liferay.Language.get('publish')
@@ -326,7 +342,7 @@ export function NewPublish({
 							}
 							deletionCount={getSelectedDeletionCount(
 								preview?.deletionCount,
-								previewPortletDataHandlerSections,
+								portletDataHandlerSections,
 								contentSelection
 							)}
 							deletionsDescription={Liferay.Language.get(
@@ -337,12 +353,11 @@ export function NewPublish({
 							)}
 							itemsCount={getSelectedItemsCount(
 								preview?.additionCount,
-								previewPortletDataHandlerSections,
+								portletDataHandlerSections,
 								contentSelection
 							)}
 							lastPublishDate={lastPublishDate}
 							loading={loading}
-							lookAndFeelEnabled={lookAndFeelEnabled}
 							onApplyFilter={handleApplyFilter}
 							pageTreeModalConfiguration={{
 								...pageTreeModalConfiguration,
@@ -354,8 +369,8 @@ export function NewPublish({
 							permissionsLabel={Liferay.Language.get(
 								'publish-permissions'
 							)}
-							previewPortletDataHandlerSections={withSelectedLayoutSetCount(
-								previewPortletDataHandlerSections,
+							portletDataHandlerSections={withSelectedLayoutSetCount(
+								portletDataHandlerSections,
 								contentSelection
 							)}
 							process="publish"
@@ -366,29 +381,14 @@ export function NewPublish({
 						/>
 
 						<Footer
-							actionButton={
-								<ClayButton
-									disabled={
-										formik.isSubmitting || !formik.isValid
-									}
-									type="submit"
-								>
-									<span className="inline-item inline-item-before">
-										<ClayIcon
-											className="mr-1"
-											symbol="change"
-										/>
-									</span>
-
-									{formik.values.scheduleValues.enabled
-										? Liferay.Language.get(
-												'schedule-publication-to-live'
-											)
-										: Liferay.Language.get(
-												'publish-to-live'
-											)}
-								</ClayButton>
+							actionButtonLabel={
+								formik.values.scheduleValues.enabled
+									? Liferay.Language.get(
+											'schedule-publication-to-live'
+										)
+									: Liferay.Language.get('publish-to-live')
 							}
+							actionButtonSymbol="change"
 							backURL={backURL}
 						/>
 					</Form>

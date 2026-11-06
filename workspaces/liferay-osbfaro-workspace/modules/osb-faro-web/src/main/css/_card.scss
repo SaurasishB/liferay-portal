@@ -3,6 +3,7 @@
 	box-shadow: none;
 	display: flex;
 	flex-direction: column;
+	overflow: hidden;
 
 	&:hover {
 		box-shadow: none;
@@ -10,12 +11,6 @@
 
 	&.page-display {
 		min-height: 70vh;
-	}
-
-	&.transparent {
-		background: transparent;
-		border-width: 0;
-		box-shadow: none;
 	}
 
 	.card-footer {

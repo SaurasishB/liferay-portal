@@ -1,0 +1,243 @@
+/**
+ * SPDX-FileCopyrightText: (c) 2026 Liferay, Inc. https://liferay.com
+ * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
+ */
+
+import ClayAlert from '@clayui/alert';
+import ClayButton from '@clayui/button';
+import ClayLayout from '@clayui/layout';
+import ClayLoadingIndicator from '@clayui/loading-indicator';
+import {Form, FormikProvider, useFormik, useFormikContext} from 'formik';
+import {navigate, sub} from 'frontend-js-web';
+import React, {useEffect, useRef} from 'react';
+
+import {FormField} from '../../components/forms/FormField';
+import {FormSection} from '../../components/forms/FormSection';
+import useFocusFirstInvalidField from '../../hooks/useFocusFirstInvalidField';
+import useRequest from '../../hooks/useRequest';
+import DataMaskService from '../../services/DataMaskService';
+import {
+	DataMask,
+	DataMaskFormValues,
+	DataMaskPayload,
+} from '../../types/DataMask';
+import isSystemMask from '../../utils/isSystemMask';
+import {openErrorToast, openSuccessToast} from '../../utils/toasts';
+import {DataMaskRegexTester} from './DataMaskRegexTester';
+
+interface EditDataMaskProps {
+	backURL: string;
+	dataMaskId: number;
+}
+
+export default function EditDataMask({backURL, dataMaskId}: EditDataMaskProps) {
+	const {
+		data: dataMask,
+		error,
+		loading,
+	} = useRequest(
+		DataMaskService.getDataMask,
+		dataMaskId > 0 ? dataMaskId : null
+	);
+
+	useEffect(() => {
+		if (error) {
+			openErrorToast(error);
+
+			navigate(backURL);
+		}
+	}, [backURL, error]);
+
+	if (loading || error) {
+		return (
+			<div className="align-items-center d-flex justify-content-center mt-4">
+				<ClayLoadingIndicator />
+			</div>
+		);
+	}
+
+	return <EditDataMaskView backURL={backURL} dataMask={dataMask} />;
+}
+
+interface EditDataMaskViewProps {
+	backURL: string;
+	dataMask: DataMask | null;
+}
+
+function EditDataMaskView({backURL, dataMask}: EditDataMaskViewProps) {
+	const systemMask = isSystemMask(dataMask);
+
+	const readOnly =
+		systemMask || (!!dataMask?.id && !dataMask.actions?.update);
+
+	const formRef = useRef<HTMLFormElement>(null);
+
+	const formik = useFormik<DataMaskFormValues>({
+		initialValues: {
+			description: dataMask?.description ?? '',
+			detectionRegex: dataMask?.detectionRegex ?? '',
+			name: dataMask?.name ?? '',
+			replacementRegex: dataMask?.replacementRegex ?? '',
+			replacementValue: dataMask?.replacementValue ?? '',
+		},
+		onSubmit: async (values) => {
+			const payload: DataMaskPayload = {
+				description: values.description,
+				detectionRegex: values.detectionRegex,
+				maskType: {key: dataMask?.maskType?.key ?? 'custom'},
+				name: values.name,
+				replacementRegex: values.replacementRegex,
+				replacementValue: values.replacementValue,
+			};
+
+			const {data: saved, error} = dataMask?.id
+				? await DataMaskService.patchDataMask(dataMask.id, payload)
+				: await DataMaskService.postDataMask(payload);
+
+			if (error) {
+				openErrorToast(error);
+
+				return;
+			}
+
+			if (saved) {
+				openSuccessToast(
+					sub(
+						Liferay.Language.get('x-was-saved-successfully'),
+						saved.name
+					)
+				);
+
+				navigate(backURL);
+			}
+		},
+	});
+
+	useFocusFirstInvalidField(formRef, formik);
+
+	return (
+		<FormikProvider value={formik}>
+			<Form className="data-mask-form" noValidate ref={formRef}>
+				{systemMask && (
+					<ClayAlert
+						displayType="info"
+						title={`${Liferay.Language.get('info')}:`}
+					>
+						{Liferay.Language.get(
+							'system-masks-are-read-only-and-cannot-be-edited'
+						)}
+					</ClayAlert>
+				)}
+
+				<MaskInformationSection readOnly={readOnly} />
+
+				<DetectionConfigurationSection readOnly={readOnly} />
+
+				<ReplacementConfigurationSection readOnly={readOnly} />
+
+				<ClayLayout.SheetFooter>
+					{!readOnly && (
+						<ClayButton
+							disabled={formik.isSubmitting}
+							displayType="primary"
+							type="submit"
+						>
+							{Liferay.Language.get('save')}
+						</ClayButton>
+					)}
+
+					<ClayButton
+						displayType="secondary"
+						onClick={() => navigate(backURL)}
+						type="button"
+					>
+						{readOnly
+							? Liferay.Language.get('close')
+							: Liferay.Language.get('cancel')}
+					</ClayButton>
+				</ClayLayout.SheetFooter>
+			</Form>
+		</FormikProvider>
+	);
+}
+
+function MaskInformationSection({readOnly}: {readOnly: boolean}) {
+	return (
+		<FormSection title={Liferay.Language.get('mask-information')}>
+			<FormField
+				disabled={readOnly}
+				id="dataMaskName"
+				label={Liferay.Language.get('name')}
+				name="name"
+				required
+			/>
+
+			<FormField
+				component="textarea"
+				disabled={readOnly}
+				id="dataMaskDescription"
+				label={Liferay.Language.get('description')}
+				name="description"
+			/>
+		</FormSection>
+	);
+}
+
+function DetectionConfigurationSection({readOnly}: {readOnly: boolean}) {
+	return (
+		<FormSection
+			className="mt-4"
+			title={Liferay.Language.get('detection-configuration')}
+		>
+			<FormField
+				disabled={readOnly}
+				helpMessage={Liferay.Language.get(
+					'use-a-standard-regular-expression-named-capture-groups-are-supported'
+				)}
+				id="dataMaskRegexPattern"
+				label={Liferay.Language.get('regex-pattern')}
+				name="detectionRegex"
+				required
+			/>
+		</FormSection>
+	);
+}
+
+function ReplacementConfigurationSection({readOnly}: {readOnly: boolean}) {
+	const {values} = useFormikContext<{
+		detectionRegex: string;
+		replacementRegex: string;
+		replacementValue: string;
+	}>();
+
+	return (
+		<FormSection
+			className="mt-4"
+			title={Liferay.Language.get('replacement-configuration')}
+		>
+			<FormField
+				disabled={readOnly}
+				helpMessage={Liferay.Language.get(
+					'leave-empty-to-replace-the-entire-detected-value-with-the-replacement-token'
+				)}
+				id="dataMaskMatchPattern"
+				label={Liferay.Language.get('match-pattern')}
+				name="replacementRegex"
+			/>
+
+			<FormField
+				disabled={readOnly}
+				id="dataMaskReplacement"
+				label={Liferay.Language.get('replacement')}
+				name="replacementValue"
+				required
+			/>
+
+			<DataMaskRegexTester
+				detectionRegex={values.detectionRegex}
+				replacementRegex={values.replacementRegex}
+				replacementValue={values.replacementValue}
+			/>
+		</FormSection>
+	);
+}

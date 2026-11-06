@@ -80,19 +80,20 @@ public class LayoutModelImpl
 		{"modifiedDate", Types.TIMESTAMP}, {"parentPlid", Types.BIGINT},
 		{"privateLayout", Types.BOOLEAN}, {"layoutId", Types.BIGINT},
 		{"parentLayoutId", Types.BIGINT}, {"classNameId", Types.BIGINT},
-		{"classPK", Types.BIGINT}, {"name", Types.VARCHAR},
-		{"title", Types.CLOB}, {"description", Types.CLOB},
-		{"keywords", Types.VARCHAR}, {"robots", Types.VARCHAR},
-		{"type_", Types.VARCHAR}, {"typeSettings", Types.CLOB},
-		{"hidden_", Types.BOOLEAN}, {"system_", Types.BOOLEAN},
-		{"friendlyURL", Types.VARCHAR}, {"iconImageId", Types.BIGINT},
-		{"themeId", Types.VARCHAR}, {"colorSchemeId", Types.VARCHAR},
-		{"styleBookEntryERC", Types.VARCHAR},
+		{"classPK", Types.BIGINT}, {"launchSetId", Types.BIGINT},
+		{"name", Types.CLOB}, {"title", Types.CLOB},
+		{"description", Types.CLOB}, {"keywords", Types.VARCHAR},
+		{"robots", Types.VARCHAR}, {"type_", Types.VARCHAR},
+		{"typeSettings", Types.CLOB}, {"hidden_", Types.BOOLEAN},
+		{"system_", Types.BOOLEAN}, {"friendlyURL", Types.VARCHAR},
+		{"iconImageId", Types.BIGINT}, {"themeId", Types.VARCHAR},
+		{"colorSchemeId", Types.VARCHAR}, {"styleBookEntryERC", Types.VARCHAR},
 		{"styleBookEntryScopeERC", Types.VARCHAR}, {"css", Types.CLOB},
 		{"priority", Types.INTEGER}, {"faviconFileEntryERC", Types.VARCHAR},
 		{"faviconFileEntryScopeERC", Types.VARCHAR},
-		{"masterLPTEERC", Types.VARCHAR}, {"portletLPTEERC", Types.VARCHAR},
-		{"portletLPTESERC", Types.VARCHAR}, {"portletLPTELE", Types.BOOLEAN},
+		{"masterLPTEERC", Types.VARCHAR}, {"masterLPTESERC", Types.VARCHAR},
+		{"portletLPTEERC", Types.VARCHAR}, {"portletLPTESERC", Types.VARCHAR},
+		{"portletLPTELE", Types.BOOLEAN},
 		{"layoutSetPrototypeLayoutERC", Types.VARCHAR},
 		{"publishDate", Types.TIMESTAMP}, {"lastPublishDate", Types.TIMESTAMP},
 		{"status", Types.INTEGER}, {"statusByUserId", Types.BIGINT},
@@ -120,7 +121,8 @@ public class LayoutModelImpl
 		TABLE_COLUMNS_MAP.put("parentLayoutId", Types.BIGINT);
 		TABLE_COLUMNS_MAP.put("classNameId", Types.BIGINT);
 		TABLE_COLUMNS_MAP.put("classPK", Types.BIGINT);
-		TABLE_COLUMNS_MAP.put("name", Types.VARCHAR);
+		TABLE_COLUMNS_MAP.put("launchSetId", Types.BIGINT);
+		TABLE_COLUMNS_MAP.put("name", Types.CLOB);
 		TABLE_COLUMNS_MAP.put("title", Types.CLOB);
 		TABLE_COLUMNS_MAP.put("description", Types.CLOB);
 		TABLE_COLUMNS_MAP.put("keywords", Types.VARCHAR);
@@ -140,6 +142,7 @@ public class LayoutModelImpl
 		TABLE_COLUMNS_MAP.put("faviconFileEntryERC", Types.VARCHAR);
 		TABLE_COLUMNS_MAP.put("faviconFileEntryScopeERC", Types.VARCHAR);
 		TABLE_COLUMNS_MAP.put("masterLPTEERC", Types.VARCHAR);
+		TABLE_COLUMNS_MAP.put("masterLPTESERC", Types.VARCHAR);
 		TABLE_COLUMNS_MAP.put("portletLPTEERC", Types.VARCHAR);
 		TABLE_COLUMNS_MAP.put("portletLPTESERC", Types.VARCHAR);
 		TABLE_COLUMNS_MAP.put("portletLPTELE", Types.BOOLEAN);
@@ -153,7 +156,7 @@ public class LayoutModelImpl
 	}
 
 	public static final String TABLE_SQL_CREATE =
-		"create table Layout (mvccVersion LONG default 0 not null,ctCollectionId LONG default 0 not null,uuid_ VARCHAR(75) null,externalReferenceCode VARCHAR(75) null,plid LONG not null,groupId LONG,companyId LONG,userId LONG,userName VARCHAR(75) null,createDate DATE null,modifiedDate DATE null,parentPlid LONG,privateLayout BOOLEAN,layoutId LONG,parentLayoutId LONG,classNameId LONG,classPK LONG,name STRING null,title TEXT null,description TEXT null,keywords STRING null,robots STRING null,type_ VARCHAR(75) null,typeSettings TEXT null,hidden_ BOOLEAN,system_ BOOLEAN,friendlyURL VARCHAR(255) null,iconImageId LONG,themeId VARCHAR(75) null,colorSchemeId VARCHAR(75) null,styleBookEntryERC VARCHAR(75) null,styleBookEntryScopeERC VARCHAR(75) null,css TEXT null,priority INTEGER,faviconFileEntryERC VARCHAR(75) null,faviconFileEntryScopeERC VARCHAR(75) null,masterLPTEERC VARCHAR(75) null,portletLPTEERC VARCHAR(75) null,portletLPTESERC VARCHAR(75) null,portletLPTELE BOOLEAN,layoutSetPrototypeLayoutERC VARCHAR(75) null,publishDate DATE null,lastPublishDate DATE null,status INTEGER,statusByUserId LONG,statusByUserName VARCHAR(75) null,statusDate DATE null,primary key (plid, ctCollectionId))";
+		"create table Layout (mvccVersion LONG default 0 not null,ctCollectionId LONG default 0 not null,uuid_ VARCHAR(75) null,externalReferenceCode VARCHAR(75) null,plid LONG not null,groupId LONG,companyId LONG,userId LONG,userName VARCHAR(75) null,createDate DATE null,modifiedDate DATE null,parentPlid LONG,privateLayout BOOLEAN,layoutId LONG,parentLayoutId LONG,classNameId LONG,classPK LONG,launchSetId LONG,name TEXT null,title TEXT null,description TEXT null,keywords STRING null,robots STRING null,type_ VARCHAR(75) null,typeSettings TEXT null,hidden_ BOOLEAN,system_ BOOLEAN,friendlyURL VARCHAR(255) null,iconImageId LONG,themeId VARCHAR(75) null,colorSchemeId VARCHAR(75) null,styleBookEntryERC VARCHAR(75) null,styleBookEntryScopeERC VARCHAR(75) null,css TEXT null,priority INTEGER,faviconFileEntryERC VARCHAR(75) null,faviconFileEntryScopeERC VARCHAR(75) null,masterLPTEERC VARCHAR(75) null,masterLPTESERC VARCHAR(75) null,portletLPTEERC VARCHAR(75) null,portletLPTESERC VARCHAR(75) null,portletLPTELE BOOLEAN,layoutSetPrototypeLayoutERC VARCHAR(75) null,publishDate DATE null,lastPublishDate DATE null,status INTEGER,statusByUserId LONG,statusByUserName VARCHAR(75) null,statusDate DATE null,primary key (plid, ctCollectionId))";
 
 	public static final String TABLE_SQL_DROP = "drop table Layout";
 
@@ -246,13 +249,13 @@ public class LayoutModelImpl
 	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getColumnBitmask(String)}
 	 */
 	@Deprecated
-	public static final long LAYOUTID_COLUMN_BITMASK = 256L;
+	public static final long LAUNCHSETID_COLUMN_BITMASK = 256L;
 
 	/**
 	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getColumnBitmask(String)}
 	 */
 	@Deprecated
-	public static final long LAYOUTSETPROTOTYPELAYOUTERC_COLUMN_BITMASK = 512L;
+	public static final long LAYOUTID_COLUMN_BITMASK = 512L;
 
 	/**
 	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getColumnBitmask(String)}
@@ -271,57 +274,51 @@ public class LayoutModelImpl
 	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getColumnBitmask(String)}
 	 */
 	@Deprecated
-	public static final long PARENTPLID_COLUMN_BITMASK = 4096L;
-
-	/**
-	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getColumnBitmask(String)}
-	 */
-	@Deprecated
 	public static final long PORTLETLAYOUTPAGETEMPLATEENTRYERC_COLUMN_BITMASK =
-		8192L;
+		4096L;
 
 	/**
 	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getColumnBitmask(String)}
 	 */
 	@Deprecated
 	public static final long
-		PORTLETLAYOUTPAGETEMPLATEENTRYSCOPEERC_COLUMN_BITMASK = 16384L;
+		PORTLETLAYOUTPAGETEMPLATEENTRYSCOPEERC_COLUMN_BITMASK = 8192L;
 
 	/**
 	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getColumnBitmask(String)}
 	 */
 	@Deprecated
-	public static final long PRIORITY_COLUMN_BITMASK = 32768L;
+	public static final long PRIORITY_COLUMN_BITMASK = 16384L;
 
 	/**
 	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getColumnBitmask(String)}
 	 */
 	@Deprecated
-	public static final long PRIVATELAYOUT_COLUMN_BITMASK = 65536L;
+	public static final long PRIVATELAYOUT_COLUMN_BITMASK = 32768L;
 
 	/**
 	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getColumnBitmask(String)}
 	 */
 	@Deprecated
-	public static final long STATUS_COLUMN_BITMASK = 131072L;
+	public static final long STATUS_COLUMN_BITMASK = 65536L;
 
 	/**
 	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getColumnBitmask(String)}
 	 */
 	@Deprecated
-	public static final long SYSTEM_COLUMN_BITMASK = 262144L;
+	public static final long SYSTEM_COLUMN_BITMASK = 131072L;
 
 	/**
 	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getColumnBitmask(String)}
 	 */
 	@Deprecated
-	public static final long TYPE_COLUMN_BITMASK = 524288L;
+	public static final long TYPE_COLUMN_BITMASK = 262144L;
 
 	/**
 	 * @deprecated As of Athanasius (7.3.x), replaced by {@link #getColumnBitmask(String)}
 	 */
 	@Deprecated
-	public static final long UUID_COLUMN_BITMASK = 1048576L;
+	public static final long UUID_COLUMN_BITMASK = 524288L;
 
 	public static final long LOCK_EXPIRATION_TIME = GetterUtil.getLong(
 		com.liferay.portal.kernel.util.PropsUtil.get(
@@ -439,6 +436,7 @@ public class LayoutModelImpl
 				"parentLayoutId", Layout::getParentLayoutId);
 			attributeGetterFunctions.put("classNameId", Layout::getClassNameId);
 			attributeGetterFunctions.put("classPK", Layout::getClassPK);
+			attributeGetterFunctions.put("launchSetId", Layout::getLaunchSetId);
 			attributeGetterFunctions.put("name", Layout::getName);
 			attributeGetterFunctions.put("title", Layout::getTitle);
 			attributeGetterFunctions.put("description", Layout::getDescription);
@@ -468,6 +466,9 @@ public class LayoutModelImpl
 			attributeGetterFunctions.put(
 				"masterLayoutPageTemplateEntryERC",
 				Layout::getMasterLayoutPageTemplateEntryERC);
+			attributeGetterFunctions.put(
+				"masterLayoutPageTemplateEntryScopeERC",
+				Layout::getMasterLayoutPageTemplateEntryScopeERC);
 			attributeGetterFunctions.put(
 				"portletLayoutPageTemplateEntryERC",
 				Layout::getPortletLayoutPageTemplateEntryERC);
@@ -547,6 +548,9 @@ public class LayoutModelImpl
 			attributeSetterBiConsumers.put(
 				"classPK", (BiConsumer<Layout, Long>)Layout::setClassPK);
 			attributeSetterBiConsumers.put(
+				"launchSetId",
+				(BiConsumer<Layout, Long>)Layout::setLaunchSetId);
+			attributeSetterBiConsumers.put(
 				"name", (BiConsumer<Layout, String>)Layout::setName);
 			attributeSetterBiConsumers.put(
 				"title", (BiConsumer<Layout, String>)Layout::setTitle);
@@ -598,6 +602,10 @@ public class LayoutModelImpl
 				"masterLayoutPageTemplateEntryERC",
 				(BiConsumer<Layout, String>)
 					Layout::setMasterLayoutPageTemplateEntryERC);
+			attributeSetterBiConsumers.put(
+				"masterLayoutPageTemplateEntryScopeERC",
+				(BiConsumer<Layout, String>)
+					Layout::setMasterLayoutPageTemplateEntryScopeERC);
 			attributeSetterBiConsumers.put(
 				"portletLayoutPageTemplateEntryERC",
 				(BiConsumer<Layout, String>)
@@ -891,16 +899,6 @@ public class LayoutModelImpl
 		_parentPlid = parentPlid;
 	}
 
-	/**
-	 * @deprecated As of Athanasius (7.3.x), replaced by {@link
-	 *             #getColumnOriginalValue(String)}
-	 */
-	@Deprecated
-	public long getOriginalParentPlid() {
-		return GetterUtil.getLong(
-			this.<Long>getColumnOriginalValue("parentPlid"));
-	}
-
 	@JSON
 	@Override
 	public boolean getPrivateLayout() {
@@ -1049,6 +1047,31 @@ public class LayoutModelImpl
 	@Deprecated
 	public long getOriginalClassPK() {
 		return GetterUtil.getLong(this.<Long>getColumnOriginalValue("classPK"));
+	}
+
+	@JSON
+	@Override
+	public long getLaunchSetId() {
+		return _launchSetId;
+	}
+
+	@Override
+	public void setLaunchSetId(long launchSetId) {
+		if (_columnOriginalValues == Collections.EMPTY_MAP) {
+			_setColumnOriginalValues();
+		}
+
+		_launchSetId = launchSetId;
+	}
+
+	/**
+	 * @deprecated As of Athanasius (7.3.x), replaced by {@link
+	 *             #getColumnOriginalValue(String)}
+	 */
+	@Deprecated
+	public long getOriginalLaunchSetId() {
+		return GetterUtil.getLong(
+			this.<Long>getColumnOriginalValue("launchSetId"));
 	}
 
 	@JSON
@@ -1964,6 +1987,29 @@ public class LayoutModelImpl
 
 	@JSON
 	@Override
+	public String getMasterLayoutPageTemplateEntryScopeERC() {
+		if (_masterLayoutPageTemplateEntryScopeERC == null) {
+			return "";
+		}
+		else {
+			return _masterLayoutPageTemplateEntryScopeERC;
+		}
+	}
+
+	@Override
+	public void setMasterLayoutPageTemplateEntryScopeERC(
+		String masterLayoutPageTemplateEntryScopeERC) {
+
+		if (_columnOriginalValues == Collections.EMPTY_MAP) {
+			_setColumnOriginalValues();
+		}
+
+		_masterLayoutPageTemplateEntryScopeERC =
+			masterLayoutPageTemplateEntryScopeERC;
+	}
+
+	@JSON
+	@Override
 	public String getPortletLayoutPageTemplateEntryERC() {
 		if (_portletLayoutPageTemplateEntryERC == null) {
 			return "";
@@ -2069,15 +2115,6 @@ public class LayoutModelImpl
 		}
 
 		_layoutSetPrototypeLayoutERC = layoutSetPrototypeLayoutERC;
-	}
-
-	/**
-	 * @deprecated As of Athanasius (7.3.x), replaced by {@link
-	 *             #getColumnOriginalValue(String)}
-	 */
-	@Deprecated
-	public String getOriginalLayoutSetPrototypeLayoutERC() {
-		return getColumnOriginalValue("layoutSetPrototypeLayoutERC");
 	}
 
 	@JSON
@@ -2510,6 +2547,7 @@ public class LayoutModelImpl
 		layoutImpl.setParentLayoutId(getParentLayoutId());
 		layoutImpl.setClassNameId(getClassNameId());
 		layoutImpl.setClassPK(getClassPK());
+		layoutImpl.setLaunchSetId(getLaunchSetId());
 		layoutImpl.setName(getName());
 		layoutImpl.setTitle(getTitle());
 		layoutImpl.setDescription(getDescription());
@@ -2531,6 +2569,8 @@ public class LayoutModelImpl
 		layoutImpl.setFaviconFileEntryScopeERC(getFaviconFileEntryScopeERC());
 		layoutImpl.setMasterLayoutPageTemplateEntryERC(
 			getMasterLayoutPageTemplateEntryERC());
+		layoutImpl.setMasterLayoutPageTemplateEntryScopeERC(
+			getMasterLayoutPageTemplateEntryScopeERC());
 		layoutImpl.setPortletLayoutPageTemplateEntryERC(
 			getPortletLayoutPageTemplateEntryERC());
 		layoutImpl.setPortletLayoutPageTemplateEntryScopeERC(
@@ -2581,6 +2621,8 @@ public class LayoutModelImpl
 		layoutImpl.setClassNameId(
 			this.<Long>getColumnOriginalValue("classNameId"));
 		layoutImpl.setClassPK(this.<Long>getColumnOriginalValue("classPK"));
+		layoutImpl.setLaunchSetId(
+			this.<Long>getColumnOriginalValue("launchSetId"));
 		layoutImpl.setName(this.<String>getColumnOriginalValue("name"));
 		layoutImpl.setTitle(this.<String>getColumnOriginalValue("title"));
 		layoutImpl.setDescription(
@@ -2612,6 +2654,8 @@ public class LayoutModelImpl
 			this.<String>getColumnOriginalValue("faviconFileEntryScopeERC"));
 		layoutImpl.setMasterLayoutPageTemplateEntryERC(
 			this.<String>getColumnOriginalValue("masterLPTEERC"));
+		layoutImpl.setMasterLayoutPageTemplateEntryScopeERC(
+			this.<String>getColumnOriginalValue("masterLPTESERC"));
 		layoutImpl.setPortletLayoutPageTemplateEntryERC(
 			this.<String>getColumnOriginalValue("portletLPTEERC"));
 		layoutImpl.setPortletLayoutPageTemplateEntryScopeERC(
@@ -2796,6 +2840,8 @@ public class LayoutModelImpl
 
 		layoutCacheModel.classPK = getClassPK();
 
+		layoutCacheModel.launchSetId = getLaunchSetId();
+
 		layoutCacheModel.name = getName();
 
 		String name = layoutCacheModel.name;
@@ -2942,6 +2988,18 @@ public class LayoutModelImpl
 			(masterLayoutPageTemplateEntryERC.length() == 0)) {
 
 			layoutCacheModel.masterLayoutPageTemplateEntryERC = null;
+		}
+
+		layoutCacheModel.masterLayoutPageTemplateEntryScopeERC =
+			getMasterLayoutPageTemplateEntryScopeERC();
+
+		String masterLayoutPageTemplateEntryScopeERC =
+			layoutCacheModel.masterLayoutPageTemplateEntryScopeERC;
+
+		if ((masterLayoutPageTemplateEntryScopeERC != null) &&
+			(masterLayoutPageTemplateEntryScopeERC.length() == 0)) {
+
+			layoutCacheModel.masterLayoutPageTemplateEntryScopeERC = null;
 		}
 
 		layoutCacheModel.portletLayoutPageTemplateEntryERC =
@@ -3100,6 +3158,7 @@ public class LayoutModelImpl
 	private long _parentLayoutId;
 	private long _classNameId;
 	private long _classPK;
+	private long _launchSetId;
 	private String _name;
 	private String _nameCurrentLanguageId;
 	private String _title;
@@ -3125,6 +3184,7 @@ public class LayoutModelImpl
 	private String _faviconFileEntryERC;
 	private String _faviconFileEntryScopeERC;
 	private String _masterLayoutPageTemplateEntryERC;
+	private String _masterLayoutPageTemplateEntryScopeERC;
 	private String _portletLayoutPageTemplateEntryERC;
 	private String _portletLayoutPageTemplateEntryScopeERC;
 	private boolean _portletLayoutPageTemplateEntryLinkEnabled;
@@ -3184,6 +3244,7 @@ public class LayoutModelImpl
 		_columnOriginalValues.put("parentLayoutId", _parentLayoutId);
 		_columnOriginalValues.put("classNameId", _classNameId);
 		_columnOriginalValues.put("classPK", _classPK);
+		_columnOriginalValues.put("launchSetId", _launchSetId);
 		_columnOriginalValues.put("name", _name);
 		_columnOriginalValues.put("title", _title);
 		_columnOriginalValues.put("description", _description);
@@ -3207,6 +3268,8 @@ public class LayoutModelImpl
 			"faviconFileEntryScopeERC", _faviconFileEntryScopeERC);
 		_columnOriginalValues.put(
 			"masterLPTEERC", _masterLayoutPageTemplateEntryERC);
+		_columnOriginalValues.put(
+			"masterLPTESERC", _masterLayoutPageTemplateEntryScopeERC);
 		_columnOriginalValues.put(
 			"portletLPTEERC", _portletLayoutPageTemplateEntryERC);
 		_columnOriginalValues.put(
@@ -3233,6 +3296,8 @@ public class LayoutModelImpl
 		attributeNames.put("hidden_", "hidden");
 		attributeNames.put("system_", "system");
 		attributeNames.put("masterLPTEERC", "masterLayoutPageTemplateEntryERC");
+		attributeNames.put(
+			"masterLPTESERC", "masterLayoutPageTemplateEntryScopeERC");
 		attributeNames.put(
 			"portletLPTEERC", "portletLayoutPageTemplateEntryERC");
 		attributeNames.put(
@@ -3288,65 +3353,69 @@ public class LayoutModelImpl
 
 		columnBitmasks.put("classPK", 65536L);
 
-		columnBitmasks.put("name", 131072L);
+		columnBitmasks.put("launchSetId", 131072L);
 
-		columnBitmasks.put("title", 262144L);
+		columnBitmasks.put("name", 262144L);
 
-		columnBitmasks.put("description", 524288L);
+		columnBitmasks.put("title", 524288L);
 
-		columnBitmasks.put("keywords", 1048576L);
+		columnBitmasks.put("description", 1048576L);
 
-		columnBitmasks.put("robots", 2097152L);
+		columnBitmasks.put("keywords", 2097152L);
 
-		columnBitmasks.put("type_", 4194304L);
+		columnBitmasks.put("robots", 4194304L);
 
-		columnBitmasks.put("typeSettings", 8388608L);
+		columnBitmasks.put("type_", 8388608L);
 
-		columnBitmasks.put("hidden_", 16777216L);
+		columnBitmasks.put("typeSettings", 16777216L);
 
-		columnBitmasks.put("system_", 33554432L);
+		columnBitmasks.put("hidden_", 33554432L);
 
-		columnBitmasks.put("friendlyURL", 67108864L);
+		columnBitmasks.put("system_", 67108864L);
 
-		columnBitmasks.put("iconImageId", 134217728L);
+		columnBitmasks.put("friendlyURL", 134217728L);
 
-		columnBitmasks.put("themeId", 268435456L);
+		columnBitmasks.put("iconImageId", 268435456L);
 
-		columnBitmasks.put("colorSchemeId", 536870912L);
+		columnBitmasks.put("themeId", 536870912L);
 
-		columnBitmasks.put("styleBookEntryERC", 1073741824L);
+		columnBitmasks.put("colorSchemeId", 1073741824L);
 
-		columnBitmasks.put("styleBookEntryScopeERC", 2147483648L);
+		columnBitmasks.put("styleBookEntryERC", 2147483648L);
 
-		columnBitmasks.put("css", 4294967296L);
+		columnBitmasks.put("styleBookEntryScopeERC", 4294967296L);
 
-		columnBitmasks.put("priority", 8589934592L);
+		columnBitmasks.put("css", 8589934592L);
 
-		columnBitmasks.put("faviconFileEntryERC", 17179869184L);
+		columnBitmasks.put("priority", 17179869184L);
 
-		columnBitmasks.put("faviconFileEntryScopeERC", 34359738368L);
+		columnBitmasks.put("faviconFileEntryERC", 34359738368L);
 
-		columnBitmasks.put("masterLPTEERC", 68719476736L);
+		columnBitmasks.put("faviconFileEntryScopeERC", 68719476736L);
 
-		columnBitmasks.put("portletLPTEERC", 137438953472L);
+		columnBitmasks.put("masterLPTEERC", 137438953472L);
 
-		columnBitmasks.put("portletLPTESERC", 274877906944L);
+		columnBitmasks.put("masterLPTESERC", 274877906944L);
 
-		columnBitmasks.put("portletLPTELE", 549755813888L);
+		columnBitmasks.put("portletLPTEERC", 549755813888L);
 
-		columnBitmasks.put("layoutSetPrototypeLayoutERC", 1099511627776L);
+		columnBitmasks.put("portletLPTESERC", 1099511627776L);
 
-		columnBitmasks.put("publishDate", 2199023255552L);
+		columnBitmasks.put("portletLPTELE", 2199023255552L);
 
-		columnBitmasks.put("lastPublishDate", 4398046511104L);
+		columnBitmasks.put("layoutSetPrototypeLayoutERC", 4398046511104L);
 
-		columnBitmasks.put("status", 8796093022208L);
+		columnBitmasks.put("publishDate", 8796093022208L);
 
-		columnBitmasks.put("statusByUserId", 17592186044416L);
+		columnBitmasks.put("lastPublishDate", 17592186044416L);
 
-		columnBitmasks.put("statusByUserName", 35184372088832L);
+		columnBitmasks.put("status", 35184372088832L);
 
-		columnBitmasks.put("statusDate", 70368744177664L);
+		columnBitmasks.put("statusByUserId", 70368744177664L);
+
+		columnBitmasks.put("statusByUserName", 140737488355328L);
+
+		columnBitmasks.put("statusDate", 281474976710656L);
 
 		_columnBitmasks = Collections.unmodifiableMap(columnBitmasks);
 	}
@@ -3355,4 +3424,4 @@ public class LayoutModelImpl
 	private Layout _escapedModel;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:2023542510
+// LIFERAY-SERVICE-BUILDER-HASH:904741131

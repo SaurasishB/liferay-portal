@@ -75,7 +75,9 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.BigDecimalUtil;
+import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.SetUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
@@ -973,6 +975,22 @@ public class DiscountResourceTest extends BaseDiscountResourceTestCase {
 
 		discountResource.putDiscountByExternalReferenceCode(
 			discount.getExternalReferenceCode(), discount);
+		discountResource.putDiscountByExternalReferenceCode(
+			discount.getExternalReferenceCode(), discount);
+
+		discountSku.setUnitOfMeasureKey((String)null);
+
+		try {
+			discountResource.putDiscountByExternalReferenceCode(
+				discount.getExternalReferenceCode(), discount);
+
+			Assert.fail();
+		}
+		catch (Problem.ProblemException problemException) {
+			Problem problem = problemException.getProblem();
+
+			Assert.assertEquals("BAD_REQUEST", problem.getStatus());
+		}
 
 		CommerceDiscount commerceDiscount =
 			_commerceDiscountLocalService.
@@ -982,22 +1000,23 @@ public class DiscountResourceTest extends BaseDiscountResourceTestCase {
 
 		_commerceDiscounts.add(commerceDiscount);
 
-		List<CommerceDiscountRel> commerceDiscountRels =
-			_commerceDiscountRelLocalService.getCommerceDiscountRels(
-				commerceDiscount.getCommerceDiscountId(),
-				CPInstance.class.getName());
-
 		Assert.assertEquals(
-			commerceDiscountRels.toString(), 1, commerceDiscountRels.size());
+			SetUtil.fromArray(
+				cpInstanceUnitOfMeasure1.getKey(),
+				cpInstanceUnitOfMeasure2.getKey()),
+			SetUtil.fromList(
+				ListUtil.toList(
+					_commerceDiscountRelLocalService.getCommerceDiscountRels(
+						commerceDiscount.getCommerceDiscountId(),
+						CPInstance.class.getName()),
+					commerceDiscountRel -> {
+						UnicodeProperties typeSettingsUnicodeProperties =
+							commerceDiscountRel.
+								getTypeSettingsUnicodeProperties();
 
-		CommerceDiscountRel commerceDiscountRel = commerceDiscountRels.get(0);
-
-		UnicodeProperties typeSettingsUnicodeProperties =
-			commerceDiscountRel.getTypeSettingsUnicodeProperties();
-
-		Assert.assertEquals(
-			cpInstanceUnitOfMeasure2.getKey(),
-			typeSettingsUnicodeProperties.getProperty("unitOfMeasureKey"));
+						return typeSettingsUnicodeProperties.getProperty(
+							"unitOfMeasureKey");
+					})));
 	}
 
 	private void _testPostDiscountWithTargetKey() throws Exception {

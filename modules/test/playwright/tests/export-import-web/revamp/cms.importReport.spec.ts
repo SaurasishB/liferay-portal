@@ -30,10 +30,7 @@ test(
 	async ({apiHelpers, exportImportPage, importReportPage, page}) => {
 		test.setTimeout(120000);
 
-		const space = await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: `Space ${getRandomString()}`,
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		const objectDefinition =
 			await apiHelpers.objectAdmin.postRandomObjectDefinition({
@@ -58,7 +55,7 @@ test(
 			space.name
 		);
 
-		await exportImportPage.goToExport(`/asset-library-${space.id}`);
+		await exportImportPage.goToExport(space.friendlyURL);
 
 		const name = `MyExport-${getRandomString()}`;
 
@@ -68,7 +65,7 @@ test(
 
 		await forceRequiredFieldImportError(apiHelpers, objectDefinition.id);
 
-		await exportImportPage.goToImport(`/asset-library-${space.id}`);
+		await exportImportPage.goToImport(space.friendlyURL);
 
 		await exportImportPage.newButton.click();
 

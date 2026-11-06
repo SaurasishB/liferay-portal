@@ -3,27 +3,30 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import ClayLayout from '@clayui/layout';
-import React, {ReactNode} from 'react';
+import React, {useId} from 'react';
 
+import ScopeSection from '../../../components/ScopeSection';
+import SectionHeader from '../../../components/SectionHeader';
 import {
 	FormikFieldCheckbox,
 	FormikFieldContentSelector,
 } from '../../../components/forms/formik';
 import {ImportPreview} from '../../../types/exportImportPreview';
+import {toPortletDataHandlerSections} from '../../../utils/contentSelection';
 import FileSummary from './FileSummary';
+import SiteSelection from './SiteSelection';
 
 export default function DataSelectionStep({
 	commentsAndRatingsEnabled = false,
 	importPreview,
-	lookAndFeelEnabled = false,
-	sitesSelection,
+	siteSelectionEnabled = false,
 }: {
 	commentsAndRatingsEnabled?: boolean;
 	importPreview?: ImportPreview;
-	lookAndFeelEnabled?: boolean;
-	sitesSelection?: ReactNode;
+	siteSelectionEnabled?: boolean;
 }) {
+	const labelId = useId();
+
 	if (!importPreview) {
 		return null;
 	}
@@ -32,40 +35,48 @@ export default function DataSelectionStep({
 		<>
 			<FileSummary importPreview={importPreview} />
 
-			<ClayLayout.Sheet className="mt-4 option-group">
-				<FormikFieldCheckbox
-					description={Liferay.Language.get(
-						'export-import-permissions-help'
+			{siteSelectionEnabled && !!importPreview.sites?.length && (
+				<ScopeSection
+					subtitle={Liferay.Language.get(
+						'import-complete-sites-from-your-file,-including-all-their-pages,-content,-and-settings'
 					)}
-					label={Liferay.Language.get('import-permissions')}
-					name="permissions"
-				/>
+				>
+					<SiteSelection sites={importPreview.sites} />
+				</ScopeSection>
+			)}
 
-				{importPreview.deletionCount > 0 && (
-					<FormikFieldCheckbox
-						description={Liferay.Language.get('deletions-help')}
-						label={Liferay.Language.get(
-							'replicate-selected-deletions'
-						)}
-						name="deletions"
-					/>
+			<SectionHeader
+				id={labelId}
+				subtitle={Liferay.Language.get(
+					'select-the-data-from-your-file-that-you-would-like-to-import'
 				)}
-			</ClayLayout.Sheet>
+				title={Liferay.Language.get('data-selection')}
+			/>
 
-			{sitesSelection && (
-				<ClayLayout.Sheet className="mt-4 option-group">
-					{sitesSelection}
-				</ClayLayout.Sheet>
+			<FormikFieldCheckbox
+				description={Liferay.Language.get(
+					'export-import-permissions-help'
+				)}
+				label={Liferay.Language.get('import-permissions')}
+				name="permissions"
+			/>
+
+			{importPreview.deletionCount > 0 && (
+				<FormikFieldCheckbox
+					description={Liferay.Language.get('deletions-help')}
+					label={Liferay.Language.get('replicate-selected-deletions')}
+					name="deletions"
+				/>
 			)}
 
 			<div data-testid="data-selection-section">
 				<FormikFieldContentSelector
+					aria-labelledby={labelId}
 					commentsAndRatingsEnabled={commentsAndRatingsEnabled}
-					lookAndFeelEnabled={lookAndFeelEnabled}
 					name="contentSelection"
-					previewPortletDataHandlerSections={
-						importPreview.previewPortletDataHandlerSections
-					}
+					portletDataHandlerSections={toPortletDataHandlerSections(
+						importPreview.portletDataHandlers
+					)}
 					process="import"
 				/>
 			</div>

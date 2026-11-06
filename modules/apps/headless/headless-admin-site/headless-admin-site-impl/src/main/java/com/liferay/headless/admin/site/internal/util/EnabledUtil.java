@@ -33,9 +33,11 @@ public class EnabledUtil {
 			company.getCompanyId(), "LPD-57283");
 	}
 
-	public static void checkPageSpecificationVersionEnabled(Company company) {
+	public static void checkDesignLibraryMasterPagesEnabled(Company company) {
+		checkDesignLibrariesEnabled(company);
+
 		FeatureFlagManagerUtil.checkEnabled(
-			company.getCompanyId(), "LPD-10622");
+			company.getCompanyId(), "LPD-81022");
 	}
 
 	public static void checkPrivateLayoutEnabled(Company company) {

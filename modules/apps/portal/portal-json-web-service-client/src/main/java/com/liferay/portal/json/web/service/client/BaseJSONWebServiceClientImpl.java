@@ -255,6 +255,8 @@ public abstract class BaseJSONWebServiceClientImpl
 			RequestConfig.custom(
 			).setCookieSpec(
 				CookieSpecs.STANDARD
+			).setRedirectsEnabled(
+				_redirectsEnabled
 			).build());
 
 		addHeaders(httpGet, headers);
@@ -732,6 +734,10 @@ public abstract class BaseJSONWebServiceClientImpl
 		_proxyWorkstation = proxyWorkstation;
 	}
 
+	public void setRedirectsEnabled(boolean redirectsEnabled) {
+		_redirectsEnabled = redirectsEnabled;
+	}
+
 	@Override
 	public void setTrustSelfSignedCertificates(
 		boolean trustSelfSignedCertificates) {
@@ -1201,9 +1207,11 @@ public abstract class BaseJSONWebServiceClientImpl
 
 			stringBuilder.append(nameValuePair.getValue());
 
-			if (iterator.hasNext()) {
-				stringBuilder.append(",");
+			if (!iterator.hasNext()) {
+				continue;
 			}
+
+			stringBuilder.append(",");
 		}
 
 		stringBuilder.append("}");
@@ -1243,6 +1251,7 @@ public abstract class BaseJSONWebServiceClientImpl
 	private String _proxyLogin;
 	private String _proxyPassword;
 	private String _proxyWorkstation;
+	private boolean _redirectsEnabled = true;
 	private boolean _trustSelfSignedCertificates = true;
 
 }

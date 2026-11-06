@@ -152,9 +152,8 @@ public class CommerceWishListLocalServiceImpl
 		CommerceWishList guestCommerceWishList = null;
 
 		if (Validator.isNotNull(guestUuid)) {
-			guestCommerceWishList =
-				commerceWishListLocalService.
-					fetchCommerceWishListByUuidAndGroupId(guestUuid, groupId);
+			guestCommerceWishList = commerceWishListPersistence.fetchByUUID_G(
+				guestUuid, groupId);
 
 			if ((guestCommerceWishList != null) &&
 				!guestCommerceWishList.isGuestWishList()) {
@@ -314,12 +313,14 @@ public class CommerceWishListLocalServiceImpl
 				}
 			}
 
-			if (!found) {
-				_commerceWishListItemLocalService.addCommerceWishListItem(
-					fromCommerceWishListItem.getUserId(), toCommerceWishListId,
-					fromCommerceWishListItem.getCPInstanceUuid(),
-					fromCommerceWishListItem.getCProductId(), json);
+			if (found) {
+				continue;
 			}
+
+			_commerceWishListItemLocalService.addCommerceWishListItem(
+				fromCommerceWishListItem.getUserId(), toCommerceWishListId,
+				fromCommerceWishListItem.getCPInstanceUuid(),
+				fromCommerceWishListItem.getCProductId(), json);
 		}
 
 		// Commerce wish list
@@ -342,13 +343,15 @@ public class CommerceWishListLocalServiceImpl
 				commerceWishListPersistence.findByG_U_D(groupId, userId, true);
 
 			for (CommerceWishList commerceWishList : commerceWishLists) {
-				if (commerceWishList.getCommerceWishListId() !=
+				if (commerceWishList.getCommerceWishListId() ==
 						commerceWishListId) {
 
-					commerceWishList.setDefaultWishList(false);
-
-					commerceWishListPersistence.update(commerceWishList);
+					continue;
 				}
+
+				commerceWishList.setDefaultWishList(false);
+
+				commerceWishListPersistence.update(commerceWishList);
 			}
 		}
 	}

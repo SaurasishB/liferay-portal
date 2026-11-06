@@ -7,6 +7,7 @@ package com.liferay.headless.cms.resource.v1_0.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.depot.constants.DepotConstants;
+import com.liferay.depot.constants.DepotRolesConstants;
 import com.liferay.depot.model.DepotEntry;
 import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.headless.cms.client.dto.v1_0.AssetStatistics;
@@ -14,20 +15,28 @@ import com.liferay.headless.cms.client.resource.v1_0.AssetStatisticsResource;
 import com.liferay.headless.cms.resource.v1_0.test.util.CMSFreeTierTestUtil;
 import com.liferay.headless.cms.resource.v1_0.test.util.CMSOutboundLinkTestUtil;
 import com.liferay.object.constants.ObjectDefinitionConstants;
+import com.liferay.object.constants.ObjectDefinitionSettingConstants;
 import com.liferay.object.constants.ObjectFieldConstants;
+import com.liferay.object.constants.ObjectFolderConstants;
 import com.liferay.object.field.util.ObjectFieldUtil;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.model.ObjectEntryFolder;
+import com.liferay.object.model.ObjectField;
+import com.liferay.object.model.ObjectFolder;
 import com.liferay.object.service.ObjectDefinitionLocalService;
+import com.liferay.object.service.ObjectDefinitionSettingLocalService;
 import com.liferay.object.service.ObjectEntryFolderLocalService;
 import com.liferay.object.service.ObjectEntryLocalService;
+import com.liferay.object.service.ObjectFieldLocalService;
+import com.liferay.object.service.ObjectFolderLocalService;
 import com.liferay.object.test.util.ObjectDefinitionTestUtil;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.service.RoleLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.service.UserGroupRoleLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.service.WorkflowDefinitionLinkLocalService;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
@@ -43,15 +52,23 @@ import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
+import com.liferay.portal.search.document.DocumentBuilderFactory;
+import com.liferay.portal.search.engine.adapter.SearchEngineAdapter;
+import com.liferay.portal.search.engine.adapter.document.DeleteDocumentRequest;
+import com.liferay.portal.search.engine.adapter.document.IndexDocumentRequest;
+import com.liferay.portal.search.index.IndexNameBuilder;
 import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
+import com.liferay.portal.vulcan.util.LocalizedMapUtil;
 import com.liferay.portal.workflow.kaleo.model.KaleoTaskInstanceToken;
 import com.liferay.portal.workflow.kaleo.service.KaleoTaskInstanceTokenLocalService;
+import com.liferay.portal.workflow.metrics.sla.processor.WorkflowMetricsSLAStatus;
 
 import java.io.Serializable;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -134,7 +151,7 @@ public class AssetStatisticsResourceTest
 		_assertAssetStatistics(groupId, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
 		ObjectDefinition objectDefinition =
-			_getBasicWebContentObjectDefinition();
+			_getCMSBasicWebContentObjectDefinition();
 
 		Date date = new Date();
 
@@ -264,7 +281,12 @@ public class AssetStatisticsResourceTest
 		_depotEntryLocalService.deleteDepotEntry(depotEntry.getDepotEntryId());
 
 		_testGetAssetStatisticsBrokenLinksCount();
+		_testGetAssetStatisticsBrokenLinksCountBySpaceAdministrator();
 		_testGetAssetStatisticsByAssetLibrary();
+		_testGetAssetStatisticsBySpaceAdministrator();
+		_testGetAssetStatisticsMissingRequiredFieldsCount();
+		_testGetAssetStatisticsSLABreachedWorkflowTasksCount();
+		_testGetAssetStatisticsUnlinkedCount();
 		_testGetAssetStatisticsWithFreeTier();
 		_testGetAssetStatisticsWorkflowTasksCounts();
 	}
@@ -272,6 +294,18 @@ public class AssetStatisticsResourceTest
 	@Override
 	@Test
 	public void testGraphQLGetAssetStatistics() throws Exception {
+	}
+
+	private void _addGroupUserWithRole(long groupId, String roleName, User user)
+		throws Exception {
+
+		_userLocalService.addGroupUser(groupId, user.getUserId());
+
+		Role role = _roleLocalService.getRole(
+			testCompany.getCompanyId(), roleName);
+
+		_userGroupRoleLocalService.addUserGroupRoles(
+			user.getUserId(), groupId, new long[] {role.getRoleId()});
 	}
 
 	private ObjectEntry _addObjectEntry(
@@ -322,6 +356,26 @@ public class AssetStatisticsResourceTest
 				LocaleUtil.getDefault(), StringUtil.randomString()
 			).build(),
 			DepotConstants.TYPE_SPACE, serviceContext);
+	}
+
+	private ObjectEntry _addTextObjectEntry(
+			DepotEntry depotEntry, ObjectDefinition objectDefinition)
+		throws Exception {
+
+		ObjectEntryFolder objectEntryFolder =
+			_objectEntryFolderLocalService.
+				getObjectEntryFolderByExternalReferenceCode(
+					"L_CONTENTS", depotEntry.getGroupId(),
+					depotEntry.getCompanyId());
+
+		return _objectEntryLocalService.addObjectEntry(
+			depotEntry.getGroupId(), depotEntry.getUserId(),
+			objectDefinition.getObjectDefinitionId(),
+			objectEntryFolder.getObjectEntryFolderId(), "en_US",
+			HashMapBuilder.<String, Serializable>put(
+				"text", RandomTestUtil.randomString()
+			).build(),
+			ServiceContextTestUtil.getServiceContext());
 	}
 
 	private User _addUserWithRole(String roleName) throws Exception {
@@ -402,6 +456,70 @@ public class AssetStatisticsResourceTest
 		}
 	}
 
+	private void _assertMissingRequiredFieldsCount(
+			Long assetLibraryId, long expectedMissingRequiredFieldsCount)
+		throws Exception {
+
+		for (AssetStatisticsResource assetStatisticsResource :
+				_assetStatisticsResources) {
+
+			AssetStatistics assetStatistics =
+				assetStatisticsResource.getAssetStatistics(assetLibraryId);
+
+			Assert.assertEquals(
+				expectedMissingRequiredFieldsCount,
+				GetterUtil.getLong(
+					assetStatistics.getMissingRequiredFieldsCount()));
+		}
+	}
+
+	private void _assertSLABreachedWorkflowTasksCount(
+			Long assetLibraryId, long expectedSLABreachedWorkflowTasksCount)
+		throws Exception {
+
+		for (AssetStatisticsResource assetStatisticsResource :
+				_assetStatisticsResources) {
+
+			AssetStatistics assetStatistics =
+				assetStatisticsResource.getAssetStatistics(assetLibraryId);
+
+			Assert.assertEquals(
+				expectedSLABreachedWorkflowTasksCount,
+				GetterUtil.getLong(
+					assetStatistics.getSlaBreachedWorkflowTasksCount()));
+		}
+	}
+
+	private void _assertTotalCount(
+			Long assetLibraryId,
+			AssetStatisticsResource assetStatisticsResource,
+			long expectedTotalCount)
+		throws Exception {
+
+		AssetStatistics assetStatistics =
+			assetStatisticsResource.getAssetStatistics(assetLibraryId);
+
+		Assert.assertEquals(
+			expectedTotalCount,
+			GetterUtil.getLong(assetStatistics.getTotalCount()));
+	}
+
+	private void _assertUnlinkedCount(
+			Long assetLibraryId, long expectedUnlinkedCount)
+		throws Exception {
+
+		for (AssetStatisticsResource assetStatisticsResource :
+				_assetStatisticsResources) {
+
+			AssetStatistics assetStatistics =
+				assetStatisticsResource.getAssetStatistics(assetLibraryId);
+
+			Assert.assertEquals(
+				expectedUnlinkedCount,
+				GetterUtil.getLong(assetStatistics.getUnlinkedCount()));
+		}
+	}
+
 	private void _assertWorkflowTasksCounts(
 			Long assetLibraryId, long expectedOverdueWorkflowTasksCount,
 			long expectedWorkflowTasksCount)
@@ -435,12 +553,61 @@ public class AssetStatisticsResourceTest
 		).build();
 	}
 
-	private ObjectDefinition _getBasicWebContentObjectDefinition()
+	private ObjectDefinition _getCMSBasicWebContentObjectDefinition()
 		throws Exception {
 
 		return _objectDefinitionLocalService.
 			getObjectDefinitionByExternalReferenceCode(
 				"L_CMS_BASIC_WEB_CONTENT", TestPropsValues.getCompanyId());
+	}
+
+	private String _getSLATaskResultsIndexName() throws Exception {
+		return _indexNameBuilder.getIndexName(TestPropsValues.getCompanyId()) +
+			"-workflow-metrics-sla-task-results";
+	}
+
+	private void _indexSLATaskResult(
+			boolean breached, ObjectDefinition objectDefinition,
+			ObjectEntry objectEntry, boolean onTime,
+			WorkflowMetricsSLAStatus workflowMetricsSLAStatus)
+		throws Exception {
+
+		List<KaleoTaskInstanceToken> kaleoTaskInstanceTokens =
+			_kaleoTaskInstanceTokenLocalService.getKaleoTaskInstanceTokens(
+				objectDefinition.getClassName(),
+				objectEntry.getObjectEntryId());
+
+		KaleoTaskInstanceToken kaleoTaskInstanceToken =
+			kaleoTaskInstanceTokens.get(0);
+
+		String uid = RandomTestUtil.randomString();
+
+		IndexDocumentRequest indexDocumentRequest = new IndexDocumentRequest(
+			_getSLATaskResultsIndexName(), uid,
+			DocumentBuilderFactory.builder(
+			).setValue(
+				"breached", breached
+			).setLong(
+				"companyId", TestPropsValues.getCompanyId()
+			).setValue(
+				"deleted", false
+			).setValue(
+				"onTime", onTime
+			).setLong(
+				"slaDefinitionId", RandomTestUtil.randomLong()
+			).setString(
+				"status", workflowMetricsSLAStatus.name()
+			).setLong(
+				"taskId", kaleoTaskInstanceToken.getKaleoTaskInstanceTokenId()
+			).setString(
+				"uid", uid
+			).build());
+
+		indexDocumentRequest.setRefresh(true);
+
+		_searchEngineAdapter.execute(indexDocumentRequest);
+
+		_slaTaskResultUids.add(uid);
 	}
 
 	private void _testGetAssetStatisticsBrokenLinksCount() throws Exception {
@@ -451,7 +618,7 @@ public class AssetStatisticsResourceTest
 
 		try {
 			ObjectDefinition objectDefinition =
-				_getBasicWebContentObjectDefinition();
+				_getCMSBasicWebContentObjectDefinition();
 
 			ObjectEntry targetObjectEntry = _addObjectEntry(
 				depotEntry, objectDefinition);
@@ -501,11 +668,91 @@ public class AssetStatisticsResourceTest
 				WorkflowConstants.STATUS_EXPIRED, serviceContext);
 
 			_assertBrokenLinksCount(depotEntry.getGroupId(), 2);
+
+			ObjectEntry trashedObjectEntry = _addObjectEntry(
+				depotEntry, objectDefinition);
+
+			_addObjectEntry(
+				CMSOutboundLinkTestUtil.getImageHTML(
+					trashedObjectEntry.getExternalReferenceCode()),
+				depotEntry, objectDefinition);
+
+			_assertBrokenLinksCount(depotEntry.getGroupId(), 2);
+
+			_objectEntryLocalService.moveObjectEntryToTrash(
+				TestPropsValues.getUserId(), trashedObjectEntry,
+				serviceContext);
+
+			_assertBrokenLinksCount(depotEntry.getGroupId(), 3);
+
+			ObjectEntry deletedObjectEntry = _addObjectEntry(
+				depotEntry, objectDefinition);
+
+			_addObjectEntry(
+				CMSOutboundLinkTestUtil.getImageHTML(
+					deletedObjectEntry.getExternalReferenceCode()),
+				depotEntry, objectDefinition);
+
+			_assertBrokenLinksCount(depotEntry.getGroupId(), 3);
+
+			_objectEntryLocalService.deleteObjectEntry(deletedObjectEntry);
+
+			_assertBrokenLinksCount(depotEntry.getGroupId(), 4);
 		}
 		finally {
 			_depotEntryLocalService.deleteDepotEntry(
 				depotEntry.getDepotEntryId());
 		}
+	}
+
+	private void _testGetAssetStatisticsBrokenLinksCountBySpaceAdministrator()
+		throws Exception {
+
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext();
+
+		DepotEntry administeredDepotEntry = _addSpaceDepotEntry(serviceContext);
+		DepotEntry reviewedDepotEntry = _addSpaceDepotEntry(serviceContext);
+
+		ObjectDefinition objectDefinition =
+			_getCMSBasicWebContentObjectDefinition();
+
+		ObjectEntry reviewedObjectEntry = _addObjectEntry(
+			reviewedDepotEntry, objectDefinition);
+
+		_objectEntryLocalService.updateStatus(
+			TestPropsValues.getUserId(), reviewedObjectEntry.getObjectEntryId(),
+			WorkflowConstants.STATUS_EXPIRED, serviceContext);
+
+		_addObjectEntry(
+			CMSOutboundLinkTestUtil.getImageHTML(
+				reviewedObjectEntry.getExternalReferenceCode()),
+			administeredDepotEntry, objectDefinition);
+
+		User user = UserTestUtil.addUser(
+			testCompany, RandomTestUtil.randomString());
+
+		_addGroupUserWithRole(
+			administeredDepotEntry.getGroupId(),
+			DepotRolesConstants.ASSET_LIBRARY_ADMINISTRATOR, user);
+		_addGroupUserWithRole(
+			reviewedDepotEntry.getGroupId(),
+			DepotRolesConstants.ASSET_LIBRARY_CONTENT_REVIEWER, user);
+
+		AssetStatisticsResource assetStatisticsResource =
+			_buildAssetStatisticsResource(user);
+
+		AssetStatistics assetStatistics =
+			assetStatisticsResource.getAssetStatistics(
+				administeredDepotEntry.getDepotEntryId());
+
+		Assert.assertEquals(
+			1, GetterUtil.getLong(assetStatistics.getBrokenLinksCount()));
+
+		_depotEntryLocalService.deleteDepotEntry(
+			administeredDepotEntry.getDepotEntryId());
+		_depotEntryLocalService.deleteDepotEntry(
+			reviewedDepotEntry.getDepotEntryId());
 	}
 
 	private void _testGetAssetStatisticsByAssetLibrary() throws Exception {
@@ -516,7 +763,7 @@ public class AssetStatisticsResourceTest
 		DepotEntry depotEntry2 = _addSpaceDepotEntry(serviceContext);
 
 		ObjectDefinition objectDefinition =
-			_getBasicWebContentObjectDefinition();
+			_getCMSBasicWebContentObjectDefinition();
 
 		Date date = new Date();
 
@@ -566,6 +813,283 @@ public class AssetStatisticsResourceTest
 		_depotEntryLocalService.deleteDepotEntry(depotEntry2.getDepotEntryId());
 	}
 
+	private void _testGetAssetStatisticsBySpaceAdministrator()
+		throws Exception {
+
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext();
+
+		DepotEntry administeredDepotEntry = _addSpaceDepotEntry(serviceContext);
+		DepotEntry reviewedDepotEntry = _addSpaceDepotEntry(serviceContext);
+
+		User user = UserTestUtil.addUser(
+			testCompany, RandomTestUtil.randomString());
+
+		_addGroupUserWithRole(
+			administeredDepotEntry.getGroupId(),
+			DepotRolesConstants.ASSET_LIBRARY_ADMINISTRATOR, user);
+		_addGroupUserWithRole(
+			reviewedDepotEntry.getGroupId(),
+			DepotRolesConstants.ASSET_LIBRARY_CONTENT_REVIEWER, user);
+
+		ObjectDefinition objectDefinition =
+			_getCMSBasicWebContentObjectDefinition();
+
+		_addObjectEntry(administeredDepotEntry, objectDefinition);
+		_addObjectEntry(reviewedDepotEntry, objectDefinition);
+		_addObjectEntry(reviewedDepotEntry, objectDefinition);
+
+		AssetStatisticsResource assetStatisticsResource =
+			_buildAssetStatisticsResource(user);
+
+		_assertTotalCount(
+			administeredDepotEntry.getDepotEntryId(), assetStatisticsResource,
+			1);
+		_assertTotalCount(null, assetStatisticsResource, 1);
+		_assertTotalCount(
+			reviewedDepotEntry.getDepotEntryId(), assetStatisticsResource, 0);
+
+		_depotEntryLocalService.deleteDepotEntry(
+			administeredDepotEntry.getDepotEntryId());
+		_depotEntryLocalService.deleteDepotEntry(
+			reviewedDepotEntry.getDepotEntryId());
+	}
+
+	private void _testGetAssetStatisticsMissingRequiredFieldsCount()
+		throws Exception {
+
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext();
+
+		DepotEntry depotEntry1 = _addSpaceDepotEntry(serviceContext);
+		DepotEntry depotEntry2 = _addSpaceDepotEntry(serviceContext);
+
+		ObjectFolder objectFolder =
+			_objectFolderLocalService.getObjectFolderByExternalReferenceCode(
+				ObjectFolderConstants.
+					EXTERNAL_REFERENCE_CODE_CONTENT_STRUCTURES,
+				TestPropsValues.getCompanyId());
+
+		ObjectDefinition objectDefinition =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				true, false, true, ObjectDefinitionTestUtil.getRandomName(),
+				Collections.singletonList(
+					ObjectFieldUtil.createObjectField(
+						ObjectFieldConstants.BUSINESS_TYPE_TEXT,
+						ObjectFieldConstants.DB_TYPE_STRING,
+						RandomTestUtil.randomString(), "text")),
+				objectFolder.getObjectFolderId(),
+				ObjectDefinitionConstants.SCOPE_DEPOT,
+				TestPropsValues.getUserId());
+
+		try {
+			_objectDefinitionSettingLocalService.addObjectDefinitionSetting(
+				TestPropsValues.getUserId(),
+				objectDefinition.getObjectDefinitionId(),
+				ObjectDefinitionSettingConstants.NAME_ACCEPT_ALL_GROUPS,
+				"true");
+
+			ObjectEntry objectEntry = _addTextObjectEntry(
+				depotEntry1, objectDefinition);
+
+			_addTextObjectEntry(depotEntry2, objectDefinition);
+
+			_assertMissingRequiredFieldsCount(depotEntry1.getGroupId(), 0);
+
+			ObjectField objectField =
+				_objectFieldLocalService.addCustomObjectField(
+					null, TestPropsValues.getUserId(), 0,
+					objectDefinition.getObjectDefinitionId(),
+					ObjectFieldConstants.BUSINESS_TYPE_INTEGER,
+					ObjectFieldConstants.DB_TYPE_INTEGER, null, false, false,
+					null,
+					LocalizedMapUtil.getLocalizedMap(
+						RandomTestUtil.randomString()),
+					false, "integer", null, null, true, false,
+					Collections.emptyList());
+
+			_assertMissingRequiredFieldsCount(depotEntry1.getGroupId(), 1);
+			_assertMissingRequiredFieldsCount(depotEntry2.getGroupId(), 1);
+
+			ObjectEntryFolder objectEntryFolder =
+				_objectEntryFolderLocalService.
+					getObjectEntryFolderByExternalReferenceCode(
+						"L_CONTENTS", depotEntry1.getGroupId(),
+						depotEntry1.getCompanyId());
+
+			_objectEntryLocalService.updateObjectEntry(
+				TestPropsValues.getUserId(), objectEntry.getObjectEntryId(),
+				objectEntryFolder.getObjectEntryFolderId(),
+				HashMapBuilder.<String, Serializable>put(
+					"integer", 0
+				).put(
+					"text", RandomTestUtil.randomString()
+				).build(),
+				serviceContext);
+
+			_assertMissingRequiredFieldsCount(depotEntry1.getGroupId(), 0);
+			_assertMissingRequiredFieldsCount(depotEntry2.getGroupId(), 1);
+
+			_objectFieldLocalService.deleteObjectField(
+				objectField.getObjectFieldId());
+
+			_assertMissingRequiredFieldsCount(depotEntry2.getGroupId(), 0);
+		}
+		finally {
+			_objectDefinitionLocalService.deleteObjectDefinition(
+				objectDefinition.getObjectDefinitionId());
+
+			_depotEntryLocalService.deleteDepotEntry(
+				depotEntry1.getDepotEntryId());
+			_depotEntryLocalService.deleteDepotEntry(
+				depotEntry2.getDepotEntryId());
+		}
+	}
+
+	private void _testGetAssetStatisticsSLABreachedWorkflowTasksCount()
+		throws Exception {
+
+		// Add object entry with breached workflow task
+
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext();
+
+		DepotEntry depotEntry1 = _addSpaceDepotEntry(serviceContext);
+		DepotEntry depotEntry2 = _addSpaceDepotEntry(serviceContext);
+
+		ObjectDefinition objectDefinition =
+			_getCMSBasicWebContentObjectDefinition();
+
+		for (DepotEntry depotEntry :
+				new DepotEntry[] {depotEntry1, depotEntry2}) {
+
+			_workflowDefinitionLinkLocalService.updateWorkflowDefinitionLink(
+				TestPropsValues.getUserId(), TestPropsValues.getCompanyId(),
+				depotEntry.getGroupId(), objectDefinition.getClassName(), 0, 0,
+				"Single Approver", 1);
+		}
+
+		_indexSLATaskResult(
+			true, objectDefinition,
+			_addObjectEntry(depotEntry1, objectDefinition), false,
+			WorkflowMetricsSLAStatus.RUNNING);
+
+		_assertSLABreachedWorkflowTasksCount(depotEntry1.getGroupId(), 1);
+
+		// Add object entry with breached workflow task on another space
+
+		_indexSLATaskResult(
+			true, objectDefinition,
+			_addObjectEntry(depotEntry2, objectDefinition), false,
+			WorkflowMetricsSLAStatus.RUNNING);
+
+		_assertSLABreachedWorkflowTasksCount(depotEntry1.getGroupId(), 1);
+		_assertSLABreachedWorkflowTasksCount(depotEntry1.getDepotEntryId(), 1);
+
+		_assertSLABreachedWorkflowTasksCount(depotEntry2.getGroupId(), 1);
+		_assertSLABreachedWorkflowTasksCount(depotEntry2.getDepotEntryId(), 1);
+
+		_assertSLABreachedWorkflowTasksCount(null, 2);
+
+		// Add object entry with completed breached workflow task
+
+		ObjectEntry objectEntry1 = _addObjectEntry(
+			depotEntry1, objectDefinition);
+
+		_indexSLATaskResult(
+			true, objectDefinition, objectEntry1, false,
+			WorkflowMetricsSLAStatus.COMPLETED);
+
+		_updateKaleoTaskInstanceToken(
+			true, null, objectDefinition, objectEntry1);
+
+		_assertSLABreachedWorkflowTasksCount(depotEntry1.getGroupId(), 1);
+
+		// Add object entry with workflow task breached by two SLAs
+
+		ObjectEntry objectEntry2 = _addObjectEntry(
+			depotEntry1, objectDefinition);
+
+		_indexSLATaskResult(
+			true, objectDefinition, objectEntry2, false,
+			WorkflowMetricsSLAStatus.RUNNING);
+		_indexSLATaskResult(
+			true, objectDefinition, objectEntry2, false,
+			WorkflowMetricsSLAStatus.RUNNING);
+
+		_assertSLABreachedWorkflowTasksCount(depotEntry1.getGroupId(), 2);
+
+		// Add object entry with workflow task on time
+
+		_indexSLATaskResult(
+			false, objectDefinition,
+			_addObjectEntry(depotEntry1, objectDefinition), true,
+			WorkflowMetricsSLAStatus.RUNNING);
+
+		_assertSLABreachedWorkflowTasksCount(depotEntry1.getGroupId(), 2);
+
+		// Add object entry with workflow task created after the SLA deadline
+
+		_indexSLATaskResult(
+			false, objectDefinition,
+			_addObjectEntry(depotEntry1, objectDefinition), false,
+			WorkflowMetricsSLAStatus.RUNNING);
+
+		_assertSLABreachedWorkflowTasksCount(depotEntry1.getGroupId(), 2);
+
+		// Add object entry with workflow task whose SLA has not started
+
+		_indexSLATaskResult(
+			true, objectDefinition,
+			_addObjectEntry(depotEntry1, objectDefinition), false,
+			WorkflowMetricsSLAStatus.NEW);
+
+		_assertSLABreachedWorkflowTasksCount(depotEntry1.getGroupId(), 2);
+
+		for (String slaTaskResultUid : _slaTaskResultUids) {
+			DeleteDocumentRequest deleteDocumentRequest =
+				new DeleteDocumentRequest(
+					_getSLATaskResultsIndexName(), slaTaskResultUid);
+
+			deleteDocumentRequest.setRefresh(true);
+
+			_searchEngineAdapter.execute(deleteDocumentRequest);
+		}
+
+		_depotEntryLocalService.deleteDepotEntry(depotEntry1.getDepotEntryId());
+		_depotEntryLocalService.deleteDepotEntry(depotEntry2.getDepotEntryId());
+	}
+
+	private void _testGetAssetStatisticsUnlinkedCount() throws Exception {
+		DepotEntry depotEntry = _addSpaceDepotEntry(
+			ServiceContextTestUtil.getServiceContext());
+
+		try {
+			ObjectDefinition objectDefinition =
+				_getCMSBasicWebContentObjectDefinition();
+
+			ObjectEntry objectEntry = _addObjectEntry(
+				depotEntry, objectDefinition);
+
+			_assertUnlinkedCount(depotEntry.getGroupId(), 1);
+
+			_addObjectEntry(depotEntry, objectDefinition);
+
+			_assertUnlinkedCount(depotEntry.getGroupId(), 2);
+
+			_addObjectEntry(
+				CMSOutboundLinkTestUtil.getImageHTML(
+					objectEntry.getExternalReferenceCode()),
+				depotEntry, objectDefinition);
+
+			_assertUnlinkedCount(depotEntry.getGroupId(), 2);
+		}
+		finally {
+			_depotEntryLocalService.deleteDepotEntry(
+				depotEntry.getDepotEntryId());
+		}
+	}
+
 	private void _testGetAssetStatisticsWithFreeTier() throws Exception {
 		try (AutoCloseable autoCloseable = CMSFreeTierTestUtil.withFreeTier()) {
 			assertHttpResponseStatusCode(
@@ -585,7 +1109,7 @@ public class AssetStatisticsResourceTest
 		DepotEntry depotEntry2 = _addSpaceDepotEntry(serviceContext);
 
 		ObjectDefinition objectDefinition =
-			_getBasicWebContentObjectDefinition();
+			_getCMSBasicWebContentObjectDefinition();
 
 		for (DepotEntry depotEntry :
 				new DepotEntry[] {depotEntry1, depotEntry2}) {
@@ -602,7 +1126,7 @@ public class AssetStatisticsResourceTest
 			true, new Date(date.getTime() - Time.DAY), objectDefinition,
 			_addObjectEntry(depotEntry1, objectDefinition));
 
-		_assertWorkflowTasksCounts(depotEntry1.getGroupId(), 0, 1);
+		_assertWorkflowTasksCounts(depotEntry1.getGroupId(), 0, 0);
 
 		// Add object entry with overdue workflow task
 
@@ -610,7 +1134,7 @@ public class AssetStatisticsResourceTest
 			false, new Date(date.getTime() - Time.DAY), objectDefinition,
 			_addObjectEntry(depotEntry1, objectDefinition));
 
-		_assertWorkflowTasksCounts(depotEntry1.getGroupId(), 1, 2);
+		_assertWorkflowTasksCounts(depotEntry1.getGroupId(), 1, 1);
 
 		// Add object entry with overdue workflow task on another space
 
@@ -618,8 +1142,8 @@ public class AssetStatisticsResourceTest
 			false, new Date(date.getTime() - Time.DAY), objectDefinition,
 			_addObjectEntry(depotEntry2, objectDefinition));
 
-		_assertWorkflowTasksCounts(depotEntry1.getGroupId(), 1, 2);
-		_assertWorkflowTasksCounts(depotEntry1.getDepotEntryId(), 1, 2);
+		_assertWorkflowTasksCounts(depotEntry1.getGroupId(), 1, 1);
+		_assertWorkflowTasksCounts(depotEntry1.getDepotEntryId(), 1, 1);
 
 		_assertWorkflowTasksCounts(depotEntry2.getGroupId(), 1, 1);
 		_assertWorkflowTasksCounts(depotEntry2.getDepotEntryId(), 1, 1);
@@ -630,13 +1154,13 @@ public class AssetStatisticsResourceTest
 			false, new Date(date.getTime() + Time.DAY), objectDefinition,
 			_addObjectEntry(depotEntry1, objectDefinition));
 
-		_assertWorkflowTasksCounts(depotEntry1.getGroupId(), 1, 3);
+		_assertWorkflowTasksCounts(depotEntry1.getGroupId(), 1, 2);
 
 		// Add object entry with workflow task without due date
 
 		_addObjectEntry(depotEntry1, objectDefinition);
 
-		_assertWorkflowTasksCounts(depotEntry1.getGroupId(), 1, 4);
+		_assertWorkflowTasksCounts(depotEntry1.getGroupId(), 1, 3);
 
 		_depotEntryLocalService.deleteDepotEntry(depotEntry1.getDepotEntryId());
 		_depotEntryLocalService.deleteDepotEntry(depotEntry2.getDepotEntryId());
@@ -670,11 +1194,18 @@ public class AssetStatisticsResourceTest
 	private DepotEntryLocalService _depotEntryLocalService;
 
 	@Inject
+	private IndexNameBuilder _indexNameBuilder;
+
+	@Inject
 	private KaleoTaskInstanceTokenLocalService
 		_kaleoTaskInstanceTokenLocalService;
 
 	@Inject
 	private ObjectDefinitionLocalService _objectDefinitionLocalService;
+
+	@Inject
+	private ObjectDefinitionSettingLocalService
+		_objectDefinitionSettingLocalService;
 
 	@Inject
 	private ObjectEntryFolderLocalService _objectEntryFolderLocalService;
@@ -683,7 +1214,21 @@ public class AssetStatisticsResourceTest
 	private ObjectEntryLocalService _objectEntryLocalService;
 
 	@Inject
+	private ObjectFieldLocalService _objectFieldLocalService;
+
+	@Inject
+	private ObjectFolderLocalService _objectFolderLocalService;
+
+	@Inject
 	private RoleLocalService _roleLocalService;
+
+	@Inject
+	private SearchEngineAdapter _searchEngineAdapter;
+
+	private final List<String> _slaTaskResultUids = new ArrayList<>();
+
+	@Inject
+	private UserGroupRoleLocalService _userGroupRoleLocalService;
 
 	@Inject
 	private UserLocalService _userLocalService;

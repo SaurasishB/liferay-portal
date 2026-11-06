@@ -480,7 +480,9 @@ test(
 			projectGroupId: project.groupId,
 		});
 
-		await page.getByLabel('Display Name').fill(displayName);
+		await page
+			.getByRole('textbox', {name: 'Display Name'})
+			.fill(displayName);
 
 		await saveCustomEventEditor(page);
 
@@ -501,11 +503,13 @@ test(
 			projectGroupId: project.groupId,
 		});
 
-		await page.getByLabel('Display Name').fill('a'.repeat(256));
+		await page
+			.getByRole('textbox', {name: 'Display Name'})
+			.fill('a'.repeat(256));
 
 		// Blur so Formik runs validation and surfaces the field error
 
-		await page.getByLabel('Display Name').blur();
+		await page.getByRole('textbox', {name: 'Display Name'}).blur();
 
 		await expect(page.getByText('Exceeds maximum length.')).toBeVisible();
 	}
@@ -572,7 +576,9 @@ test(
 
 			await searchAttribute(attributeName);
 
-			await expect(page.getByText(dataType)).toBeVisible();
+			await expect(
+				page.getByRole('row', {name: attributeName}).getByText(dataType)
+			).toBeVisible();
 		}
 	}
 );
@@ -582,14 +588,30 @@ test(
 	{tag: '@LRAC-10011'},
 	async ({analyticsChannel: channel, apiHelpers, page, project}) => {
 		const attributes = [
-			{dataType: 'STRING', name: 'category', value: 'wetsuit'},
-			{dataType: 'NUMBER', name: 'price', value: '259.95'},
+			{
+				dataType: 'STRING',
+				dataTypeLabel: 'String',
+				name: 'category',
+				value: 'wetsuit',
+			},
+			{
+				dataType: 'NUMBER',
+				dataTypeLabel: 'Number',
+				name: 'price',
+				value: '259.95',
+			},
 			{
 				dataType: 'DATE',
+				dataTypeLabel: 'Date',
 				name: 'birthdate',
 				value: '2021-11-25T14:36:30.685Z',
 			},
-			{dataType: 'BOOLEAN', name: 'like', value: 'true'},
+			{
+				dataType: 'BOOLEAN',
+				dataTypeLabel: 'Boolean',
+				name: 'like',
+				value: 'true',
+			},
 		];
 
 		await createCustomEvent({
@@ -621,12 +643,14 @@ test(
 
 		// Each attribute shows its ingested sample value and its data type
 
-		for (const {dataType, name, value} of attributes) {
+		for (const {dataTypeLabel, name, value} of attributes) {
 			await openAttribute(name);
 
 			await expect(page.getByText(value, {exact: true})).toBeVisible();
 
-			await expect(page.getByText(dataType, {exact: true})).toBeVisible();
+			await expect(
+				page.getByText(dataTypeLabel, {exact: true})
+			).toBeVisible();
 		}
 
 		// A display name longer than 255 characters is rejected
@@ -635,9 +659,11 @@ test(
 
 		await page.getByRole('button', {name: 'Edit'}).click();
 
-		await page.getByLabel('Display Name').fill('a'.repeat(256));
+		await page
+			.getByRole('textbox', {name: 'Display Name'})
+			.fill('a'.repeat(256));
 
-		await page.getByLabel('Display Name').blur();
+		await page.getByRole('textbox', {name: 'Display Name'}).blur();
 
 		await expect(page.getByText('Exceeds maximum length.')).toBeVisible();
 	}
@@ -675,9 +701,7 @@ test(
 
 		await page.keyboard.press('Enter');
 
-		await expect(
-			page.getByText('There are no results found.')
-		).toBeVisible();
+		await expect(page.getByText('No results were found.')).toBeVisible();
 	}
 );
 
@@ -751,7 +775,9 @@ test(
 
 			await openGlobalAttribute();
 
-			await page.getByLabel('Display Name').fill(displayName);
+			await page
+				.getByRole('textbox', {name: 'Display Name'})
+				.fill(displayName);
 
 			await saveAttributeEditor(page);
 
@@ -769,7 +795,9 @@ test(
 
 			await openGlobalAttribute();
 
-			await page.getByLabel('Display Name').fill(globalAttributeName);
+			await page
+				.getByRole('textbox', {name: 'Display Name'})
+				.fill(globalAttributeName);
 
 			await page.getByLabel('Description').fill('');
 
@@ -832,7 +860,9 @@ test(
 
 		// Renaming the display name to one that already exists is rejected
 
-		await page.getByLabel('Display Name').fill(existingEventName);
+		await page
+			.getByRole('textbox', {name: 'Display Name'})
+			.fill(existingEventName);
 
 		const [response] = await Promise.all([
 			page.waitForResponse((response) =>

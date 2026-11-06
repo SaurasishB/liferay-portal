@@ -1,8 +1,9 @@
 import * as API from 'shared/api';
 import Card from 'shared/components/Card';
-import ClayIcon from '@clayui/icon';
+import ClayIcon from 'shared/components/Icon';
 import ClayLink from '@clayui/link';
 import React from 'react';
+import {isNil} from 'lodash';
 import {mapGrowthHistory} from 'shared/hoc/mappers/segment';
 import {ReportContainer} from 'shared/components/download-report/DownloadPDFReport';
 import {Routes, toRoute} from 'shared/util/router';
@@ -33,6 +34,7 @@ const SegmentProfileCard: React.FC<ISegmentProfileCardProps> = ({
 		anonymousIndividualCount,
 		includeAnonymousUsers,
 		knownIndividualCount,
+		lastMembershipUpdateDate,
 	},
 }) => (
 	<Card
@@ -58,6 +60,7 @@ const SegmentProfileCard: React.FC<ISegmentProfileCardProps> = ({
 					anonymousCount: anonymousIndividualCount,
 					knownCount: knownIndividualCount,
 				}}
+				membershipProcessing={isNil(lastMembershipUpdateDate)}
 			/>
 		</Card.Body>
 

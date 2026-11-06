@@ -21,6 +21,7 @@ import com.liferay.layout.test.util.ContentLayoutTestUtil;
 import com.liferay.layout.test.util.LayoutTestUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutTypePortlet;
@@ -42,6 +43,9 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.transaction.Propagation;
+import com.liferay.portal.kernel.transaction.TransactionConfig;
+import com.liferay.portal.kernel.transaction.TransactionInvokerUtil;
 import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.portal.kernel.util.JavaConstants;
 import com.liferay.portal.kernel.util.Portal;
@@ -108,11 +112,12 @@ public class FragmentEntryLinkModelListenerTest {
 	}
 
 	@Test
-	@TestInfo({"LPD-97145", "LPD-101550"})
+	@TestInfo({"LPD-97145", "LPD-101550", "LPD-113826"})
 	public void testAddFragmentEntryLink() throws Exception {
 		_testAddFragmentEntryLinkDoesNotEscapeLinkFieldHTMLContent();
 		_testAddFragmentEntryLinkEscapeTextField();
 		_testAddFragmentEntryLinkPreservesInlineSVGInLinkField();
+		_testAddFragmentEntryLinkPreservesPhoneLinksInRichTextField();
 		_testAddFragmentEntryLinkPreservesSpriteReferenceInLinkField();
 		_testAddFragmentEntryLinkPreservesSVGAccessibilityAttributes();
 		_testAddFragmentEntryLinkSanitizesLinkFieldScriptContent();
@@ -125,12 +130,14 @@ public class FragmentEntryLinkModelListenerTest {
 	}
 
 	@Test
-	@TestInfo("LPD-97145")
+	@TestInfo({"LPD-97145", "LPD-113826"})
 	public void testUpdateFragmentEntryLink() throws Exception {
 		_testUpdateFragmentEntryLinkEscapeTextField();
+		_testUpdateFragmentEntryLinkPreservesPhoneLinksInRichTextField();
 		_testUpdateFragmentEntryLinkWithHTMLField();
 		_testUpdateFragmentEntryLinkWithMappedTextField();
 		_testUpdateFragmentEntryLinkWithRichTextField();
+		_testUpdateFragmentEntryLinkWithRollback();
 		_testUpdateFragmentEntryLinkWithTextField();
 	}
 
@@ -268,6 +275,32 @@ public class FragmentEntryLinkModelListenerTest {
 			editableValues,
 			editableValues.contains("M12 2L2 7l10 5 10-5-10-5z"));
 		Assert.assertTrue(editableValues, editableValues.contains("Read More"));
+	}
+
+	private void _testAddFragmentEntryLinkPreservesPhoneLinksInRichTextField()
+		throws Exception {
+
+		String text = RandomTestUtil.randomString();
+
+		FragmentEntryLink fragmentEntryLink = _addFragmentEntryLink(
+			_fragmentCollectionContributorRegistry.getFragmentEntry(
+				"BASIC_COMPONENT-paragraph"),
+			_createEditableValues(
+				"element-text",
+				StringBundler.concat(
+					"<p><a href=\"tel:1123445566\">", text,
+					"</a><a href=\"sms:+34600000000\">", text,
+					"</a><a href=\"javascript:alert(1)\">", text, "</a></p>")),
+			_serviceContext);
+
+		Assert.assertEquals(
+			_createEditableValues(
+				"element-text",
+				StringBundler.concat(
+					"<p><a href=\"tel:1123445566\">", text,
+					"</a><a href=\"sms:+34600000000\">", text, "</a><a>", text,
+					"</a></p>")),
+			fragmentEntryLink.getEditableValues());
 	}
 
 	private void _testAddFragmentEntryLinkPreservesSVGAccessibilityAttributes()
@@ -552,6 +585,30 @@ public class FragmentEntryLinkModelListenerTest {
 			editableValues, fragmentEntryLink.getEditableValues());
 	}
 
+	private void _testUpdateFragmentEntryLinkPreservesPhoneLinksInRichTextField()
+		throws Exception {
+
+		String text = RandomTestUtil.randomString();
+
+		FragmentEntryLink fragmentEntryLink = _updateFragmentEntryLink(
+			"BASIC_COMPONENT-paragraph",
+			_createEditableValues(
+				"element-text",
+				StringBundler.concat(
+					"<p><a href=\"tel:1123445566\">", text,
+					"</a><a href=\"sms:+34600000000\">", text,
+					"</a><a href=\"javascript:alert(1)\">", text, "</a></p>")));
+
+		Assert.assertEquals(
+			_createEditableValues(
+				"element-text",
+				StringBundler.concat(
+					"<p><a href=\"tel:1123445566\">", text,
+					"</a><a href=\"sms:+34600000000\">", text, "</a><a>", text,
+					"</a></p>")),
+			fragmentEntryLink.getEditableValues());
+	}
+
 	private void _testUpdateFragmentEntryLinkWithHTMLField() throws Exception {
 		String editableValues = _createEditableValues(
 			"element-html", "<script>alert('xss');</script>HTML Example");
@@ -641,6 +698,50 @@ public class FragmentEntryLinkModelListenerTest {
 		}
 	}
 
+	private void _testUpdateFragmentEntryLinkWithRollback() throws Exception {
+		FragmentEntryLink fragmentEntryLink = _addFragmentEntryLink(
+			_fragmentCollectionContributorRegistry.getFragmentEntry(
+				"BASIC_COMPONENT-heading"),
+			_createEditableValues("element-text", "Heading Example"),
+			_serviceContext);
+
+		long fragmentEntryLinkId = fragmentEntryLink.getFragmentEntryLinkId();
+
+		_fragmentEntryLinkLocalService.getFragmentEntryLink(
+			fragmentEntryLinkId);
+
+		_pushServiceContext(fragmentEntryLink, _draftLayout);
+
+		try {
+			TransactionInvokerUtil.invoke(
+				_transactionConfig,
+				() -> {
+					_fragmentEntryLinkLocalService.updateFragmentEntryLink(
+						TestPropsValues.getUserId(), fragmentEntryLinkId,
+						_createEditableValues(
+							"element-text", RandomTestUtil.randomString()),
+						false);
+
+					throw new PortalException("Roll back");
+				});
+
+			Assert.fail();
+		}
+		catch (Throwable throwable) {
+			Assert.assertEquals("Roll back", throwable.getMessage());
+		}
+		finally {
+			ServiceContextThreadLocal.popServiceContext();
+		}
+
+		fragmentEntryLink = _fragmentEntryLinkLocalService.getFragmentEntryLink(
+			fragmentEntryLinkId);
+
+		Assert.assertEquals(
+			fragmentEntryLink.getEditableValues(),
+			String.valueOf(fragmentEntryLink.getEditableValuesJSONObject()));
+	}
+
 	private void _testUpdateFragmentEntryLinkWithTextField() throws Exception {
 		String editableValue = "<script>alert('xss');</script>Example";
 
@@ -667,6 +768,10 @@ public class FragmentEntryLinkModelListenerTest {
 			TestPropsValues.getUserId(),
 			fragmentEntryLink.getFragmentEntryLinkId(), editableValues, true);
 	}
+
+	private static final TransactionConfig _transactionConfig =
+		TransactionConfig.Factory.create(
+			Propagation.REQUIRES_NEW, new Class<?>[] {Exception.class});
 
 	@Inject
 	private CompanyLocalService _companyLocalService;

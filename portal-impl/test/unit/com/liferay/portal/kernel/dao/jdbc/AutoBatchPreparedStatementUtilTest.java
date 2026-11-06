@@ -9,15 +9,14 @@ import com.liferay.petra.concurrent.DefaultNoticeableFuture;
 import com.liferay.petra.concurrent.NoticeableThreadPoolExecutor;
 import com.liferay.petra.concurrent.ThreadPoolHandlerAdapter;
 import com.liferay.petra.executor.PortalExecutorManager;
-import com.liferay.petra.reflect.ReflectionUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.module.util.SystemBundleUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
-import com.liferay.portal.kernel.test.SwappableSecurityManager;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.CodeCoverageAssertor;
 import com.liferay.portal.kernel.test.rule.NewEnv;
 import com.liferay.portal.kernel.util.MapUtil;
+import com.liferay.portal.kernel.util.PrimitiveIntList;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.ProxyUtil;
@@ -45,7 +44,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -89,35 +87,31 @@ public class AutoBatchPreparedStatementUtilTest {
 	}
 
 	@Test
-	public void testCINITFailure() throws ClassNotFoundException {
-		PropsUtil.set(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "0");
+	public void testAutoBatchWithResults() throws Exception {
+		PropsUtil.set(PropsKeys.HIBERNATE_JDBC_BATCH_SIZE, "2");
 
-		final NoSuchMethodException noSuchMethodException =
-			new NoSuchMethodException();
-		final AtomicInteger counter = new AtomicInteger();
+		_testAutoBatchWithResults(false);
+		_testAutoBatchWithResults(true);
+	}
 
-		try (SwappableSecurityManager swappableSecurityManager =
-				new SwappableSecurityManager() {
-
-					@Override
-					public void checkPackageAccess(String pkg) {
-						if (pkg.equals("java.sql") &&
-							(counter.getAndIncrement() == 1)) {
-
-							ReflectionUtil.throwException(
-								noSuchMethodException);
-						}
-					}
-
-				}) {
-
-			swappableSecurityManager.install();
-
-			Class.forName(AutoBatchPreparedStatementUtil.class.getName());
-		}
-		catch (ExceptionInInitializerError eiie) {
-			Assert.assertSame(noSuchMethodException, eiie.getCause());
-		}
+	@Test
+	public void testClassInitialization() throws Exception {
+		Assert.assertEquals(
+			PreparedStatement.class.getMethod("addBatch"),
+			ReflectionTestUtil.getFieldValue(
+				AutoBatchPreparedStatementUtil.class, "_addBatchMethod"));
+		Assert.assertEquals(
+			PreparedStatement.class.getMethod("close"),
+			ReflectionTestUtil.getFieldValue(
+				AutoBatchPreparedStatementUtil.class, "_closeMethod"));
+		Assert.assertEquals(
+			PreparedStatement.class.getMethod("executeBatch"),
+			ReflectionTestUtil.getFieldValue(
+				AutoBatchPreparedStatementUtil.class, "_executeBatchMethod"));
+		Assert.assertEquals(
+			PreparedStatement.class.getMethod("getConnection"),
+			ReflectionTestUtil.getFieldValue(
+				AutoBatchPreparedStatementUtil.class, "_getConnectionMethod"));
 	}
 
 	@Test
@@ -367,8 +361,7 @@ public class AutoBatchPreparedStatementUtilTest {
 
 			// Calling executeBatch does nothing
 
-			Assert.assertArrayEquals(
-				new int[0], preparedStatement.executeBatch());
+			Assert.assertNull(preparedStatement.executeBatch());
 			Assert.assertTrue(methods.toString(), methods.isEmpty());
 
 			// Other methods like execute pass through
@@ -428,8 +421,7 @@ public class AutoBatchPreparedStatementUtilTest {
 
 			// Calling executeBatch does nothing
 
-			Assert.assertArrayEquals(
-				new int[0], preparedStatement.executeBatch());
+			Assert.assertNull(preparedStatement.executeBatch());
 			Assert.assertTrue(methods.toString(), methods.isEmpty());
 
 			// Other methods like execute pass through
@@ -471,8 +463,7 @@ public class AutoBatchPreparedStatementUtilTest {
 
 			// Protection for executing empty batch
 
-			Assert.assertArrayEquals(
-				new int[0], preparedStatement.executeBatch());
+			Assert.assertNull(preparedStatement.executeBatch());
 			Assert.assertTrue(methods.toString(), methods.isEmpty());
 			Assert.assertEquals(
 				Integer.valueOf(0),
@@ -576,8 +567,7 @@ public class AutoBatchPreparedStatementUtilTest {
 
 			// Protection for executing empty batch
 
-			Assert.assertArrayEquals(
-				new int[0], preparedStatement.executeBatch());
+			Assert.assertNull(preparedStatement.executeBatch());
 			Assert.assertTrue(methods.toString(), methods.isEmpty());
 			Assert.assertEquals(
 				Integer.valueOf(0),
@@ -652,6 +642,37 @@ public class AutoBatchPreparedStatementUtilTest {
 			Assert.assertEquals(
 				Integer.valueOf(0),
 				ReflectionTestUtil.getFieldValue(invocationHandler, "_count"));
+		}
+	}
+
+	private void _testAutoBatchWithResults(boolean supportBatchUpdates)
+		throws Exception {
+
+		try (PreparedStatement preparedStatement =
+				AutoBatchPreparedStatementUtil.autoBatchWithResults(
+					(Connection)ProxyUtil.newProxyInstance(
+						ClassLoader.getSystemClassLoader(),
+						new Class<?>[] {Connection.class},
+						new ConnectionInvocationHandler(
+							new PreparedStatementInvocationHandler(
+								supportBatchUpdates))),
+					StringPool.BLANK)) {
+
+			Assert.assertArrayEquals(
+				new int[0], preparedStatement.executeBatch());
+
+			preparedStatement.addBatch();
+			preparedStatement.addBatch();
+			preparedStatement.addBatch();
+
+			Assert.assertArrayEquals(
+				new int[] {1, 2, 3}, preparedStatement.executeBatch());
+
+			preparedStatement.addBatch();
+			preparedStatement.addBatch();
+
+			Assert.assertArrayEquals(
+				new int[] {4, 5}, preparedStatement.executeBatch());
 		}
 	}
 
@@ -736,9 +757,13 @@ public class AutoBatchPreparedStatementUtilTest {
 
 			_methods.add(method);
 
-			if (method.equals(PreparedStatement.class.getMethod("addBatch")) ||
-				method.equals(PreparedStatement.class.getMethod("close"))) {
+			if (method.equals(PreparedStatement.class.getMethod("addBatch"))) {
+				_primitiveIntList.add(++_rowCount);
 
+				return null;
+			}
+
+			if (method.equals(PreparedStatement.class.getMethod("close"))) {
 				return null;
 			}
 
@@ -753,7 +778,11 @@ public class AutoBatchPreparedStatementUtilTest {
 					throw _runtimeException;
 				}
 
-				return new int[0];
+				int[] rowCounts = _primitiveIntList.getArray();
+
+				_primitiveIntList = new PrimitiveIntList();
+
+				return rowCounts;
 			}
 
 			if (method.equals(
@@ -763,7 +792,7 @@ public class AutoBatchPreparedStatementUtilTest {
 					throw _runtimeException;
 				}
 
-				return 0;
+				return ++_rowCount;
 			}
 
 			throw new UnsupportedOperationException();
@@ -780,6 +809,8 @@ public class AutoBatchPreparedStatementUtilTest {
 		}
 
 		private final List<Method> _methods = new ArrayList<>();
+		private PrimitiveIntList _primitiveIntList = new PrimitiveIntList();
+		private int _rowCount;
 		private RuntimeException _runtimeException;
 		private final boolean _supportBatchUpdates;
 

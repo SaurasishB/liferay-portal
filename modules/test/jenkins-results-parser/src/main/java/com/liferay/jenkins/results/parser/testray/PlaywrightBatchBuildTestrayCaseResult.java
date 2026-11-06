@@ -28,9 +28,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.apache.http.client.utils.URIBuilder;
 
 /**
  * @author Kenji Heigel
@@ -220,32 +221,25 @@ public class PlaywrightBatchBuildTestrayCaseResult
 			return null;
 		}
 
-		TestClassReport playwrightTestClassReport = null;
-
 		PlaywrightJUnitTestClass playwrightJUnitTestClass = getTestClass();
 
-		for (TestClassReport testClassReport :
-				downstreamBuildReport.getTestClassReports()) {
-
-			if (Objects.equals(
-					playwrightJUnitTestClass.getSpecFilePath(),
-					testClassReport.getTestClassName())) {
-
-				playwrightTestClassReport = testClassReport;
-			}
-		}
+		TestClassReport playwrightTestClassReport =
+			downstreamBuildReport.getTestClassReport(
+				playwrightJUnitTestClass.getSpecFilePath());
 
 		if (playwrightTestClassReport == null) {
 			return null;
 		}
 
-		for (TestReport testReport :
-				playwrightTestClassReport.getTestReports()) {
+		String testName = playwrightTestClassMethod.getName();
+		String testNamePrefix =
+			playwrightTestClassReport.getTestClassName() + " > ";
 
-			String fullTestName = JenkinsResultsParserUtil.combine(
-				testReport.getTestClassName(), " > ", testReport.getTestName());
+		if (testName.startsWith(testNamePrefix)) {
+			TestReport testReport = playwrightTestClassReport.getTestReport(
+				testName.substring(testNamePrefix.length()));
 
-			if (fullTestName.equals(playwrightTestClassMethod.getName())) {
+			if (testReport != null) {
 				return testReport;
 			}
 		}
@@ -299,8 +293,12 @@ public class PlaywrightBatchBuildTestrayCaseResult
 		}
 
 		try {
-			URL url = new URL(
-				"https://playwright.liferay.com/?trace=" + traceZipURLPath);
+			URIBuilder uriBuilder = JenkinsResultsParserUtil.newURIBuilder(
+				"https://playwright.liferay.com/");
+
+			uriBuilder.addParameter("trace", traceZipURLPath);
+
+			URL url = new URL(uriBuilder.toString());
 
 			return new DefaultTestrayAttachment(
 				this, "Trace Viewer", traceZipURLPath, url);

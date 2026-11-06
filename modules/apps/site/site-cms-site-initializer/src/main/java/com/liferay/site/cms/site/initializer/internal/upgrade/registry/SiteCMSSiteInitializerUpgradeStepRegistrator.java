@@ -5,7 +5,6 @@
 
 package com.liferay.site.cms.site.initializer.internal.upgrade.registry;
 
-import com.liferay.fragment.contributor.FragmentCollectionContributor;
 import com.liferay.fragment.service.FragmentEntryLinkLocalService;
 import com.liferay.layout.page.template.service.LayoutPageTemplateEntryLocalService;
 import com.liferay.layout.page.template.service.LayoutPageTemplateStructureLocalService;
@@ -25,6 +24,7 @@ import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.ResourceActionLocalService;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
+import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.upgrade.registry.UpgradeStepRegistrator;
 import com.liferay.segments.service.SegmentsExperienceLocalService;
 import com.liferay.site.cms.site.initializer.internal.upgrade.v1_0_0.CMSDefaultPermissionsUpgradeProcess;
@@ -34,6 +34,7 @@ import com.liferay.site.cms.site.initializer.internal.upgrade.v3_0_1.CMSObjectFo
 import com.liferay.site.cms.site.initializer.internal.upgrade.v3_0_2.CMSAdministratorRoleUpgradeProcess;
 import com.liferay.site.cms.site.initializer.internal.upgrade.v3_0_3.CMSFileTypeDisplayPageUpgradeProcess;
 import com.liferay.site.cms.site.initializer.internal.upgrade.v3_0_4.CMSFileTypeFriendlyURLUpgradeProcess;
+import com.liferay.site.cms.site.initializer.internal.upgrade.v3_0_5.CMSSpaceAdministratorRoleUpgradeProcess;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -83,7 +84,6 @@ public class SiteCMSSiteInitializerUpgradeStepRegistrator
 		registry.register(
 			"3.0.2", "3.0.3",
 			new CMSFileTypeDisplayPageUpgradeProcess(
-				_basicComponentFragmentCollectionContributor,
 				_classNameLocalService, _companyLocalService,
 				_fragmentEntryLinkLocalService, _groupLocalService,
 				_layoutLocalService, _layoutPageTemplateEntryLocalService,
@@ -96,11 +96,14 @@ public class SiteCMSSiteInitializerUpgradeStepRegistrator
 			new CMSFileTypeFriendlyURLUpgradeProcess(
 				_companyLocalService, _objectDefinitionLocalService,
 				_objectEntryLocalService, _objectFolderLocalService));
-	}
 
-	@Reference(target = "(fragment.collection.key=BASIC_COMPONENT)")
-	private FragmentCollectionContributor
-		_basicComponentFragmentCollectionContributor;
+		registry.register(
+			"3.0.4", "3.0.5",
+			new CMSSpaceAdministratorRoleUpgradeProcess(
+				_companyLocalService, _groupLocalService, _layoutLocalService,
+				_resourcePermissionLocalService, _roleLocalService,
+				_userLocalService));
+	}
 
 	@Reference
 	private ClassNameLocalService _classNameLocalService;
@@ -159,5 +162,8 @@ public class SiteCMSSiteInitializerUpgradeStepRegistrator
 
 	@Reference
 	private SegmentsExperienceLocalService _segmentsExperienceLocalService;
+
+	@Reference
+	private UserLocalService _userLocalService;
 
 }

@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.http.client.utils.URIBuilder;
 
 import org.dom4j.Document;
 import org.dom4j.DocumentHelper;
@@ -107,9 +108,7 @@ public abstract class BaseStandaloneBuildTestrayCaseResult
 		return null;
 	}
 
-	public void recordTestrayCaseResult(Job job) {
-		TestrayBuild testrayBuild = getTestrayBuild();
-
+	public void initTestrayRun(Job job) {
 		String testSuiteName = null;
 
 		if (job instanceof TestSuiteJob) {
@@ -118,17 +117,24 @@ public abstract class BaseStandaloneBuildTestrayCaseResult
 			testSuiteName = testSuiteJob.getTestSuiteName();
 		}
 
-		TestrayRun testrayRun = TestrayFactory.newTestrayRun(
-			testrayBuild, getBatchName(), testSuiteName,
-			job.getJobProperties());
+		setTestrayRun(
+			TestrayFactory.newTestrayRun(
+				getTestrayBuild(), getBatchName(), testSuiteName,
+				job.getJobProperties()));
+	}
 
-		setTestrayRun(testrayRun);
+	public void recordTestrayCaseResult(Job job) {
+		initTestrayRun(job);
+
+		TestrayBuild testrayBuild = getTestrayBuild();
 
 		long start = JenkinsResultsParserUtil.getCurrentTimeMillis();
 
 		Document document = DocumentHelper.createDocument();
 
 		Element rootElement = document.addElement("testsuite");
+
+		TestrayRun testrayRun = getTestrayRun();
 
 		rootElement.add(testrayRun.getEnvironmentsElement());
 
@@ -189,8 +195,8 @@ public abstract class BaseStandaloneBuildTestrayCaseResult
 
 				String testrayCaseName = testrayCaseResult.getName();
 
-				if (testrayCaseName.length() > 150) {
-					testrayCaseName = testrayCaseName.substring(0, 150);
+				if (testrayCaseName.length() > 250) {
+					testrayCaseName = testrayCaseName.substring(0, 250);
 				}
 
 				testcasePropertiesMap.put(
@@ -242,10 +248,18 @@ public abstract class BaseStandaloneBuildTestrayCaseResult
 
 					attachmentFileElement.addAttribute(
 						"name", testrayAttachment.getName());
+
+					URIBuilder uriBuilder =
+						JenkinsResultsParserUtil.newURIBuilder(
+							String.valueOf(testrayAttachment.getURL()));
+
+					uriBuilder.addParameter("authuser", "0");
+
 					attachmentFileElement.addAttribute(
-						"url", testrayAttachment.getURL() + "?authuser=0");
+						"url", uriBuilder.toString());
+
 					attachmentFileElement.addAttribute(
-						"value", testrayAttachment.getKey() + "?authuser=0");
+						"value", testrayAttachment.getKey());
 				}
 
 				String errors = testrayCaseResult.getErrors();

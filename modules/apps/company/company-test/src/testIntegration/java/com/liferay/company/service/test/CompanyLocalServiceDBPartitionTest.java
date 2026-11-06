@@ -25,6 +25,7 @@ import com.liferay.portal.dao.orm.common.SQLTransformer;
 import com.liferay.portal.db.partition.db.DBPartitionDB;
 import com.liferay.portal.db.partition.test.util.BaseDBPartitionTestCase;
 import com.liferay.portal.db.partition.util.DBPartitionUtil;
+import com.liferay.portal.instance.lifecycle.PortalInstanceLifecycleListener;
 import com.liferay.portal.kernel.dao.db.DBInspector;
 import com.liferay.portal.kernel.dao.db.DBType;
 import com.liferay.portal.kernel.db.partition.DBPartition;
@@ -32,11 +33,18 @@ import com.liferay.portal.kernel.exception.CompanyVirtualHostException;
 import com.liferay.portal.kernel.exception.CompanyWebIdException;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.instance.PortalInstancePool;
+import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.model.ClassName;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.CompanyConstants;
+import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.GroupConstants;
+import com.liferay.portal.kernel.model.LayoutSet;
+import com.liferay.portal.kernel.model.RememberMeToken;
 import com.liferay.portal.kernel.model.Repository;
 import com.liferay.portal.kernel.model.ResourceAction;
+import com.liferay.portal.kernel.model.Ticket;
+import com.liferay.portal.kernel.model.TicketConstants;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.VirtualHost;
 import com.liferay.portal.kernel.module.util.SystemBundleUtil;
@@ -46,10 +54,13 @@ import com.liferay.portal.kernel.repository.registry.RepositoryDefiner;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.service.CompanyLocalService;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.PortletLocalService;
+import com.liferay.portal.kernel.service.RememberMeTokenLocalService;
 import com.liferay.portal.kernel.service.RepositoryLocalService;
 import com.liferay.portal.kernel.service.ResourceActionLocalService;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalService;
+import com.liferay.portal.kernel.service.TicketLocalService;
 import com.liferay.portal.kernel.service.VirtualHostLocalService;
 import com.liferay.portal.kernel.spring.orm.LastSessionRecorderHelper;
 import com.liferay.portal.kernel.spring.orm.LastSessionRecorderHelperUtil;
@@ -64,11 +75,14 @@ import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.MapUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.ProxyUtil;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Time;
+import com.liferay.portal.kernel.util.TreeMapBuilder;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.repository.liferayrepository.LiferayRepository;
 import com.liferay.portal.repository.registry.RepositoryClassDefinition;
@@ -77,11 +91,19 @@ import com.liferay.portal.service.impl.ClassNameLocalServiceImpl;
 import com.liferay.portal.service.impl.CompanyLocalServiceImpl;
 import com.liferay.portal.service.impl.ResourceActionLocalServiceImpl;
 import com.liferay.portal.spring.aop.AopInvocationHandler;
+import com.liferay.portal.test.log.LogCapture;
+import com.liferay.portal.test.log.LogEntry;
+import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 import com.liferay.portal.test.rule.TransactionalTestRule;
 import com.liferay.portal.util.PortalInstances;
+import com.liferay.search.experiences.model.SXPBlueprint;
+import com.liferay.search.experiences.service.SXPBlueprintLocalService;
+import com.liferay.sharing.model.SharingEntry;
+import com.liferay.sharing.security.permission.SharingEntryAction;
+import com.liferay.sharing.service.SharingEntryLocalService;
 
 import jakarta.portlet.Portlet;
 
@@ -94,9 +116,12 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 
 import org.apache.felix.cm.PersistenceManager;
 
@@ -111,11 +136,14 @@ import org.junit.runner.RunWith;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.Constants;
 import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
+import org.osgi.service.cm.ManagedService;
+import org.osgi.service.cm.ManagedServiceFactory;
 
 /**
  * @author Mariano Álvaro Sáiz
@@ -279,6 +307,46 @@ public class CompanyLocalServiceDBPartitionTest
 	}
 
 	@Test
+	public void testAddCompanyWhenCompanyIdExists() throws Exception {
+		Company company = CompanyTestUtil.addCompany();
+
+		try {
+			String partitionName = CompanyLocalServiceTestUtil.getPartitionName(
+				company.getCompanyId());
+
+			long[] companyIds =
+				CompanyLocalServiceTestUtil.getCompanyIdsBySQL();
+			int resourcePermissionsCount = _getResourcePermissionsCount(
+				partitionName, company.getCompanyId());
+
+			try {
+				companyLocalService.addCompany(
+					company.getCompanyId(),
+					RandomTestUtil.randomString() + ".test",
+					RandomTestUtil.randomString() + ".test", "test.com", 0,
+					true, false, null, null, null, null, null, null);
+
+				Assert.fail();
+			}
+			catch (IllegalArgumentException illegalArgumentException) {
+				Assert.assertEquals(
+					"Company ID " + company.getCompanyId() + " already exists",
+					illegalArgumentException.getMessage());
+			}
+
+			Assert.assertArrayEquals(
+				companyIds, CompanyLocalServiceTestUtil.getCompanyIdsBySQL());
+			Assert.assertEquals(
+				resourcePermissionsCount,
+				_getResourcePermissionsCount(
+					partitionName, company.getCompanyId()));
+		}
+		finally {
+			companyLocalService.deleteCompany(company);
+		}
+	}
+
+	@Test
 	public void testAddCompanyWhenCompanyLocalServiceFails() throws Exception {
 		long[] companyIds = CompanyLocalServiceTestUtil.getCompanyIdsBySQL();
 		int dbPartitionsCount = _getDBPartitionsCount();
@@ -309,6 +377,53 @@ public class CompanyLocalServiceDBPartitionTest
 			if (company != null) {
 				removeDBPartitions(new long[] {company.getCompanyId()});
 			}
+		}
+	}
+
+	@Test
+	public void testAddCompanyWhenDBPartitionExists() throws Exception {
+		long companyId = RandomTestUtil.randomLong();
+
+		String partitionName = CompanyLocalServiceTestUtil.getPartitionName(
+			companyId);
+
+		db.runSQL(
+			dbPartitionDB.getCreatePartitionSQL(connection, partitionName));
+
+		try {
+			db.runSQL(
+				getCreateTableSQL(
+					partitionName + StringPool.PERIOD + TEST_TABLE_NAME));
+
+			long[] companyIds =
+				CompanyLocalServiceTestUtil.getCompanyIdsBySQL();
+
+			try {
+				companyLocalService.addCompany(
+					companyId, RandomTestUtil.randomString() + ".test",
+					RandomTestUtil.randomString() + ".test", "test.com", 0,
+					true, false, null, null, null, null, null, null);
+
+				Assert.fail();
+			}
+			catch (PortalException portalException) {
+				Throwable throwable = portalException.getCause();
+
+				Assert.assertTrue(
+					throwable instanceof IllegalArgumentException);
+				Assert.assertEquals(
+					"Database partition " + partitionName + " already exists",
+					throwable.getMessage());
+			}
+
+			Assert.assertArrayEquals(
+				companyIds, CompanyLocalServiceTestUtil.getCompanyIdsBySQL());
+
+			CompanyLocalServiceTestUtil.checkStandaloneDBPartitionTables(
+				connection, dbPartitionDB, partitionName, TEST_TABLE_NAME);
+		}
+		finally {
+			db.runSQL(dbPartitionDB.getDropPartitionSQL(partitionName));
 		}
 	}
 
@@ -359,7 +474,36 @@ public class CompanyLocalServiceDBPartitionTest
 			CompanyLocalServiceTestUtil.createFactoryConfiguration(
 				_configurationAdmin, company.getCompanyId());
 
+		String factoryPid = configuration.getFactoryPid();
 		String pid = configuration.getPid();
+
+		String secondaryVirtualHostname = company.getVirtualHostname() + ".net";
+
+		_virtualHostLocalService.updateVirtualHosts(
+			company.getCompanyId(), 0,
+			TreeMapBuilder.put(
+				company.getVirtualHostname(), StringPool.BLANK
+			).put(
+				secondaryVirtualHostname, StringPool.BLANK
+			).build());
+
+		String siteVirtualHostname = "site." + company.getVirtualHostname();
+
+		try (SafeCloseable safeCloseable =
+				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+					company.getCompanyId())) {
+
+			Group group = _groupLocalService.getGroup(
+				company.getCompanyId(), GroupConstants.GUEST);
+
+			LayoutSet layoutSet = group.getPublicLayoutSet();
+
+			_virtualHostLocalService.updateVirtualHosts(
+				company.getCompanyId(), layoutSet.getLayoutSetId(),
+				TreeMapBuilder.put(
+					siteVirtualHostname, StringPool.BLANK
+				).build());
+		}
 
 		companyLocalService.exportCompany(company.getCompanyId());
 
@@ -372,24 +516,17 @@ public class CompanyLocalServiceDBPartitionTest
 			String exportedVirtualHostname = company.getVirtualHostname();
 			String exportedWebId = company.getWebId();
 
+			String ipv6AddressHextet = Integer.toHexString(
+				RandomTestUtil.randomInt(1, 65535));
+
 			String name = "new" + company.getName();
-			String virtualHostname = "new" + exportedVirtualHostname;
+			String virtualHostname = "2001:db8::" + ipv6AddressHextet;
 			String webId = "new" + exportedWebId;
 
-			try {
-				company = companyLocalService.addDBPartitionCompany(
-					company.getCompanyId(), name, virtualHostname, webId);
-
-				Assert.fail();
-			}
-			catch (Exception exception) {
-				Assert.assertTrue(
-					exception instanceof IllegalArgumentException);
-
-				_assertExportedCompanyNotUpdated(
-					company.getCompanyId(), exportedVirtualHostname,
-					exportedWebId);
-			}
+			_assertAddDBPartitionCompanyFails(
+				company.getCompanyId(), IllegalArgumentException.class,
+				exportedVirtualHostname, exportedWebId, name, virtualHostname,
+				webId);
 
 			companyLocalService.deleteCompany(company);
 
@@ -398,34 +535,68 @@ public class CompanyLocalServiceDBPartitionTest
 				exportedVirtualHostname, 0, true, true, null, null, null, null,
 				null, null);
 
+			_assertAddDBPartitionCompanyFails(
+				company.getCompanyId(), CompanyVirtualHostException.class,
+				exportedVirtualHostname, exportedWebId, name,
+				exportedVirtualHostname, webId);
+			_assertAddDBPartitionCompanyFails(
+				company.getCompanyId(), CompanyVirtualHostException.class,
+				exportedVirtualHostname, exportedWebId, name,
+				secondaryVirtualHostname, webId);
+			_assertAddDBPartitionCompanyFails(
+				company.getCompanyId(), CompanyVirtualHostException.class,
+				exportedVirtualHostname, exportedWebId, name,
+				siteVirtualHostname, webId);
+			_assertAddDBPartitionCompanyFails(
+				company.getCompanyId(), CompanyWebIdException.class,
+				exportedVirtualHostname, exportedWebId, name, virtualHostname,
+				exportedWebId);
+
+			String invalidVirtualHostname = "-" + exportedVirtualHostname;
+
+			try (PreparedStatement preparedStatement =
+					connection.prepareStatement(
+						StringBundler.concat(
+							"update ",
+							DBPartitionUtil.getExportedPartitionName(
+								company.getCompanyId()),
+							".VirtualHost set hostname = ? where companyId = ",
+							"? and layoutSetId = 0 and defaultVirtualHost = ",
+							"?"))) {
+
+				preparedStatement.setString(1, invalidVirtualHostname);
+				preparedStatement.setLong(2, company.getCompanyId());
+				preparedStatement.setBoolean(3, true);
+
+				preparedStatement.executeUpdate();
+			}
+
+			_assertAddDBPartitionCompanyFails(
+				company.getCompanyId(), CompanyVirtualHostException.class,
+				invalidVirtualHostname, exportedWebId, name, null, webId);
+
+			List<String> pids = new CopyOnWriteArrayList<>();
+
+			ServiceRegistration<ManagedServiceFactory> serviceRegistration =
+				_bundleContext.registerService(
+					ManagedServiceFactory.class,
+					new ConfigurationTestUtil.InternalManagerServiceFactory(
+						factoryPid,
+						(servicePid, properties) -> pids.add(servicePid)),
+					MapUtil.singletonDictionary(
+						Constants.SERVICE_PID, factoryPid));
+
 			try {
-				companyLocalService.addDBPartitionCompany(
-					company.getCompanyId(), name, virtualHostname,
-					exportedWebId);
+				_waitForConfigurationUpdates();
 
-				Assert.fail();
-			}
-			catch (CompanyWebIdException companyWebIdException) {
-				_assertExportedCompanyNotUpdated(
-					company.getCompanyId(), exportedVirtualHostname,
-					exportedWebId);
-			}
+				company = companyLocalService.addDBPartitionCompany(
+					company.getCompanyId(), name, virtualHostname, webId);
 
-			try {
-				companyLocalService.addDBPartitionCompany(
-					company.getCompanyId(), name, exportedVirtualHostname,
-					webId);
-
-				Assert.fail();
+				_waitForConfigurationUpdates();
 			}
-			catch (CompanyVirtualHostException companyVirtualHostException) {
-				_assertExportedCompanyNotUpdated(
-					company.getCompanyId(), exportedVirtualHostname,
-					exportedWebId);
+			finally {
+				serviceRegistration.unregister();
 			}
-
-			company = companyLocalService.addDBPartitionCompany(
-				company.getCompanyId(), name, virtualHostname, webId);
 
 			Assert.assertTrue(
 				ArrayUtil.contains(
@@ -433,7 +604,9 @@ public class CompanyLocalServiceDBPartitionTest
 					company.getCompanyId()));
 
 			Assert.assertEquals(name, company.getName());
-			Assert.assertEquals(virtualHostname, company.getVirtualHostname());
+			Assert.assertEquals(
+				"2001:db8:0:0:0:0:0:" + ipv6AddressHextet,
+				company.getVirtualHostname());
 			Assert.assertEquals(webId, company.getWebId());
 
 			try (SafeCloseable safeCloseable =
@@ -443,6 +616,8 @@ public class CompanyLocalServiceDBPartitionTest
 				CompanyLocalServiceTestUtil.assertConfiguration(
 					_configurationAdmin, _persistenceManager, pid, true);
 			}
+
+			Assert.assertTrue(pids.toString(), pids.contains(pid));
 		}
 		finally {
 			db.runSQL(
@@ -462,6 +637,45 @@ public class CompanyLocalServiceDBPartitionTest
 
 			if (exportedValuesCompany != null) {
 				companyLocalService.deleteCompany(exportedValuesCompany);
+			}
+		}
+	}
+
+	@Test
+	public void testAddDBPartitionCompanyWhenCompanyCachedAsMissing()
+		throws Exception {
+
+		Company company = CompanyTestUtil.addCompany();
+
+		companyLocalService.exportCompany(company.getCompanyId());
+
+		try {
+			companyLocalService.deleteCompany(company);
+
+			Assert.assertNull(
+				companyLocalService.fetchCompany(company.getCompanyId()));
+
+			String name = RandomTestUtil.randomString();
+
+			company = companyLocalService.addDBPartitionCompany(
+				company.getCompanyId(), name, null, null);
+
+			Assert.assertEquals(name, company.getName());
+		}
+		finally {
+			db.runSQL(
+				dbPartitionDB.getDropPartitionSQL(
+					DBPartitionUtil.getExportedPartitionName(
+						company.getCompanyId())));
+
+			if (ArrayUtil.contains(
+					CompanyLocalServiceTestUtil.getCompanyIdsBySQL(),
+					company.getCompanyId())) {
+
+				companyLocalService.deleteCompany(company);
+			}
+			else {
+				removeDBPartitions(new long[] {company.getCompanyId()});
 			}
 		}
 	}
@@ -596,23 +810,112 @@ public class CompanyLocalServiceDBPartitionTest
 			RandomTestUtil.randomString());
 		String webId = RandomTestUtil.randomString();
 
-		Company copiedCompany = null;
+		Company company = companyLocalService.getCompany(
+			TestPropsValues.getCompanyId());
 
-		try (SafeCloseable safeCloseable1 =
+		String indexNameCurrent = company.getIndexNameCurrent();
+		String indexNameNext = company.getIndexNameNext();
+		String key = company.getKey();
+
+		Company copiedCompany = null;
+		RememberMeToken rememberMeToken = null;
+		Ticket ticket = null;
+
+		try (AutoCloseable autoCloseable =
+				ReflectionTestUtil.setFieldValueWithAutoCloseable(
+					_portalInstanceLifecycleListener,
+					"_classNameColumnNamesMap",
+					HashMapBuilder.putAll(
+						ReflectionTestUtil.<Map<String, String>>getFieldValue(
+							_portalInstanceLifecycleListener,
+							"_classNameColumnNamesMap")
+					).put(
+						RandomTestUtil.randomString(),
+						RandomTestUtil.randomString()
+					).build());
+			LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.portal.instance.lifecycle.internal." +
+					"PortalInstanceLifecycleListenerManagerImpl",
+				LoggerTestUtil.WARN);
+			SafeCloseable safeCloseable1 =
 				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
 					TestPropsValues.getCompanyId())) {
 
+			rememberMeToken = _rememberMeTokenLocalService.addRememberMeToken(
+				company.getCompanyId(), TestPropsValues.getUserId(),
+				new Date(System.currentTimeMillis() + Time.DAY),
+				value -> {
+				});
+
+			ticket = _ticketLocalService.addTicket(
+				company.getCompanyId(), User.class.getName(),
+				TestPropsValues.getUserId(),
+				TicketConstants.TYPE_INVITE_COLLABORATOR,
+				RandomTestUtil.randomString() + "@liferay.com", null,
+				new Date(System.currentTimeMillis() + Time.DAY),
+				ServiceContextTestUtil.getServiceContext());
+
+			SharingEntry sharingEntry =
+				_sharingEntryLocalService.addSharingEntry(
+					null, TestPropsValues.getUserId(), ticket.getTicketId(), 0,
+					0, _portal.getClassNameId(User.class),
+					TestPropsValues.getUserId(), TestPropsValues.getGroupId(),
+					true, Collections.singletonList(SharingEntryAction.VIEW),
+					null, ServiceContextTestUtil.getServiceContext());
+
 			ObjectDefinition objectDefinition =
 				ObjectDefinitionTestUtil.publishObjectDefinition();
+
+			SXPBlueprint sxpBlueprint =
+				_sxpBlueprintLocalService.addSXPBlueprint(
+					null, TestPropsValues.getUserId(),
+					JSONUtil.put(
+						"generalConfiguration",
+						JSONUtil.put(
+							"searchableAssetTypes",
+							JSONUtil.put(objectDefinition.getClassName()))
+					).toString(),
+					Collections.emptyMap(), StringPool.BLANK, StringPool.BLANK,
+					RandomTestUtil.randomLocaleStringMap(),
+					ServiceContextTestUtil.getServiceContext());
+
+			String newIndexNameCurrent = StringUtil.toLowerCase(
+				RandomTestUtil.randomString());
+			String newIndexNameNext = StringUtil.toLowerCase(
+				RandomTestUtil.randomString());
+
+			companyLocalService.updateIndexNames(
+				company.getCompanyId(), newIndexNameCurrent, newIndexNameNext);
 
 			copiedCompany = companyLocalService.copyDBPartitionCompany(
 				TestPropsValues.getCompanyId(), null, name, virtualHostname,
 				webId);
 
+			List<LogEntry> logEntries = logCapture.getLogEntries();
+
+			Assert.assertTrue(logEntries.isEmpty());
+
 			_assertCopyDBPartitionCompany(
 				copiedCompany, name, virtualHostname, webId);
 
 			long copiedCompanyId = copiedCompany.getCompanyId();
+
+			company = companyLocalService.getCompany(company.getCompanyId());
+
+			Assert.assertEquals(
+				newIndexNameCurrent, company.getIndexNameCurrent());
+			Assert.assertEquals(newIndexNameNext, company.getIndexNameNext());
+
+			Assert.assertNotNull(
+				_rememberMeTokenLocalService.fetchRememberMeToken(
+					rememberMeToken.getRememberMeTokenId()));
+			Assert.assertNotNull(
+				_sharingEntryLocalService.fetchSharingEntry(
+					sharingEntry.getSharingEntryId()));
+			Assert.assertNotNull(
+				_ticketLocalService.fetchTicket(ticket.getTicketId()));
+
+			_assertCopyDBPartitionCompanyIsolation(copiedCompanyId, key);
 
 			_assertCompanyConfiguration(copiedCompanyId, configuration);
 
@@ -621,6 +924,10 @@ public class CompanyLocalServiceDBPartitionTest
 			try (SafeCloseable safeCloseable2 =
 					CompanyThreadLocal.setCompanyIdWithSafeCloseable(
 						copiedCompanyId)) {
+
+				Assert.assertNull(
+					_sharingEntryLocalService.fetchSharingEntry(
+						sharingEntry.getSharingEntryId()));
 
 				ObjectDefinition copiedObjectDefinition =
 					_objectDefinitionLocalService.fetchObjectDefinition(
@@ -663,6 +970,17 @@ public class CompanyLocalServiceDBPartitionTest
 					ListUtil.isNotEmpty(
 						_resourcePermissionLocalService.getResourcePermissions(
 							copiedObjectDefinition.getPortletId())));
+
+				SXPBlueprint copiedSXPBlueprint =
+					_sxpBlueprintLocalService.getSXPBlueprint(
+						sxpBlueprint.getSXPBlueprintId());
+
+				Assert.assertEquals(
+					StringUtil.replace(
+						sxpBlueprint.getConfigurationJSON(),
+						objectDefinition.getClassName(),
+						copiedObjectDefinition.getClassName()),
+					copiedSXPBlueprint.getConfigurationJSON());
 			}
 
 			companyLocalService.deleteCompany(copiedCompany);
@@ -679,6 +997,7 @@ public class CompanyLocalServiceDBPartitionTest
 				copiedCompany, name, virtualHostname, webId);
 			_assertCopyDBPartitionCompanyId(
 				TestPropsValues.getCompanyId(), copiedCompany.getCompanyId());
+			_assertCopyDBPartitionCompanyIsolation(copiedCompanyId, key);
 
 			Assert.assertEquals(
 				rulesCount,
@@ -705,8 +1024,30 @@ public class CompanyLocalServiceDBPartitionTest
 				ConfigurationTestUtil.deleteConfiguration(configuration);
 			}
 
-			if (copiedCompany != null) {
-				companyLocalService.deleteCompany(copiedCompany.getCompanyId());
+			try {
+				if (copiedCompany != null) {
+					companyLocalService.deleteCompany(
+						copiedCompany.getCompanyId());
+				}
+			}
+			finally {
+				try (SafeCloseable safeCloseable =
+						CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+							company.getCompanyId())) {
+
+					companyLocalService.updateIndexNames(
+						company.getCompanyId(), indexNameCurrent,
+						indexNameNext);
+
+					if (rememberMeToken != null) {
+						_rememberMeTokenLocalService.deleteRememberMeToken(
+							rememberMeToken);
+					}
+
+					if (ticket != null) {
+						_ticketLocalService.deleteTicket(ticket);
+					}
+				}
 			}
 		}
 	}
@@ -1049,15 +1390,35 @@ public class CompanyLocalServiceDBPartitionTest
 
 			// Reverse order to generate different class name IDs
 
-			_classNameLocalService.addClassName(_CLASS_NAME_2);
+			_classNameLocalService.getClassName(_CLASS_NAME_2);
 
-			_classNameLocalService.addClassName(_CLASS_NAME_1);
+			_classNameLocalService.getClassName(_CLASS_NAME_1);
 
 			_counter = _counterLocalService.increment(
 				CompanyLocalServiceDBPartitionTest.class.getName());
 
 			_counterLocalService.reset(
 				CompanyLocalServiceDBPartitionTest.class.getName(), 100000);
+		}
+	}
+
+	private void _assertAddDBPartitionCompanyFails(
+			long companyId, Class<? extends Exception> exceptionClass,
+			String exportedVirtualHostname, String exportedWebId, String name,
+			String virtualHostname, String webId)
+		throws Exception {
+
+		try {
+			companyLocalService.addDBPartitionCompany(
+				companyId, name, virtualHostname, webId);
+
+			Assert.fail();
+		}
+		catch (Exception exception) {
+			Assert.assertTrue(exceptionClass.isInstance(exception));
+
+			_assertExportedCompanyNotUpdated(
+				companyId, exportedVirtualHostname, exportedWebId);
 		}
 	}
 
@@ -1264,6 +1625,30 @@ public class CompanyLocalServiceDBPartitionTest
 					}
 				}
 			}
+		}
+	}
+
+	private void _assertCopyDBPartitionCompanyIsolation(
+			long copiedCompanyId, String key)
+		throws Exception {
+
+		try (SafeCloseable safeCloseable =
+				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+					copiedCompanyId)) {
+
+			Company copiedCompany = companyLocalService.getCompany(
+				copiedCompanyId);
+
+			Assert.assertEquals(
+				StringPool.BLANK, copiedCompany.getIndexNameCurrent());
+			Assert.assertEquals(
+				StringPool.BLANK, copiedCompany.getIndexNameNext());
+			Assert.assertNotEquals(StringPool.BLANK, copiedCompany.getKey());
+			Assert.assertNotEquals(key, copiedCompany.getKey());
+
+			Assert.assertEquals(
+				0, _rememberMeTokenLocalService.getRememberMeTokensCount());
+			Assert.assertEquals(0, _ticketLocalService.getTicketsCount());
 		}
 	}
 
@@ -1485,6 +1870,23 @@ public class CompanyLocalServiceDBPartitionTest
 		return false;
 	}
 
+	private void _waitForConfigurationUpdates() throws Exception {
+		CountDownLatch countDownLatch = new CountDownLatch(1);
+
+		ServiceRegistration<ManagedService> serviceRegistration =
+			_bundleContext.registerService(
+				ManagedService.class, properties -> countDownLatch.countDown(),
+				MapUtil.singletonDictionary(
+					Constants.SERVICE_PID, RandomTestUtil.randomString()));
+
+		try {
+			countDownLatch.await();
+		}
+		finally {
+			serviceRegistration.unregister();
+		}
+	}
+
 	private static final String _CLASS_NAME_1 =
 		CompanyLocalServiceDBPartitionTest.class.getName() + 1;
 
@@ -1522,6 +1924,9 @@ public class CompanyLocalServiceDBPartitionTest
 	private CounterLocalService _counterLocalService;
 
 	@Inject
+	private GroupLocalService _groupLocalService;
+
+	@Inject
 	private ObjectDefinitionLocalService _objectDefinitionLocalService;
 
 	@Inject
@@ -1530,8 +1935,16 @@ public class CompanyLocalServiceDBPartitionTest
 	@Inject
 	private Portal _portal;
 
+	@Inject(
+		filter = "component.name=com.liferay.object.internal.instance.lifecycle.CompanyObjectDefinitionPortalInstanceLifecycleListener"
+	)
+	private PortalInstanceLifecycleListener _portalInstanceLifecycleListener;
+
 	@Inject
 	private PortletLocalService _portletLocalService;
+
+	@Inject
+	private RememberMeTokenLocalService _rememberMeTokenLocalService;
 
 	@Inject
 	private RepositoryFactory _repositoryFactory;
@@ -1547,10 +1960,19 @@ public class CompanyLocalServiceDBPartitionTest
 
 	private ServiceRegistration<RepositoryDefiner> _serviceRegistration;
 
+	@Inject
+	private SharingEntryLocalService _sharingEntryLocalService;
+
 	@Inject(
 		filter = "(&(objectClass=com.liferay.document.library.kernel.store.Store)(default=true))"
 	)
 	private Store _store;
+
+	@Inject
+	private SXPBlueprintLocalService _sxpBlueprintLocalService;
+
+	@Inject
+	private TicketLocalService _ticketLocalService;
 
 	@Inject
 	private VirtualHostLocalService _virtualHostLocalService;

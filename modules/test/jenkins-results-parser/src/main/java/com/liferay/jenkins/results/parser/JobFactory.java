@@ -149,6 +149,12 @@ public class JobFactory {
 	}
 
 	public static String getKey(JSONObject jsonObject) {
+		String jobKey = jsonObject.optString("job_key");
+
+		if (!JenkinsResultsParserUtil.isNullOrEmpty(jobKey)) {
+			return jobKey;
+		}
+
 		Job.BuildProfile buildProfile = Job.BuildProfile.DXP;
 
 		if (jsonObject.has("build_profile")) {
@@ -201,13 +207,6 @@ public class JobFactory {
 
 			portalUpstreamBranchName =
 				pullRequestPortalTopLevelBuild.getPortalUpstreamBranchName();
-		}
-		else if (topLevelBuild instanceof UpstreamPortalTopLevelBuild) {
-			UpstreamPortalTopLevelBuild upstreamPortalTopLevelBuild =
-				(UpstreamPortalTopLevelBuild)topLevelBuild;
-
-			portalUpstreamBranchName =
-				upstreamPortalTopLevelBuild.getPortalUpstreamBranchName();
 		}
 
 		if (JenkinsResultsParserUtil.isNullOrEmpty(portalUpstreamBranchName)) {
@@ -307,24 +306,32 @@ public class JobFactory {
 
 		String key = null;
 
-		if ((jsonObject == null) &&
-			JenkinsResultsParserUtil.isBuildCachingEnabled(
-				jobName, testSuiteName)) {
+		if (jsonObject == null) {
+			key = getKey(
+				buildProfile, jobName, portalGitWorkingDirectory,
+				portalUpstreamBranchName, projectNames, repositoryName,
+				testSuiteName, upstreamBranchName);
 
-			jsonObject = JobCacheUtil.getCachedJobJSONObject(
-				jobName, portalGitWorkingDirectory, testSuiteName);
+			Job job = _jobs.get(key);
+
+			if (job != null) {
+				return job;
+			}
+
+			if (JenkinsResultsParserUtil.isBuildCachingEnabled(
+					jobName, testSuiteName)) {
+
+				jsonObject = JobCacheUtil.getCachedJobJSONObject(
+					jobName, portalGitWorkingDirectory, testSuiteName);
+			}
 		}
 
 		if (jsonObject != null) {
 			jobName = jsonObject.getString("job_name");
 
-			key = getKey(jsonObject);
-		}
-		else {
-			key = getKey(
-				buildProfile, jobName, portalGitWorkingDirectory,
-				portalUpstreamBranchName, projectNames, repositoryName,
-				testSuiteName, upstreamBranchName);
+			if (key == null) {
+				key = getKey(jsonObject);
+			}
 		}
 
 		if (jsonObject == null) {
@@ -486,13 +493,13 @@ public class JobFactory {
 				}
 				else {
 					if (upstreamBranchName.contains("release")) {
-						String githubUpstreamBranchName = Environment.get(
+						String gitHubUpstreamBranchName = Environment.get(
 							"GITHUB_UPSTREAM_BRANCH_NAME");
 
 						if (!JenkinsResultsParserUtil.isNullOrEmpty(
-								githubUpstreamBranchName)) {
+								gitHubUpstreamBranchName)) {
 
-							upstreamBranchName = githubUpstreamBranchName;
+							upstreamBranchName = gitHubUpstreamBranchName;
 						}
 					}
 

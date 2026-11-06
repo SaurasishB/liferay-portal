@@ -94,7 +94,6 @@ import com.liferay.journal.service.persistence.JournalFolderPersistence;
 import com.liferay.journal.util.JournalConverter;
 import com.liferay.journal.util.JournalDefaultTemplateProvider;
 import com.liferay.journal.util.JournalHelper;
-import com.liferay.journal.util.comparator.ArticleIDComparator;
 import com.liferay.journal.util.comparator.ArticleVersionComparator;
 import com.liferay.layout.display.page.LayoutDisplayPageProviderRegistry;
 import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
@@ -140,6 +139,7 @@ import com.liferay.portal.kernel.portlet.PortletProvider;
 import com.liferay.portal.kernel.portlet.PortletProviderUtil;
 import com.liferay.portal.kernel.portlet.PortletRequestModel;
 import com.liferay.portal.kernel.portletfilerepository.PortletFileRepository;
+import com.liferay.portal.kernel.preview.Previewable;
 import com.liferay.portal.kernel.repository.capabilities.TemporaryFileEntriesCapability;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.Folder;
@@ -253,6 +253,7 @@ import org.osgi.service.component.annotations.Reference;
 	property = "model.class.name=com.liferay.journal.model.JournalArticle",
 	service = AopService.class
 )
+@Previewable
 public class JournalArticleLocalServiceImpl
 	extends JournalArticleLocalServiceBaseImpl {
 
@@ -1567,13 +1568,15 @@ public class JournalArticleLocalServiceImpl
 				serviceContext.setIndexingEnabled(false);
 
 				for (JournalArticle article : articles) {
-					if (!article.isExpired()) {
-						journalArticleLocalService.expireArticle(
-							userId, groupId, article.getArticleId(),
-							article.getVersion(), articleURL, serviceContext);
-
-						expired = true;
+					if (article.isExpired()) {
+						continue;
 					}
+
+					journalArticleLocalService.expireArticle(
+						userId, groupId, article.getArticleId(),
+						article.getVersion(), articleURL, serviceContext);
+
+					expired = true;
 				}
 			}
 			finally {
@@ -1612,6 +1615,7 @@ public class JournalArticleLocalServiceImpl
 	 * @return the web content article with the ID
 	 */
 	@Override
+	@Previewable(enabled = false)
 	public JournalArticle fetchArticle(long id) {
 		return journalArticlePersistence.fetchByPrimaryKey(id);
 	}
@@ -1957,35 +1961,6 @@ public class JournalArticleLocalServiceImpl
 		return articles.get(0);
 	}
 
-	/**
-	 * Returns the latest indexable web content article matching the resource
-	 * primary key.
-	 *
-	 * @param  resourcePrimKey the primary key of the resource instance
-	 * @return the latest indexable web content article matching the resource
-	 *         primary key, or <code>null</code> if no matching web content
-	 *         article could be found
-	 */
-	@Override
-	public JournalArticle fetchLatestIndexableArticle(long resourcePrimKey) {
-		OrderByComparator<JournalArticle> orderByComparator =
-			ArticleVersionComparator.getInstance(false);
-
-		List<JournalArticle> articles = journalArticlePersistence.findByR_I_S(
-			resourcePrimKey, true,
-			new int[] {
-				WorkflowConstants.STATUS_APPROVED,
-				WorkflowConstants.STATUS_IN_TRASH
-			},
-			0, 1, orderByComparator);
-
-		if (articles.isEmpty()) {
-			return null;
-		}
-
-		return articles.get(0);
-	}
-
 	@Override
 	public PersistedModel fetchPersistedModel(Serializable primaryKeyObj) {
 		PersistedModel persistedModel =
@@ -2008,6 +1983,7 @@ public class JournalArticleLocalServiceImpl
 	 * @throws PortalException if a portal exception occurred
 	 */
 	@Override
+	@Previewable(enabled = false)
 	public JournalArticle getArticle(long id) throws PortalException {
 		return journalArticlePersistence.findByPrimaryKey(id);
 	}
@@ -2276,10 +2252,12 @@ public class JournalArticleLocalServiceImpl
 			Locale locale = LocaleUtil.fromLanguageId(
 				journalArticleLocalization.getLanguageId(), true, false);
 
-			if (locale != null) {
-				journalArticleLocalizationDescriptionMap.put(
-					locale, journalArticleLocalization.getDescription());
+			if (locale == null) {
+				continue;
 			}
+
+			journalArticleLocalizationDescriptionMap.put(
+				locale, journalArticleLocalization.getDescription());
 		}
 
 		return journalArticleLocalizationDescriptionMap;
@@ -2579,10 +2557,12 @@ public class JournalArticleLocalServiceImpl
 			Locale locale = LocaleUtil.fromLanguageId(
 				journalArticleLocalization.getLanguageId(), true, false);
 
-			if (locale != null) {
-				journalArticleLocalizationTitleMap.put(
-					locale, journalArticleLocalization.getTitle());
+			if (locale == null) {
+				continue;
 			}
+
+			journalArticleLocalizationTitleMap.put(
+				locale, journalArticleLocalization.getTitle());
 		}
 
 		return journalArticleLocalizationTitleMap;
@@ -2829,18 +2809,6 @@ public class JournalArticleLocalServiceImpl
 			));
 	}
 
-	/**
-	 * Returns all the web content articles matching the small image ID.
-	 *
-	 * @param  smallImageId the primary key of the web content article's small
-	 *         image
-	 * @return the web content articles matching the small image ID
-	 */
-	@Override
-	public List<JournalArticle> getArticlesBySmallImageId(long smallImageId) {
-		return journalArticlePersistence.findBySmallImageId(smallImageId);
-	}
-
 	@Override
 	public List<JournalArticle> getArticlesByStructureId(
 		long groupId, long ddmStructureId, int status, int start, int end,
@@ -2866,48 +2834,6 @@ public class JournalArticleLocalServiceImpl
 	}
 
 	@Override
-	public List<JournalArticle> getArticlesByStructureId(
-		long groupId, long ddmStructureId, Locale locale, int status, int start,
-		int end, OrderByComparator<JournalArticle> orderByComparator) {
-
-		QueryDefinition<JournalArticle> queryDefinition = new QueryDefinition<>(
-			status, start, end, orderByComparator);
-
-		return journalArticleFinder.findByG_F_C_S_L(
-			groupId, Collections.emptyList(),
-			JournalArticleConstants.CLASS_NAME_ID_DEFAULT, ddmStructureId,
-			locale, queryDefinition);
-	}
-
-	@Override
-	public List<JournalArticle> getArticlesByStructureId(
-		long groupId, long classNameId, long ddmStructureId, int status,
-		int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		QueryDefinition<JournalArticle> queryDefinition = new QueryDefinition<>(
-			status, start, end, orderByComparator);
-
-		return journalArticleFinder.findByG_F_C_S_L(
-			groupId, Collections.emptyList(), classNameId, ddmStructureId,
-			LocaleUtil.getMostRelevantLocale(), queryDefinition);
-	}
-
-	@Override
-	public List<JournalArticle> getArticlesByStructureId(
-		long groupId, long classNameId, long ddmStructureId, Locale locale,
-		int status, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		QueryDefinition<JournalArticle> queryDefinition = new QueryDefinition<>(
-			status, start, end, orderByComparator);
-
-		return journalArticleFinder.findByG_F_C_S_L(
-			groupId, Collections.emptyList(), classNameId, ddmStructureId,
-			locale, queryDefinition);
-	}
-
-	@Override
 	public List<Long> getArticlesClassPKsWithDefaultDisplayPage(
 		long groupId, long classTypeId) {
 
@@ -2922,11 +2848,15 @@ public class JournalArticleLocalServiceImpl
 			return Collections.emptyList();
 		}
 
-		JournalArticleTable tempJournalArticleTable =
-			JournalArticleTable.INSTANCE.as("tempJournalArticleTable");
-
 		DDMStructure ddmStructure = _ddmStructureLocalService.fetchDDMStructure(
 			layoutPageTemplateEntry.getClassTypeId());
+
+		if (ddmStructure == null) {
+			return Collections.emptyList();
+		}
+
+		JournalArticleTable tempJournalArticleTable =
+			JournalArticleTable.INSTANCE.as("tempJournalArticleTable");
 
 		return journalArticlePersistence.dslQuery(
 			DSLQueryFactoryUtil.selectDistinct(
@@ -3028,137 +2958,6 @@ public class JournalArticleLocalServiceImpl
 	public int getArticlesCountByResourcePrimKey(long resourcePrimKey) {
 		return journalArticlePersistence.countByResourcePrimKey(
 			resourcePrimKey);
-	}
-
-	/**
-	 * Returns an ordered range of all the web content articles matching the
-	 * company, version, and workflow status.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end -
-	 * start</code> instances. <code>start</code> and <code>end</code> are not
-	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
-	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
-	 * result set.
-	 * </p>
-	 *
-	 * @param  companyId the primary key of the web content article's company
-	 * @param  version the web content article's version
-	 * @param  status the web content article's workflow status. For more
-	 *         information see {@link WorkflowConstants} for constants starting
-	 *         with the "STATUS_" prefix.
-	 * @param  start the lower bound of the range of web content articles to
-	 *         return
-	 * @param  end the upper bound of the range of web content articles to
-	 *         return (not inclusive)
-	 * @return the range of matching web content articles ordered by article ID
-	 */
-	@Override
-	public List<JournalArticle> getCompanyArticles(
-		long companyId, double version, int status, int start, int end) {
-
-		if (status == WorkflowConstants.STATUS_ANY) {
-			return journalArticlePersistence.findByC_V(
-				companyId, version, start, end,
-				ArticleIDComparator.getInstance(true));
-		}
-
-		return journalArticlePersistence.findByC_V_ST(
-			companyId, version, status, start, end,
-			ArticleIDComparator.getInstance(true));
-	}
-
-	/**
-	 * Returns an ordered range of all the web content articles matching the
-	 * company and workflow status.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end -
-	 * start</code> instances. <code>start</code> and <code>end</code> are not
-	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
-	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
-	 * result set.
-	 * </p>
-	 *
-	 * @param  companyId the primary key of the web content article's company
-	 * @param  status the web content article's workflow status. For more
-	 *         information see {@link WorkflowConstants} for constants starting
-	 *         with the "STATUS_" prefix.
-	 * @param  start the lower bound of the range of web content articles to
-	 *         return
-	 * @param  end the upper bound of the range of web content articles to
-	 *         return (not inclusive)
-	 * @return the range of matching web content articles ordered by article ID
-	 */
-	@Override
-	public List<JournalArticle> getCompanyArticles(
-		long companyId, int status, int start, int end) {
-
-		if (status == WorkflowConstants.STATUS_ANY) {
-			return journalArticlePersistence.findByCompanyId(
-				companyId, start, end, ArticleIDComparator.getInstance(true));
-		}
-
-		return journalArticlePersistence.findByC_ST(
-			companyId, status, start, end,
-			ArticleIDComparator.getInstance(true));
-	}
-
-	/**
-	 * Returns the number of web content articles matching the company, version,
-	 * and workflow status.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end -
-	 * start</code> instances. <code>start</code> and <code>end</code> are not
-	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
-	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
-	 * result set.
-	 * </p>
-	 *
-	 * @param  companyId the primary key of the web content article's company
-	 * @param  version the web content article's version
-	 * @param  status the web content article's workflow status. For more
-	 *         information see {@link WorkflowConstants} for constants starting
-	 *         with the "STATUS_" prefix.
-	 * @param  start the lower bound of the range of web content articles to
-	 *         return
-	 * @param  end the upper bound of the range of web content articles to
-	 *         return (not inclusive)
-	 * @return the number of matching web content articles
-	 */
-	@Override
-	public int getCompanyArticlesCount(
-		long companyId, double version, int status, int start, int end) {
-
-		if (status == WorkflowConstants.STATUS_ANY) {
-			return journalArticlePersistence.countByC_V(companyId, version);
-		}
-
-		return journalArticlePersistence.countByC_V_ST(
-			companyId, version, status);
-	}
-
-	/**
-	 * Returns the number of web content articles matching the company and
-	 * workflow status.
-	 *
-	 * @param  companyId the primary key of the web content article's company
-	 * @param  status the web content article's workflow status. For more
-	 *         information see {@link WorkflowConstants} for constants starting
-	 *         with the "STATUS_" prefix.
-	 * @return the number of matching web content articles
-	 */
-	@Override
-	public int getCompanyArticlesCount(long companyId, int status) {
-		if (status == WorkflowConstants.STATUS_ANY) {
-			return journalArticlePersistence.countByCompanyId(companyId);
-		}
-
-		return journalArticlePersistence.countByC_ST(companyId, status);
 	}
 
 	/**
@@ -3632,22 +3431,6 @@ public class JournalArticleLocalServiceImpl
 	}
 
 	/**
-	 * Returns the number of web content articles that are not recycled.
-	 *
-	 * @param  groupId the primary key of the web content article's group
-	 * @param  folderId the primary key of the web content article folder
-	 * @return the number of web content articles that are not recycled
-	 */
-	@Override
-	public int getNotInTrashArticlesCount(long groupId, long folderId) {
-		QueryDefinition<JournalArticle> queryDefinition = new QueryDefinition<>(
-			WorkflowConstants.STATUS_ANY);
-
-		return journalArticleFinder.countByG_F(
-			groupId, ListUtil.fromArray(folderId), queryDefinition);
-	}
-
-	/**
 	 * Returns the oldest web content article with the group and article ID.
 	 *
 	 * @param  groupId the primary key of the web content article's group
@@ -3795,70 +3578,6 @@ public class JournalArticleLocalServiceImpl
 	public int getStructureArticlesCount(long groupId, long ddmStructureId) {
 		return journalArticlePersistence.countByG_DDMSI(
 			groupId, ddmStructureId);
-	}
-
-	/**
-	 * Returns the web content articles matching the group and DDM template key.
-	 *
-	 * @param  groupId the primary key of the web content article's group
-	 * @param  ddmTemplateKey the primary key of the web content article's DDM
-	 *         template
-	 * @return the matching web content articles
-	 */
-	@Override
-	public List<JournalArticle> getTemplateArticles(
-		long groupId, String ddmTemplateKey) {
-
-		return journalArticlePersistence.findByG_DDMTK(groupId, ddmTemplateKey);
-	}
-
-	/**
-	 * Returns an ordered range of all the web content articles matching the
-	 * group and DDM template key.
-	 *
-	 * <p>
-	 * Useful when paginating results. Returns a maximum of <code>end -
-	 * start</code> instances. <code>start</code> and <code>end</code> are not
-	 * primary keys, they are indexes in the result set. Thus, <code>0</code>
-	 * refers to the first result in the set. Setting both <code>start</code>
-	 * and <code>end</code> to {@link QueryUtil#ALL_POS} will return the full
-	 * result set.
-	 * </p>
-	 *
-	 * @param  groupId the primary key of the web content article's group
-	 * @param  ddmTemplateKey the primary key of the web content article's DDM
-	 *         template
-	 * @param  start the lower bound of the range of web content articles to
-	 *         return
-	 * @param  end the upper bound of the range of web content articles to
-	 *         return (not inclusive)
-	 * @param  orderByComparator the comparator to order the web content
-	 *         articles
-	 * @return the range of matching web content articles ordered by the
-	 *         comparator
-	 */
-	@Override
-	public List<JournalArticle> getTemplateArticles(
-		long groupId, String ddmTemplateKey, int start, int end,
-		OrderByComparator<JournalArticle> orderByComparator) {
-
-		return journalArticlePersistence.findByG_DDMTK(
-			groupId, ddmTemplateKey, start, end, orderByComparator);
-	}
-
-	/**
-	 * Returns the number of web content articles matching the group and DDM
-	 * template key.
-	 *
-	 * @param  groupId the primary key of the web content article's group
-	 * @param  ddmTemplateKey the primary key of the web content article's DDM
-	 *         template
-	 * @return the number of matching web content articles
-	 */
-	@Override
-	public int getTemplateArticlesCount(long groupId, String ddmTemplateKey) {
-		return journalArticlePersistence.countByG_DDMTK(
-			groupId, ddmTemplateKey);
 	}
 
 	/**
@@ -4197,9 +3916,11 @@ public class JournalArticleLocalServiceImpl
 
 			versionArticle = journalArticlePersistence.update(versionArticle);
 
-			if (article.equals(versionArticle)) {
-				article = versionArticle;
+			if (!article.equals(versionArticle)) {
+				continue;
 			}
+
+			article = versionArticle;
 		}
 
 		articleResource.setArticleId(trashArticleId);
@@ -4396,9 +4117,11 @@ public class JournalArticleLocalServiceImpl
 
 			articleVersion = journalArticlePersistence.update(articleVersion);
 
-			if (article.equals(articleVersion)) {
-				article = articleVersion;
+			if (!article.equals(articleVersion)) {
+				continue;
 			}
+
+			article = articleVersion;
 		}
 
 		article.setArticleId(trashArticleId);
@@ -5611,37 +5334,6 @@ public class JournalArticleLocalServiceImpl
 	}
 
 	/**
-	 * Updates the web content articles matching the group, class name ID, and
-	 * DDM template key, replacing the DDM template key with a new one.
-	 *
-	 * @param groupId the primary key of the web content article's group
-	 * @param classNameId the primary key of the DDMStructure class if the web
-	 *        content article is related to a DDM structure, the primary key of
-	 *        the class name associated with the article, or
-	 *        JournalArticleConstants.CLASS_NAME_ID_DEFAULT in the journal-api
-	 *        module otherwise
-	 * @param oldDDMTemplateKey the primary key of the web content article's old
-	 *        DDM template
-	 * @param newDDMTemplateKey the primary key of the web content article's new
-	 *        DDM template
-	 */
-	@Override
-	public void updateDDMTemplateKey(
-		long groupId, long classNameId, String oldDDMTemplateKey,
-		String newDDMTemplateKey) {
-
-		List<JournalArticle> articles =
-			journalArticlePersistence.findByG_C_DDMTK(
-				groupId, classNameId, oldDDMTemplateKey);
-
-		for (JournalArticle article : articles) {
-			article.setDDMTemplateKey(newDDMTemplateKey);
-
-			journalArticlePersistence.update(article);
-		}
-	}
-
-	/**
 	 * Updates the workflow status of the web content article.
 	 *
 	 * @param  userId the primary key of the user updating the web content
@@ -6372,9 +6064,8 @@ public class JournalArticleLocalServiceImpl
 		}
 
 		JournalArticleResource articleResource =
-			_journalArticleResourceLocalService.
-				fetchJournalArticleResourceByUuidAndGroupId(
-					article.getArticleResourceUuid(), liveGroupId);
+			_journalArticleResourcePersistence.fetchByUUID_G(
+				article.getArticleResourceUuid(), liveGroupId);
 
 		if (articleResource == null) {
 			return null;
@@ -7083,9 +6774,11 @@ public class JournalArticleLocalServiceImpl
 			curArticle = journalArticleLocalService.updateJournalArticle(
 				curArticle);
 
-			if (article.equals(curArticle)) {
-				article = curArticle;
+			if (!article.equals(curArticle)) {
+				continue;
 			}
+
+			article = curArticle;
 		}
 
 		return article;
@@ -7269,21 +6962,22 @@ public class JournalArticleLocalServiceImpl
 			article.getResourcePrimKey(), urlTitleMap, serviceContext);
 
 		for (Map.Entry<String, String> entry : urlTitleMap.entrySet()) {
-			if (Validator.isNull(entry.getValue())) {
-				for (FriendlyURLEntry friendlyURLEntry : friendlyURLEntries) {
-					try {
-						friendlyURLEntryLocalService.
-							deleteFriendlyURLLocalizationEntry(
-								friendlyURLEntry.getFriendlyURLEntryId(),
-								entry.getKey());
-					}
-					catch (NoSuchFriendlyURLEntryLocalizationException
-								noSuchFriendlyURLEntryLocalizationException) {
+			if (Validator.isNotNull(entry.getValue())) {
+				continue;
+			}
 
-						if (_log.isDebugEnabled()) {
-							_log.debug(
-								noSuchFriendlyURLEntryLocalizationException);
-						}
+			for (FriendlyURLEntry friendlyURLEntry : friendlyURLEntries) {
+				try {
+					friendlyURLEntryLocalService.
+						deleteFriendlyURLLocalizationEntry(
+							friendlyURLEntry.getFriendlyURLEntryId(),
+							entry.getKey());
+				}
+				catch (NoSuchFriendlyURLEntryLocalizationException
+							noSuchFriendlyURLEntryLocalizationException) {
+
+					if (_log.isDebugEnabled()) {
+						_log.debug(noSuchFriendlyURLEntryLocalizationException);
 					}
 				}
 			}
@@ -7350,11 +7044,13 @@ public class JournalArticleLocalServiceImpl
 		for (JournalArticle article : articles) {
 			String curArticleUrlTitle = article.getUrlTitle();
 
-			if (!curArticleUrlTitle.equals(urlTitle)) {
-				article.setUrlTitle(urlTitle);
-
-				journalArticlePersistence.update(article);
+			if (curArticleUrlTitle.equals(urlTitle)) {
+				continue;
 			}
+
+			article.setUrlTitle(urlTitle);
+
+			journalArticlePersistence.update(article);
 		}
 	}
 
@@ -8425,18 +8121,18 @@ public class JournalArticleLocalServiceImpl
 			String languageId = LocaleUtil.toLanguageId(entry.getKey());
 			String value = entry.getValue();
 
-			if (!urlTitleMap.containsKey(languageId) &&
-				Validator.isNotNull(value)) {
+			if (urlTitleMap.containsKey(languageId) ||
+				Validator.isNull(value)) {
 
-				String urlTitle =
-					friendlyURLEntryLocalService.getUniqueUrlTitle(
-						groupId,
-						_classNameLocalService.getClassNameId(
-							JournalArticle.class),
-						resourcePrimKey, value);
-
-				urlTitleMap.put(languageId, urlTitle);
+				continue;
 			}
+
+			String urlTitle = friendlyURLEntryLocalService.getUniqueUrlTitle(
+				groupId,
+				_classNameLocalService.getClassNameId(JournalArticle.class),
+				resourcePrimKey, value);
+
+			urlTitleMap.put(languageId, urlTitle);
 		}
 
 		return urlTitleMap;
@@ -8551,12 +8247,14 @@ public class JournalArticleLocalServiceImpl
 				value.removeLocale(locale);
 			}
 
-			if (ListUtil.isNotEmpty(
+			if (ListUtil.isEmpty(
 					ddmFormFieldValue.getNestedDDMFormFieldValues())) {
 
-				_removeDDMFormFieldValues(
-					ddmFormFieldValue.getNestedDDMFormFieldValues(), locale);
+				continue;
 			}
+
+			_removeDDMFormFieldValues(
+				ddmFormFieldValue.getNestedDDMFormFieldValues(), locale);
 		}
 	}
 
@@ -8729,23 +8427,27 @@ public class JournalArticleLocalServiceImpl
 
 			DDMFormField ddmFormField = ddmFormFieldsMap.get(entry.getKey());
 
-			if (ddmFormField != null) {
-				List<DDMFormFieldValue> ddmFormFieldValues = entry.getValue();
-
-				DDMFormFieldValue ddmFormFieldValue = ddmFormFieldValues.get(0);
-
-				LocalizedValue localizedValue =
-					(LocalizedValue)ddmFormFieldValue.getValue();
-
-				if (!_equals(
-						ddmFormField.getPredefinedValue(), localizedValue,
-						ddmFormField.getType())) {
-
-					ddmFormField.setPredefinedValue(localizedValue);
-
-					update = true;
-				}
+			if (ddmFormField == null) {
+				continue;
 			}
+
+			List<DDMFormFieldValue> ddmFormFieldValues = entry.getValue();
+
+			DDMFormFieldValue ddmFormFieldValue = ddmFormFieldValues.get(0);
+
+			LocalizedValue localizedValue =
+				(LocalizedValue)ddmFormFieldValue.getValue();
+
+			if (_equals(
+					ddmFormField.getPredefinedValue(), localizedValue,
+					ddmFormField.getType())) {
+
+				continue;
+			}
+
+			ddmFormField.setPredefinedValue(localizedValue);
+
+			update = true;
 		}
 
 		if (update) {

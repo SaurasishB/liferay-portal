@@ -59,6 +59,7 @@ import com.liferay.journal.model.JournalArticle;
 import com.liferay.journal.model.JournalFolder;
 import com.liferay.journal.service.JournalArticleLocalService;
 import com.liferay.journal.service.JournalFolderLocalService;
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.test.util.ConfigurationTestUtil;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
@@ -79,6 +80,7 @@ import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.FileVersion;
 import com.liferay.portal.kernel.repository.model.Folder;
+import com.liferay.portal.kernel.security.auth.PrincipalException;
 import com.liferay.portal.kernel.security.auth.PrincipalThreadLocal;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionCheckerFactoryUtil;
@@ -95,6 +97,7 @@ import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.service.UserNotificationEventLocalService;
 import com.liferay.portal.kernel.settings.LocalizedValuesMap;
 import com.liferay.portal.kernel.test.constants.TestDataConstants;
+import com.liferay.portal.kernel.test.context.ContextUserReplace;
 import com.liferay.portal.kernel.test.randomizerbumpers.NumericStringRandomizerBumper;
 import com.liferay.portal.kernel.test.randomizerbumpers.UniqueStringRandomizerBumper;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
@@ -117,10 +120,12 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
+import com.liferay.portal.kernel.workflow.WorkflowException;
 import com.liferay.portal.kernel.workflow.WorkflowHandlerRegistryUtil;
 import com.liferay.portal.kernel.workflow.WorkflowInstance;
 import com.liferay.portal.kernel.workflow.WorkflowTask;
 import com.liferay.portal.kernel.workflow.WorkflowTaskManager;
+import com.liferay.portal.kernel.workflow.WorkflowTransition;
 import com.liferay.portal.kernel.workflow.search.WorkflowModelSearchResult;
 import com.liferay.portal.search.test.rule.SearchTestRule;
 import com.liferay.portal.security.permission.SimplePermissionChecker;
@@ -147,6 +152,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.function.ThrowingRunnable;
 import org.junit.runner.RunWith;
 
 import org.osgi.service.cm.Configuration;
@@ -825,6 +831,48 @@ public class WorkflowTaskManagerImplTest extends BaseWorkflowManagerTestCase {
 	}
 
 	@Test
+	public void testGetAssignableUsers() throws Exception {
+		_activateSingleApproverWorkflow(BlogsEntry.class.getName(), 0, 0);
+
+		_addBlogsEntry();
+
+		WorkflowTask workflowTask = _getWorkflowTask();
+
+		Assert.assertFalse(
+			ListUtil.isEmpty(
+				_workflowTaskManager.getAssignableUsers(
+					workflowTask.getWorkflowTaskId())));
+
+		_assertMustHavePermission(
+			() -> _workflowTaskManager.getAssignableUsers(
+				workflowTask.getWorkflowTaskId()));
+
+		_deactivateWorkflow(BlogsEntry.class.getName(), 0, 0);
+	}
+
+	@Test
+	public void testGetNextWorkflowTransitions() throws Exception {
+		_activateSingleApproverWorkflow(BlogsEntry.class.getName(), 0, 0);
+
+		_addBlogsEntry();
+
+		WorkflowTask workflowTask = _getWorkflowTask();
+
+		Assert.assertEquals(
+			Arrays.asList(Constants.APPROVE, Constants.REJECT),
+			TransformUtil.transform(
+				_workflowTaskManager.getNextWorkflowTransitions(
+					workflowTask.getWorkflowTaskId()),
+				WorkflowTransition::getName));
+
+		_assertMustHavePermission(
+			() -> _workflowTaskManager.getNextWorkflowTransitions(
+				workflowTask.getWorkflowTaskId()));
+
+		_deactivateWorkflow(BlogsEntry.class.getName(), 0, 0);
+	}
+
+	@Test
 	public void testGetNotifiableUsersRoleType() throws Exception {
 		String emailAddress =
 			StringUtil.toLowerCase(RandomTestUtil.randomString()) +
@@ -968,6 +1016,25 @@ public class WorkflowTaskManagerImplTest extends BaseWorkflowManagerTestCase {
 	}
 
 	@Test
+	public void testHasAssignableUsers() throws Exception {
+		_activateSingleApproverWorkflow(BlogsEntry.class.getName(), 0, 0);
+
+		_addBlogsEntry();
+
+		WorkflowTask workflowTask = _getWorkflowTask();
+
+		Assert.assertTrue(
+			_workflowTaskManager.hasAssignableUsers(
+				workflowTask.getWorkflowTaskId()));
+
+		_assertMustHavePermission(
+			() -> _workflowTaskManager.hasAssignableUsers(
+				workflowTask.getWorkflowTaskId()));
+
+		_deactivateWorkflow(BlogsEntry.class.getName(), 0, 0);
+	}
+
+	@Test
 	public void testIsNotifiableUser() throws Exception {
 		User user = UserTestUtil.addUser(_company);
 
@@ -1015,6 +1082,28 @@ public class WorkflowTaskManagerImplTest extends BaseWorkflowManagerTestCase {
 		Assert.assertTrue(
 			_workflowTaskManager.isNotifiableUser(
 				user.getUserId(), workflowTask.getWorkflowTaskId()));
+	}
+
+	@Test
+	public void testLiberalGetNextWorkflowTransitions() throws Exception {
+		_activateSingleApproverWorkflow(BlogsEntry.class.getName(), 0, 0);
+
+		_addBlogsEntry();
+
+		WorkflowTask workflowTask = _getWorkflowTask();
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				_siteMemberUser)) {
+
+			Assert.assertEquals(
+				Arrays.asList(Constants.APPROVE, Constants.REJECT),
+				TransformUtil.transform(
+					_workflowTaskManager.liberalGetNextWorkflowTransitions(
+						workflowTask.getWorkflowTaskId()),
+					WorkflowTransition::getName));
+		}
+
+		_deactivateWorkflow(BlogsEntry.class.getName(), 0, 0);
 	}
 
 	@Test
@@ -1608,7 +1697,7 @@ public class WorkflowTaskManagerImplTest extends BaseWorkflowManagerTestCase {
 
 	private DLFileEntryType _addFileEntryType() throws Exception {
 		DDMStructure ddmStructure = DDMStructureTestUtil.addStructure(
-			DLFileEntryMetadata.class.getName());
+			_group.getGroupId(), DLFileEntryMetadata.class.getName());
 
 		LocalizedValuesMap localizedValuesMap = new LocalizedValuesMap(
 			"defaultValue");
@@ -1747,6 +1836,21 @@ public class WorkflowTaskManagerImplTest extends BaseWorkflowManagerTestCase {
 		}
 	}
 
+	private void _assertMustHavePermission(ThrowingRunnable throwingRunnable)
+		throws Exception {
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				_siteMemberUser)) {
+
+			WorkflowException workflowException = Assert.assertThrows(
+				WorkflowException.class, throwingRunnable);
+
+			Assert.assertTrue(
+				workflowException.getCause() instanceof
+					PrincipalException.MustHavePermission);
+		}
+	}
+
 	private void _assignWorkflowTaskToUser(User user, User assigneeUser)
 		throws Exception {
 
@@ -1784,24 +1888,36 @@ public class WorkflowTaskManagerImplTest extends BaseWorkflowManagerTestCase {
 
 		for (User user : users) {
 			List<UserNotificationEvent> userNotificationEvents =
-				_userNotificationEventLocalService.
-					getArchivedUserNotificationEvents(
-						user.getUserId(),
-						UserNotificationDeliveryConstants.TYPE_WEBSITE, false);
+				TransformUtil.transform(
+					_userNotificationEventLocalService.
+						getUserNotificationEvents(user.getUserId()),
+					userNotificationEvent -> {
+						if ((userNotificationEvent.getDeliveryType() !=
+								UserNotificationDeliveryConstants.
+									TYPE_WEBSITE) ||
+							userNotificationEvent.isArchived()) {
+
+							return null;
+						}
+
+						return userNotificationEvent;
+					});
 
 			Assert.assertEquals(
 				userNotificationEvents.toString(), expected,
 				userNotificationEvents.size());
 
-			if (expected > 0) {
-				UserNotificationEvent userNotificationEvent =
-					userNotificationEvents.get(0);
-
-				userNotificationEvent.setArchived(true);
-
-				_userNotificationEventLocalService.updateUserNotificationEvent(
-					userNotificationEvent);
+			if (expected <= 0) {
+				continue;
 			}
+
+			UserNotificationEvent userNotificationEvent =
+				userNotificationEvents.get(0);
+
+			userNotificationEvent.setArchived(true);
+
+			_userNotificationEventLocalService.updateUserNotificationEvent(
+				userNotificationEvent);
 		}
 	}
 

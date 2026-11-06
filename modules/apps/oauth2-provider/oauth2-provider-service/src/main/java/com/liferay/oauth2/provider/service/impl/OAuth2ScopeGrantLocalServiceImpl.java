@@ -10,6 +10,7 @@ import com.liferay.oauth2.provider.model.OAuth2Authorization;
 import com.liferay.oauth2.provider.model.OAuth2ScopeGrant;
 import com.liferay.oauth2.provider.scope.liferay.LiferayOAuth2Scope;
 import com.liferay.oauth2.provider.service.base.OAuth2ScopeGrantLocalServiceBaseImpl;
+import com.liferay.oauth2.provider.util.OAuth2TokenContentUtil;
 import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.util.OrderByComparator;
@@ -120,6 +121,9 @@ public class OAuth2ScopeGrantLocalServiceImpl
 		long companyId, String applicationName, String bundleSymbolicName,
 		String accessTokenContent) {
 
+		accessTokenContent = OAuth2TokenContentUtil.getTokenContent(
+			accessTokenContent);
+
 		List<OAuth2ScopeGrant> oAuth2ScopeGrants = new ArrayList<>();
 
 		for (OAuth2Authorization oAuth2Authorization :
@@ -142,15 +146,17 @@ public class OAuth2ScopeGrantLocalServiceImpl
 						getOAuth2AuthorizationOAuth2ScopeGrants(
 							oAuth2Authorization.getPrimaryKey())) {
 
-				if (Objects.equals(
+				if (!Objects.equals(
 						applicationName,
-						oAuth2ScopeGrant.getApplicationName()) &&
-					Objects.equals(
+						oAuth2ScopeGrant.getApplicationName()) ||
+					!Objects.equals(
 						bundleSymbolicName,
 						oAuth2ScopeGrant.getBundleSymbolicName())) {
 
-					oAuth2ScopeGrants.add(oAuth2ScopeGrant);
+					continue;
 				}
+
+				oAuth2ScopeGrants.add(oAuth2ScopeGrant);
 			}
 		}
 

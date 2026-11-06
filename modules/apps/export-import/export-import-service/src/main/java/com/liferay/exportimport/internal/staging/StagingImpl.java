@@ -54,7 +54,6 @@ import com.liferay.exportimport.kernel.staging.constants.StagingConstants;
 import com.liferay.exportimport.staged.model.repository.StagedModelRepository;
 import com.liferay.exportimport.staged.model.repository.StagedModelRepositoryHelper;
 import com.liferay.exportimport.staged.model.repository.StagedModelRepositoryRegistryUtil;
-import com.liferay.journal.model.JournalArticle;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.lang.ThreadContextClassLoaderUtil;
 import com.liferay.petra.string.StringBundler;
@@ -92,6 +91,7 @@ import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.model.RecentLayoutBranch;
 import com.liferay.portal.kernel.model.RecentLayoutRevision;
 import com.liferay.portal.kernel.model.RecentLayoutSetBranch;
+import com.liferay.portal.kernel.model.ResourcedModel;
 import com.liferay.portal.kernel.model.StagedGroupedModel;
 import com.liferay.portal.kernel.model.StagedModel;
 import com.liferay.portal.kernel.model.TypedModel;
@@ -268,7 +268,7 @@ public class StagingImpl implements Staging {
 
 		if ((model instanceof
 				ExternalReferenceCodeModel externalReferenceCodeModel) &&
-			!(model instanceof JournalArticle)) {
+			!(model instanceof ResourcedModel)) {
 
 			_changesetEntryLocalService.fetchOrAddChangesetEntry(
 				changesetCollection.getChangesetCollectionId(),
@@ -475,9 +475,11 @@ public class StagingImpl implements Staging {
 			Set<String> keys = new HashSet<>();
 
 			for (String key : typeSettingsUnicodeProperties.keySet()) {
-				if (key.startsWith("last-import-")) {
-					keys.add(key);
+				if (!key.startsWith("last-import-")) {
+					continue;
 				}
+
+				keys.add(key);
 			}
 
 			if (keys.isEmpty()) {
@@ -2306,17 +2308,20 @@ public class StagingImpl implements Staging {
 								stagedModelRepository.getStagedModel(
 									changesetEntry.getClassPK());
 
-							if (stagedModel instanceof TypedModel) {
-								TypedModel typedModel = (TypedModel)stagedModel;
-
-								if (Objects.equals(
-										typedModel.getClassName(),
-										stagedModelType.
-											getReferrerClassName())) {
-
-									modelAdditionCount++;
-								}
+							if (!(stagedModel instanceof TypedModel)) {
+								continue;
 							}
+
+							TypedModel typedModel = (TypedModel)stagedModel;
+
+							if (!Objects.equals(
+									typedModel.getClassName(),
+									stagedModelType.getReferrerClassName())) {
+
+								continue;
+							}
+
+							modelAdditionCount++;
 						}
 					}
 				}
@@ -3397,13 +3402,26 @@ public class StagingImpl implements Staging {
 			throw remoteOptionsException;
 		}
 
+		String remoteURL = null;
+
+		try {
+			remoteURL = _stagingURLHelper.buildRemoteURL(
+				remoteAddress, remotePort, remotePathContext, secureConnection);
+		}
+		catch (SystemException systemException) {
+			if (systemException.getCause() instanceof
+					RemoteOptionsException remoteOptionsException) {
+
+				throw remoteOptionsException;
+			}
+
+			throw systemException;
+		}
+
 		PermissionChecker permissionChecker =
 			PermissionThreadLocal.getPermissionChecker();
 
 		User user = permissionChecker.getUser();
-
-		String remoteURL = _stagingURLHelper.buildRemoteURL(
-			remoteAddress, remotePort, remotePathContext, secureConnection);
 
 		HttpPrincipal httpPrincipal = new HttpPrincipal(
 			remoteURL, user.getLogin(), user.getPassword(),

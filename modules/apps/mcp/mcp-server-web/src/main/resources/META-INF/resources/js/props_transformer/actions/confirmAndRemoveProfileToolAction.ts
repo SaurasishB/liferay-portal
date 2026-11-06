@@ -4,10 +4,11 @@
  */
 
 import {openModal} from 'frontend-js-components-web';
+import {escapeHTML, sub} from 'frontend-js-web';
 
-import {deleteProfileTool} from '../../services/deleteProfileTool';
-import {ProfileToolActionContext} from '../../types';
-import {openErrorToast, openSuccessToast} from '../../utils';
+import ProfileToolService from '../../services/ProfileToolService';
+import {ProfileToolActionContext} from '../../types/ProfileTool';
+import {openErrorToast, openSuccessToast} from '../../utils/toasts';
 
 export default function confirmAndRemoveProfileToolAction({
 	itemData,
@@ -18,11 +19,11 @@ export default function confirmAndRemoveProfileToolAction({
 	openModal({
 		bodyHTML: `
 			<p>
-				${Liferay.Util.sub(
+				${sub(
 					Liferay.Language.get(
 						'this-will-remove-x-from-this-profile'
 					),
-					`<strong>${Liferay.Util.escapeHTML(toolName)}</strong>`
+					`<strong>${escapeHTML(toolName)}</strong>`
 				)}
 			</p>
 			<p>${Liferay.Language.get('do-you-want-to-proceed')}</p>
@@ -40,7 +41,7 @@ export default function confirmAndRemoveProfileToolAction({
 				onClick: async ({processClose}: {processClose: () => void}) => {
 					processClose();
 
-					const {error} = await deleteProfileTool(
+					const {error} = await ProfileToolService.deleteProfileTool(
 						externalReferenceCode
 					);
 
@@ -53,7 +54,7 @@ export default function confirmAndRemoveProfileToolAction({
 					loadData();
 
 					openSuccessToast(
-						Liferay.Util.sub(
+						sub(
 							Liferay.Language.get('x-was-removed-successfully'),
 							toolName
 						)

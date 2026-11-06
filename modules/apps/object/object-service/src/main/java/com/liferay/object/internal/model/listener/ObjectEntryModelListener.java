@@ -317,10 +317,10 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 		ObjectDefinition objectDefinition, ObjectEntry objectEntry) {
 
 		AuditMessage auditMessage = AuditMessageBuilder.buildAuditMessage(
-			objectEntry.getGroupId(), accountEntryId,
+			objectEntry.getGroupId(), accountEntryId, null,
 			objectEntry.getModelClassName(),
 			String.valueOf(objectEntry.getPrimaryKeyObj()), null, eventType,
-			null);
+			"objectentry", null);
 
 		JSONObject additionalInfoJSONObject = auditMessage.getAdditionalInfo();
 
@@ -549,13 +549,14 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 			Object originalValue = originalValues.get(objectField.getName());
 			Object value = values.get(objectField.getName());
 
-			if (!Objects.equals(originalValue, value)) {
-				attributes.add(
-					new Attribute(
-						objectField.getName(),
-						_getAuditValue(objectField, value),
-						_getAuditValue(objectField, originalValue)));
+			if (Objects.equals(originalValue, value)) {
+				continue;
 			}
+
+			attributes.add(
+				new Attribute(
+					objectField.getName(), _getAuditValue(objectField, value),
+					_getAuditValue(objectField, originalValue)));
 		}
 
 		return attributes;
@@ -579,10 +580,10 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 		if (StringUtil.equals(EventTypes.UPDATE, eventType)) {
 			_auditRouter.route(
 				AuditMessageBuilder.buildAuditMessage(
-					objectEntry.getGroupId(), accountEntryId,
+					objectEntry.getGroupId(), accountEntryId, null,
 					objectEntry.getModelClassName(),
 					String.valueOf(objectEntry.getPrimaryKeyObj()), null,
-					EventTypes.UPDATE,
+					EventTypes.UPDATE, "objectentry",
 					_getModifiedAttributes(
 						_getDefaultLanguageId(objectEntry), objectDefinition,
 						originalObjectEntry.getValues(), values)));
@@ -599,20 +600,20 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 		UnsafeConsumer<RelevantObjectEntryModelListener, ModelListenerException>
 			unsafeConsumer) {
 
-		ObjectDefinition objectDefinition =
-			_objectDefinitionLocalService.fetchObjectDefinition(
-				objectEntry.getObjectDefinitionId());
+		ObjectDefinition objectDefinition = objectEntry.getObjectDefinition();
 
 		for (RelevantObjectEntryModelListener relevantObjectEntryModelListener :
 				_relevantObjectEntryModelListeners) {
 
-			if (Objects.equals(
+			if (!Objects.equals(
 					objectDefinition.getExternalReferenceCode(),
 					relevantObjectEntryModelListener.
 						getObjectDefinitionExternalReferenceCode())) {
 
-				unsafeConsumer.accept(relevantObjectEntryModelListener);
+				continue;
 			}
+
+			unsafeConsumer.accept(relevantObjectEntryModelListener);
 		}
 	}
 

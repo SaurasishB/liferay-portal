@@ -102,6 +102,10 @@ public class LocaleUtil_IW {
 		return LocaleUtil.toDisplayNames(locales, locale);
 	}
 
+	public java.lang.String toJSON(java.util.Locale locale) {
+		return LocaleUtil.toJSON(locale);
+	}
+
 	public java.lang.String toLanguageId(java.util.Locale locale) {
 		return LocaleUtil.toLanguageId(locale);
 	}

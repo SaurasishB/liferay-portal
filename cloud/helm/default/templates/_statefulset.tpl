@@ -4,12 +4,17 @@
     {{- if eq .name "http" -}}{{- $backendPort = .port -}}{{- end -}}
 {{- end -}}
 {{- $suffix := ternary "" (printf "-%s" .name) (eq .name "") }}
+{{- $deploySyncSecretName := printf "%s-deploy-sync" (include "liferay.name" .root) }}
+{{- $deploySyncVolumeName := "liferay-deploy-sync" }}
 {{- $licensing := .statefulset.licensing | default dict }}
 {{- $licenseSecretName := $licensing.secretName | default (printf "%s-entitlements" (include "liferay.name" .root)) }}
 {{- $licenseVolumeName := "liferay-license" }}
 {{- $marketplace := .statefulset.marketplace | default dict }}
 {{- $marketplaceClaimName := printf "%s-marketplace" (include "liferay.name" .root) }}
 {{- $marketplaceVolumeName := "liferay-marketplace" }}
+{{- if and $marketplace.enabled (not $licensing.enabled) }}
+{{- fail "The marketplace sync runs the deploy-sync script that the operator publishes, so licensing.enabled must be true when marketplace.enabled is true" }}
+{{- end }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -54,10 +59,17 @@ spec:
             {{- end }}
             containers:
                 -   #
-                    {{- if or .statefulset.env .statefulset.customEnv }}
+                    {{- $databaseEnv := "" }}
+                    {{- if or (eq .name "") .statefulset.database }}
+                    {{- $databaseEnv = include "liferay.database.env" .statefulset | trim }}
+                    {{- end }}
+                    {{- if or .statefulset.env $databaseEnv .statefulset.customEnv }}
                     env:
                         {{- with .statefulset.env }}
                         {{- toYaml . | nindent 22 }}
+                        {{- end }}
+                        {{- with $databaseEnv }}
+                        {{- . | nindent 22 }}
                         {{- end }}
                         {{- range $k, $v := .statefulset.customEnv }}
                         {{- if and $v (gt (len $v) 0) }}
@@ -185,6 +197,7 @@ spec:
                 {{- toYaml $v | nindent 16 }}
                 {{- end }}
                 {{- if $licensing.enabled }}
+                {{- list (dict "name" $deploySyncVolumeName "secret" (dict "optional" true "secretName" $deploySyncSecretName)) | toYaml | nindent 16 }}
                 {{- list (dict "name" $licenseVolumeName "secret" (dict "items" (list (dict "key" "license.xml" "path" "license.xml")) "optional" true "secretName" $licenseSecretName)) | toYaml | nindent 16 }}
                 {{- end }}
                 {{- if $marketplace.enabled }}
@@ -296,15 +309,28 @@ spec:
             sectionName: {{ printf "%s-%s" $ctx.statefulset.network.endpointRef $slug }}
     rules:
         -   backendRefs:
-                -   name: {{ include "liferay.name" $ctx.root }}{{ $suffix }}
+                -   group: ""
+                    kind: Service
+                    name: {{ include "liferay.name" $ctx.root }}{{ $suffix }}
                     port: {{ $backendPort }}
+                    weight: 1
+            {{- if $ctx.statefulset.network.hsts.enabled }}
+            filters:
+                -   responseHeaderModifier:
+                        set:
+                            -   name: Strict-Transport-Security
+                                value: {{ $ctx.statefulset.network.hsts.value | quote }}
+                    type: ResponseHeaderModifier
+            {{- end }}
             matches:
                 -   path:
                         type: PathPrefix
                         value: /
             {{- with $ctx.statefulset.network.sessionPersistence }}
+            {{- if or (not (hasKey . "enabled")) .enabled }}
             sessionPersistence:
-                {{- toYaml . | nindent 16 }}
+                {{- omit . "enabled" | toYaml | nindent 16 }}
+            {{- end }}
             {{- end }}
             {{- with $ctx.statefulset.network.timeouts }}
             timeouts:
@@ -341,15 +367,28 @@ spec:
         {{- end }}
     rules:
         -   backendRefs:
-                -   name: {{ include "liferay.name" .root }}{{ $suffix }}
+                -   group: ""
+                    kind: Service
+                    name: {{ include "liferay.name" .root }}{{ $suffix }}
                     port: {{ $backendPort }}
+                    weight: 1
+            {{- if .statefulset.network.hsts.enabled }}
+            filters:
+                -   responseHeaderModifier:
+                        set:
+                            -   name: Strict-Transport-Security
+                                value: {{ .statefulset.network.hsts.value | quote }}
+                    type: ResponseHeaderModifier
+            {{- end }}
             matches:
                 -   path:
                         type: PathPrefix
                         value: /
             {{- with .statefulset.network.sessionPersistence }}
+            {{- if or (not (hasKey . "enabled")) .enabled }}
             sessionPersistence:
-                {{- toYaml . | nindent 16 }}
+                {{- omit . "enabled" | toYaml | nindent 16 }}
+            {{- end }}
             {{- end }}
             {{- with .statefulset.network.timeouts }}
             timeouts:
@@ -512,6 +551,15 @@ spec:
                     protocol: TCP
                 -   port: session
                     protocol: TCP
+        {{- if .statefulset.networkPolicy.allowMetricsIngress }}
+        -   from:
+                -   namespaceSelector:
+                        matchLabels:
+                            kubernetes.io/metadata.name: {{ .statefulset.networkPolicy.metricsNamespace | quote }}
+            ports:
+                -   port: {{ .statefulset.networkPolicy.metricsPort }}
+                    protocol: TCP
+        {{- end }}
         {{- with .statefulset.networkPolicy.extraIngress }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

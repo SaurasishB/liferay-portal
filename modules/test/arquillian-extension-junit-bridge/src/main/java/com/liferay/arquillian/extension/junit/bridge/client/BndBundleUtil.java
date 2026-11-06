@@ -49,7 +49,7 @@ import org.osgi.framework.Constants;
 public class BndBundleUtil {
 
 	public static byte[] createBundle(
-			Map<String, List<String>> filteredMethodNamesMap,
+			boolean dump, Map<String, List<String>> filteredMethodNamesMap,
 			String hostAddress, int port, long passCode)
 		throws Exception {
 
@@ -76,9 +76,7 @@ public class BndBundleUtil {
 							attributes.getValue("Import-Package"))),
 					","));
 
-			if (Boolean.valueOf(
-					System.getProperty("liferay.arquillian.copy.jar"))) {
-
+			if (dump) {
 				String symbolicName = attributes.getValue(
 					Constants.BUNDLE_SYMBOLICNAME);
 
@@ -225,12 +223,14 @@ public class BndBundleUtil {
 
 			int length = fileName.length();
 
-			if (file.isDirectory() ||
-				fileName.regionMatches(true, length - 4, ".zip", 0, 4) ||
-				fileName.regionMatches(true, length - 4, ".jar", 0, 4)) {
+			if (!file.isDirectory() &&
+				!fileName.regionMatches(true, length - 4, ".zip", 0, 4) &&
+				!fileName.regionMatches(true, length - 4, ".jar", 0, 4)) {
 
-				classPathFiles.add(file);
+				continue;
 			}
+
+			classPathFiles.add(file);
 		}
 
 		return classPathFiles;

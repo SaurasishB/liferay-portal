@@ -1,5 +1,5 @@
 import ClayButton from '@clayui/button';
-import ClayIcon from '@clayui/icon';
+import ClayIcon from 'shared/components/Icon';
 import getCN from 'classnames';
 import React, {createRef} from 'react';
 import {ENTER} from 'shared/util/key-constants';
@@ -26,6 +26,8 @@ export class TitleEditor extends React.Component<
 		editing: false,
 	};
 
+	private _titleInput = createRef<HTMLInputElement>();
+
 	constructor(props: ITitleEditorProps) {
 		super(props);
 		this.handleBlur = this.handleBlur.bind(this);
@@ -34,8 +36,6 @@ export class TitleEditor extends React.Component<
 		this.handleKeyDownEdit = this.handleKeyDownEdit.bind(this);
 		this.editing = this.editing.bind(this);
 	}
-
-	private _titleInput = createRef<HTMLInputElement>();
 
 	handleBlur(event: React.FocusEvent<HTMLInputElement>) {
 		const {onBlur} = this.props;

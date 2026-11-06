@@ -740,8 +740,6 @@ com/liferay/commerce/currency/internal/configuration/category/PricingConfigurati
 com/liferay/commerce/currency/internal/configuration/category/PricingConfigurationCategory.getCategorySection()Ljava/lang/String;:SAFE
 com/liferay/commerce/currency/internal/configuration/definition/CommerceCurrencyConfigurationPidMapping.getConfigurationBeanClass()Ljava/lang/Class;:SAFE
 com/liferay/commerce/currency/internal/configuration/definition/CommerceCurrencyConfigurationPidMapping.getConfigurationPid()Ljava/lang/String;:SAFE
-com/liferay/commerce/currency/internal/configuration/definition/RoundingTypeConfigurationPidMapping.getConfigurationBeanClass()Ljava/lang/Class;:SAFE
-com/liferay/commerce/currency/internal/configuration/definition/RoundingTypeConfigurationPidMapping.getConfigurationPid()Ljava/lang/String;:SAFE
 com/liferay/commerce/currency/internal/model/CommerceMoneyFactoryImpl$1.format(Ljava/util/Locale;)Ljava/lang/String;:SAFE
 com/liferay/commerce/currency/internal/model/CommerceMoneyFactoryImpl$1.getPrice()Ljava/math/BigDecimal;:SAFE
 com/liferay/commerce/currency/internal/model/CommerceMoneyFactoryImpl.create(JLjava/math/BigDecimal;)Lcom/liferay/commerce/currency/model/CommerceMoney;:SAFE
@@ -1138,7 +1136,6 @@ com/liferay/commerce/discount/service/persistence/impl/CommerceDiscountAccountRe
 com/liferay/commerce/discount/service/persistence/impl/CommerceDiscountAccountRelPersistenceImpl.getSelectSQL()Ljava/lang/String;:SAFE
 com/liferay/commerce/discount/service/persistence/impl/CommerceDiscountCommerceAccountGroupRelPersistenceImpl.getPKDBName()Ljava/lang/String;:SAFE
 com/liferay/commerce/discount/service/persistence/impl/CommerceDiscountCommerceAccountGroupRelPersistenceImpl.getSelectSQL()Ljava/lang/String;:SAFE
-com/liferay/commerce/discount/service/persistence/impl/CommerceDiscountFinderImpl._setQueryPosDynamicParameters(Ljava/lang/Long;Ljava/lang/Long;[JLjava/lang/Long;Lcom/liferay/portal/kernel/dao/orm/QueryPos;)Lcom/liferay/portal/kernel/dao/orm/QueryPos;:0
 com/liferay/commerce/discount/service/persistence/impl/CommerceDiscountFinderImpl.replaceQueryClassPKs(Ljava/lang/String;Ljava/lang/String;[J)Ljava/lang/String;:1,2
 com/liferay/commerce/discount/service/persistence/impl/CommerceDiscountPersistenceImpl._getTime(Ljava/util/Date;)Ljava/lang/Long;:SAFE
 com/liferay/commerce/discount/service/persistence/impl/CommerceDiscountPersistenceImpl.create(J)Lcom/liferay/commerce/discount/model/CommerceDiscount;:SAFE
@@ -1306,8 +1303,6 @@ com/liferay/commerce/internal/configuration/definition/CommerceOrderConfiguratio
 com/liferay/commerce/internal/configuration/definition/CommerceOrderConfigurationPidMapping.getConfigurationPid()Ljava/lang/String;:SAFE
 com/liferay/commerce/internal/configuration/definition/CommerceOrderFieldsConfigurationPidMapping.getConfigurationBeanClass()Ljava/lang/Class;:SAFE
 com/liferay/commerce/internal/configuration/definition/CommerceOrderFieldsConfigurationPidMapping.getConfigurationPid()Ljava/lang/String;:SAFE
-com/liferay/commerce/internal/configuration/definition/CommercePriceConfigurationPidMapping.getConfigurationBeanClass()Ljava/lang/Class;:SAFE
-com/liferay/commerce/internal/configuration/definition/CommercePriceConfigurationPidMapping.getConfigurationPid()Ljava/lang/String;:SAFE
 com/liferay/commerce/internal/configuration/definition/CommerceShippingGroupServiceConfigurationPidMapping.getConfigurationBeanClass()Ljava/lang/Class;:SAFE
 com/liferay/commerce/internal/configuration/definition/CommerceShippingGroupServiceConfigurationPidMapping.getConfigurationPid()Ljava/lang/String;:SAFE
 com/liferay/commerce/internal/context/CommerceContextFactoryImpl.create(JJJJJ)Lcom/liferay/commerce/context/CommerceContext;:SAFE
@@ -1810,8 +1805,6 @@ com/liferay/commerce/machine/learning/internal/recommendation/model/BaseCommerce
 com/liferay/commerce/machine/learning/internal/recommendation/search/index/ProductContentCommerceMLRecommendationIndexer.getDocumentType()Ljava/lang/String;:SAFE
 com/liferay/commerce/machine/learning/internal/recommendation/search/index/ProductInteractionCommerceMLRecommendationIndexer.getDocumentType()Ljava/lang/String;:SAFE
 com/liferay/commerce/machine/learning/internal/recommendation/search/index/UserCommerceMLRecommendationIndexer.getDocumentType()Ljava/lang/String;:SAFE
-com/liferay/commerce/media/internal/configuration/definition/CommerceMediaDefaultImageConfigurationPidMapping.getConfigurationBeanClass()Ljava/lang/Class;:SAFE
-com/liferay/commerce/media/internal/configuration/definition/CommerceMediaDefaultImageConfigurationPidMapping.getConfigurationPid()Ljava/lang/String;:SAFE
 com/liferay/commerce/model/CPDAvailabilityEstimate$1.get(Lcom/liferay/commerce/model/CPDAvailabilityEstimate;)Ljava/lang/Long;:SAFE
 com/liferay/commerce/model/CPDAvailabilityEstimate$1.get(Ljava/lang/Object;)Ljava/lang/Object;:SAFE
 com/liferay/commerce/model/CPDAvailabilityEstimate$1.getAttributeClass()Ljava/lang/Class;:SAFE
@@ -3037,7 +3030,6 @@ com/liferay/commerce/price/list/service/persistence/impl/CommercePriceListDiscou
 com/liferay/commerce/price/list/service/persistence/impl/CommercePriceListDiscountRelPersistenceImpl.getPKDBName()Ljava/lang/String;:SAFE
 com/liferay/commerce/price/list/service/persistence/impl/CommercePriceListDiscountRelPersistenceImpl.getSelectSQL()Ljava/lang/String;:SAFE
 com/liferay/commerce/price/list/service/persistence/impl/CommercePriceListDiscountRelPersistenceImpl.getTableColumnsMap()Ljava/util/Map;:SAFE
-com/liferay/commerce/price/list/service/persistence/impl/CommercePriceListFinderImpl.replaceAccountGroupIds(Ljava/lang/String;[J)Ljava/lang/String;:1
 com/liferay/commerce/price/list/service/persistence/impl/CommercePriceListPersistenceImpl._getTime(Ljava/util/Date;)Ljava/lang/Long;:SAFE
 com/liferay/commerce/price/list/service/persistence/impl/CommercePriceListPersistenceImpl.create(J)Lcom/liferay/commerce/price/list/model/CommercePriceList;:SAFE
 com/liferay/commerce/price/list/service/persistence/impl/CommercePriceListPersistenceImpl.getPKDBName()Ljava/lang/String;:SAFE
@@ -3124,8 +3116,6 @@ com/liferay/commerce/price/list/web/internal/frontend/taglib/servlet/taglib/Comm
 com/liferay/commerce/price/list/web/internal/frontend/taglib/servlet/taglib/CommercePriceListEntriesScreenNavigationCategory.getScreenNavigationKey()Ljava/lang/String;:SAFE
 com/liferay/commerce/price/list/web/internal/portlet/CommercePriceListPortletProvider.getPortletName()Ljava/lang/String;:SAFE
 com/liferay/commerce/pricing/constants/CommercePriceModifierConstants.TARGETS:SAFE
-com/liferay/commerce/pricing/internal/configuration/definition/CommercePricingConfigurationPidMapping.getConfigurationBeanClass()Ljava/lang/Class;:SAFE
-com/liferay/commerce/pricing/internal/configuration/definition/CommercePricingConfigurationPidMapping.getConfigurationPid()Ljava/lang/String;:SAFE
 com/liferay/commerce/pricing/internal/modifier/CommercePriceModifierHelperImpl.applyCommercePriceModifier(JJLcom/liferay/commerce/currency/model/CommerceMoney;)Ljava/math/BigDecimal;:SAFE
 com/liferay/commerce/pricing/internal/search/CommercePricingClassIndexer.getClassName()Ljava/lang/String;:SAFE
 com/liferay/commerce/pricing/internal/security/permission/resource/CommercePricingClassModelResourcePermission.getModelName()Ljava/lang/String;:SAFE
@@ -3898,8 +3888,6 @@ com/liferay/commerce/product/internal/configuration/category/CatalogConfiguratio
 com/liferay/commerce/product/internal/configuration/category/CatalogConfigurationCategory.getCategoryIcon()Ljava/lang/String;:SAFE
 com/liferay/commerce/product/internal/configuration/category/CatalogConfigurationCategory.getCategoryKey()Ljava/lang/String;:SAFE
 com/liferay/commerce/product/internal/configuration/category/CatalogConfigurationCategory.getCategorySection()Ljava/lang/String;:SAFE
-com/liferay/commerce/product/internal/configuration/definition/CPOptionConfigurationPidMapping.getConfigurationBeanClass()Ljava/lang/Class;:SAFE
-com/liferay/commerce/product/internal/configuration/definition/CPOptionConfigurationPidMapping.getConfigurationPid()Ljava/lang/String;:SAFE
 com/liferay/commerce/product/internal/configuration/definition/CProductVersionConfigurationPidMapping.getConfigurationBeanClass()Ljava/lang/Class;:SAFE
 com/liferay/commerce/product/internal/configuration/definition/CProductVersionConfigurationPidMapping.getConfigurationPid()Ljava/lang/String;:SAFE
 com/liferay/commerce/product/internal/data/source/CPDataSourceAssetCategoriesAndTagsImpl.getLabel(Ljava/util/Locale;)Ljava/lang/String;:SAFE

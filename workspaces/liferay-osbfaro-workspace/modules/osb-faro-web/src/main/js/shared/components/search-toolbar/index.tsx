@@ -1,6 +1,6 @@
 import Checkbox from 'shared/components/Checkbox';
 import ClayButton from '@clayui/button';
-import ClayIcon from '@clayui/icon';
+import ClayIcon from 'shared/components/Icon';
 import Constants from 'shared/util/constants';
 import FilterAndOrder, {
 	getFilterAndOrderLabel,
@@ -287,7 +287,7 @@ const SearchToolbar: React.FC<ISearchToolbarProps> = ({
 					expand
 					managementBar
 				>
-					<Nav className="front-nav">
+					<Nav className="front-nav mr-auto">
 						{showCheckbox && (
 							<Nav.Item>
 								<Checkbox

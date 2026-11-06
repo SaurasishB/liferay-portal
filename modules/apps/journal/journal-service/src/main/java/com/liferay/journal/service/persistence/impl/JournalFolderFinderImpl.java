@@ -5,6 +5,7 @@
 
 package com.liferay.journal.service.persistence.impl;
 
+import com.liferay.journal.internal.util.JournalArticleViewableStatusUtil;
 import com.liferay.journal.model.JournalArticle;
 import com.liferay.journal.model.JournalFolder;
 import com.liferay.journal.model.impl.JournalArticleImpl;
@@ -25,7 +26,6 @@ import com.liferay.portal.kernel.exception.SystemException;
 import com.liferay.portal.kernel.security.permission.InlineSQLHelperUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
-import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 
@@ -56,9 +56,6 @@ public class JournalFolderFinderImpl
 
 	public static final String FIND_A_BY_G_U_F_DDMSI_L_NOT_S =
 		JournalFolderFinder.class.getName() + ".findA_ByG_U_F_DDMSI_L_NotS";
-
-	public static final String FIND_F_BY_NO_ASSETS =
-		JournalFolderFinder.class.getName() + ".findF_ByNoAssets";
 
 	public static final String FIND_F_BY_G_F =
 		JournalFolderFinder.class.getName() + ".findF_ByG_F";
@@ -131,34 +128,6 @@ public class JournalFolderFinderImpl
 			groupId, folderId, ddmStructureId, queryDefinition, false);
 	}
 
-	@Override
-	public List<JournalFolder> findF_ByNoAssets() {
-		Session session = null;
-
-		try {
-			session = openSession();
-
-			String sql = _customSQL.get(getClass(), FIND_F_BY_NO_ASSETS);
-
-			SQLQuery sqlQuery = session.createSynchronizedSQLQuery(sql);
-
-			sqlQuery.addEntity(
-				JournalFolderImpl.TABLE_NAME, JournalFolderImpl.class);
-
-			QueryPos queryPos = QueryPos.getInstance(sqlQuery);
-
-			queryPos.add(_portal.getClassNameId(JournalFolder.class));
-
-			return sqlQuery.list(true);
-		}
-		catch (Exception exception) {
-			throw new SystemException(exception);
-		}
-		finally {
-			closeSession(session);
-		}
-	}
-
 	protected int doCountF_A_ByG_F_DDMSI_NotS(
 		long groupId, long folderId, long ddmStructureId,
 		int[] excludedStatuses, QueryDefinition<?> queryDefinition,
@@ -219,9 +188,11 @@ public class JournalFolderFinderImpl
 			while (iterator.hasNext()) {
 				Long l = iterator.next();
 
-				if (l != null) {
-					count += l.intValue();
+				if (l == null) {
+					continue;
 				}
+
+				count += l.intValue();
 			}
 
 			return count;
@@ -438,6 +409,9 @@ public class JournalFolderFinderImpl
 		String sql = _customSQL.get(
 			getClass(), id, queryDefinition, JournalArticleImpl.TABLE_NAME);
 
+		sql = JournalArticleViewableStatusUtil.replaceViewableStatus(
+			groupId, inlineSQLHelper, sql);
+
 		if (inlineSQLHelper) {
 			sql = InlineSQLHelperUtil.replacePermissionCheck(
 				sql, JournalArticle.class.getName(),
@@ -477,9 +451,11 @@ public class JournalFolderFinderImpl
 		for (int i = 0; i < excludedStatuses.length; i++) {
 			sb.append(excludedStatuses[i]);
 
-			if (i != (excludedStatuses.length - 1)) {
-				sb.append(", ");
+			if (i == (excludedStatuses.length - 1)) {
+				continue;
 			}
+
+			sb.append(", ");
 		}
 
 		sb.append(")");
@@ -547,8 +523,5 @@ public class JournalFolderFinderImpl
 
 	@Reference
 	private CustomSQL _customSQL;
-
-	@Reference
-	private Portal _portal;
 
 }

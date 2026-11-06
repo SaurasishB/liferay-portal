@@ -659,7 +659,7 @@ export class StructureBuilderPage {
 			.filter({hasText: 'published successfully'});
 
 		await expect(confirmDialog.or(successAlert)).toBeVisible({
-			timeout: 10000,
+			timeout: 30000,
 		});
 
 		if (await confirmDialog.isVisible()) {
@@ -667,7 +667,7 @@ export class StructureBuilderPage {
 		}
 
 		await waitForAlert(this.page, 'published successfully', {
-			timeout: 10000,
+			timeout: 30000,
 		});
 
 		const url = new URL(this.page.url());
@@ -689,14 +689,14 @@ export class StructureBuilderPage {
 		const [response] = await Promise.all([
 			this.page.waitForResponse(
 				(response) =>
-					response.url().includes('object-definitions') &&
+					response.url().includes('cms/update-structure') &&
 					response.status() === 200,
 				{timeout: 10000}
 			),
 			await save(),
 		]);
 
-		const {id} = await response.json();
+		const id = Number((await response.json()).id);
 
 		// Add ids to ApiHelpers data so structures are cleaned after each test
 

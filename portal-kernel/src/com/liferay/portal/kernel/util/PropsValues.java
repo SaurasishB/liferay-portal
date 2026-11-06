@@ -225,6 +225,9 @@ public class PropsValues {
 		GetterUtil.getBoolean(
 			PropsUtil.get(PropsKeys.BASIC_AUTH_PASSWORD_REQUIRED));
 
+	public static final String BATCH_ENGINE_ENCRYPTION_KEY = PropsUtil.get(
+		PropsKeys.BATCH_ENGINE_ENCRYPTION_KEY);
+
 	public static final String BLOGS_DISPLAY_TEMPLATES_CONFIG = PropsUtil.get(
 		PropsKeys.BLOGS_DISPLAY_TEMPLATES_CONFIG);
 
@@ -1939,9 +1942,6 @@ public class PropsValues {
 
 	public static final String RESOURCE_REPOSITORIES_ROOT = PropsUtil.get(
 		PropsKeys.RESOURCE_REPOSITORIES_ROOT);
-
-	public static final String[] REST_PROXY_URL_PREFIXES_ALLOWED =
-		PropsUtil.getArray(PropsKeys.REST_PROXY_URL_PREFIXES_ALLOWED);
 
 	public static final int RETRY_ADVICE_MAX_RETRIES = GetterUtil.getInteger(
 		PropsUtil.get(PropsKeys.RETRY_ADVICE_MAX_RETRIES));

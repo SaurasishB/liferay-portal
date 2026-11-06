@@ -9,9 +9,10 @@ import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.batch.engine.BatchEngineTaskExecuteStatus;
 import com.liferay.batch.engine.BatchEngineTaskOperation;
 import com.liferay.batch.engine.constants.BatchEngineImportTaskConstants;
-import com.liferay.batch.engine.internal.test.BlogPosting;
+import com.liferay.batch.engine.model.BatchEngineExportTaskTable;
 import com.liferay.batch.engine.model.BatchEngineImportTask;
 import com.liferay.batch.engine.model.BatchEngineImportTaskErrorTable;
+import com.liferay.batch.engine.model.BatchEngineImportTaskTable;
 import com.liferay.batch.engine.service.BatchEngineExportTaskLocalService;
 import com.liferay.batch.engine.service.BatchEngineImportTaskErrorLocalService;
 import com.liferay.batch.engine.service.BatchEngineImportTaskLocalService;
@@ -59,14 +60,15 @@ public class CompanyModelListenerTest {
 
 			_batchEngineExportTaskLocalService.addBatchEngineExportTask(
 				null, company.getCompanyId(), user.getUserId(), null,
-				BlogPosting.class.getName(), "JSON",
+				"com.liferay.headless.admin.user.dto.v1_0.UserAccount", "JSON",
 				BatchEngineTaskExecuteStatus.INITIAL.name(), null,
 				new HashMap<>(), null);
 
 			BatchEngineImportTask batchEngineImportTask =
 				_batchEngineImportTaskLocalService.addBatchEngineImportTask(
 					null, company.getCompanyId(), user.getUserId(), 10, null,
-					BlogPosting.class.getName(), new byte[0], "JSON",
+					"com.liferay.headless.admin.user.dto.v1_0.UserAccount",
+					new byte[0], "JSON",
 					BatchEngineTaskExecuteStatus.INITIAL.name(), null,
 					BatchEngineImportTaskConstants.
 						IMPORT_STRATEGY_ON_ERROR_FAIL,
@@ -86,12 +88,24 @@ public class CompanyModelListenerTest {
 
 		Assert.assertEquals(
 			0,
-			_batchEngineExportTaskLocalService.getBatchEngineExportTasksCount(
-				company.getCompanyId()));
+			_batchEngineExportTaskLocalService.dslQueryCount(
+				DSLQueryFactoryUtil.count(
+				).from(
+					BatchEngineExportTaskTable.INSTANCE
+				).where(
+					BatchEngineExportTaskTable.INSTANCE.companyId.eq(
+						company.getCompanyId())
+				)));
 		Assert.assertEquals(
 			0,
-			_batchEngineImportTaskLocalService.getBatchEngineImportTasksCount(
-				company.getCompanyId()));
+			_batchEngineImportTaskLocalService.dslQueryCount(
+				DSLQueryFactoryUtil.count(
+				).from(
+					BatchEngineImportTaskTable.INSTANCE
+				).where(
+					BatchEngineImportTaskTable.INSTANCE.companyId.eq(
+						company.getCompanyId())
+				)));
 		Assert.assertEquals(
 			0,
 			_batchEngineImportTaskErrorLocalService.dslQueryCount(

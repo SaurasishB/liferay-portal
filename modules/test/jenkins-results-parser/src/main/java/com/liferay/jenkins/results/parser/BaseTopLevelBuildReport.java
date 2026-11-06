@@ -5,8 +5,14 @@
 
 package com.liferay.jenkins.results.parser;
 
+import com.liferay.jenkins.results.parser.testray.TestrayBuild;
 import com.liferay.jenkins.results.parser.testray.TestrayCloudBucket;
 import com.liferay.jenkins.results.parser.testray.TestrayCloudObject;
+import com.liferay.jenkins.results.parser.testray.TestrayFactory;
+import com.liferay.jenkins.results.parser.testray.TestrayProductVersion;
+import com.liferay.jenkins.results.parser.testray.TestrayProject;
+import com.liferay.jenkins.results.parser.testray.TestrayRoutine;
+import com.liferay.jenkins.results.parser.testray.TestrayServer;
 
 import java.io.IOException;
 
@@ -14,11 +20,10 @@ import java.net.MalformedURLException;
 import java.net.URL;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,12 +45,14 @@ public abstract class BaseTopLevelBuildReport
 		}
 
 		if (downstreamBuildReport.isBuildCached()) {
-			_cachedDownstreamBuildReports.add(downstreamBuildReport);
+			_cachedDownstreamBuildReports.put(
+				downstreamBuildReport.getAxisName(), downstreamBuildReport);
 
 			return;
 		}
 
-		_downstreamBuildReports.add(downstreamBuildReport);
+		_downstreamBuildReports.put(
+			downstreamBuildReport.getAxisName(), downstreamBuildReport);
 	}
 
 	@Override
@@ -199,9 +206,11 @@ public abstract class BaseTopLevelBuildReport
 				}
 			}
 
-			if (!hasSimilarFailureReport) {
-				distinctFailureReports.add(failureReport);
+			if (hasSimilarFailureReport) {
+				continue;
 			}
+
+			distinctFailureReports.add(failureReport);
 		}
 
 		_distinctFailureReports = distinctFailureReports;
@@ -213,25 +222,14 @@ public abstract class BaseTopLevelBuildReport
 	public synchronized DownstreamBuildReport getDownstreamBuildReport(
 		String axisName) {
 
-		for (DownstreamBuildReport downstreamBuildReport :
-				_downstreamBuildReports) {
+		DownstreamBuildReport downstreamBuildReport =
+			_downstreamBuildReports.get(axisName);
 
-			if (Objects.equals(downstreamBuildReport.getAxisName(), axisName)) {
-				return downstreamBuildReport;
-			}
+		if (downstreamBuildReport != null) {
+			return downstreamBuildReport;
 		}
 
-		for (DownstreamBuildReport cachedDownstreamBuildReport :
-				_cachedDownstreamBuildReports) {
-
-			if (Objects.equals(
-					cachedDownstreamBuildReport.getAxisName(), axisName)) {
-
-				return cachedDownstreamBuildReport;
-			}
-		}
-
-		return null;
+		return _cachedDownstreamBuildReports.get(axisName);
 	}
 
 	@Override
@@ -240,8 +238,8 @@ public abstract class BaseTopLevelBuildReport
 
 		List<DownstreamBuildReport> downstreamBuildReports = new ArrayList<>();
 
-		downstreamBuildReports.addAll(_cachedDownstreamBuildReports);
-		downstreamBuildReports.addAll(_downstreamBuildReports);
+		downstreamBuildReports.addAll(_cachedDownstreamBuildReports.values());
+		downstreamBuildReports.addAll(_downstreamBuildReports.values());
 
 		return downstreamBuildReports;
 	}
@@ -440,9 +438,113 @@ public abstract class BaseTopLevelBuildReport
 	}
 
 	@Override
+	public synchronized TestrayBuild getTestrayBuild() {
+		if (_testrayBuild != null) {
+			return _testrayBuild;
+		}
+
+		JSONObject buildReportJSONObject = getBuildReportJSONObject();
+
+		if (buildReportJSONObject == null) {
+			return null;
+		}
+
+		String testrayBuildURL = buildReportJSONObject.optString(
+			"testrayBuildURL");
+
+		if (JenkinsResultsParserUtil.isNullOrEmpty(testrayBuildURL)) {
+			return null;
+		}
+
+		URL url = null;
+
+		try {
+			url = new URL(testrayBuildURL);
+		}
+		catch (MalformedURLException malformedURLException) {
+			return null;
+		}
+
+		if (TestrayBuild.getId(url) <= 0) {
+			return null;
+		}
+
+		_testrayBuild = TestrayFactory.newTestrayBuild(url);
+
+		return _testrayBuild;
+	}
+
+	@Override
 	public String getTestrayBuildDateString() {
 		return JenkinsResultsParserUtil.toDateString(
 			getStartDate(), "yyyy-MM-dd HH:mm:ss", "America/Los_Angeles");
+	}
+
+	@Override
+	public URL getTestrayCaseResultURL() {
+		JSONObject buildReportJSONObject = getBuildReportJSONObject();
+
+		if (buildReportJSONObject == null) {
+			return null;
+		}
+
+		String testrayCaseResultURL = buildReportJSONObject.optString(
+			"testrayCaseResultURL");
+
+		if (JenkinsResultsParserUtil.isNullOrEmpty(testrayCaseResultURL)) {
+			return null;
+		}
+
+		try {
+			return new URL(testrayCaseResultURL);
+		}
+		catch (MalformedURLException malformedURLException) {
+			return null;
+		}
+	}
+
+	@Override
+	public TestrayProductVersion getTestrayProductVersion() {
+		TestrayBuild testrayBuild = getTestrayBuild();
+
+		if (testrayBuild == null) {
+			return null;
+		}
+
+		return testrayBuild.getTestrayProductVersion();
+	}
+
+	@Override
+	public TestrayProject getTestrayProject() {
+		TestrayBuild testrayBuild = getTestrayBuild();
+
+		if (testrayBuild == null) {
+			return null;
+		}
+
+		return testrayBuild.getTestrayProject();
+	}
+
+	@Override
+	public TestrayRoutine getTestrayRoutine() {
+		TestrayBuild testrayBuild = getTestrayBuild();
+
+		if (testrayBuild == null) {
+			return null;
+		}
+
+		return testrayBuild.getTestrayRoutine();
+	}
+
+	@Override
+	public TestrayServer getTestrayServer() {
+		TestrayBuild testrayBuild = getTestrayBuild();
+
+		if (testrayBuild == null) {
+			return null;
+		}
+
+		return testrayBuild.getTestrayServer();
 	}
 
 	@Override
@@ -563,9 +665,11 @@ public abstract class BaseTopLevelBuildReport
 				}
 			}
 
-			if (!hasSimilarFailure) {
-				uniqueFailureReports.add(failureReport);
+			if (hasSimilarFailure) {
+				continue;
 			}
+
+			uniqueFailureReports.add(failureReport);
 		}
 
 		_uniqueFailureReports = uniqueFailureReports;
@@ -642,15 +746,16 @@ public abstract class BaseTopLevelBuildReport
 				"<strong[^>]*>(?<status>[A-Z]+)<\\/strong> - <a href=\\\"",
 				"(?<buildURL>[^\\\"]+)\\\">Build URL<\\/a>.*"));
 
-	private final Set<DownstreamBuildReport> _cachedDownstreamBuildReports =
-		new HashSet<>();
+	private final Map<String, DownstreamBuildReport>
+		_cachedDownstreamBuildReports = new HashMap<>();
 	private ControllerBuildReport _controllerBuildReport;
 	private List<FailureReport> _distinctFailureReports;
-	private final Set<DownstreamBuildReport> _downstreamBuildReports =
-		new HashSet<>();
+	private final Map<String, DownstreamBuildReport> _downstreamBuildReports =
+		new HashMap<>();
 	private List<FailureReport> _failureReports;
 	private JobReport _jobReport;
 	private TopLevelBuildReport _previousTopLevelBuildReport;
+	private TestrayBuild _testrayBuild;
 	private List<FailureReport> _uniqueFailureReports;
 
 }

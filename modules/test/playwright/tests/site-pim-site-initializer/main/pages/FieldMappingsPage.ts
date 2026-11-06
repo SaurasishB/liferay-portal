@@ -3,14 +3,17 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {Locator, Page} from '@playwright/test';
+import {Locator, Page, expect} from '@playwright/test';
 
 import {clickAndExpectToBeVisible} from '../../../../utils/clickAndExpectToBeVisible';
 import {DataSetPage} from '../../../site-cms-site-initializer/main/pages/DataSetPage';
+import {EditFieldMappingsPage} from './EditFieldMappingsPage';
 
 export class FieldMappingsPage {
 	readonly channelField: (channelField: string) => Locator;
 	readonly dataSetFragmentPage: DataSetPage;
+	readonly moreActionsButton: Locator;
+	readonly moreActionsMenuItem: (name: string) => Locator;
 	readonly page: Page;
 	readonly row: (channelField: string) => Locator;
 	readonly sourceAttributes: (channelField: string) => Locator;
@@ -23,6 +26,11 @@ export class FieldMappingsPage {
 				name: channelField,
 			});
 		this.dataSetFragmentPage = new DataSetPage(page);
+		this.moreActionsButton = page.getByRole('button', {
+			name: 'More Actions',
+		});
+		this.moreActionsMenuItem = (name) =>
+			page.getByRole('menuitem', {exact: true, name});
 		this.page = page;
 		this.row = (channelField) =>
 			this.dataSetFragmentPage.table.bodyRows.filter({
@@ -65,5 +73,51 @@ export class FieldMappingsPage {
 		});
 
 		await this.page.keyboard.press('Escape');
+	}
+
+	async expectMoreActionsMenuItems({
+		hidden = [],
+		visible = [],
+	}: {
+		hidden?: string[];
+		visible?: string[];
+	}) {
+		await this.moreActionsButton.click();
+
+		for (const name of visible) {
+			await expect(this.moreActionsMenuItem(name)).toBeVisible();
+		}
+
+		for (const name of hidden) {
+			await expect(this.moreActionsMenuItem(name)).toBeHidden();
+		}
+
+		await this.page.keyboard.press('Escape');
+	}
+
+	async mapRequiredChannelFields() {
+		const editFieldMappingsPage = new EditFieldMappingsPage(this.page);
+
+		for (const {channelField, sourceAttribute, value} of [
+			{channelField: 'Catalog ID', value: '1'},
+			{channelField: 'Name', sourceAttribute: 'Title (title)'},
+			{channelField: 'Product Type', value: 'simple'},
+			{channelField: 'SKU', sourceAttribute: 'SKU (sku)'},
+		]) {
+			await this.channelField(channelField).click();
+
+			if (sourceAttribute) {
+				await editFieldMappingsPage.mapToSourceAttribute(
+					sourceAttribute
+				);
+			}
+			else {
+				await editFieldMappingsPage.mapToValue(value!);
+			}
+
+			await editFieldMappingsPage.saveButton.click();
+
+			await expect(this.status(channelField)).toHaveText('Mapped');
+		}
 	}
 }

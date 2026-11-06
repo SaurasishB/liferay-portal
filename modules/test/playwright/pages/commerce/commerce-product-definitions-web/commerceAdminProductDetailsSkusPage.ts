@@ -20,6 +20,7 @@ export class CommerceAdminProductDetailsSkusPage extends CommerceDNDTablePage {
 		strictEqual?: boolean
 	) => Promise<{column: Locator; row: Locator}>;
 	readonly inventoryTableRowAction: (pageName: string) => Promise<Locator>;
+	readonly neverExpireCheckbox: Locator;
 	readonly page: Page;
 	readonly pricinQuantity: Locator;
 	readonly sidePanelDetailsSkuFieldName: Locator;
@@ -29,6 +30,7 @@ export class CommerceAdminProductDetailsSkusPage extends CommerceDNDTablePage {
 	readonly sidePanelNestedFrame: FrameLocator;
 	readonly sidePanelNestedPriceListPrice: Locator;
 	readonly sidePanelNestedSaveButton: Locator;
+	readonly sidePanelSaveAsDraftButton: Locator;
 	readonly sidePanelSaveButton: Locator;
 	readonly sidePanelSkuInventoryQuantity: Locator;
 	readonly sidePanelSkuPriceTableRowLink: (priceListName: string) => Locator;
@@ -40,6 +42,8 @@ export class CommerceAdminProductDetailsSkusPage extends CommerceDNDTablePage {
 	readonly skuAddModalSuccessMessage: Locator;
 	readonly skuPriceAddButton: Locator;
 	readonly skuPriceAddModal: FrameLocator;
+	readonly skuPriceAddModalAddButton: Locator;
+	readonly skuPriceAddModalUnitPriceInput: Locator;
 	readonly skuPriceFrame: FrameLocator;
 	readonly skuPriceListSelect: Locator;
 	readonly skuTab: (tabName: string) => Locator;
@@ -120,6 +124,8 @@ export class CommerceAdminProductDetailsSkusPage extends CommerceDNDTablePage {
 				`Cannot locate table row with name ${warehouseName}`
 			);
 		};
+		this.neverExpireCheckbox =
+			this.sidePanelFrame.getByLabel('Never Expire');
 		this.page = page;
 		this.pricinQuantity = page
 			.frameLocator('iframe')
@@ -142,6 +148,10 @@ export class CommerceAdminProductDetailsSkusPage extends CommerceDNDTablePage {
 		this.sidePanelNestedSaveButton = this.sidePanelNestedFrame.getByRole(
 			'button',
 			{exact: true, name: 'Save'}
+		);
+		this.sidePanelSaveAsDraftButton = this.sidePanelFrame.getByRole(
+			'button',
+			{exact: true, name: 'Save as Draft'}
 		);
 		this.sidePanelSaveButton = this.sidePanelFrame.getByRole('button', {
 			exact: true,
@@ -182,7 +192,15 @@ export class CommerceAdminProductDetailsSkusPage extends CommerceDNDTablePage {
 		this.skuPriceAddButton = this.skuPriceFrame.locator(
 			'[data-testid="fdsCreationActionButton"]'
 		);
-		this.skuPriceAddModal = page.frameLocator('iframe[title="Add Price"]');
+		this.skuPriceAddModal = this.skuPriceFrame.frameLocator(
+			'iframe[title="Add Price"]'
+		);
+		this.skuPriceAddModalAddButton = this.skuPriceFrame.getByRole(
+			'button',
+			{exact: true, name: 'Add'}
+		);
+		this.skuPriceAddModalUnitPriceInput =
+			this.skuPriceAddModal.getByLabel('Unit Price');
 		this.skuPriceListSelect =
 			this.skuPriceAddModal.getByLabel('Price List');
 		this.skuTab = (skuTab) =>

@@ -141,12 +141,6 @@ public class DEDataDefinitionFieldLinkLocalServiceWrapper
 	}
 
 	@Override
-	public void deleteDEDataDefinitionFieldLinks(long ddmStructureId) {
-		_deDataDefinitionFieldLinkLocalService.deleteDEDataDefinitionFieldLinks(
-			ddmStructureId);
-	}
-
-	@Override
 	public void deleteDEDataDefinitionFieldLinks(
 		long classNameId, long classPK) {
 
@@ -403,14 +397,6 @@ public class DEDataDefinitionFieldLinkLocalServiceWrapper
 			getDEDataDefinitionFieldLinks(ddmStructureId);
 	}
 
-	@Override
-	public java.util.List<DEDataDefinitionFieldLink>
-		getDEDataDefinitionFieldLinks(long classNameId, long ddmStructureId) {
-
-		return _deDataDefinitionFieldLinkLocalService.
-			getDEDataDefinitionFieldLinks(classNameId, ddmStructureId);
-	}
-
 	/**
 	 * @deprecated As of Athanasius (7.3.x), replaced by {@link
 	 DEDataDefinitionFieldLinkLocalServiceImpl#getDEDataDefinitionFieldLinks(
@@ -607,4 +593,4 @@ public class DEDataDefinitionFieldLinkLocalServiceWrapper
 		_deDataDefinitionFieldLinkLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1526274314
+// LIFERAY-SERVICE-BUILDER-HASH:-920022391

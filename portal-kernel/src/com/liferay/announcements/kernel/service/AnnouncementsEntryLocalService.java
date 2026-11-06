@@ -91,8 +91,6 @@ public interface AnnouncementsEntryLocalService
 			Date expirationDate, int priority, boolean alert)
 		throws PortalException;
 
-	public void checkEntries() throws PortalException;
-
 	public void checkEntries(Date startDate, Date endDate)
 		throws PortalException;
 
@@ -143,9 +141,6 @@ public interface AnnouncementsEntryLocalService
 	public void deleteEntries(long companyId);
 
 	public void deleteEntries(long classNameId, long classPK)
-		throws PortalException;
-
-	public void deleteEntries(long companyId, long classNameId, long classPK)
 		throws PortalException;
 
 	@SystemEvent(type = SystemEventConstants.TYPE_DELETE)
@@ -321,15 +316,6 @@ public interface AnnouncementsEntryLocalService
 		OrderByComparator<AnnouncementsEntry> orderByComparator);
 
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public List<AnnouncementsEntry> getEntries(
-		long userId, long classNameId, long[] classPKs, int displayDateMonth,
-		int displayDateDay, int displayDateYear, int displayDateHour,
-		int displayDateMinute, int expirationDateMonth, int expirationDateDay,
-		int expirationDateYear, int expirationDateHour,
-		int expirationDateMinute, boolean alert, int flagValue, int start,
-		int end);
-
-	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public int getEntriesCount(
 		long userId, LinkedHashMap<Long, long[]> scopes, boolean alert,
 		int flagValue);
@@ -345,19 +331,6 @@ public interface AnnouncementsEntryLocalService
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public int getEntriesCount(
 		long companyId, long classNameId, long classPK, boolean alert);
-
-	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public int getEntriesCount(
-		long userId, long classNameId, long[] classPKs, boolean alert,
-		int flagValue);
-
-	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public int getEntriesCount(
-		long userId, long classNameId, long[] classPKs, int displayDateMonth,
-		int displayDateDay, int displayDateYear, int displayDateHour,
-		int displayDateMinute, int expirationDateMonth, int expirationDateDay,
-		int expirationDateYear, int expirationDateHour,
-		int expirationDateMinute, boolean alert, int flagValue);
 
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public AnnouncementsEntry getEntry(long entryId) throws PortalException;
@@ -383,13 +356,6 @@ public interface AnnouncementsEntryLocalService
 	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
 	public PersistedModel getPersistedModel(Serializable primaryKeyObj)
 		throws PortalException;
-
-	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public List<AnnouncementsEntry> getUserEntries(
-		long userId, int start, int end);
-
-	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
-	public int getUserEntriesCount(long userId);
 
 	/**
 	 * Updates the announcements entry in the database or adds it if it does not yet exist. Also notifies the appropriate model listeners.
@@ -426,4 +392,4 @@ public interface AnnouncementsEntryLocalService
 		throws E;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:2007443636
+// LIFERAY-SERVICE-BUILDER-HASH:-1899988676

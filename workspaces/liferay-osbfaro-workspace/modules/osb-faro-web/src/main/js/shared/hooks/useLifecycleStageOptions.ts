@@ -1,19 +1,18 @@
 import * as API from 'shared/api';
 import {ILifecycleStage} from 'shared/api/lifecycle';
-import {
-	LifecycleStages,
-	lifecycleStagesLabelMap,
-} from 'contacts/pages/account/utils/constants';
 import {useRequest} from 'shared/hooks/useRequest';
+import {sortBy} from 'lodash';
 
 export const useLifecycleStageOptions = ({
+	channelId,
 	groupId,
 }: {
+	channelId?: string;
 	groupId: string;
 }): {loading: boolean; options: {label: string; value: string}[]} => {
 	const {data: lifecycles, loading: lifecyclesLoading} = useRequest({
 		dataSourceFn: API.lifecycle.fetchAccountLifecycles,
-		variables: {groupId},
+		variables: {channelId, groupId},
 	});
 
 	const lifecycle = lifecycles?.[0];
@@ -26,19 +25,17 @@ export const useLifecycleStageOptions = ({
 		}
 	);
 
-	const stages: ILifecycleStage[] = lifecycleDetail?.stages ?? [];
+	const stages: ILifecycleStage[] =
+		lifecycleDetail?.accountLifecycleStages ?? [];
 
 	return {
 		loading:
 			lifecyclesLoading || (Boolean(lifecycle) && lifecycleDetailLoading),
-		options: stages
-			.slice()
-			.sort((a, b) => a.displayOrder - b.displayOrder)
-			.map(({id, stageType}) => ({
-				label:
-					lifecycleStagesLabelMap[stageType as LifecycleStages]
-						?.label ?? stageType,
-				value: id,
-			})),
+		options: sortBy(stages, 'position').map(
+			({externalReferenceCode, name}) => ({
+				label: name,
+				value: externalReferenceCode,
+			})
+		),
 	};
 };

@@ -921,13 +921,6 @@ public class MBMessageLocalServiceWrapper
 	}
 
 	@Override
-	public int getPositionInThread(long messageId)
-		throws com.liferay.portal.kernel.exception.PortalException {
-
-		return _mbMessageLocalService.getPositionInThread(messageId);
-	}
-
-	@Override
 	public java.util.List<MBMessage> getRootDiscussionMessages(
 			String className, long classPK, int status)
 		throws com.liferay.portal.kernel.exception.PortalException {
@@ -1003,78 +996,8 @@ public class MBMessageLocalServiceWrapper
 	}
 
 	@Override
-	public int getThreadMessagesCount(long threadId, boolean answer) {
-		return _mbMessageLocalService.getThreadMessagesCount(threadId, answer);
-	}
-
-	@Override
 	public int getThreadMessagesCount(long threadId, int status) {
 		return _mbMessageLocalService.getThreadMessagesCount(threadId, status);
-	}
-
-	@Override
-	public java.util.List<MBMessage> getThreadRepliesMessages(
-		long threadId, int status, int start, int end) {
-
-		return _mbMessageLocalService.getThreadRepliesMessages(
-			threadId, status, start, end);
-	}
-
-	@Override
-	public java.util.List<MBMessage> getUserDiscussionMessages(
-		long userId, long classNameId, long classPK, int status, int start,
-		int end,
-		com.liferay.portal.kernel.util.OrderByComparator<MBMessage>
-			orderByComparator) {
-
-		return _mbMessageLocalService.getUserDiscussionMessages(
-			userId, classNameId, classPK, status, start, end,
-			orderByComparator);
-	}
-
-	@Override
-	public java.util.List<MBMessage> getUserDiscussionMessages(
-		long userId, long[] classNameIds, int status, int start, int end,
-		com.liferay.portal.kernel.util.OrderByComparator<MBMessage>
-			orderByComparator) {
-
-		return _mbMessageLocalService.getUserDiscussionMessages(
-			userId, classNameIds, status, start, end, orderByComparator);
-	}
-
-	@Override
-	public java.util.List<MBMessage> getUserDiscussionMessages(
-		long userId, String className, long classPK, int status, int start,
-		int end,
-		com.liferay.portal.kernel.util.OrderByComparator<MBMessage>
-			orderByComparator) {
-
-		return _mbMessageLocalService.getUserDiscussionMessages(
-			userId, className, classPK, status, start, end, orderByComparator);
-	}
-
-	@Override
-	public int getUserDiscussionMessagesCount(
-		long userId, long classNameId, long classPK, int status) {
-
-		return _mbMessageLocalService.getUserDiscussionMessagesCount(
-			userId, classNameId, classPK, status);
-	}
-
-	@Override
-	public int getUserDiscussionMessagesCount(
-		long userId, long[] classNameIds, int status) {
-
-		return _mbMessageLocalService.getUserDiscussionMessagesCount(
-			userId, classNameIds, status);
-	}
-
-	@Override
-	public int getUserDiscussionMessagesCount(
-		long userId, String className, long classPK, int status) {
-
-		return _mbMessageLocalService.getUserDiscussionMessagesCount(
-			userId, className, classPK, status);
 	}
 
 	@Override
@@ -1241,4 +1164,4 @@ public class MBMessageLocalServiceWrapper
 	private MBMessageLocalService _mbMessageLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1633566375
+// LIFERAY-SERVICE-BUILDER-HASH:1999226268

@@ -8,6 +8,7 @@ package com.liferay.site.cms.site.initializer.internal.fragment.renderer;
 import com.liferay.depot.model.DepotEntry;
 import com.liferay.fragment.renderer.FragmentRenderer;
 import com.liferay.fragment.renderer.FragmentRendererContext;
+import com.liferay.map.util.MapProviderHelperUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONFactory;
@@ -106,6 +107,9 @@ public class SpaceSettingsComponentSectionFragmentRenderer
 				ParamUtil.getString(httpServletRequest, "redirect"))
 		).put(
 			"companyAvailableLanguages", jsonArray
+		).put(
+			"companyMapProviderKey",
+			MapProviderHelperUtil.getMapProviderKey(themeDisplay.getCompanyId())
 		).put(
 			"externalReferenceCode", group.getExternalReferenceCode()
 		).put(

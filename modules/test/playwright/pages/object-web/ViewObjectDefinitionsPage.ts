@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {ObjectFolder} from '@liferay/object-admin-rest-client-js';
+import {ObjectFolder} from '@liferay/object-admin-rest-client-js/v1_0';
 import {Locator, Page, Request, Response, expect} from '@playwright/test';
 import {readFile} from 'fs/promises';
 import path from 'path';
@@ -48,9 +48,10 @@ export class ViewObjectDefinitionsPage {
 		this.createObjectFolderButton = page.getByRole('button', {
 			name: 'Create Folder',
 		});
-		this.defaultObjectFolder = page
-			.getByRole('listitem')
-			.filter({hasText: 'Default'});
+		this.defaultObjectFolder = page.getByRole('menuitem', {
+			exact: true,
+			name: 'Default',
+		});
 		this.deleteObjectDefinitionOption = page.getByRole('menuitem', {
 			name: 'Delete',
 		});
@@ -65,9 +66,9 @@ export class ViewObjectDefinitionsPage {
 		this.importObjectDefinitionOption = page.getByRole('menuitem', {
 			name: 'Import Object Definition',
 		});
-		this.objectFolders = page
-			.getByRole('list')
-			.filter({hasText: 'Default'});
+		this.objectFolders = page.getByRole('navigation', {
+			name: 'Object Folders',
+		});
 		this.objectFolderActions = page
 			.locator('div.lfr__object-web-view-object-definitions-title-kebab')
 			.getByLabel('Object Folder Actions');
@@ -219,11 +220,7 @@ export class ViewObjectDefinitionsPage {
 	async exportObjectDefinition(objectDefinitionLabel: string) {
 		await this.goto();
 
-		await this.searchInput.fill(objectDefinitionLabel);
-
-		await waitForSearchToBeReady(this.page);
-
-		await this._submitSearch(objectDefinitionLabel);
+		await this.searchObjectDefinition(objectDefinitionLabel);
 
 		const downloadPromise = this.page.waitForEvent('download');
 
@@ -319,10 +316,17 @@ export class ViewObjectDefinitionsPage {
 		objectFolderLabel: string,
 		options: {timeout?: number} = {}
 	) {
-		await this.page
-			.getByRole('listitem')
-			.filter({hasText: objectFolderLabel})
+		await this.objectFolders
+			.getByRole('menuitem', {name: objectFolderLabel})
 			.click({timeout: options?.timeout});
+	}
+
+	async searchObjectDefinition(objectDefinitionLabel: string) {
+		await this.searchInput.fill(objectDefinitionLabel);
+
+		await waitForSearchToBeReady(this.page);
+
+		await this._submitSearch(objectDefinitionLabel);
 	}
 
 	private async _submitSearch(objectDefinitionLabel: string) {

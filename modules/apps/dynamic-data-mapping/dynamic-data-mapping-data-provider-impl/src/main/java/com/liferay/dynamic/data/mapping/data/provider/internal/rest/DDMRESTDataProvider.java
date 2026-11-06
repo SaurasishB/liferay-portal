@@ -21,6 +21,7 @@ import com.liferay.dynamic.data.mapping.data.provider.settings.DDMDataProviderSe
 import com.liferay.dynamic.data.mapping.model.DDMDataProviderInstance;
 import com.liferay.dynamic.data.mapping.service.DDMDataProviderInstanceService;
 import com.liferay.petra.string.CharPool;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.metatype.bnd.util.ConfigurableUtil;
 import com.liferay.portal.json.web.service.client.JSONWebServiceClient;
@@ -35,12 +36,14 @@ import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.portal.kernel.util.Http;
+import com.liferay.portal.kernel.util.InetAddressUtil;
 import com.liferay.portal.kernel.util.KeyValuePair;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.SystemProperties;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.security.key.secret.SecretResolver;
 
 import java.io.ByteArrayInputStream;
 
@@ -110,7 +113,8 @@ public class DDMRESTDataProvider implements DDMDataProvider {
 
 			try {
 				return _getData(
-					ddmDataProviderRequest, ddmRESTDataProviderSettings);
+					ddmDataProviderInstance, ddmDataProviderRequest,
+					ddmRESTDataProviderSettings);
 			}
 			catch (JSONWebServiceException jsonWebServiceException) {
 				if (_log.isDebugEnabled()) {
@@ -285,17 +289,19 @@ public class DDMRESTDataProvider implements DDMDataProvider {
 					"paginationStart", String.class),
 				1);
 
-			if (keyValuePairs.size() > (end - start)) {
-				builder = builder.withOutput(
-					outputParameterId,
-					ListUtil.subList(keyValuePairs, start, end));
+			if (keyValuePairs.size() <= (end - start)) {
+				continue;
 			}
+
+			builder = builder.withOutput(
+				outputParameterId, ListUtil.subList(keyValuePairs, start, end));
 		}
 
 		return builder.build();
 	}
 
 	private DDMDataProviderResponse _getData(
+			DDMDataProviderInstance ddmDataProviderInstance,
 			DDMDataProviderRequest ddmDataProviderRequest,
 			DDMRESTDataProviderSettings ddmRESTDataProviderSettings)
 		throws Exception {
@@ -365,6 +371,16 @@ public class DDMRESTDataProvider implements DDMDataProvider {
 
 		URI uri = new URI(url);
 
+		if (!_ddmDataProviderConfiguration.accessLocalNetwork() &&
+			InetAddressUtil.isLocalInetAddress(
+				InetAddressUtil.getInetAddressByName(uri.getHost()))) {
+
+			return DDMDataProviderResponse.Builder.newBuilder(
+			).withStatus(
+				DDMDataProviderResponseStatus.SERVICE_UNAVAILABLE
+			).build();
+		}
+
 		for (String queryParameter :
 				StringUtil.split(uri.getQuery(), StringPool.AMPERSAND)) {
 
@@ -413,19 +429,19 @@ public class DDMRESTDataProvider implements DDMDataProvider {
 			return ddmDataProviderResponse;
 		}
 
+		String password = _secretResolver.resolve(
+			ddmDataProviderInstance.getCompanyId(),
+			StringBundler.concat(
+				DDMDataProviderInstance.class.getSimpleName(), StringPool.SLASH,
+				ddmDataProviderInstance.getCompanyId(), StringPool.SLASH,
+				ddmDataProviderInstance.getDataProviderInstanceId(),
+				"/password"),
+			ddmRESTDataProviderSettings.password());
+
 		JSONWebServiceClient jsonWebServiceClient =
 			_jsonWebServiceClientFactory.getInstance(
 				HashMapBuilder.<String, Object>put(
-					"hostName",
-					() -> {
-						String host = uri.getHost();
-
-						if (StringUtil.startsWith(host, "www.")) {
-							return host.substring(4);
-						}
-
-						return host;
-					}
+					"hostName", uri.getHost()
 				).put(
 					"hostPort",
 					() -> {
@@ -452,9 +468,11 @@ public class DDMRESTDataProvider implements DDMDataProvider {
 				).put(
 					"login", ddmRESTDataProviderSettings.username()
 				).put(
-					"password", ddmRESTDataProviderSettings.password()
+					"password", password
 				).put(
 					"protocol", uri.getScheme()
+				).put(
+					"redirectsEnabled", false
 				).put(
 					"trustSelfSignedCertificates",
 					_ddmDataProviderConfiguration.trustSelfSignedCertificates()
@@ -537,5 +555,8 @@ public class DDMRESTDataProvider implements DDMDataProvider {
 	private MultiVMPool _multiVMPool;
 
 	private volatile PortalCache<String, DDMDataProviderResponse> _portalCache;
+
+	@Reference
+	private SecretResolver _secretResolver;
 
 }

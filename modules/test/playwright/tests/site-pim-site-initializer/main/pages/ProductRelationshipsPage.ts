@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {Locator, Page, expect} from '@playwright/test';
+import {FrameLocator, Locator, Page, expect} from '@playwright/test';
 
 import {clickAndExpectToBeVisible} from '../../../../utils/clickAndExpectToBeVisible';
 
@@ -14,6 +14,9 @@ export class ProductRelationshipsPage {
 	readonly rows: Locator;
 	readonly selectorConfirmButton: Locator;
 	readonly selectorDialog: Locator;
+	readonly viewModal: Locator;
+	readonly viewModalCloseButton: Locator;
+	readonly viewModalFrame: FrameLocator;
 
 	constructor(page: Page) {
 		this.container = page.locator('.pim-product-relationships');
@@ -29,6 +32,15 @@ export class ProductRelationshipsPage {
 			exact: true,
 			name: 'Save',
 		});
+
+		this.viewModal = page.locator('.modal').filter({
+			has: page.getByRole('heading', {exact: true, name: 'View'}),
+		});
+
+		this.viewModalCloseButton = this.viewModal.getByRole('button', {
+			name: 'Close',
+		});
+		this.viewModalFrame = this.viewModal.frameLocator('iframe');
 	}
 
 	async addRelationships(names: string[]) {
@@ -43,6 +55,16 @@ export class ProductRelationshipsPage {
 				.check();
 		}
 
+		await expect(
+			this.selectorDialog
+				.locator('.management-bar')
+				.getByText(
+					new RegExp(
+						`^(All Selected \\()?${names.length} of \\d+ Items( Selected|\\))$`
+					)
+				)
+		).toBeVisible();
+
 		await this.selectorConfirmButton.click();
 
 		await expect(this.selectorDialog).toBeHidden();
@@ -52,10 +74,21 @@ export class ProductRelationshipsPage {
 		}
 	}
 
+	async clickItemAction(action: string, name: string) {
+		await clickAndExpectToBeVisible({
+			autoClick: true,
+			target: this.page.getByRole('menuitem', {
+				exact: true,
+				name: action,
+			}),
+			trigger: this.getRelatedProduct(name).getByRole('button', {
+				name: `${name} Actions`,
+			}),
+		});
+	}
+
 	async removeRelationship(name: string) {
-		await this.getRelatedProduct(name)
-			.getByRole('button', {name: 'Remove'})
-			.click();
+		await this.clickItemAction('Remove', name);
 
 		await this.page
 			.locator('.modal-content')
@@ -65,7 +98,15 @@ export class ProductRelationshipsPage {
 		await expect(this.getRelatedProduct(name)).toBeHidden();
 	}
 
+	getPrimaryCell(name: string) {
+		return this.getRelatedProduct(name).locator('.cell-primary');
+	}
+
 	getRelatedProduct(name: string) {
 		return this.rows.filter({hasText: name});
+	}
+
+	getViewingLabel(name: string) {
+		return this.getRelatedProduct(name).getByText('viewing', {exact: true});
 	}
 }

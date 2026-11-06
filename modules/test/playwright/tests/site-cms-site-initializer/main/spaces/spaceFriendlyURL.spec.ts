@@ -17,17 +17,13 @@ test(
 	'Persists a custom friendly URL via Headless Asset Library PATCH',
 	{tag: '@LPD-88344'},
 	async ({apiHelpers}) => {
-		const assetLibrary =
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-				name: `Space ${getRandomString()}`,
-				type: 'Space',
-			});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		const friendlyURL = `/cms-${getRandomString()}`;
 
 		const patchedAssetLibrary =
 			await apiHelpers.headlessAssetLibrary.patchAssetLibrary(
-				assetLibrary.externalReferenceCode,
+				space.externalReferenceCode,
 				{friendlyURL}
 			);
 
@@ -35,7 +31,7 @@ test(
 
 		const fetchedAssetLibrary =
 			await apiHelpers.headlessAssetLibrary.getAssetLibrary(
-				assetLibrary.externalReferenceCode
+				space.externalReferenceCode
 			);
 
 		expect(fetchedAssetLibrary.friendlyURL).toBe(friendlyURL);
@@ -46,15 +42,11 @@ test(
 	'Rejects a reserved friendly URL with FRIENDLY_URL_KEYWORD_CONFLICT',
 	{tag: '@LPD-88344'},
 	async ({apiHelpers}) => {
-		const assetLibrary =
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-				name: `Space ${getRandomString()}`,
-				type: 'Space',
-			});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		const problem =
 			await apiHelpers.headlessAssetLibrary.patchAssetLibraryWithProblem(
-				assetLibrary.externalReferenceCode,
+				space.externalReferenceCode,
 				{friendlyURL: '/api'}
 			);
 
@@ -67,15 +59,11 @@ test(
 	'Rejects invalid characters with FRIENDLY_URL_INVALID_CHARACTERS',
 	{tag: '@LPD-88344'},
 	async ({apiHelpers}) => {
-		const assetLibrary =
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-				name: `Space ${getRandomString()}`,
-				type: 'Space',
-			});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		const problem =
 			await apiHelpers.headlessAssetLibrary.patchAssetLibraryWithProblem(
-				assetLibrary.externalReferenceCode,
+				space.externalReferenceCode,
 				{friendlyURL: '/.'}
 			);
 
@@ -90,26 +78,18 @@ test(
 	async ({apiHelpers}) => {
 		const sharedFriendlyURL = `/cms-${getRandomString()}`;
 
-		const assetLibrary1 =
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-				name: `Space ${getRandomString()}`,
-				type: 'Space',
-			});
+		const space1 = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		await apiHelpers.headlessAssetLibrary.patchAssetLibrary(
-			assetLibrary1.externalReferenceCode,
+			space1.externalReferenceCode,
 			{friendlyURL: sharedFriendlyURL}
 		);
 
-		const assetLibrary2 =
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-				name: `Space ${getRandomString()}`,
-				type: 'Space',
-			});
+		const space2 = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		const problem =
 			await apiHelpers.headlessAssetLibrary.patchAssetLibraryWithProblem(
-				assetLibrary2.externalReferenceCode,
+				space2.externalReferenceCode,
 				{friendlyURL: sharedFriendlyURL}
 			);
 
@@ -122,17 +102,9 @@ test(
 	'Cancelling the save confirmation does not change the Friendly URL',
 	{tag: '@LPD-88344'},
 	async ({apiHelpers, page, spaceSummaryPage}) => {
-		const spaceName = `Space ${getRandomString()}`;
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
-		const assetLibrary =
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-				name: spaceName,
-				type: 'Space',
-			});
-
-		const initialFriendlyURL = `/asset-library-${assetLibrary.id}`;
-
-		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
 		await page.getByRole('button', {name: 'More Actions'}).click();
 
@@ -156,10 +128,10 @@ test(
 
 		const fetchedAssetLibrary =
 			await apiHelpers.headlessAssetLibrary.getAssetLibrary(
-				assetLibrary.externalReferenceCode
+				space.externalReferenceCode
 			);
 
-		expect(fetchedAssetLibrary.friendlyURL).toBe(initialFriendlyURL);
+		expect(fetchedAssetLibrary.friendlyURL).toBe(space.friendlyURL);
 	}
 );
 
@@ -167,17 +139,11 @@ test(
 	'Confirming the save persists a custom Friendly URL entered in Space Settings',
 	{tag: '@LPD-103464'},
 	async ({apiHelpers, page, spaceSummaryPage}) => {
-		const spaceName = `Space ${getRandomString()}`;
-
-		const assetLibrary =
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-				name: spaceName,
-				type: 'Space',
-			});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		const friendlyURLPath = `cms-${getRandomString()}`.toLowerCase();
 
-		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
 		await page.getByRole('button', {name: 'More Actions'}).click();
 
@@ -187,9 +153,7 @@ test(
 			name: 'Friendly URL Required',
 		});
 
-		await expect(friendlyURLTextbox).toHaveValue(
-			`/asset-library-${assetLibrary.id}`
-		);
+		await expect(friendlyURLTextbox).toHaveValue(space.friendlyURL);
 
 		await friendlyURLTextbox.fill(friendlyURLPath);
 
@@ -205,14 +169,40 @@ test(
 
 		await waitForAlert(
 			page,
-			`Success:${spaceName} was saved successfully.`
+			`Success:${space.name} was saved successfully.`
 		);
 
 		const fetchedAssetLibrary =
 			await apiHelpers.headlessAssetLibrary.getAssetLibrary(
-				assetLibrary.externalReferenceCode
+				space.externalReferenceCode
 			);
 
 		expect(fetchedAssetLibrary.friendlyURL).toBe(`/${friendlyURLPath}`);
+	}
+);
+
+test(
+	'Defaults the Friendly URL of a new Space to its name',
+	{tag: '@LPD-108842'},
+	async ({apiHelpers, page, spaceSummaryPage}) => {
+		const randomString = getRandomString();
+
+		const spaceName = `Space ${randomString}`;
+
+		const space = await apiHelpers.headlessAssetLibrary.createSpace({
+			name: spaceName,
+		});
+
+		expect(space.friendlyURL).toBe(`/space-${randomString}`);
+
+		await spaceSummaryPage.goto(spaceName);
+
+		await page.getByRole('button', {name: 'More Actions'}).click();
+
+		await page.getByRole('menuitem', {name: 'Space Settings'}).click();
+
+		await expect(
+			page.getByRole('textbox', {name: 'Friendly URL Required'})
+		).toHaveValue(`/space-${randomString}`);
 	}
 );

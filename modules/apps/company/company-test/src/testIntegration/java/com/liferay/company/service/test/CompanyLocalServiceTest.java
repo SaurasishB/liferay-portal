@@ -68,6 +68,7 @@ import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.LayoutPrototypeLocalService;
+import com.liferay.portal.kernel.service.LayoutSetLocalService;
 import com.liferay.portal.kernel.service.LayoutSetPrototypeLocalService;
 import com.liferay.portal.kernel.service.OrganizationLocalService;
 import com.liferay.portal.kernel.service.PasswordPolicyLocalService;
@@ -107,6 +108,7 @@ import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.ProxyUtil;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.TreeMapBuilder;
 import com.liferay.portal.kernel.util.UnicodeProperties;
 import com.liferay.portal.kernel.util.UnicodePropertiesBuilder;
 import com.liferay.portal.model.impl.CompanyImpl;
@@ -119,6 +121,8 @@ import jakarta.portlet.Portlet;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+
+import java.net.IDN;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -720,6 +724,38 @@ public class CompanyLocalServiceTest {
 	}
 
 	@Test
+	public void testAddCompanyWhenCompanyIdExists() throws Exception {
+		Assume.assumeFalse(PropsValues.DATABASE_PARTITION_ENABLED);
+
+		Company company = _addCompany();
+
+		try {
+			String webId = RandomTestUtil.randomString() + "test.com";
+
+			try {
+				_companyLocalService.addCompany(
+					company.getCompanyId(), webId, webId, "test.com", 0, true,
+					true, null, null, null, null, null, null);
+
+				Assert.fail();
+			}
+			catch (IllegalArgumentException illegalArgumentException) {
+				Assert.assertEquals(
+					"Company ID " + company.getCompanyId() + " already exists",
+					illegalArgumentException.getMessage());
+			}
+
+			Company currentCompany = _companyLocalService.fetchCompany(
+				company.getCompanyId());
+
+			Assert.assertEquals(company.getWebId(), currentCompany.getWebId());
+		}
+		finally {
+			_companyLocalService.deleteCompany(company.getCompanyId());
+		}
+	}
+
+	@Test
 	public void testDeleteCompanyDeletesGroups() throws Exception {
 		Assert.assertEquals(
 			0,
@@ -1066,26 +1102,6 @@ public class CompanyLocalServiceTest {
 	}
 
 	@Test
-	public void testGetCompanyByVirtualHost() throws Exception {
-		Company company = _addCompany("::1");
-
-		try (SafeCloseable safeCloseable =
-				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
-					company.getCompanyId())) {
-
-			Assert.assertEquals(
-				company, _companyLocalService.getCompanyByVirtualHost("::1"));
-			Assert.assertEquals(
-				company,
-				_companyLocalService.getCompanyByVirtualHost(
-					"0:0:0:0:0:0:0:1"));
-		}
-		finally {
-			_companyLocalService.deleteCompany(company);
-		}
-	}
-
-	@Test
 	public void testUpdateCompany() throws Exception {
 		_testUpdateCompanyMaxUsers(-1);
 		_testUpdateCompanyMaxUsers(-100);
@@ -1107,6 +1123,15 @@ public class CompanyLocalServiceTest {
 			false);
 		_testUpdateCompanyVirtualHostnames(
 			new String[] {StringPool.BLANK, "localhost", ".abc"}, true);
+		_testUpdateCompanyVirtualHostnames(
+			new String[] {
+				StringUtil.toLowerCase(RandomTestUtil.randomString(64)) + ".com"
+			},
+			false);
+		_testUpdateCompanyVirtualHostnamesHeldByCompany(false);
+		_testUpdateCompanyVirtualHostnamesHeldByCompany(true);
+		_testUpdateCompanyVirtualHostnamesHeldByGroup(false);
+		_testUpdateCompanyVirtualHostnamesHeldByGroup(true);
 	}
 
 	@Test
@@ -1474,6 +1499,11 @@ public class CompanyLocalServiceTest {
 			_getServiceContext(companyId));
 	}
 
+	private String _getRandomUnicodeHostname() {
+		return "b\u00fccher" +
+			StringUtil.toLowerCase(RandomTestUtil.randomString()) + ".com";
+	}
+
 	private List<String> _getTableNames(String type, long companyId)
 		throws Exception {
 
@@ -1751,6 +1781,58 @@ public class CompanyLocalServiceTest {
 		}
 	}
 
+	private void _testUpdateCompanyVirtualHostnamesHeldByCompany(boolean ascii)
+		throws Exception {
+
+		String unicodeHostname = _getRandomUnicodeHostname();
+
+		String asciiHostname = IDN.toASCII(unicodeHostname);
+
+		String hostname = ascii ? asciiHostname : unicodeHostname;
+
+		_testUpdateCompanyVirtualHostnames(new String[] {hostname}, false);
+
+		Company company = _addCompany();
+
+		try {
+			_companyLocalService.updateCompany(
+				company.getCompanyId(), ascii ? unicodeHostname : asciiHostname,
+				company.getMx(), company.getMaxUsers(), company.isActive());
+
+			_testUpdateCompanyVirtualHostnames(new String[] {hostname}, true);
+		}
+		finally {
+			_companyLocalService.deleteCompany(company);
+		}
+	}
+
+	private void _testUpdateCompanyVirtualHostnamesHeldByGroup(boolean ascii)
+		throws Exception {
+
+		String unicodeHostname = _getRandomUnicodeHostname();
+
+		String asciiHostname = IDN.toASCII(unicodeHostname);
+
+		String hostname = ascii ? asciiHostname : unicodeHostname;
+
+		_testUpdateCompanyVirtualHostnames(new String[] {hostname}, false);
+
+		Group group = GroupTestUtil.addGroupToCompany(_company.getCompanyId());
+
+		try {
+			_layoutSetLocalService.updateVirtualHosts(
+				group.getGroupId(), false,
+				TreeMapBuilder.put(
+					ascii ? unicodeHostname : asciiHostname, StringPool.BLANK
+				).build());
+
+			_testUpdateCompanyVirtualHostnames(new String[] {hostname}, true);
+		}
+		finally {
+			_groupLocalService.deleteGroup(group);
+		}
+	}
+
 	private static final Log _log = LogFactoryUtil.getLog(
 		CompanyLocalServiceTest.class);
 
@@ -1818,6 +1900,9 @@ public class CompanyLocalServiceTest {
 
 	@Inject
 	private LayoutPrototypeLocalService _layoutPrototypeLocalService;
+
+	@Inject
+	private LayoutSetLocalService _layoutSetLocalService;
 
 	@Inject
 	private LayoutSetPrototypeLocalService _layoutSetPrototypeLocalService;

@@ -109,9 +109,11 @@ public class MonitorRunner {
 		for (Monitor monitor : monitors) {
 			long timeoutMillis = _getTimeoutMillis(monitor);
 
-			if (timeoutMillis > maximumTimeoutMillis) {
-				maximumTimeoutMillis = timeoutMillis;
+			if (timeoutMillis <= maximumTimeoutMillis) {
+				continue;
 			}
+
+			maximumTimeoutMillis = timeoutMillis;
 		}
 
 		int batchesCount = ((monitorsCount + _threadCount) - 1) / _threadCount;
@@ -142,6 +144,14 @@ public class MonitorRunner {
 		return timeoutSeconds * 1000;
 	}
 
+	private MonitorResult _newCriticalMonitorResult(
+		long durationMillis, String message) {
+
+		return new MonitorResult(
+			durationMillis, message, null, MonitorResult.Status.CRITICAL,
+			JenkinsResultsParserUtil.getCurrentTimeMillis());
+	}
+
 	private ExecutorService _newExecutorService(int threadCount) {
 		return Executors.newFixedThreadPool(
 			threadCount,
@@ -164,14 +174,6 @@ public class MonitorRunner {
 			});
 	}
 
-	private MonitorResult _newUnknownMonitorResult(
-		long durationMillis, String message) {
-
-		return new MonitorResult(
-			durationMillis, message, null, MonitorResult.Status.UNKNOWN,
-			JenkinsResultsParserUtil.getCurrentTimeMillis());
-	}
-
 	private MonitorResult _resolveMonitorResult(
 		Future<MonitorResult> future, MonitorTask monitorTask,
 		long startTimeoutMillis, long submitTimestamp) {
@@ -192,7 +194,7 @@ public class MonitorRunner {
 
 					future.cancel(true);
 
-					return _newUnknownMonitorResult(
+					return _newCriticalMonitorResult(
 						MonitorResult.DURATION_MILLIS_UNMEASURED,
 						JenkinsResultsParserUtil.combine(
 							"Monitor ", monitor.getId(),
@@ -217,21 +219,21 @@ public class MonitorRunner {
 			long durationMillis = monitorTask.getDurationMillis();
 
 			if (monitorResult == null) {
-				return _newUnknownMonitorResult(
+				return _newCriticalMonitorResult(
 					durationMillis,
 					JenkinsResultsParserUtil.combine(
 						"Monitor ", monitor.getId(), " returned no result"));
 			}
 
 			return new MonitorResult(
-				durationMillis, monitorResult.getMessage(),
-				monitorResult.getMetrics(), monitorResult.getStatus(),
-				monitorResult.getTimestamp());
+				durationMillis, monitorResult.getLinkURLs(),
+				monitorResult.getMessage(), monitorResult.getMetrics(),
+				monitorResult.getStatus(), monitorResult.getTimestamp());
 		}
 		catch (ExecutionException executionException) {
 			Throwable throwable = executionException.getCause();
 
-			return _newUnknownMonitorResult(
+			return _newCriticalMonitorResult(
 				monitorTask.getDurationMillis(),
 				JenkinsResultsParserUtil.combine(
 					"Monitor ", monitor.getId(), " failed: ",
@@ -244,7 +246,7 @@ public class MonitorRunner {
 
 			future.cancel(true);
 
-			return _newUnknownMonitorResult(
+			return _newCriticalMonitorResult(
 				MonitorResult.DURATION_MILLIS_UNMEASURED,
 				JenkinsResultsParserUtil.combine(
 					"Monitor ", monitor.getId(), " was interrupted"));
@@ -252,7 +254,7 @@ public class MonitorRunner {
 		catch (TimeoutException timeoutException) {
 			future.cancel(true);
 
-			return _newUnknownMonitorResult(
+			return _newCriticalMonitorResult(
 				monitorTask.getElapsedMillis(),
 				JenkinsResultsParserUtil.combine(
 					"Monitor ", monitor.getId(), " timed out after ",

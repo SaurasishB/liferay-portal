@@ -3,14 +3,18 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+import {State} from '@liferay/frontend-js-state-web';
 import {uuidv4} from 'frontend-js-web';
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 
+import {invalidFiltersAtom} from '../../atoms/invalidFiltersAtom';
 import useTypeProperties from '../../hooks/useTypeProperties';
 import {ConditionBuilder} from './ConditionBuilder';
 import {Config, initializeConfig} from './config';
+import getValueErrorMessage from './getValueErrorMessage';
+import normalizeDateTime from './normalizeDateTime';
 import {ASSET_FIELDS, RELATIVE_DATE_VALUES} from './operators';
-import {getPropertyKey} from './types';
+import {getFilterPropertyKey} from './types';
 
 import type {
 	FilterCondition,
@@ -28,31 +32,23 @@ function createEmptyConditions(): FilterCondition[] {
  * item type, so they are worth keeping when the source changes.
  */
 function isTypeSpecificCondition(condition: FilterCondition): boolean {
-	return (
-		condition.classNameId !== undefined &&
-		condition.classTypeId !== undefined
-	);
-}
-
-function normalizeDateTime(value: string) {
-	if (!value) {
-		return value;
-	}
-
-	// The picker emits "--:--" when the time portion isn't filled. Default
-	// to midnight so a date-only entry still serializes cleanly.
-
-	const normalized = value.replace('--:--', '00:00');
-
-	const date = new Date(normalized.replace(' ', 'T'));
-
-	return Number.isNaN(date.getTime()) ? '' : normalized;
+	return condition.objectDefinitionExternalReferenceCode !== undefined;
 }
 
 function serializeValue(
 	property: FilterProperty | undefined,
 	value: FilterCondition['value']
 ): FilterCondition['value'] {
+	if (
+		(property?.type === 'asset-categories' ||
+			property?.type === 'asset-tags') &&
+		Array.isArray(value)
+	) {
+		return (value as Array<{value: string}>).map((entry) => ({
+			value: entry.value,
+		}));
+	}
+
 	if (property?.type !== 'date-time' || value === null) {
 		return value;
 	}
@@ -81,7 +77,6 @@ interface CollectionFilterBuilderProps extends Config {
  * picks it up on form submit.
  */
 export default function CollectionFilterBuilder({
-	categorySelectorURL,
 	groupIds,
 	initialConditions,
 	namespace,
@@ -91,7 +86,6 @@ export default function CollectionFilterBuilder({
 	vocabularyIds,
 }: CollectionFilterBuilderProps) {
 	initializeConfig({
-		categorySelectorURL,
 		groupIds,
 		namespace,
 		tagSelectorURL,
@@ -106,6 +100,8 @@ export default function CollectionFilterBuilder({
 				}))
 			: createEmptyConditions()
 	);
+
+	const inputRef = useRef<HTMLInputElement>(null);
 
 	const properties = useTypeProperties(initialProperties);
 
@@ -126,9 +122,8 @@ export default function CollectionFilterBuilder({
 				propertiesWithAssetFields
 					.flatMap((group) => group.items ?? [])
 					.map((property) => [
-						getPropertyKey(
-							property.classNameId,
-							property.classTypeId,
+						getFilterPropertyKey(
+							property.objectDefinitionExternalReferenceCode,
 							property.name
 						),
 						property,
@@ -137,19 +132,30 @@ export default function CollectionFilterBuilder({
 		[propertiesWithAssetFields]
 	);
 
+	const getConditionProperty = (condition: Omit<FilterCondition, 'id'>) =>
+		propertiesMap.get(
+			getFilterPropertyKey(
+				condition.objectDefinitionExternalReferenceCode,
+				condition.propertyName
+			)
+		);
+
+	const getConditionError = (condition: FilterCondition) =>
+		getValueErrorMessage(
+			getConditionProperty(condition),
+			condition.operatorName,
+			condition.value
+		);
+
+	const hasInvalidValue = conditions.some(getConditionError);
+
 	const filterValuesAndOmitID = (conditions: FilterCondition[]) =>
 		conditions
-			.map(({id: _id, ...props}) => {
-				const property = propertiesMap.get(
-					getPropertyKey(
-						props.classNameId,
-						props.classTypeId,
-						props.propertyName
-					)
-				);
-
-				return {...props, value: serializeValue(property, props.value)};
-			})
+			.filter((condition) => !getConditionError(condition))
+			.map(({id: _id, ...props}) => ({
+				...props,
+				value: serializeValue(getConditionProperty(props), props.value),
+			}))
 			.filter(({operatorName, propertyName, value}) => {
 				if (!operatorName || !propertyName || !value) {
 					return false;
@@ -194,6 +200,37 @@ export default function CollectionFilterBuilder({
 		};
 	}, [namespace]);
 
+	useEffect(() => {
+		State.write(invalidFiltersAtom, hasInvalidValue);
+	}, [hasInvalidValue]);
+
+	useEffect(() => () => State.write(invalidFiltersAtom, false), []);
+
+	useEffect(() => {
+		if (!hasInvalidValue) {
+			return;
+		}
+
+		const handleSubmitForm = (event: {
+			action?: string;
+			form: {getDOM: () => HTMLElement};
+			preventDefault: () => void;
+		}) => {
+			if (
+				!event.action &&
+				event.form.getDOM() === inputRef.current?.form
+			) {
+				event.preventDefault();
+			}
+		};
+
+		Liferay.on('submitForm', handleSubmitForm);
+
+		return () => {
+			Liferay.detach('submitForm', handleSubmitForm);
+		};
+	}, [hasInvalidValue]);
+
 	return (
 		<>
 			<ConditionBuilder
@@ -205,6 +242,7 @@ export default function CollectionFilterBuilder({
 
 			<input
 				name={`${namespace}TypeSettingsProperties--filters--`}
+				ref={inputRef}
 				type="hidden"
 				value={JSON.stringify(filterValuesAndOmitID(conditions))}
 			/>

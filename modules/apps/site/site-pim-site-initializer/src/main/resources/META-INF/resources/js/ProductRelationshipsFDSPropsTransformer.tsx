@@ -3,31 +3,41 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+import {render} from '@liferay/frontend-js-react-web';
 import {
 	StatusLabel,
 	addOnClickToCreationMenuItems,
 	confirmAndDeleteEntryAction,
-	styleDeleteAction,
 } from '@liferay/site-cms-site-initializer';
 import {sub} from 'frontend-js-web';
 import React from 'react';
 
-import ProductRelationshipSelectorNameRenderer from './cell_renderers/ProductRelationshipSelectorNameRenderer';
-import openProductRelationshipSelectorModal from './openProductRelationshipSelectorModal';
+import ProductRelationshipSelectorModal from './ProductRelationshipSelectorModal';
+import ProductRelationshipSelectorTitleRenderer from './cell_renderers/ProductRelationshipSelectorTitleRenderer';
 
 const ACTIONS = {
-	createProductRelationship: openProductRelationshipSelectorModal,
+	createProductRelationship: (data: any, loadData?: () => void) =>
+		render(
+			ProductRelationshipSelectorModal,
+			{...data, loadData},
+			document.createElement('div')
+		),
 };
 
 export default function propsTransformer({
+	additionalProps,
 	creationMenu,
 	itemsActions,
 	...props
 }: {
+	additionalProps?: {objectEntryId: string};
 	creationMenu?: any;
 	itemsActions?: any[];
 	[key: string]: any;
 }) {
+	const isCurrent = (itemData: {id: number}) =>
+		String(itemData?.id) === additionalProps?.objectEntryId;
+
 	return {
 		...props,
 		creationMenu: creationMenu && {
@@ -40,8 +50,19 @@ export default function propsTransformer({
 		customRenderers: {
 			tableCell: [
 				{
-					component: ProductRelationshipSelectorNameRenderer,
-					name: 'nameTableCellRenderer',
+					component: ({itemData, value}: any) => (
+						<ProductRelationshipSelectorTitleRenderer
+							current={isCurrent(itemData)}
+							value={value}
+						/>
+					),
+					name: 'titleTableCellRenderer',
+					type: 'internal',
+				},
+				{
+					component: ({value}: any) =>
+						value ? Liferay.Language.get('yes') : '-',
+					name: 'primaryTableCellRenderer',
 					type: 'internal',
 				},
 				{
@@ -54,7 +75,16 @@ export default function propsTransformer({
 			],
 		},
 		hideManagementBarInEmptyState: true,
-		itemsActions: itemsActions?.map(styleDeleteAction),
+		itemsActions: itemsActions?.map((itemsAction) => {
+			if (itemsAction?.data?.id !== 'view') {
+				return itemsAction;
+			}
+
+			return {
+				...itemsAction,
+				isVisible: (itemData: {id: number}) => !isCurrent(itemData),
+			};
+		}),
 		onActionDropdownItemClick({
 			action,
 			event,
@@ -65,7 +95,7 @@ export default function propsTransformer({
 			event: Event;
 			itemData: {
 				actions: {delete: {href: string; method: string}};
-				name: string;
+				title: string;
 			};
 			loadData: () => void;
 		}) {
@@ -82,11 +112,12 @@ export default function propsTransformer({
 				confirmButtonLabel: Liferay.Language.get('remove'),
 				deleteAction: itemData.actions.delete,
 				loadData,
+				status: 'warning',
 				successMessage: sub(
 					Liferay.Language.get('x-was-removed-successfully'),
-					Liferay.Util.escapeHTML(itemData.name)
+					Liferay.Util.escapeHTML(itemData.title)
 				),
-				title: sub(Liferay.Language.get('remove-x'), itemData.name),
+				title: sub(Liferay.Language.get('remove-x'), itemData.title),
 			});
 		},
 	};

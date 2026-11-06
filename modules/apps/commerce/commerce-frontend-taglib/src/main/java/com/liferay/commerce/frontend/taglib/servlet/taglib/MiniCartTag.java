@@ -21,6 +21,7 @@ import com.liferay.commerce.model.CommerceOrder;
 import com.liferay.commerce.model.CommerceOrderItem;
 import com.liferay.commerce.order.CommerceOrderHttpHelper;
 import com.liferay.commerce.product.url.CPFriendlyURL;
+import com.liferay.commerce.util.CommerceChannelConfigurationUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
 import com.liferay.portal.kernel.exception.PortalException;
@@ -32,8 +33,8 @@ import com.liferay.portal.kernel.module.configuration.ConfigurationException;
 import com.liferay.portal.kernel.portlet.PortletProvider;
 import com.liferay.portal.kernel.portlet.PortletProviderUtil;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
+import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.settings.GroupServiceSettingsLocator;
-import com.liferay.portal.kernel.settings.SystemSettingsLocator;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.HtmlUtil;
 import com.liferay.portal.kernel.util.WebKeys;
@@ -57,6 +58,17 @@ import java.util.Map;
 public class MiniCartTag extends IncludeTag {
 
 	@Override
+	public int doEndTag() throws JspException {
+		if (_guestBrowsingEnabled) {
+			return super.doEndTag();
+		}
+
+		doClearTag();
+
+		return EVAL_PAGE;
+	}
+
+	@Override
 	public int doStartTag() throws JspException {
 		HttpServletRequest httpServletRequest = getRequest();
 
@@ -78,6 +90,15 @@ public class MiniCartTag extends IncludeTag {
 				_orderId = 0;
 
 				return super.doStartTag();
+			}
+
+			_guestBrowsingEnabled =
+				CommerceChannelConfigurationUtil.isGuestBrowsingEnabled(
+					PermissionThreadLocal.getPermissionChecker(),
+					commerceContext.getCommerceChannelGroupId());
+
+			if (!_guestBrowsingEnabled) {
+				return SKIP_BODY;
 			}
 
 			AccountEntry accountEntry = commerceContext.getAccountEntry();
@@ -230,6 +251,7 @@ public class MiniCartTag extends IncludeTag {
 		_configurationProvider = null;
 		_cssClasses = StringPool.BLANK;
 		_displayTotalItemsQuantity = false;
+		_guestBrowsingEnabled = true;
 		_guestOrderEnabled = false;
 		_itemsQuantity = 0;
 		_labels = new HashMap<>();
@@ -334,10 +356,8 @@ public class MiniCartTag extends IncludeTag {
 	private boolean _isDisplayDiscountLevels() {
 		try {
 			CommercePriceConfiguration commercePriceConfiguration =
-				_configurationProvider.getConfiguration(
-					CommercePriceConfiguration.class,
-					new SystemSettingsLocator(
-						CommerceConstants.SERVICE_NAME_COMMERCE_PRICE));
+				_configurationProvider.getSystemConfiguration(
+					CommercePriceConfiguration.class);
 
 			return commercePriceConfiguration.displayDiscountLevels();
 		}
@@ -413,6 +433,7 @@ public class MiniCartTag extends IncludeTag {
 	private ConfigurationProvider _configurationProvider;
 	private String _cssClasses = StringPool.BLANK;
 	private boolean _displayTotalItemsQuantity;
+	private boolean _guestBrowsingEnabled = true;
 	private boolean _guestOrderEnabled;
 	private int _itemsQuantity;
 	private Map<String, String> _labels = new HashMap<>();

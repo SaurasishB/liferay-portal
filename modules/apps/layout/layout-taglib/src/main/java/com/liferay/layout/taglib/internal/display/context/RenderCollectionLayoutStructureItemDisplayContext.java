@@ -43,7 +43,10 @@ import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.petra.string.StringUtil;
+import com.liferay.portal.kernel.cookies.CookiesManagerUtil;
 import com.liferay.portal.kernel.json.JSONArray;
+import com.liferay.portal.kernel.json.JSONException;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.log.Log;
@@ -56,6 +59,7 @@ import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.ScopeUtil;
+import com.liferay.portal.kernel.util.URLCodec;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.segments.SegmentsEntryRetriever;
@@ -415,6 +419,28 @@ public class RenderCollectionLayoutStructureItemDisplayContext {
 		};
 	}
 
+	private String[] _getAudienceEntryERCs() {
+		String cookieValue = CookiesManagerUtil.getCookieValue(
+			"com.liferay.frontend.js.audiences", _httpServletRequest);
+
+		if (Validator.isNull(cookieValue)) {
+			return null;
+		}
+
+		try {
+			return JSONUtil.toStringArray(
+				JSONFactoryUtil.createJSONArray(
+					URLCodec.decodeURL(cookieValue)));
+		}
+		catch (JSONException jsonException) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(jsonException);
+			}
+
+			return null;
+		}
+	}
+
 	private int _getCollectionCount() {
 		InfoPage<?> infoPage = _getInfoPage();
 
@@ -562,17 +588,19 @@ public class RenderCollectionLayoutStructureItemDisplayContext {
 						"targetCollections",
 						FragmentConfigurationFieldDataType.ARRAY);
 
-			if ((targetCollectionsJSONArray != null) &&
-				JSONUtil.hasValue(
+			if ((targetCollectionsJSONArray == null) ||
+				!JSONUtil.hasValue(
 					targetCollectionsJSONArray,
 					_collectionStyledLayoutStructureItem.getItemId())) {
 
-				filterValues.put(
-					parameterName.replaceFirst(
-						FragmentCollectionFilterConstants.FILTER_PREFIX,
-						StringPool.BLANK),
-					entry.getValue());
+				continue;
 			}
+
+			filterValues.put(
+				parameterName.replaceFirst(
+					FragmentCollectionFilterConstants.FILTER_PREFIX,
+					StringPool.BLANK),
+				entry.getValue());
 		}
 
 		return filterValues;
@@ -633,6 +661,8 @@ public class RenderCollectionLayoutStructureItemDisplayContext {
 		DefaultLayoutListRetrieverContext defaultLayoutListRetrieverContext =
 			new DefaultLayoutListRetrieverContext();
 
+		defaultLayoutListRetrieverContext.setAudienceEntryERCs(
+			_getAudienceEntryERCs());
 		defaultLayoutListRetrieverContext.setConfiguration(_getConfiguration());
 		defaultLayoutListRetrieverContext.setContextObject(_getContextObject());
 		defaultLayoutListRetrieverContext.setInfoFilters(

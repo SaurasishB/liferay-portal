@@ -11,6 +11,8 @@ import com.liferay.adaptive.media.web.internal.processor.AMAsyncProcessorImpl;
 import com.liferay.document.library.kernel.exception.NoSuchFileEntryException;
 import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMap;
 import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMapFactory;
+import com.liferay.petra.lang.SafeCloseable;
+import com.liferay.portal.kernel.change.tracking.CTCollectionThreadLocal;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.messaging.BaseMessageListener;
@@ -38,9 +40,7 @@ public class AMMessageListener extends BaseMessageListener {
 		_serviceTrackerMap = ServiceTrackerMapFactory.openMultiValueMap(
 			bundleContext,
 			(Class<AMProcessor<Object>>)(Class<?>)AMProcessor.class,
-			"(model.class.name=*)",
-			(serviceReference, emitter) -> emitter.emit(
-				(String)serviceReference.getProperty("model.class.name")));
+			"model.class.name");
 	}
 
 	@Deactivate
@@ -65,18 +65,23 @@ public class AMMessageListener extends BaseMessageListener {
 		Object model = message.get("model");
 		String modelId = (String)message.get("modelId");
 
-		for (AMProcessor<Object> amProcessor : amProcessors) {
-			try {
-				amProcessorCommand.execute(amProcessor, model, modelId);
-			}
-			catch (NoSuchFileEntryException noSuchFileEntryException) {
-				if (_log.isInfoEnabled()) {
-					_log.info(noSuchFileEntryException);
+		try (SafeCloseable safeCloseable =
+				CTCollectionThreadLocal.setCTCollectionIdWithSafeCloseable(
+					message.getLong("ctCollectionId"))) {
+
+			for (AMProcessor<Object> amProcessor : amProcessors) {
+				try {
+					amProcessorCommand.execute(amProcessor, model, modelId);
 				}
-			}
-			catch (Exception exception) {
-				if (_log.isWarnEnabled()) {
-					_log.warn(exception);
+				catch (NoSuchFileEntryException noSuchFileEntryException) {
+					if (_log.isInfoEnabled()) {
+						_log.info(noSuchFileEntryException);
+					}
+				}
+				catch (Exception exception) {
+					if (_log.isWarnEnabled()) {
+						_log.warn(exception);
+					}
 				}
 			}
 		}

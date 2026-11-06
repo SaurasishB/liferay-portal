@@ -6,6 +6,9 @@
 package com.liferay.headless.admin.site.internal.resource.v1_0;
 
 import com.liferay.client.extension.type.manager.CETManager;
+import com.liferay.depot.constants.DepotConstants;
+import com.liferay.depot.model.DepotEntry;
+import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.exportimport.constants.ExportImportConstants;
 import com.liferay.exportimport.vulcan.batch.engine.ExportImportVulcanBatchEngineTaskItemDelegate;
 import com.liferay.fragment.processor.FragmentEntryProcessorRegistry;
@@ -132,8 +135,26 @@ public class PageTemplateResourceImpl
 				getApplicableModelFunction() {
 
 				return layoutPageTemplateEntry ->
-					layoutPageTemplateEntry.getType() ==
-						LayoutPageTemplateEntryTypeConstants.BASIC;
+					(layoutPageTemplateEntry.getType() ==
+						LayoutPageTemplateEntryTypeConstants.BASIC) ||
+					(layoutPageTemplateEntry.getType() ==
+						LayoutPageTemplateEntryTypeConstants.WIDGET_PAGE);
+			}
+
+			@Override
+			public Function<LayoutPageTemplateEntry, String>
+				getJSONTypeInfoPropertyValueFunction() {
+
+				return layoutPageTemplateEntry -> {
+					if (layoutPageTemplateEntry.getType() ==
+							LayoutPageTemplateEntryTypeConstants.WIDGET_PAGE) {
+
+						return PageTemplate.Type.WIDGET_PAGE_TEMPLATE.
+							getValue();
+					}
+
+					return PageTemplate.Type.CONTENT_PAGE_TEMPLATE.getValue();
+				};
 			}
 
 			@Override
@@ -170,6 +191,22 @@ public class PageTemplateResourceImpl
 			@Override
 			public String getSectionKey() {
 				return ExportImportConstants.SECTION_KEY_DESIGN;
+			}
+
+			@Override
+			public boolean isScopeSupported(long companyId, long groupId) {
+				DepotEntry depotEntry =
+					_depotEntryLocalService.fetchGroupDepotEntry(groupId);
+
+				if ((depotEntry != null) &&
+					(depotEntry.getType() ==
+						DepotConstants.TYPE_DESIGN_LIBRARY)) {
+
+					return true;
+				}
+
+				return ExportImportDescriptor.super.isScopeSupported(
+					companyId, groupId);
 			}
 
 			@Override
@@ -975,6 +1012,9 @@ public class PageTemplateResourceImpl
 
 	@Reference
 	private CETManager _cetManager;
+
+	@Reference
+	private DepotEntryLocalService _depotEntryLocalService;
 
 	@Reference
 	private DTOConverterRegistry _dtoConverterRegistry;

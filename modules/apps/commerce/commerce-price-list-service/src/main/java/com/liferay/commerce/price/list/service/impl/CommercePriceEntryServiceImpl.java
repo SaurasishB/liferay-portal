@@ -188,9 +188,8 @@ public class CommercePriceEntryServiceImpl
 		throws PortalException {
 
 		CommercePriceEntry commercePriceEntry =
-			commercePriceEntryLocalService.
-				fetchCommercePriceEntryByExternalReferenceCode(
-					externalReferenceCode, companyId);
+			commercePriceEntryPersistence.fetchByERC_C(
+				externalReferenceCode, companyId);
 
 		if (commercePriceEntry != null) {
 			_commercePriceListModelResourcePermission.check(
@@ -316,13 +315,15 @@ public class CommercePriceEntryServiceImpl
 				CommercePriceEntryUOMCreateDateComparator.getInstance(true));
 
 		for (CommercePriceEntry commercePriceEntry : commercePriceEntries) {
-			if (_commercePriceListModelResourcePermission.contains(
+			if (!_commercePriceListModelResourcePermission.contains(
 					getPermissionChecker(),
 					commercePriceEntry.getCommercePriceListId(),
 					ActionKeys.VIEW)) {
 
-				count++;
+				continue;
 			}
+
+			count++;
 		}
 
 		return count;

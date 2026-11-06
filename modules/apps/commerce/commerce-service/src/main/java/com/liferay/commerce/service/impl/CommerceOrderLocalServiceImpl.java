@@ -25,6 +25,7 @@ import com.liferay.commerce.discount.service.CommerceDiscountUsageEntryLocalServ
 import com.liferay.commerce.discount.validator.helper.CommerceDiscountValidatorHelper;
 import com.liferay.commerce.exception.CommerceOrderAccountLimitException;
 import com.liferay.commerce.exception.CommerceOrderDateException;
+import com.liferay.commerce.exception.CommerceOrderPaymentMethodException;
 import com.liferay.commerce.exception.CommerceOrderPurchaseOrderNumberException;
 import com.liferay.commerce.exception.CommerceOrderRequestedDeliveryDateException;
 import com.liferay.commerce.exception.GuestCartMaxAllowedException;
@@ -351,6 +352,9 @@ public class CommerceOrderLocalServiceImpl
 		}
 
 		if (Validator.isNotNull(commercePaymentMethodKey)) {
+			_validateCommercePaymentMethodKey(
+				commercePaymentMethodKey, StringPool.BLANK, groupId);
+
 			commerceOrder.setCommercePaymentMethodKey(commercePaymentMethodKey);
 		}
 		else {
@@ -641,15 +645,6 @@ public class CommerceOrderLocalServiceImpl
 		}
 	}
 
-	/**
-	 * @deprecated As of Athanasius (7.3.x), delete by commerceAccountId
-	 */
-	@Deprecated
-	@Override
-	public void deleteCommerceOrders(long userId, Date date, int status) {
-		commerceOrderPersistence.removeByU_LtC_O(userId, date, status);
-	}
-
 	@Override
 	public void deleteCommerceOrdersByAccountId(
 			long commerceAccountId, Date date, int status)
@@ -795,14 +790,6 @@ public class CommerceOrderLocalServiceImpl
 			commerceOrderLocalService.searchCommerceOrders(searchContext);
 
 		return baseModelSearchResult.getBaseModels();
-	}
-
-	@Override
-	public List<CommerceOrder> getCommerceOrders(
-		long groupId, String commercePaymentMethodKey) {
-
-		return commerceOrderPersistence.findByG_CP(
-			groupId, commercePaymentMethodKey);
 	}
 
 	@Override
@@ -1790,6 +1777,11 @@ public class CommerceOrderLocalServiceImpl
 
 		commerceOrder.setAdvanceStatus(advanceStatus);
 
+		_validateCommercePaymentMethodKey(
+			commercePaymentMethodKey,
+			commerceOrder.getCommercePaymentMethodKey(),
+			commerceOrder.getGroupId());
+
 		commerceOrder.setCommercePaymentMethodKey(commercePaymentMethodKey);
 
 		_setAccountDefaultPaymentIntegrationKey(commerceChannel, commerceOrder);
@@ -2016,6 +2008,11 @@ public class CommerceOrderLocalServiceImpl
 
 		CommerceOrder commerceOrder = commerceOrderPersistence.findByPrimaryKey(
 			commerceOrderId);
+
+		_validateCommercePaymentMethodKey(
+			commercePaymentMethodKey,
+			commerceOrder.getCommercePaymentMethodKey(),
+			commerceOrder.getGroupId());
 
 		commerceOrder.setCommercePaymentMethodKey(commercePaymentMethodKey);
 
@@ -3119,14 +3116,16 @@ public class CommerceOrderLocalServiceImpl
 				}
 			}
 
-			if (defaultCommerceShippingOption != null) {
-				commerceOrder.setCommerceShippingMethodId(
-					commerceShippingMethod.getCommerceShippingMethodId());
-				commerceOrder.setShippingAmount(
-					defaultCommerceShippingOption.getAmount());
-				commerceOrder.setShippingOptionName(
-					defaultCommerceShippingOption.getKey());
+			if (defaultCommerceShippingOption == null) {
+				continue;
 			}
+
+			commerceOrder.setCommerceShippingMethodId(
+				commerceShippingMethod.getCommerceShippingMethodId());
+			commerceOrder.setShippingAmount(
+				defaultCommerceShippingOption.getAmount());
+			commerceOrder.setShippingOptionName(
+				defaultCommerceShippingOption.getKey());
 		}
 	}
 
@@ -3499,6 +3498,30 @@ public class CommerceOrderLocalServiceImpl
 			throw new NoSuchChannelAccountEntryRelException(
 				"This commerce account is not eligible for this commerce " +
 					"channel");
+		}
+	}
+
+	private void _validateCommercePaymentMethodKey(
+			String commercePaymentMethodKey,
+			String currentCommercePaymentMethodKey, long groupId)
+		throws PortalException {
+
+		if (Validator.isNull(commercePaymentMethodKey) ||
+			commercePaymentMethodKey.equals(currentCommercePaymentMethodKey)) {
+
+			return;
+		}
+
+		CommercePaymentMethodGroupRel commercePaymentMethodGroupRel =
+			_commercePaymentMethodGroupRelLocalService.
+				fetchCommercePaymentMethodGroupRel(
+					groupId, commercePaymentMethodKey);
+
+		if ((commercePaymentMethodGroupRel == null) ||
+			!commercePaymentMethodGroupRel.isActive()) {
+
+			throw new CommerceOrderPaymentMethodException(
+				"Invalid payment method key " + commercePaymentMethodKey);
 		}
 	}
 

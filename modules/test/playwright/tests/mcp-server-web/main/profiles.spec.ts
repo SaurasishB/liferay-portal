@@ -6,12 +6,13 @@
 import {Page, expect, mergeTests} from '@playwright/test';
 
 import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
-import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {mcpServerWebPagesTest} from '../../../fixtures/mcpServerWebPagesTest';
 import {DataApiHelpers} from '../../../helpers/ApiHelpers';
 import {FDSTablePage} from '../../../pages/mcp-server-web/FDSTablePage';
+import createUserWithPermissions from '../../../utils/createUserWithPermissions';
 import getRandomString from '../../../utils/getRandomString';
+import {performUserSwitchViaApi} from '../../../utils/performLogin';
 import {waitForAlert} from '../../../utils/waitForAlert';
 import {
 	expectFDSTableColumns,
@@ -23,14 +24,14 @@ import {
 
 const baseTest = mergeTests(
 	dataApiHelpersTest,
-	featureFlagsTest({
-		'LPD-63311': {enabled: true},
-	}),
 	loginTest(),
 	mcpServerWebPagesTest
 );
 
 const DATA_MASKS_API = 'data-masks';
+
+const MCP_SERVER_PORTLET =
+	'com_liferay_mcp_server_web_internal_portlet_MCPServerPortlet';
 
 const OTHER_TOOL_NAME = 'getAuditEventsPage';
 
@@ -56,21 +57,13 @@ async function createProfile(
 	apiHelpers: DataApiHelpers,
 	name: string
 ): Promise<ObjectEntry> {
-	const profile = await apiHelpers.objectEntry.postObjectEntry(
+	return apiHelpers.objectEntry.postObjectEntry(
 		{
 			description: `Created by Playwright ${name}`,
 			name,
 		},
 		PROFILES_API
 	);
-
-	apiHelpers.data.push({
-		applicationName: PROFILES_API,
-		id: profile.id,
-		type: 'objectEntry',
-	});
-
-	return profile;
 }
 
 async function trackUIProfileForCleanup(
@@ -105,7 +98,7 @@ async function createProfileTool(
 	toolName: string,
 	toolSetName: string = TOOL_SET_NAME
 ): Promise<ObjectEntry> {
-	const profileTool = await apiHelpers.objectEntry.postObjectEntry(
+	return apiHelpers.objectEntry.postObjectEntry(
 		{
 			r_mcpServerProfileToTools_l_mcpServerProfileERC: profileERC,
 			toolName,
@@ -113,14 +106,6 @@ async function createProfileTool(
 		},
 		PROFILE_TOOLS_API
 	);
-
-	apiHelpers.data.push({
-		applicationName: PROFILE_TOOLS_API,
-		id: profileTool.id,
-		type: 'objectEntry',
-	});
-
-	return profileTool;
 }
 
 async function getToolSetToolNames(
@@ -157,7 +142,7 @@ async function createDataMask(
 	apiHelpers: DataApiHelpers,
 	name: string
 ): Promise<ObjectEntry> {
-	const dataMask = await apiHelpers.objectEntry.postObjectEntry(
+	return apiHelpers.objectEntry.postObjectEntry(
 		{
 			description: `Created by Playwright ${name}`,
 			detectionRegex: 'a+',
@@ -167,14 +152,6 @@ async function createDataMask(
 		},
 		DATA_MASKS_API
 	);
-
-	apiHelpers.data.push({
-		applicationName: DATA_MASKS_API,
-		id: dataMask.id,
-		type: 'objectEntry',
-	});
-
-	return dataMask;
 }
 
 test.describe('Profiles - FDS Table', () => {
@@ -232,11 +209,12 @@ test.describe('Profiles - FDS Table', () => {
 
 	test(
 		'Offers the row actions',
-		{tag: '@LPD-99230'},
+		{tag: ['@LPD-99230', '@LPD-110884']},
 		async ({fdsTablePage, page}) => {
 			await expectFDSTableRowActions(fdsTablePage, page, seededItemName, [
 				'Edit',
 				'Delete',
+				'Permissions',
 			]);
 		}
 	);
@@ -414,27 +392,6 @@ test.describe('Profiles - Detail (Create / Edit)', () => {
 	);
 
 	test(
-		'Clears the required error once the field is filled',
-		{tag: '@LPD-99230'},
-		async ({profilesPage}) => {
-			await profilesPage.goto();
-			await profilesPage.newProfileButton.click();
-
-			await profilesPage.saveButton.click();
-
-			await expect(profilesPage.nameInput).toHaveAccessibleDescription(
-				/This field is required\./
-			);
-
-			await profilesPage.nameInput.fill(profileName());
-
-			await expect(
-				profilesPage.nameInput
-			).not.toHaveAccessibleDescription(/This field is required\./);
-		}
-	);
-
-	test(
 		'Edits a profile and persists the change',
 		{tag: '@LPD-99230'},
 		async ({apiHelpers, profilesPage}) => {
@@ -575,7 +532,7 @@ test.describe('Profiles - Data Masks tab', () => {
 	);
 
 	test(
-		'Deselects every mask with the Deselect All action',
+		'Deselects every mask with the Clear action',
 		{tag: '@LPD-99230'},
 		async ({apiHelpers, profilesPage}) => {
 			const firstMaskName = profileName();
@@ -605,9 +562,9 @@ test.describe('Profiles - Data Masks tab', () => {
 				profilesPage.dialog.getByText(/Items? Selected/)
 			).toBeVisible();
 
-			await profilesPage.deselectAllButton.click();
+			await profilesPage.clearButton.click();
 
-			await expect(profilesPage.dialog.getByRole('status')).toHaveText(
+			await expect(profilesPage.selectionStatus).toHaveText(
 				'Nothing Selected'
 			);
 			await expect(
@@ -1025,7 +982,7 @@ test.describe('Profiles - Tools tab', () => {
 	);
 
 	test(
-		'Deselects every tool with the Deselect All action',
+		'Deselects every tool with the Clear action',
 		{tag: '@LPD-103214'},
 		async ({apiHelpers, profilesPage}) => {
 			const name = profileName();
@@ -1044,7 +1001,7 @@ test.describe('Profiles - Tools tab', () => {
 				/[1-9]\d*\s+Items? Selected/
 			);
 
-			await profilesPage.deselectAllButton.click();
+			await profilesPage.clearButton.click();
 
 			await expect(profilesPage.dialog.getByRole('status')).toHaveText(
 				'Nothing Selected'
@@ -1267,6 +1224,61 @@ test.describe('Profiles - Status', () => {
 			);
 
 			expect(saved.profileStatus.key).toBe('active');
+		}
+	);
+});
+
+test.describe('Profiles - Permissions', () => {
+	test(
+		'Hides the New button and the three-dot menu without permissions',
+		{tag: '@LPD-110884'},
+		async ({apiHelpers, page, profilesPage}) => {
+			const name = profileName();
+
+			await createProfile(apiHelpers, name);
+
+			const companyId = await page.evaluate(() =>
+				Liferay.ThemeDisplay.getCompanyId()
+			);
+			const {className} = await apiHelpers.get(
+				`${apiHelpers.baseUrl}object-admin/v1.0/object-definitions/by-external-reference-code/L_MCP_SERVER_PROFILE`
+			);
+
+			const user = await createUserWithPermissions({
+				apiHelpers,
+				rolePermissions: [
+					{
+						actionIds: ['VIEW_CONTROL_PANEL'],
+						primaryKey: companyId,
+						resourceName: '90',
+						scope: 1,
+					},
+					{
+						actionIds: ['ACCESS_IN_CONTROL_PANEL', 'VIEW'],
+						primaryKey: companyId,
+						resourceName: MCP_SERVER_PORTLET,
+						scope: 1,
+					},
+					{
+						actionIds: ['VIEW'],
+						primaryKey: companyId,
+						resourceName: className,
+						scope: 1,
+					},
+				],
+			});
+
+			await performUserSwitchViaApi(page, user.alternateName);
+
+			await profilesPage.goto();
+
+			await profilesPage.search(name);
+
+			await expect(profilesPage.row(name)).toBeVisible();
+			await expect(
+				profilesPage.row(name).getByRole('button', {name: 'Actions'})
+			).toBeHidden();
+			await expect(profilesPage.newProfileButton).toBeHidden();
 		}
 	);
 });

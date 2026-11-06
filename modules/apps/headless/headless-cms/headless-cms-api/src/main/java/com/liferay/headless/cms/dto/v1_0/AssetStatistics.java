@@ -296,6 +296,49 @@ public class AssetStatistics implements Serializable {
 	private Supplier<Long> _longStandingDraftsCountSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema
+	public Long getMissingRequiredFieldsCount() {
+		if (_missingRequiredFieldsCountSupplier != null) {
+			missingRequiredFieldsCount =
+				_missingRequiredFieldsCountSupplier.get();
+
+			_missingRequiredFieldsCountSupplier = null;
+		}
+
+		return missingRequiredFieldsCount;
+	}
+
+	public void setMissingRequiredFieldsCount(Long missingRequiredFieldsCount) {
+		this.missingRequiredFieldsCount = missingRequiredFieldsCount;
+
+		_missingRequiredFieldsCountSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setMissingRequiredFieldsCount(
+		UnsafeSupplier<Long, Exception>
+			missingRequiredFieldsCountUnsafeSupplier) {
+
+		_missingRequiredFieldsCountSupplier = () -> {
+			try {
+				return missingRequiredFieldsCountUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected Long missingRequiredFieldsCount;
+
+	@JsonIgnore
+	private Supplier<Long> _missingRequiredFieldsCountSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema
 	public Long getOverdueWorkflowTasksCount() {
 		if (_overdueWorkflowTasksCountSupplier != null) {
 			overdueWorkflowTasksCount =
@@ -462,6 +505,51 @@ public class AssetStatistics implements Serializable {
 	private Supplier<Long> _scheduledCountSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema
+	public Long getSlaBreachedWorkflowTasksCount() {
+		if (_slaBreachedWorkflowTasksCountSupplier != null) {
+			slaBreachedWorkflowTasksCount =
+				_slaBreachedWorkflowTasksCountSupplier.get();
+
+			_slaBreachedWorkflowTasksCountSupplier = null;
+		}
+
+		return slaBreachedWorkflowTasksCount;
+	}
+
+	public void setSlaBreachedWorkflowTasksCount(
+		Long slaBreachedWorkflowTasksCount) {
+
+		this.slaBreachedWorkflowTasksCount = slaBreachedWorkflowTasksCount;
+
+		_slaBreachedWorkflowTasksCountSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setSlaBreachedWorkflowTasksCount(
+		UnsafeSupplier<Long, Exception>
+			slaBreachedWorkflowTasksCountUnsafeSupplier) {
+
+		_slaBreachedWorkflowTasksCountSupplier = () -> {
+			try {
+				return slaBreachedWorkflowTasksCountUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected Long slaBreachedWorkflowTasksCount;
+
+	@JsonIgnore
+	private Supplier<Long> _slaBreachedWorkflowTasksCountSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema
 	public Long getTotalCount() {
 		if (_totalCountSupplier != null) {
 			totalCount = _totalCountSupplier.get();
@@ -501,6 +589,47 @@ public class AssetStatistics implements Serializable {
 
 	@JsonIgnore
 	private Supplier<Long> _totalCountSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema
+	public Long getUnlinkedCount() {
+		if (_unlinkedCountSupplier != null) {
+			unlinkedCount = _unlinkedCountSupplier.get();
+
+			_unlinkedCountSupplier = null;
+		}
+
+		return unlinkedCount;
+	}
+
+	public void setUnlinkedCount(Long unlinkedCount) {
+		this.unlinkedCount = unlinkedCount;
+
+		_unlinkedCountSupplier = null;
+	}
+
+	@JsonIgnore
+	public void setUnlinkedCount(
+		UnsafeSupplier<Long, Exception> unlinkedCountUnsafeSupplier) {
+
+		_unlinkedCountSupplier = () -> {
+			try {
+				return unlinkedCountUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField
+	@JsonProperty(access = JsonProperty.Access.READ_ONLY)
+	protected Long unlinkedCount;
+
+	@JsonIgnore
+	private Supplier<Long> _unlinkedCountSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema
 	public Long getUpcomingReviewCount() {
@@ -683,6 +812,18 @@ public class AssetStatistics implements Serializable {
 			sb.append(longStandingDraftsCount);
 		}
 
+		Long missingRequiredFieldsCount = getMissingRequiredFieldsCount();
+
+		if (missingRequiredFieldsCount != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"missingRequiredFieldsCount\": ");
+
+			sb.append(missingRequiredFieldsCount);
+		}
+
 		Long overdueWorkflowTasksCount = getOverdueWorkflowTasksCount();
 
 		if (overdueWorkflowTasksCount != null) {
@@ -731,6 +872,18 @@ public class AssetStatistics implements Serializable {
 			sb.append(scheduledCount);
 		}
 
+		Long slaBreachedWorkflowTasksCount = getSlaBreachedWorkflowTasksCount();
+
+		if (slaBreachedWorkflowTasksCount != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"slaBreachedWorkflowTasksCount\": ");
+
+			sb.append(slaBreachedWorkflowTasksCount);
+		}
+
 		Long totalCount = getTotalCount();
 
 		if (totalCount != null) {
@@ -741,6 +894,18 @@ public class AssetStatistics implements Serializable {
 			sb.append("\"totalCount\": ");
 
 			sb.append(totalCount);
+		}
+
+		Long unlinkedCount = getUnlinkedCount();
+
+		if (unlinkedCount != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"unlinkedCount\": ");
+
+			sb.append(unlinkedCount);
 		}
 
 		Long upcomingReviewCount = getUpcomingReviewCount();
@@ -889,4 +1054,4 @@ public class AssetStatistics implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:1974481895
+// LIFERAY-REST-BUILDER-HASH:-1722021196

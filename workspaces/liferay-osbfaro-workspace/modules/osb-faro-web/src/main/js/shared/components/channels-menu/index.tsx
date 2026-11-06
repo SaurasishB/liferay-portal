@@ -1,4 +1,4 @@
-import ClayIcon from '@clayui/icon';
+import ClayIcon from 'shared/components/Icon';
 import getCN from 'classnames';
 import PickerTriggerButton from '../PickerTriggerButton';
 import React from 'react';
@@ -112,7 +112,9 @@ export const ChannelsMenu: React.FC<IChannelsMenuProps> = ({
 			>
 				{(item) => (
 					<Option key={item.id} textValue={item.name}>
-						{truncateText(item.name, MAX_LABEL_LENGTH, null)}
+						<span>
+							{truncateText(item.name, MAX_LABEL_LENGTH, null)}
+						</span>
 					</Option>
 				)}
 			</Picker>

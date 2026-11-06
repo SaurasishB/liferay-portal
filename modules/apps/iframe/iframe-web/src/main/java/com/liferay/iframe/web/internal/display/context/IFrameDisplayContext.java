@@ -57,6 +57,18 @@ public class IFrameDisplayContext {
 		return _authType;
 	}
 
+	public String getBasicPassword() {
+		if (_basicPassword != null) {
+			return _basicPassword;
+		}
+
+		_basicPassword = SecretResolverUtil.resolve(
+			_themeDisplay.getCompanyId(),
+			_iFramePortletInstanceConfiguration.basicPassword());
+
+		return _basicPassword;
+	}
+
 	public String getFormMethod() {
 		if (_formMethod != null) {
 			return _formMethod;
@@ -131,11 +143,13 @@ public class IFrameDisplayContext {
 		while (enumeration.hasMoreElements()) {
 			String name = enumeration.nextElement();
 
-			if (name.startsWith(_IFRAME_PREFIX)) {
-				iFrameVariables.add(
-					name.substring(_IFRAME_PREFIX.length()) + StringPool.EQUAL +
-						_request.getParameter(name));
+			if (!name.startsWith(_IFRAME_PREFIX)) {
+				continue;
 			}
+
+			iFrameVariables.add(
+				name.substring(_IFRAME_PREFIX.length()) + StringPool.EQUAL +
+					_request.getParameter(name));
 		}
 
 		return iFrameVariables;
@@ -275,6 +289,7 @@ public class IFrameDisplayContext {
 	private static final String _IFRAME_PREFIX = "iframe_";
 
 	private String _authType;
+	private String _basicPassword;
 	private String _formMethod;
 	private String _height;
 	private String _hiddenVariables;

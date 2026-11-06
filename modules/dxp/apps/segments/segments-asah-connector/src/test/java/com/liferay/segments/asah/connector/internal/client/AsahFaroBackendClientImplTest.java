@@ -11,11 +11,17 @@ import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.NestableRuntimeException;
 import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.module.service.Snapshot;
+import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.util.MockHttp;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.util.Http;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.security.key.KeyReference;
+import com.liferay.portal.security.key.KeyReferenceUtil;
+import com.liferay.portal.security.key.secret.SecretResolver;
+import com.liferay.portal.security.key.secret.SecretResolverUtil;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
 import com.liferay.segments.asah.connector.internal.client.model.DXPVariant;
 import com.liferay.segments.asah.connector.internal.client.model.DXPVariants;
@@ -24,7 +30,6 @@ import com.liferay.segments.asah.connector.internal.client.model.ExperimentSetti
 import com.liferay.segments.asah.connector.internal.client.model.Individual;
 import com.liferay.segments.asah.connector.internal.client.model.IndividualSegment;
 import com.liferay.segments.asah.connector.internal.client.model.Results;
-import com.liferay.segments.asah.connector.internal.client.model.Topic;
 import com.liferay.segments.asah.connector.internal.client.util.OrderByField;
 
 import java.net.HttpURLConnection;
@@ -32,6 +37,7 @@ import java.net.URLDecoder;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -73,6 +79,7 @@ public class AsahFaroBackendClientImplTest {
 		);
 
 		_setUpPortalUtil();
+		_setUpSecretResolverUtil();
 	}
 
 	@Test
@@ -410,56 +417,74 @@ public class AsahFaroBackendClientImplTest {
 	}
 
 	@Test
-	public void testGetInterestTermsResults() throws Exception {
-		String userId = String.valueOf(RandomTestUtil.randomLong());
+	public void testGetIndividualSegmentResultsWithKeyReference()
+		throws Exception {
+
+		String keyReferenceString = KeyReferenceUtil.toKeyReferenceString(
+			new KeyReference(
+				RandomTestUtil.randomString(), RandomTestUtil.randomString(),
+				KeyReference.Type.SECRET));
+
+		Mockito.when(
+			_analyticsConfiguration.
+				liferayAnalyticsFaroBackendSecuritySignature()
+		).thenReturn(
+			keyReferenceString
+		);
+
+		long companyId = RandomTestUtil.randomLong();
+		String securitySignature = RandomTestUtil.randomString();
+
+		Mockito.when(
+			_secretResolver.resolve(companyId, keyReferenceString)
+		).thenReturn(
+			securitySignature
+		);
+
+		Http http = Mockito.mock(Http.class);
+
+		Mockito.when(
+			http.URLtoString(Mockito.any(Http.Options.class))
+		).thenAnswer(
+			invocation -> {
+				Http.Options httpOptions = invocation.getArgument(
+					0, Http.Options.class);
+
+				Http.Response response = new Http.Response();
+
+				response.setResponseCode(HttpURLConnection.HTTP_OK);
+
+				httpOptions.setResponse(response);
+
+				return JSONUtil.put(
+					"page", JSONUtil.put("totalElements", 0)
+				).toString();
+			}
+		);
 
 		AsahFaroBackendClient asahFaroBackendClient =
-			new AsahFaroBackendClientImpl(
-				_analyticsSettingsManager,
-				new MockHttp(
-					Collections.singletonMap(
-						"/api/1.0/interests/terms/" + userId,
-						() -> JSONUtil.put(
-							"_embedded",
-							JSONUtil.put(
-								"interest-topics",
-								JSONUtil.putAll(
-									JSONUtil.put(
-										"terms",
-										JSONUtil.putAll(
-											JSONUtil.put("keyword", "term1")))))
-						).put(
-							"page",
-							JSONUtil.put(
-								"number", 0
-							).put(
-								"size", 100
-							).put(
-								"totalElements", 1
-							).put(
-								"totalPages", 1
-							)
-						).put(
-							"total", 0
-						).toString())));
+			new AsahFaroBackendClientImpl(_analyticsSettingsManager, http);
 
-		Results<Topic> interestTermsResults =
-			asahFaroBackendClient.getInterestTermsResults(
-				RandomTestUtil.randomLong(), userId);
+		asahFaroBackendClient.getIndividualSegmentResults(
+			companyId, RandomTestUtil.randomInt(), RandomTestUtil.randomInt(),
+			Collections.emptyList());
 
-		List<Topic> topics = interestTermsResults.getItems();
+		ArgumentCaptor<Http.Options> argumentCaptor = ArgumentCaptor.forClass(
+			Http.Options.class);
 
-		Assert.assertEquals(topics.toString(), 1, topics.size());
+		Mockito.verify(
+			http
+		).URLtoString(
+			argumentCaptor.capture()
+		);
 
-		Topic topic = topics.get(0);
+		Http.Options httpOptions = argumentCaptor.getValue();
 
-		List<Topic.TopicTerm> topicTerms = topic.getTerms();
+		Map<String, String> headers = httpOptions.getHeaders();
 
-		Assert.assertEquals(topicTerms.toString(), 1, topicTerms.size());
-
-		Topic.TopicTerm topicTerm = topicTerms.get(0);
-
-		Assert.assertEquals("term1", topicTerm.getKeyword());
+		Assert.assertEquals(
+			securitySignature,
+			headers.get("OSB-Asah-Faro-Backend-Security-Signature"));
 	}
 
 	@Test
@@ -582,7 +607,24 @@ public class AsahFaroBackendClientImplTest {
 		portalUtil.setPortal(portal);
 	}
 
+	private void _setUpSecretResolverUtil() {
+		_secretResolver = Mockito.mock(SecretResolver.class);
+
+		ReflectionTestUtil.setFieldValue(
+			SecretResolverUtil.class, "_secretResolverSnapshot",
+			new Snapshot<SecretResolver>(
+				SecretResolverUtil.class, SecretResolver.class) {
+
+				@Override
+				public SecretResolver get() {
+					return _secretResolver;
+				}
+
+			});
+	}
+
 	private AnalyticsConfiguration _analyticsConfiguration;
 	private AnalyticsSettingsManager _analyticsSettingsManager;
+	private SecretResolver _secretResolver;
 
 }

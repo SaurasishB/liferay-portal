@@ -110,9 +110,15 @@ export const isConditionComplete = (condition: IStageCondition): boolean => {
 };
 
 export const isStageConfigured = (stage: IStageConfig): boolean =>
+	stage.conditions.some(isConditionComplete);
+
+export const isStageComplete = (stage: IStageConfig): boolean =>
+	!!stage.name.trim() &&
 	!!stage.description.trim() &&
-	!!stage.conditions.length &&
-	stage.conditions.every(isConditionComplete);
+	isStageConfigured(stage) &&
+	stage.conditions.every(
+		(condition) => !condition.field || isConditionComplete(condition)
+	);
 
 export const resolveOperatorType = (
 	dataCategory: string | null,
@@ -131,4 +137,15 @@ export const resolveOperatorType = (
 	);
 
 	return (operatorType as OperatorType) ?? null;
+};
+
+export const conditionOperatorOptions = (
+	condition: IStageCondition
+): IEntityOption[] => {
+	const operatorType = resolveOperatorType(
+		condition.fieldDataCategory,
+		condition.fieldDataType
+	);
+
+	return operatorType ? OPERATORS_BY_TYPE[operatorType] : [];
 };

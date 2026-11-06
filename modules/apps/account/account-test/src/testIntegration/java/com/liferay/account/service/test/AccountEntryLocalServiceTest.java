@@ -268,7 +268,7 @@ public class AccountEntryLocalServiceTest {
 				ObjectActionExecutorConstants.KEY_WEBHOOK,
 				ObjectActionTriggerConstants.KEY_ON_AFTER_ADD,
 				UnicodePropertiesBuilder.put(
-					"url", RandomTestUtil.randomString()
+					"url", "http://203.0.113.1"
 				).build(),
 				false);
 
@@ -330,7 +330,7 @@ public class AccountEntryLocalServiceTest {
 				ObjectActionExecutorConstants.KEY_WEBHOOK,
 				ObjectActionTriggerConstants.KEY_ON_AFTER_UPDATE,
 				UnicodePropertiesBuilder.put(
-					"url", RandomTestUtil.randomString()
+					"url", "http://203.0.113.1"
 				).build(),
 				false);
 
@@ -1633,15 +1633,13 @@ public class AccountEntryLocalServiceTest {
 		List<SystemEvent> systemEvents =
 			_systemEventLocalService.getSystemEvents(
 				0, _portal.getClassNameId(accountEntry.getModelClassName()),
-				accountEntry.getPrimaryKey());
+				accountEntry.getPrimaryKey(), SystemEventConstants.TYPE_DELETE);
 
 		SystemEvent systemEvent = systemEvents.get(0);
 
 		Assert.assertEquals(
 			accountEntry.getExternalReferenceCode(),
 			systemEvent.getClassExternalReferenceCode());
-		Assert.assertEquals(
-			SystemEventConstants.TYPE_DELETE, systemEvent.getType());
 	}
 
 	private void _assertGetUserAccountEntriesWithKeywords(

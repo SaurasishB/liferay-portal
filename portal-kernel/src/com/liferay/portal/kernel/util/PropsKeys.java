@@ -284,6 +284,9 @@ public interface PropsKeys {
 	public static final String BASIC_AUTH_PASSWORD_REQUIRED =
 		"basic.auth.password.required";
 
+	public static final String BATCH_ENGINE_ENCRYPTION_KEY =
+		"batch.engine.encryption.key";
+
 	public static final String BLOGS_DISPLAY_TEMPLATES_CONFIG =
 		"blogs.display.templates.config";
 
@@ -1121,9 +1124,6 @@ public interface PropsKeys {
 
 	public static final String HIBERNATE_JDBC_BATCH_SIZE =
 		"hibernate.jdbc.batch_size";
-
-	public static final String HIBERNATE_JDBC_USE_STREAMS_FOR_BINARY =
-		"hibernate.jdbc.use_streams_for_binary";
 
 	public static final String HOT_DEPLOY_DEPENDENCY_MANAGEMENT_ENABLED =
 		"hot.deploy.dependency.management.enabled";
@@ -2231,9 +2231,6 @@ public interface PropsKeys {
 	public static final String RESOURCE_REPOSITORIES_ROOT =
 		"resource.repositories.root";
 
-	public static final String REST_PROXY_URL_PREFIXES_ALLOWED =
-		"rest.proxy.url.prefixes.allowed";
-
 	public static final String RETRY_ADVICE_MAX_RETRIES =
 		"retry.advice.max.retries";
 
@@ -2892,6 +2889,14 @@ public interface PropsKeys {
 
 	public static final String VALUE_OBJECT_ENTITY_THREAD_LOCAL_CACHE_MAX_SIZE =
 		"value.object.entity.thread.local.cache.max.size";
+
+	public static final String
+		VALUE_OBJECT_FINDER_CACHE_COUNT_CLUSTER_TIME_TO_LIVE =
+			"value.object.finder.cache.count.cluster.time.to.live";
+
+	public static final String
+		VALUE_OBJECT_FINDER_CACHE_COUNT_MAINTENANCE_ENABLED =
+			"value.object.finder.cache.count.maintenance.enabled";
 
 	public static final String VALUE_OBJECT_FINDER_CACHE_ENABLED =
 		"value.object.finder.cache.enabled";

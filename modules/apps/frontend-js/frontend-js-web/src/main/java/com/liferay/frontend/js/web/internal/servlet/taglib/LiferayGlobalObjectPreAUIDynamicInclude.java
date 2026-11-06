@@ -81,7 +81,10 @@ import org.osgi.service.component.annotations.Reference;
  * @author Iván Zaera Avellón
  */
 @Component(
-	property = "service.ranking:Integer=" + Integer.MAX_VALUE,
+	property = {
+		"dynamic.include.key=/html/common/themes/top_js.jspf#resources",
+		"service.ranking:Integer=" + Integer.MAX_VALUE
+	},
 	service = DynamicInclude.class
 )
 public class LiferayGlobalObjectPreAUIDynamicInclude
@@ -144,12 +147,6 @@ public class LiferayGlobalObjectPreAUIDynamicInclude
 				new Object[] {sb, requestURL.startsWith("http://localhost")}));
 
 		printWriter.println("</script>");
-	}
-
-	@Override
-	public void register(DynamicIncludeRegistry dynamicIncludeRegistry) {
-		dynamicIncludeRegistry.register(
-			"/html/common/themes/top_js.jspf#resources");
 	}
 
 	private static String _read(String name) {
@@ -440,28 +437,24 @@ public class LiferayGlobalObjectPreAUIDynamicInclude
 			(ThemeDisplay)httpServletRequest.getAttribute(
 				WebKeys.THEME_DISPLAY);
 
-		sb.append("FeatureFlags: {\n");
+		sb.append("FeatureFlags: {");
 
 		for (FeatureFlag featureFlag :
 				_featureFlagManager.getFeatureFlags(
-					CompanyConstants.SYSTEM, null)) {
+					CompanyConstants.SYSTEM, FeatureFlag::isEnabled)) {
 
 			sb.append(StringPool.APOSTROPHE);
 			sb.append(featureFlag.getKey());
-			sb.append("': ");
-			sb.append(featureFlag.isEnabled());
-			sb.append(",\n");
+			sb.append("': true, ");
 		}
 
 		for (FeatureFlag featureFlag :
 				_featureFlagManager.getFeatureFlags(
-					themeDisplay.getCompanyId(), null)) {
+					themeDisplay.getCompanyId(), FeatureFlag::isEnabled)) {
 
 			sb.append(StringPool.APOSTROPHE);
 			sb.append(featureFlag.getKey());
-			sb.append("': ");
-			sb.append(featureFlag.isEnabled());
-			sb.append(",\n");
+			sb.append("': true, ");
 		}
 
 		sb.append("},\n");
@@ -633,6 +626,9 @@ public class LiferayGlobalObjectPreAUIDynamicInclude
 		_renderMethod(
 			"getPathJavaScript", sb, themeDisplay.getPathJavaScript());
 		_renderMethod("getPathMain", sb, themeDisplay.getPathMain());
+		_renderMethod(
+			"getPathThemeEmptyStatesSpritemap", sb,
+			themeDisplay.getPathThemeEmptyStatesSpritemap());
 		_renderMethod(
 			"getPathThemeImages", sb, themeDisplay.getPathThemeImages());
 		_renderMethod("getPathThemeRoot", sb, themeDisplay.getPathThemeRoot());

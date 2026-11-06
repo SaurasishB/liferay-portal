@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {ObjectDefinitionAPI} from '@liferay/object-admin-rest-client-js';
+import {ObjectDefinitionAPI} from '@liferay/object-admin-rest-client-js/v1_0';
 import {expect, mergeTests} from '@playwright/test';
 
 import {apiHelpersTest} from '../../../fixtures/apiHelpersTest';
@@ -531,21 +531,6 @@ test(
 );
 
 test.describe('Dropdown behavior with several object entries', () => {
-	let lemonBaskets = [];
-
-	test.beforeEach(() => {
-		lemonBaskets = [];
-	});
-
-	test.afterEach(async ({apiHelpers}) => {
-		for (const lemonBasket of lemonBaskets) {
-			await apiHelpers.objectEntry.deleteObjectEntry(
-				'c/lemonbaskets',
-				lemonBasket.id
-			);
-		}
-	});
-
 	test(
 		'Dropdown shows all results when there is no filter applied',
 		{tag: ['@LPD-64860']},
@@ -554,17 +539,14 @@ test.describe('Dropdown behavior with several object entries', () => {
 			// Create lemon baskets
 
 			for (let i = 0; i < 19; i++) {
-				const lemonBasket =
-					await apiHelpers.objectEntry.postObjectEntry(
-						{
-							lemonDimensions: ['large'],
-							material: 'plastic',
-						},
-						'c/lemonbaskets',
-						pageManagementSite.key
-					);
-
-				lemonBaskets.push(lemonBasket);
+				await apiHelpers.objectEntry.postObjectEntry(
+					{
+						lemonDimensions: ['large'],
+						material: 'plastic',
+					},
+					'c/lemonbaskets',
+					pageManagementSite.key
+				);
 			}
 
 			// Create a page with a Form fragment

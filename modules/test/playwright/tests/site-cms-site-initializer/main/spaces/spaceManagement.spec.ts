@@ -6,12 +6,14 @@
 import {expect, mergeTests} from '@playwright/test';
 
 import {dataApiHelpersTest} from '../../../../fixtures/dataApiHelpersTest';
+import {featureFlagsTest} from '../../../../fixtures/featureFlagsTest';
 import {loginTest} from '../../../../fixtures/loginTest';
 import getRandomString from '../../../../utils/getRandomString';
 import {PORTLET_URLS} from '../../../../utils/portletUrls';
 import {waitForAlert} from '../../../../utils/waitForAlert';
 import {PermissionsPage} from '../../permissions/pages/PermissionsPage';
 import {cmsPagesTest} from '../fixtures/cmsPagesTest';
+import {spaceSettingsPagesTest} from '../fixtures/spaceSettingsPagesTest';
 
 const test = mergeTests(cmsPagesTest, dataApiHelpersTest, loginTest());
 
@@ -58,15 +60,10 @@ test(
 	{tag: '@LPD-85670'},
 	async ({apiHelpers, page, spaceSummaryPage}) => {
 		const description = `Description ${getRandomString()}`;
-		const spaceName = `Space ${getRandomString()}`;
 
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
-			settings: {},
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
-		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
 		await page.getByRole('button', {name: 'More Actions'}).click();
 		await page.getByRole('menuitem', {name: 'Settings'}).click();
@@ -81,7 +78,7 @@ test(
 
 		await waitForAlert(page, 'Success');
 
-		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
 		await page.getByRole('button', {name: 'More Actions'}).click();
 		await page.getByRole('menuitem', {name: 'Settings'}).click();
@@ -94,15 +91,9 @@ test(
 	'Trash entries max age field shows the company default in days and rejects values below 1',
 	{tag: '@LPD-91035'},
 	async ({apiHelpers, page, spaceSummaryPage}) => {
-		const spaceName = `Space ${getRandomString()}`;
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
-			settings: {},
-			type: 'Space',
-		});
-
-		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
 		await page.getByRole('button', {name: 'More Actions'}).click();
 		await page.getByRole('menuitem', {name: 'Settings'}).click();
@@ -125,7 +116,7 @@ test(
 
 		await waitForAlert(page, 'Success');
 
-		await spaceSummaryPage.goto(spaceName);
+		await spaceSummaryPage.goto(space.name);
 
 		await page.getByRole('button', {name: 'More Actions'}).click();
 		await page.getByRole('menuitem', {name: 'Settings'}).click();
@@ -138,17 +129,11 @@ test(
 	'The Permissions modal can be opened from the All Spaces row actions',
 	{tag: '@LPD-85670'},
 	async ({apiHelpers, page}) => {
-		const spaceName = `Space ${getRandomString()}`;
-
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
-			settings: {},
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		await page.goto(PORTLET_URLS.cmsAllSpaces);
 
-		const spaceRow = page.getByRole('row', {name: spaceName});
+		const spaceRow = page.getByRole('row', {name: space.name});
 
 		await spaceRow.getByRole('button', {name: 'Actions'}).click();
 
@@ -159,5 +144,41 @@ test(
 		await expect(
 			page.getByRole('dialog').getByRole('heading', {name: 'Permissions'})
 		).toBeVisible();
+	}
+);
+
+const locationProviderTest = mergeTests(
+	test,
+	featureFlagsTest({'LPD-11388': {enabled: true}}),
+	spaceSettingsPagesTest
+);
+
+locationProviderTest(
+	'Location provider option and Google Maps API key is saved',
+	{tag: '@LPD-106772'},
+	async ({apiHelpers, page, spaceSettingsPage}) => {
+		const googleMapsAPIKey = getRandomString();
+
+		const space = await apiHelpers.headlessAssetLibrary.createSpace({
+			name: `Space ${getRandomString()}`,
+		});
+
+		await spaceSettingsPage.goto(space.id);
+
+		await spaceSettingsPage.googleMapsRadio.check();
+
+		await spaceSettingsPage.googleMapsAPIKeyField.fill(googleMapsAPIKey);
+
+		await spaceSettingsPage.saveButton.click();
+
+		await waitForAlert(page, 'Success');
+
+		await spaceSettingsPage.goto(space.id);
+
+		await expect(spaceSettingsPage.googleMapsRadio).toBeChecked();
+
+		await expect(spaceSettingsPage.googleMapsAPIKeyField).toHaveValue(
+			googleMapsAPIKey
+		);
 	}
 );

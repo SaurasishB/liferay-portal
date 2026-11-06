@@ -294,21 +294,6 @@ public class DLFileEntryLocalServiceUtil {
 		getService().deleteRepositoryFileEntries(repositoryId);
 	}
 
-	public static void deleteRepositoryFileEntries(
-			long repositoryId, long folderId)
-		throws PortalException {
-
-		getService().deleteRepositoryFileEntries(repositoryId, folderId);
-	}
-
-	public static void deleteRepositoryFileEntries(
-			long repositoryId, long folderId, boolean includeTrashedEntries)
-		throws PortalException {
-
-		getService().deleteRepositoryFileEntries(
-			repositoryId, folderId, includeTrashedEntries);
-	}
-
 	public static <T> T dslQuery(DSLQuery dslQuery) {
 		return getService().dslQuery(dslQuery);
 	}
@@ -475,13 +460,6 @@ public class DLFileEntryLocalServiceUtil {
 		getActionableDynamicQuery() {
 
 		return getService().getActionableDynamicQuery();
-	}
-
-	public static List<DLFileEntry> getDDMStructureFileEntries(
-		long groupId, long[] ddmStructureIds) {
-
-		return getService().getDDMStructureFileEntries(
-			groupId, ddmStructureIds);
 	}
 
 	public static List<DLFileEntry> getDDMStructureFileEntries(
@@ -704,15 +682,6 @@ public class DLFileEntryLocalServiceUtil {
 			queryDefinition);
 	}
 
-	public static int getFileEntriesCount(
-		long groupId, long userId, List<Long> folderIds, String[] mimeTypes,
-		com.liferay.portal.kernel.dao.orm.QueryDefinition<DLFileEntry>
-			queryDefinition) {
-
-		return getService().getFileEntriesCount(
-			groupId, userId, folderIds, mimeTypes, queryDefinition);
-	}
-
 	public static DLFileEntry getFileEntry(long fileEntryId)
 		throws PortalException {
 
@@ -762,56 +731,12 @@ public class DLFileEntryLocalServiceUtil {
 	}
 
 	public static List<DLFileEntry> getGroupFileEntries(
-		long groupId, int start, int end) {
-
-		return getService().getGroupFileEntries(groupId, start, end);
-	}
-
-	public static List<DLFileEntry> getGroupFileEntries(
-		long groupId, int start, int end,
-		OrderByComparator<DLFileEntry> orderByComparator) {
-
-		return getService().getGroupFileEntries(
-			groupId, start, end, orderByComparator);
-	}
-
-	public static List<DLFileEntry> getGroupFileEntries(
-		long groupId, long userId, int start, int end) {
-
-		return getService().getGroupFileEntries(groupId, userId, start, end);
-	}
-
-	public static List<DLFileEntry> getGroupFileEntries(
-		long groupId, long userId, int start, int end,
-		OrderByComparator<DLFileEntry> orderByComparator) {
-
-		return getService().getGroupFileEntries(
-			groupId, userId, start, end, orderByComparator);
-	}
-
-	public static List<DLFileEntry> getGroupFileEntries(
-		long groupId, long userId, long rootFolderId, int start, int end,
-		OrderByComparator<DLFileEntry> orderByComparator) {
-
-		return getService().getGroupFileEntries(
-			groupId, userId, rootFolderId, start, end, orderByComparator);
-	}
-
-	public static List<DLFileEntry> getGroupFileEntries(
 		long groupId, long userId, long repositoryId, long rootFolderId,
 		int start, int end, OrderByComparator<DLFileEntry> orderByComparator) {
 
 		return getService().getGroupFileEntries(
 			groupId, userId, repositoryId, rootFolderId, start, end,
 			orderByComparator);
-	}
-
-	public static int getGroupFileEntriesCount(long groupId) {
-		return getService().getGroupFileEntriesCount(groupId);
-	}
-
-	public static int getGroupFileEntriesCount(long groupId, long userId) {
-		return getService().getGroupFileEntriesCount(groupId, userId);
 	}
 
 	public static
@@ -1049,4 +974,4 @@ public class DLFileEntryLocalServiceUtil {
 	private static volatile DLFileEntryLocalService _service;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-965612732
+// LIFERAY-SERVICE-BUILDER-HASH:723173866

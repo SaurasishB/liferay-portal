@@ -23,10 +23,7 @@ test(
 		const friendlyUrl = getRandomString();
 		const originalContent = `Original ${getRandomString()}`;
 
-		const space = await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: `Space ${getRandomString()}`,
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		const guestSite = await apiHelpers.headlessAdminSite.getSite('L_GUEST');
 
@@ -100,7 +97,7 @@ test(
 			});
 			const guestPage = await guestContext.newPage();
 
-			const viewUrl = `/web/cms/cmsbasicwebcontent/asset-library-${space.id}/${friendlyUrl}`;
+			const viewUrl = `/web/cms/cmsbasicwebcontent/${space.friendlyURL.substring(1)}/${friendlyUrl}`;
 
 			await expect(async () => {
 				await guestPage.goto(viewUrl);

@@ -33,6 +33,7 @@ import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONException;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
+import com.liferay.portal.kernel.launch.LaunchPreviewThreadLocal;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Layout;
@@ -170,7 +171,8 @@ public class FragmentEntryFragmentRenderer implements FragmentRenderer {
 			fragmentEntryLink.isTypeInput() ||
 			!fragmentRendererContext.isViewMode() ||
 			(fragmentRendererContext.getPreviewClassPK() > 0) ||
-			!fragmentRendererContext.isUseCachedContent()) {
+			!fragmentRendererContext.isUseCachedContent() ||
+			(LaunchPreviewThreadLocal.getLaunchSetId() > 0)) {
 
 			return false;
 		}
@@ -231,7 +233,7 @@ public class FragmentEntryFragmentRenderer implements FragmentRenderer {
 		HttpServletRequest httpServletRequest,
 		InputTemplateNode inputTemplateNode, String nonce) {
 
-		StringBundler sb = new StringBundler(35);
+		StringBundler sb = new StringBundler(41);
 
 		sb.append("<div id=\"");
 
@@ -338,7 +340,13 @@ public class FragmentEntryFragmentRenderer implements FragmentRenderer {
 			sb.append("; input.value = Liferay.Util.unescapeHTML(input.value ");
 			sb.append("?? ''); Object.keys(input.valueI18n).forEach(");
 			sb.append("function(key){ input.valueI18n[key] = Liferay.Util.");
-			sb.append("unescapeHTML(input.valueI18n[key] ?? '');})");
+			sb.append("unescapeHTML(input.valueI18n[key] ?? '');}); if ");
+			sb.append("(input.attributes.selectedOptionLabel) {");
+			sb.append("input.attributes.selectedOptionLabel = Liferay.Util.");
+			sb.append("unescapeHTML(input.attributes.selectedOptionLabel);} ");
+			sb.append("(input.attributes.options || []).forEach(");
+			sb.append("function(option){ option.label = Liferay.Util.");
+			sb.append("unescapeHTML(option.label ?? '');})");
 		}
 
 		sb.append("; const layoutMode = '");

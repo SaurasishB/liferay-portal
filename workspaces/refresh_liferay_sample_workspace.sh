@@ -52,7 +52,7 @@ function refresh_liferay_sample_workspace {
 
 	echo -en "\n**/dist\n**/node_modules_cache\n.DS_Store" >> .gitignore
 
-	echo -en "\n\nfeature.flag.LPS-172903=true\nfeature.flag.LPS-164563=true\nfeature.flag.LPS-177027=true" >> configs/local/portal-ext.properties
+	echo -en "\n\nfeature.flag.LPS-172903=true\nfeature.flag.LPS-177027=true" >> configs/local/portal-ext.properties
 
 	#echo -en "\nliferay.workspace.docker.image.liferay=liferay/dxp:7.4.13-u54-d5.0.5-20221208173455" >> gradle.properties
 	echo -en "\nliferay.workspace.node.package.manager=yarn" >> gradle.properties
@@ -67,7 +67,7 @@ function refresh_liferay_sample_workspace {
 	mv gradle.properties.tmp gradle.properties
 
 	sed -i 's/name: "biz.aQute.bnd", version: ".*"/name: "biz.aQute.bnd.gradle", version: "5.2.0"/' settings.gradle
-	sed -i 's/name: "com.liferay.gradle.plugins.workspace", version: ".*"/name: "com.liferay.gradle.plugins.workspace", version: "17.1.11"/' settings.gradle
+	sed -i 's/name: "com.liferay.gradle.plugins.workspace", version: ".*"/name: "com.liferay.gradle.plugins.workspace", version: "17.1.13"/' settings.gradle
 
 	echo -en "\ninclude \"poshi\"" >> settings.gradle
 

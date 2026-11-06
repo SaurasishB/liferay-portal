@@ -78,15 +78,17 @@ public class CommerceOptionValueHelperTest {
 	@Test
 	public void testGetCPDefinitionCommerceOptionValues() throws Exception {
 		frutillaRule.scenario(
-			"Get CP definition commerce option values"
+			"Get commerce product definition commerce option values"
 		).given(
 			StringBundler.concat(
 				"I have a product bundle definition with 5 product options.",
 				"Each option has at least two option values linked to unique ",
-				"valid purchasable product CP instance in catalog.")
+				"valid purchasable product commerce product instance in ",
+				"catalog.")
 		).when(
-			"commerce option values are requested for CP definition ID and " +
-				"JSON option key option value key combination "
+			"commerce option values are requested for commerce product " +
+				"definition ID and JSON option key option value key " +
+					"combination "
 		).then(
 			"correct commerce option values are created"
 		);
@@ -145,7 +147,8 @@ public class CommerceOptionValueHelperTest {
 			}
 
 			Assert.assertNotNull(
-				"Commerce option value DTO must have CP definition option rel",
+				"Commerce option value DTO must have commerce product " +
+					"definition option rel",
 				matchingCPDefinitionOptionRel);
 
 			Assert.assertEquals(
@@ -163,8 +166,8 @@ public class CommerceOptionValueHelperTest {
 						commerceOptionValue.getOptionValueKey());
 
 			Assert.assertNotNull(
-				"Commerce option value DTO must have CP definition option " +
-					"value rel",
+				"Commerce option value DTO must have commerce product " +
+					"definition option value rel",
 				matchingCPDefinitionOptionValueRel);
 
 			long expectedCPInstanceId = 0;
@@ -228,9 +231,11 @@ public class CommerceOptionValueHelperTest {
 					cpDefinitionOptionRel.getKey(),
 					cpDefinitionOptionValueRel.getKey()));
 
-			if (iterator.hasNext()) {
-				sb.append(StringPool.COMMA);
+			if (!iterator.hasNext()) {
+				continue;
 			}
+
+			sb.append(StringPool.COMMA);
 		}
 
 		sb.append(StringPool.CLOSE_BRACKET);
@@ -261,7 +266,8 @@ public class CommerceOptionValueHelperTest {
 				expectedCommerceOptionValues);
 
 			Assert.assertNotNull(
-				"CP definition option value must have match", firstMatch);
+				"Commerce product definition option value must have a match",
+				firstMatch);
 
 			Assert.assertEquals(
 				firstMatch.getOptionKey(), commerceOptionValue.getOptionKey());

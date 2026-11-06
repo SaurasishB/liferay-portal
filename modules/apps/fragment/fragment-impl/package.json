@@ -17,7 +17,7 @@
 		"document-library-video": "*",
 		"frontend-js-components-web": "*",
 		"frontend-js-web": "*",
-		"moment": "2.29.4",
+		"moment": "2.31.0",
 		"react": "18.2.0"
 	},
 	"main": "js/index.js",
@@ -28,5 +28,5 @@
 		"format": "node-scripts format",
 		"test": "node-scripts test"
 	},
-	"version": "4.0.145"
+	"version": "4.0.146"
 }

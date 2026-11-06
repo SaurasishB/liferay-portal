@@ -1000,6 +1000,7 @@ public class StyleBookEntryServiceHttp {
 				boolean defaultStyleBookEntry, String frontendTokenDefinition,
 				String frontendTokensValues, String name,
 				String styleBookEntryKey, long previewFileEntryId,
+				String themeId,
 				com.liferay.portal.kernel.service.ServiceContext serviceContext)
 		throws com.liferay.portal.kernel.exception.PortalException {
 
@@ -1011,52 +1012,7 @@ public class StyleBookEntryServiceHttp {
 			MethodHandler methodHandler = new MethodHandler(
 				methodKey, styleBookEntryId, defaultStyleBookEntry,
 				frontendTokenDefinition, frontendTokensValues, name,
-				styleBookEntryKey, previewFileEntryId, serviceContext);
-
-			Object returnObj = null;
-
-			try {
-				returnObj = TunnelUtil.invoke(httpPrincipal, methodHandler);
-			}
-			catch (Exception exception) {
-				if (exception instanceof
-						com.liferay.portal.kernel.exception.PortalException) {
-
-					throw (com.liferay.portal.kernel.exception.PortalException)
-						exception;
-				}
-
-				throw new com.liferay.portal.kernel.exception.SystemException(
-					exception);
-			}
-
-			return (com.liferay.style.book.model.StyleBookEntry)returnObj;
-		}
-		catch (com.liferay.portal.kernel.exception.SystemException
-					systemException) {
-
-			_log.error(systemException, systemException);
-
-			throw systemException;
-		}
-	}
-
-	public static com.liferay.style.book.model.StyleBookEntry
-			updateStyleBookEntry(
-				HttpPrincipal httpPrincipal, long styleBookEntryId,
-				String frontendTokenDefinition, String frontendTokensValues,
-				String name,
-				com.liferay.portal.kernel.service.ServiceContext serviceContext)
-		throws com.liferay.portal.kernel.exception.PortalException {
-
-		try {
-			MethodKey methodKey = new MethodKey(
-				StyleBookEntryServiceUtil.class, "updateStyleBookEntry",
-				_updateStyleBookEntryParameterTypes23);
-
-			MethodHandler methodHandler = new MethodHandler(
-				methodKey, styleBookEntryId, frontendTokenDefinition,
-				frontendTokensValues, name, serviceContext);
+				styleBookEntryKey, previewFileEntryId, themeId, serviceContext);
 
 			Object returnObj = null;
 
@@ -1174,14 +1130,9 @@ public class StyleBookEntryServiceHttp {
 	private static final Class<?>[] _updateStyleBookEntryParameterTypes22 =
 		new Class[] {
 			long.class, boolean.class, String.class, String.class, String.class,
-			String.class, long.class,
-			com.liferay.portal.kernel.service.ServiceContext.class
-		};
-	private static final Class<?>[] _updateStyleBookEntryParameterTypes23 =
-		new Class[] {
-			long.class, String.class, String.class, String.class,
+			String.class, long.class, String.class,
 			com.liferay.portal.kernel.service.ServiceContext.class
 		};
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1118088022
+// LIFERAY-SERVICE-BUILDER-HASH:1062725134

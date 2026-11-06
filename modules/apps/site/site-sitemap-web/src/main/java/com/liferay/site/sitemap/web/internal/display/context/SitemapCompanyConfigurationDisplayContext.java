@@ -276,6 +276,11 @@ public class SitemapCompanyConfigurationDisplayContext {
 			_themeDisplay.getCompanyId());
 	}
 
+	public boolean includeCommerceProducts() throws ConfigurationException {
+		return _sitemapConfigurationManager.
+			includeCommerceProductsCompanyEnabled(_themeDisplay.getCompanyId());
+	}
+
 	public boolean includePages() throws ConfigurationException {
 		return _sitemapConfigurationManager.includePagesCompanyEnabled(
 			_themeDisplay.getCompanyId());
@@ -288,11 +293,6 @@ public class SitemapCompanyConfigurationDisplayContext {
 
 	public boolean isCachedGenerationEnabled() throws ConfigurationException {
 		return _sitemapConfigurationManager.isCachedGenerationCompanyEnabled(
-			_themeDisplay.getCompanyId());
-	}
-
-	public boolean isIndexModeAssetTypeEnabled() throws ConfigurationException {
-		return _sitemapConfigurationManager.isIndexModeAssetTypeCompanyEnabled(
 			_themeDisplay.getCompanyId());
 	}
 

@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import ClayButton from '@clayui/button';
+import ClayButton, {ClayButtonWithIcon} from '@clayui/button';
 import ClayForm, {ClayInputGroupAI} from '@clayui/form';
 import ClayIcon from '@clayui/icon';
 import ClayLoadingIndicator from '@clayui/loading-indicator';
-import React from 'react';
+import React, {useState} from 'react';
 
 import CharacterCounter from '../components/CharacterCounter';
 import AIAssistantFooterDisclaimer from './components/AIAssistantFooterDisclaimer';
@@ -22,6 +22,7 @@ type AIState = 'focused' | 'result' | 'result-readonly' | 'working';
 interface AIAssistantChatBodyProps {
 	aiState?: AIState;
 	chat: AIChat;
+	greeting?: string;
 	quickActions?: string[];
 	showGreeting: boolean;
 }
@@ -29,22 +30,36 @@ interface AIAssistantChatBodyProps {
 const AIAssistantChatBody: React.FC<AIAssistantChatBodyProps> = ({
 	aiState: controlledAIState,
 	chat,
+	greeting,
 	quickActions,
 	showGreeting,
 }) => {
 	const {
 		isGenerating,
+		lastMessageRef,
 		message,
 		messages,
 		messagesContainerRef,
+		scrollToBottom,
 		sendMessage,
 		setMessage,
 	} = chat;
+
+	const [scrolledToBottom, setScrolledToBottom] = useState(true);
 
 	let aiState = controlledAIState;
 
 	if (!aiState && isGenerating) {
 		aiState = 'working';
+	}
+
+	function handleScroll({currentTarget}: React.UIEvent<HTMLDivElement>) {
+		setScrolledToBottom(
+			currentTarget.scrollHeight -
+				currentTarget.scrollTop -
+				currentTarget.clientHeight <=
+				1
+		);
 	}
 
 	function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -57,24 +72,36 @@ const AIAssistantChatBody: React.FC<AIAssistantChatBodyProps> = ({
 		<>
 			<div
 				className="ai-assistant-chat__messages-container"
+				onScroll={handleScroll}
 				ref={messagesContainerRef}
 			>
 				{showGreeting && (
 					<AIAssistantMessageBalloon
 						error={false}
-						message={Liferay.Language.get(
-							'hi-i-can-help-you-generate-content-titles-tags-or-translate-your-work'
-						)}
+						message={
+							greeting ??
+							Liferay.Language.get(
+								'hi-i-can-help-you-generate-content-titles-tags-or-translate-your-work'
+							)
+						}
 					/>
 				)}
 
 				{messages.map((item, index) => (
-					<React.Fragment key={index}>
+					<div
+						className="ai-assistant-chat__message"
+						key={index}
+						ref={
+							index === messages.length - 1
+								? lastMessageRef
+								: null
+						}
+					>
 						{renderMessageBalloon(
 							{chat, index, item},
 							resolveMessage(item)
 						)}
-					</React.Fragment>
+					</div>
 				))}
 
 				{isGenerating && (
@@ -87,6 +114,18 @@ const AIAssistantChatBody: React.FC<AIAssistantChatBodyProps> = ({
 							{Liferay.Language.get('generating')}
 						</span>
 					</div>
+				)}
+
+				{!scrolledToBottom && (
+					<ClayButtonWithIcon
+						aria-label={Liferay.Language.get('scroll-to-bottom')}
+						className="ai-assistant-chat__scroll-to-bottom"
+						displayType="primary"
+						onClick={scrollToBottom}
+						size="sm"
+						symbol="angle-down"
+						title={Liferay.Language.get('scroll-to-bottom')}
+					/>
 				)}
 			</div>
 

@@ -34,21 +34,107 @@ const mockFetch = (items: unknown[]) => {
 	return fetch;
 };
 
-const enableSnapshotsFeatureFlags = () => {
-	Liferay.FeatureFlags['LPS-164563'] = true;
-};
-
 afterEach(() => {
 	cleanup();
-
-	delete Liferay.FeatureFlags['LPS-164563'];
 
 	lastProps = undefined;
 });
 
 beforeAll(warmFrontendDataSet);
 
+describe('columns.countRenderer', () => {
+	it('should render a real zero as 0', () => {
+		render(columns.countRenderer({itemData: {}, value: 0}));
+
+		expect(screen.getByText('0')).toBeInTheDocument();
+	});
+
+	it('should render a missing count as the no data value', () => {
+		render(columns.countRenderer({itemData: {}, value: undefined}));
+
+		expect(screen.getByText('–')).toHaveClass('text-secondary');
+	});
+
+	it('should render a numeric string count as a number', () => {
+		const {container} = render(
+			columns.countRenderer({
+				itemData: {},
+				value: '5' as unknown as number,
+			})
+		);
+
+		expect(container.textContent).toBe('5');
+	});
+
+	it('should render an empty string count as the no data value', () => {
+		render(
+			columns.countRenderer({
+				itemData: {},
+				value: '' as unknown as number,
+			})
+		);
+
+		expect(screen.getByText('–')).toHaveClass('text-secondary');
+	});
+});
+
+describe('columns.attributeNameAndValue', () => {
+	it('should render a real zero value as 0', () => {
+		render(
+			columns.attributeNameAndValue({attributeName: 'Count', value: 0})
+		);
+
+		expect(screen.getByText('0')).toBeInTheDocument();
+	});
+
+	it('should render a missing value as the no data value', () => {
+		render(
+			columns.attributeNameAndValue({attributeName: 'Count', value: ''})
+		);
+
+		expect(screen.getByText('Count')).toBeInTheDocument();
+		expect(screen.getByText('–')).toHaveClass('text-secondary');
+	});
+});
+
+describe('columns.textRenderer', () => {
+	it('should render the value', () => {
+		render(columns.textRenderer({itemData: {}, value: 'Software'}));
+
+		expect(screen.getByText('Software')).toBeInTheDocument();
+	});
+
+	it('should render a real zero as 0', () => {
+		render(columns.textRenderer({itemData: {}, value: 0}));
+
+		expect(screen.getByText('0')).toBeInTheDocument();
+	});
+
+	it('should render an empty value as the no data value', () => {
+		render(columns.textRenderer({itemData: {}, value: ''}));
+
+		expect(screen.getByText('–')).toHaveClass('text-secondary');
+	});
+
+	it('should render a missing value as the no data value', () => {
+		render(
+			columns.textRenderer({
+				itemData: {},
+				value: undefined as unknown as string,
+			})
+		);
+
+		expect(screen.getByText('–')).toHaveClass('text-secondary');
+	});
+});
+
 describe('columns.dateRenderer', () => {
+	it('should render a missing date as the no data value', () => {
+		render(columns.dateRenderer({itemData: {}, value: ''}));
+
+		expect(screen.getByText('–')).toHaveClass('text-secondary');
+	});
+
 	it('should render an ISO date in the custom date format, in UTC', () => {
 		render(
 			columns.dateRenderer({
@@ -120,8 +206,6 @@ describe('columns.nameAndLinkRenderer', () => {
 });
 
 describe('useSnapshots', () => {
-	beforeEach(enableSnapshotsFeatureFlags);
-
 	it('should return null while the snapshots are still loading', () => {
 		mockFetch([]);
 
@@ -171,19 +255,6 @@ describe('useSnapshots', () => {
 		await waitFor(() => expect(result.current).toEqual([]));
 	});
 
-	it('should not fetch when the feature flags are disabled', () => {
-		Liferay.FeatureFlags['LPS-164563'] = false;
-
-		const fetch = mockFetch([]);
-
-		const {result} = renderHook(() =>
-			useSnapshots('accounts-list-dataset')
-		);
-
-		expect(fetch).not.toHaveBeenCalled();
-		expect(result.current).toEqual([]);
-	});
-
 	it('should return an empty array and not fetch when disabled through the second argument', () => {
 		const fetch = mockFetch([]);
 
@@ -208,8 +279,6 @@ describe('FrontendDataSet (snapshots wrapper)', () => {
 		});
 
 		it('should not fetch snapshots and disable them on the base FrontendDataSet', () => {
-			enableSnapshotsFeatureFlags();
-
 			const fetch = mockFetch([]);
 
 			render(<FrontendDataSet id="assetTable" views={[]} />);
@@ -220,8 +289,6 @@ describe('FrontendDataSet (snapshots wrapper)', () => {
 	});
 
 	describe('when snapshotsEnabled is true', () => {
-		beforeEach(enableSnapshotsFeatureFlags);
-
 		it('should render the loading indicator while the snapshots are still loading', () => {
 			Liferay.Util = {
 				fetch: jest.fn(() => new Promise(() => {})),

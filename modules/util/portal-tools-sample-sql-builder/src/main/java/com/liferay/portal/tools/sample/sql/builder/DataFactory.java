@@ -501,7 +501,7 @@ public class DataFactory {
 		field.set(_friendlyURLNormalizer, (Normalizer)s -> s);
 	}
 
-	public String generateDynamicSQL(
+	public List<String> generateDynamicSQLs(
 		String dbTableName, long dlFileEntryId, long objectEntryId,
 		List<ObjectFieldModel> objectFieldModels,
 		long relatedTicketObjectEntryId, long relatedUserObjectEntryId) {
@@ -564,7 +564,11 @@ public class DataFactory {
 
 		sb.append(");");
 
-		return sb.toString();
+		return ListUtil.fromArray(
+			sb.toString(),
+			StringBundler.concat(
+				"insert into ", dbTableName, "_x values (", objectEntryId,
+				");"));
 	}
 
 	public RoleModel getAdministratorRoleModel() {
@@ -1383,9 +1387,7 @@ public class DataFactory {
 		assetListEntrySegmentsEntryRelModel.setSegmentsEntryId(
 			SegmentsEntryConstants.ID_DEFAULT);
 
-		Map<String, String> map = HashMapBuilder.<String, String>create(
-			11
-		).put(
+		Map<String, String> map = HashMapBuilder.put(
 			"anyAssetType", Boolean.FALSE.toString()
 		).put(
 			"classNameIds",
@@ -1414,12 +1416,7 @@ public class DataFactory {
 			Boolean.FALSE.toString()
 		).build();
 
-		if (index == 1) {
-			map.put("queryAndOperator0", Boolean.TRUE.toString());
-			map.put("queryContains0", Boolean.TRUE.toString());
-			map.put("queryName0", "assetTags");
-		}
-		else {
+		if (index != 1) {
 			String assetPublisherQueryName = "assetCategories";
 
 			if ((index % 2) == 0) {
@@ -1458,19 +1455,16 @@ public class DataFactory {
 
 			String[] assetPublisherQueryValues = (String[])tuple.getObject(0);
 
-			map.put("queryAndOperator0", Boolean.FALSE.toString());
-			map.put("queryAndOperator1", Boolean.FALSE.toString());
-			map.put("queryContains0", Boolean.TRUE.toString());
-			map.put("queryContains1", Boolean.FALSE.toString());
-			map.put("queryName0", assetPublisherQueryName);
-			map.put("queryName1", assetPublisherQueryName);
 			map.put(
-				"queryValues0",
-				StringBundler.concat(
-					assetPublisherQueryValues[0], StringPool.COMMA,
-					assetPublisherQueryValues[1], StringPool.COMMA,
-					assetPublisherQueryValues[2]));
-			map.put("queryValues1", assetPublisherQueryValues[3]);
+				"filters",
+				JSONUtil.putAll(
+					_getFilterJSONObject(
+						"contains", assetPublisherQueryName, "any",
+						ArrayUtil.subset(assetPublisherQueryValues, 0, 3)),
+					_getFilterJSONObject(
+						"not-contains", assetPublisherQueryName, "any",
+						assetPublisherQueryValues[3])
+				).toString());
 		}
 
 		UnicodeProperties unicodeProperties = UnicodePropertiesBuilder.create(
@@ -2673,27 +2667,29 @@ public class DataFactory {
 			JSONArray subLayoutsJSONArray = jsonObject.getJSONArray(
 				"subLayouts");
 
-			if ((subLayoutsJSONArray != null) &&
-				(subLayoutsJSONArray.length() > 0)) {
+			if ((subLayoutsJSONArray == null) ||
+				(subLayoutsJSONArray.length() <= 0)) {
 
-				for (int k = 0; k < subLayoutsJSONArray.length(); k++) {
-					JSONObject sublayoutJSONObject =
-						subLayoutsJSONArray.getJSONObject(k);
+				continue;
+			}
 
-					layoutModels.add(
-						newLayoutModel(
-							groupId,
-							sublayoutJSONObject.getBoolean("privateLayout"),
-							layoutModel.getLayoutId(),
-							StringUtil.replace(
-								StringUtil.toLowerCase(
-									sublayoutJSONObject.getString("name")),
-								CharPool.SPACE, CharPool.DASH),
-							sublayoutJSONObject.getString("layoutTemplateId"),
-							sublayoutJSONObject.getBoolean("hidden"),
-							getPortletNames(
-								sublayoutJSONObject.getJSONArray("portlets"))));
-				}
+			for (int k = 0; k < subLayoutsJSONArray.length(); k++) {
+				JSONObject sublayoutJSONObject =
+					subLayoutsJSONArray.getJSONObject(k);
+
+				layoutModels.add(
+					newLayoutModel(
+						groupId,
+						sublayoutJSONObject.getBoolean("privateLayout"),
+						layoutModel.getLayoutId(),
+						StringUtil.replace(
+							StringUtil.toLowerCase(
+								sublayoutJSONObject.getString("name")),
+							CharPool.SPACE, CharPool.DASH),
+						sublayoutJSONObject.getString("layoutTemplateId"),
+						sublayoutJSONObject.getBoolean("hidden"),
+						getPortletNames(
+							sublayoutJSONObject.getJSONArray("portlets"))));
 			}
 		}
 
@@ -2723,16 +2719,18 @@ public class DataFactory {
 			JSONArray sublayoutsJSONArray = jsonObject.getJSONArray(
 				"subLayouts");
 
-			if (sublayoutsJSONArray != null) {
-				for (int j = 0; j < sublayoutsJSONArray.length(); j++) {
-					JSONObject sublayoutJSONObject =
-						sublayoutsJSONArray.getJSONObject(j);
+			if (sublayoutsJSONArray == null) {
+				continue;
+			}
 
-					portletPreferenceValueModels.addAll(
-						newCommercePortletPreferenceValueModels(
-							portletPreferencesModels,
-							sublayoutJSONObject.getJSONArray("portlets")));
-				}
+			for (int j = 0; j < sublayoutsJSONArray.length(); j++) {
+				JSONObject sublayoutJSONObject =
+					sublayoutsJSONArray.getJSONObject(j);
+
+				portletPreferenceValueModels.addAll(
+					newCommercePortletPreferenceValueModels(
+						portletPreferencesModels,
+						sublayoutJSONObject.getJSONArray("portlets")));
 			}
 		}
 
@@ -2978,16 +2976,18 @@ public class DataFactory {
 			typeSettingsUnicodeProperties.keySet();
 
 		for (String typeSettingPropertiesKey : typeSettingPropertiesKeys) {
-			if (typeSettingPropertiesKey.startsWith("column-")) {
-				String[] portletIds = StringUtil.split(
-					typeSettingsUnicodeProperties.getProperty(
-						typeSettingPropertiesKey));
+			if (!typeSettingPropertiesKey.startsWith("column-")) {
+				continue;
+			}
 
-				for (String portletId : portletIds) {
-					portletPreferencesModels.add(
-						newPortletPreferencesModel(
-							layoutModel.getPlid(), portletId));
-				}
+			String[] portletIds = StringUtil.split(
+				typeSettingsUnicodeProperties.getProperty(
+					typeSettingPropertiesKey));
+
+			for (String portletId : portletIds) {
+				portletPreferencesModels.add(
+					newPortletPreferencesModel(
+						layoutModel.getPlid(), portletId));
 			}
 		}
 
@@ -5207,9 +5207,11 @@ public class DataFactory {
 			new ArrayList<>();
 
 		for (FragmentEntryLinkModel model : fragmentEntryLinkModels) {
-			if (model.getPlid() == layoutModel.getPlid()) {
-				targetFragmentEntryLinkModels.add(model);
+			if (model.getPlid() != layoutModel.getPlid()) {
+				continue;
 			}
+
+			targetFragmentEntryLinkModels.add(model);
 		}
 
 		LayoutPageTemplateStructureRelModel
@@ -5732,14 +5734,16 @@ public class DataFactory {
 		for (FragmentEntryLinkModel fragmentEntryLinkModel :
 				fragmentEntryLinkModels) {
 
-			if (layoutModel.getPlid() == fragmentEntryLinkModel.getPlid()) {
-				correspondingFragmentEntryLinkModel = fragmentEntryLinkModel;
-
-				data = StringUtil.replaceFirst(
-					data, "${fragmentEntryLinkId}",
-					String.valueOf(
-						fragmentEntryLinkModel.getFragmentEntryLinkId()));
+			if (layoutModel.getPlid() != fragmentEntryLinkModel.getPlid()) {
+				continue;
 			}
+
+			correspondingFragmentEntryLinkModel = fragmentEntryLinkModel;
+
+			data = StringUtil.replaceFirst(
+				data, "${fragmentEntryLinkId}",
+				String.valueOf(
+					fragmentEntryLinkModel.getFragmentEntryLinkId()));
 		}
 
 		layoutPageTemplateStructureRelModel.setSegmentsExperienceId(
@@ -6429,15 +6433,17 @@ public class DataFactory {
 
 			String[] parts = StringUtil.split(release, CharPool.COLON);
 
-			if (parts.length > 0) {
-				String servletContextName = parts[0];
-				String schemaVersion = parts[1];
-
-				releases.add(
-					newReleaseModel(
-						_counter.get(), servletContextName, schemaVersion, 0,
-						true, null));
+			if (parts.length <= 0) {
+				continue;
 			}
+
+			String servletContextName = parts[0];
+			String schemaVersion = parts[1];
+
+			releases.add(
+				newReleaseModel(
+					_counter.get(), servletContextName, schemaVersion, 0, true,
+					null));
 		}
 
 		return releases;
@@ -9206,6 +9212,9 @@ public class DataFactory {
 				else if (name.equals("MasterLPTEERC")) {
 					name = "MasterLayoutPageTemplateEntryERC";
 				}
+				else if (name.equals("MasterLPTESERC")) {
+					name = "MasterLayoutPageTemplateEntryScopeERC";
+				}
 				else if (name.equals("PaymentCTermEntryDescription")) {
 					name = "PaymentCommerceTermEntryDescription";
 				}
@@ -9478,10 +9487,12 @@ public class DataFactory {
 			).build();
 
 		for (int i = 0; i < columns.length; i++) {
-			if (!columns[i].equals("")) {
-				typeSettingsUnicodeProperties.setProperty(
-					"column-" + (i + 1), columns[i]);
+			if (columns[i].equals("")) {
+				continue;
 			}
+
+			typeSettingsUnicodeProperties.setProperty(
+				"column-" + (i + 1), columns[i]);
 		}
 
 		if (name.equals("search")) {
@@ -9493,6 +9504,23 @@ public class DataFactory {
 		}
 
 		return typeSettingsUnicodeProperties.toString();
+	}
+
+	private JSONObject _getFilterJSONObject(
+		String operatorName, String propertyName, String quantifier,
+		String... values) {
+
+		return JSONUtil.put(
+			"operatorName", operatorName
+		).put(
+			"propertyName", propertyName
+		).put(
+			"quantifier", quantifier
+		).put(
+			"value",
+			JSONUtil.toJSONArray(
+				values, value -> JSONUtil.put("value", value), _log)
+		);
 	}
 
 	private String _getFragmentComponentConfiguration(String renderKey)

@@ -53,7 +53,7 @@ if (layout instanceof VirtualLayout) {
 	privateLayout = sourceLayout.isPrivateLayout();
 }
 else {
-	group = layout.getGroup();
+	group = themeDisplay.getLayoutGroup(layout);
 	privateLayout = layout.isPrivateLayout();
 }
 
@@ -290,11 +290,17 @@ if (layoutTypeController.isFullPageDisplayable()) {
 	showCloseIcon = false;
 }
 
+long portletScopeGroupId = 0;
+
 if (Validator.isNotNull(portletResource)) {
-	themeDisplay.setScopeGroupId(PortalUtil.getScopeGroupId(request, portletResourcePortlet.getPortletId()));
+	portletScopeGroupId = PortalUtil.getScopeGroupId(request, portletResourcePortlet.getPortletId());
 }
 else {
-	themeDisplay.setScopeGroupId(PortalUtil.getScopeGroupId(request, portletId));
+	portletScopeGroupId = PortalUtil.getScopeGroupId(request, portletId);
+}
+
+if (portletScopeGroupId != themeDisplay.getScopeGroupId()) {
+	themeDisplay.setScopeGroupId(portletScopeGroupId);
 }
 
 Group siteGroup = themeDisplay.getSiteGroup();
@@ -565,7 +571,9 @@ portletDisplay.setURLEditGuest(urlEditGuest.toString());
 
 // URL export / import
 
-LiferayPortletURL urlExportImport = PortletURLFactoryUtil.create(request, PortletKeys.EXPORT_IMPORT, PortletRequest.RENDER_PHASE);
+Portlet exportImportPortlet = PortletLocalServiceUtil.getPortletById(company.getCompanyId(), PortletKeys.EXPORT_IMPORT);
+
+LiferayPortletURL urlExportImport = PortletURLFactoryUtil.create(request, exportImportPortlet, PortletRequest.RENDER_PHASE);
 
 urlExportImport.setWindowState(LiferayWindowState.POP_UP);
 
@@ -611,6 +619,8 @@ if (!portletDisplay.isRestoreCurrentView()) {
 
 LiferayPortletURL urlMax = PortletURLFactoryUtil.create(request, portlet, lifecycle);
 
+urlMax.setEscapeXml(false);
+
 if (portletDisplay.isStateMax()) {
 	urlMax.setWindowState(WindowState.NORMAL);
 }
@@ -618,21 +628,7 @@ else {
 	urlMax.setWindowState(WindowState.MAXIMIZED);
 }
 
-if (urlMax instanceof LiferayPortletURL) {
-	LiferayPortletURL liferayPortletURL = (LiferayPortletURL)urlMax;
-
-	liferayPortletURL.setWindowStateRestoreCurrentView(true);
-}
-else {
-	try {
-		BeanPropertiesUtil.setProperty(urlMax, "windowStateRestoreCurrentView", true);
-	}
-	catch (Exception e) {
-		_log.error(ClassUtil.getClassName(urlMax) + " must implement the method setWindowStateRestoreCurrentView(boolean)", e);
-	}
-}
-
-urlMax.setEscapeXml(false);
+urlMax.setWindowStateRestoreCurrentView(true);
 
 if (lifecycle.equals(PortletRequest.RENDER_PHASE)) {
 	Map<String, String[]> renderParameters = RenderParametersPool.get(request, plid, portletDisplay.getId());
@@ -739,7 +735,7 @@ portletDisplay.setURLRefresh(urlRefresh);
 
 // URL staging
 
-LiferayPortletURL urlStaging = PortletURLFactoryUtil.create(request, PortletKeys.EXPORT_IMPORT, PortletRequest.RENDER_PHASE);
+LiferayPortletURL urlStaging = PortletURLFactoryUtil.create(request, exportImportPortlet, PortletRequest.RENDER_PHASE);
 
 urlStaging.setWindowState(LiferayWindowState.POP_UP);
 

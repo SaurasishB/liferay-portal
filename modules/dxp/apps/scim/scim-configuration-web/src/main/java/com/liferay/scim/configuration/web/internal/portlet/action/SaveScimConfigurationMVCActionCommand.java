@@ -42,6 +42,7 @@ import com.liferay.portal.kernel.util.DateUtil;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.Portal;
+import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.Time;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.scim.configuration.web.internal.constants.ScimWebKeys;
@@ -50,10 +51,7 @@ import com.liferay.scim.rest.util.ScimThreadLocal;
 
 import jakarta.portlet.ActionRequest;
 import jakarta.portlet.ActionResponse;
-
-import java.nio.charset.StandardCharsets;
-
-import java.security.MessageDigest;
+import jakarta.portlet.PortletSession;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -120,16 +118,15 @@ public class SaveScimConfigurationMVCActionCommand
 					oAuth2Application.getOAuth2ApplicationId(),
 					QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
 
+			OAuth2Authorization generatedOAuth2Authorization =
+				_oAuth2AuthorizationLocalService.
+					fetchOAuth2AuthorizationByAccessTokenContent(accessToken);
+
 			for (OAuth2Authorization oAuth2Authorization :
 					oAuth2Authorizations) {
 
-				String accessTokenContent =
-					oAuth2Authorization.getAccessTokenContent();
-
-				if ((accessToken != null) &&
-					MessageDigest.isEqual(
-						accessToken.getBytes(StandardCharsets.UTF_8),
-						accessTokenContent.getBytes(StandardCharsets.UTF_8))) {
+				if (Objects.equals(
+						oAuth2Authorization, generatedOAuth2Authorization)) {
 
 					continue;
 				}
@@ -143,21 +140,31 @@ public class SaveScimConfigurationMVCActionCommand
 				Date refreshTokenExpirationDate =
 					oAuth2Authorization.getRefreshTokenExpirationDate();
 
-				if ((daysBetween > 10) ||
-					(refreshTokenExpirationDate != null)) {
+				if ((daysBetween <= 10) &&
+					(refreshTokenExpirationDate == null)) {
 
-					oAuth2Authorization.setAccessTokenExpirationDate(
-						new Date(
-							Math.min(
-								accessTokenExpirationDate.getTime(),
-								System.currentTimeMillis() + (Time.DAY * 10))));
-					oAuth2Authorization.setRefreshTokenContent(null);
-					oAuth2Authorization.setRefreshTokenCreateDate(null);
-					oAuth2Authorization.setRefreshTokenExpirationDate(null);
-
-					_oAuth2AuthorizationLocalService.updateOAuth2Authorization(
-						oAuth2Authorization);
+					continue;
 				}
+
+				oAuth2Authorization.setAccessTokenExpirationDate(
+					new Date(
+						Math.min(
+							accessTokenExpirationDate.getTime(),
+							System.currentTimeMillis() + (Time.DAY * 10))));
+				oAuth2Authorization.setRefreshTokenContent(null);
+				oAuth2Authorization.setRefreshTokenCreateDate(null);
+				oAuth2Authorization.setRefreshTokenExpirationDate(null);
+
+				_oAuth2AuthorizationLocalService.updateOAuth2Authorization(
+					oAuth2Authorization);
+			}
+
+			if (PropsValues.FIPS_ENABLED) {
+				PortletSession portletSession =
+					actionRequest.getPortletSession();
+
+				portletSession.setAttribute(
+					ScimWebKeys.SCIM_OAUTH2_ACCESS_TOKEN, accessToken);
 			}
 
 			actionRequest.setAttribute(

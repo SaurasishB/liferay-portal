@@ -174,12 +174,14 @@ public class JournalFolderLocalServiceImpl
 			folder.getGroupId(), folder.getFolderId());
 
 		for (JournalFolder curFolder : folders) {
-			if (includeTrashedEntries ||
-				!_trashHelper.isInTrashExplicitly(curFolder)) {
+			if (!includeTrashedEntries &&
+				_trashHelper.isInTrashExplicitly(curFolder)) {
 
-				journalFolderLocalService.deleteFolder(
-					curFolder, includeTrashedEntries);
+				continue;
 			}
+
+			journalFolderLocalService.deleteFolder(
+				curFolder, includeTrashedEntries);
 		}
 
 		// Folder
@@ -252,10 +254,12 @@ public class JournalFolderLocalServiceImpl
 					JournalFolder.class.getName(), folder.getFolderId(),
 					ddmStructureLink.getStructureId());
 
-			if (workflowDefinitionLink != null) {
-				_workflowDefinitionLinkLocalService.
-					deleteWorkflowDefinitionLink(workflowDefinitionLink);
+			if (workflowDefinitionLink == null) {
+				continue;
 			}
+
+			_workflowDefinitionLinkLocalService.deleteWorkflowDefinitionLink(
+				workflowDefinitionLink);
 		}
 
 		return folder;
@@ -309,18 +313,6 @@ public class JournalFolderLocalServiceImpl
 	@Override
 	public JournalFolder fetchFolder(long groupId, String name) {
 		return journalFolderPersistence.fetchByG_N(groupId, name);
-	}
-
-	@Override
-	public List<JournalFolder> getCompanyFolders(
-		long companyId, int start, int end) {
-
-		return journalFolderPersistence.findByCompanyId(companyId, start, end);
-	}
-
-	@Override
-	public int getCompanyFoldersCount(long companyId) {
-		return journalFolderPersistence.countByCompanyId(companyId);
 	}
 
 	@Override
@@ -433,16 +425,6 @@ public class JournalFolderLocalServiceImpl
 	}
 
 	@Override
-	public List<Object> getFoldersAndArticles(
-		long groupId, long folderId, int start, int end,
-		OrderByComparator<?> orderByComparator) {
-
-		return getFoldersAndArticles(
-			groupId, folderId, WorkflowConstants.STATUS_ANY, start, end,
-			orderByComparator);
-	}
-
-	@Override
 	public int getFoldersAndArticlesCount(
 		long groupId, List<Long> folderIds, int status) {
 
@@ -467,15 +449,6 @@ public class JournalFolderLocalServiceImpl
 		articlesCount += getFoldersAndArticlesCount(groupId, folderIds, status);
 
 		return articlesCount;
-	}
-
-	@Override
-	public int getFoldersAndArticlesCount(long groupId, long folderId) {
-		QueryDefinition<?> queryDefinition = new QueryDefinition<>(
-			WorkflowConstants.STATUS_ANY);
-
-		return journalFolderFinder.countF_A_ByG_F_DDMSI(
-			groupId, folderId, 0, queryDefinition);
 	}
 
 	@Override
@@ -519,11 +492,6 @@ public class JournalFolderLocalServiceImpl
 		}
 
 		return folderId;
-	}
-
-	@Override
-	public List<JournalFolder> getNoAssetFolders() {
-		return journalFolderFinder.findF_ByNoAssets();
 	}
 
 	@Override
@@ -928,19 +896,23 @@ public class JournalFolderLocalServiceImpl
 		}
 
 		for (Long ddmStructureId : ddmStructureIds) {
-			if (!originalDDMStructureIds.contains(ddmStructureId)) {
-				_ddmStructureLinkLocalService.addStructureLink(
-					_classNameLocalService.getClassNameId(JournalFolder.class),
-					folder.getFolderId(), ddmStructureId);
+			if (originalDDMStructureIds.contains(ddmStructureId)) {
+				continue;
 			}
+
+			_ddmStructureLinkLocalService.addStructureLink(
+				_classNameLocalService.getClassNameId(JournalFolder.class),
+				folder.getFolderId(), ddmStructureId);
 		}
 
 		for (Long originalDDMStructureId : originalDDMStructureIds) {
-			if (!ddmStructureIds.contains(originalDDMStructureId)) {
-				_ddmStructureLinkLocalService.deleteStructureLink(
-					_classNameLocalService.getClassNameId(JournalFolder.class),
-					folder.getFolderId(), originalDDMStructureId);
+			if (ddmStructureIds.contains(originalDDMStructureId)) {
+				continue;
 			}
+
+			_ddmStructureLinkLocalService.deleteStructureLink(
+				_classNameLocalService.getClassNameId(JournalFolder.class),
+				folder.getFolderId(), originalDDMStructureId);
 		}
 	}
 
@@ -1153,16 +1125,16 @@ public class JournalFolderLocalServiceImpl
 
 					// Workflow
 
-					if (curArticleOldStatus ==
+					if (curArticleOldStatus !=
 							WorkflowConstants.STATUS_PENDING) {
 
-						_workflowInstanceLinkLocalService.
-							deleteWorkflowInstanceLink(
-								curArticle.getCompanyId(),
-								curArticle.getGroupId(),
-								JournalArticle.class.getName(),
-								curArticle.getId());
+						continue;
 					}
+
+					_workflowInstanceLinkLocalService.
+						deleteWorkflowInstanceLink(
+							curArticle.getCompanyId(), curArticle.getGroupId(),
+							JournalArticle.class.getName(), curArticle.getId());
 				}
 
 				// Asset
@@ -1274,10 +1246,11 @@ public class JournalFolderLocalServiceImpl
 
 					// Trash
 
-					if (trashVersion != null) {
-						_trashVersionLocalService.deleteTrashVersion(
-							trashVersion);
+					if (trashVersion == null) {
+						continue;
 					}
+
+					_trashVersionLocalService.deleteTrashVersion(trashVersion);
 				}
 
 				// Asset

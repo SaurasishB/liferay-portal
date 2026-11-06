@@ -14,6 +14,7 @@ import {
 	within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import fetch from 'jest-fetch-mock';
 import React from 'react';
 
 import {NewImport} from '../../../../../src/main/resources/META-INF/resources/revamp/js/pages/import/NewImport';
@@ -21,7 +22,8 @@ import {postImportPreview} from '../../../../../src/main/resources/META-INF/reso
 import {SCOPES} from '../../../../../src/main/resources/META-INF/resources/revamp/js/types/scope';
 import formatDate from '../../../../../src/main/resources/META-INF/resources/revamp/js/utils/formatDate';
 import {mockImportPreview} from '../../mocks/mockImportPreview';
-import {mockPreviewPortletDataHandlerSectionsForFilterTest} from '../../mocks/mockSectionsForFilterTest';
+import {toMockPortletDataHandlers} from '../../mocks/mockPortletDataHandlerSections';
+import {mockPortletDataHandlerSectionsForFilterTest} from '../../mocks/mockSectionsForFilterTest';
 
 jest.mock(
 	'../../../../../src/main/resources/META-INF/resources/revamp/js/services/postImportPreview',
@@ -34,11 +36,9 @@ jest.mock(
 
 const renderComponent = ({
 	commentsAndRatingsEnabled,
-	lookAndFeelEnabled,
 	siteSelectionEnabled,
 }: {
 	commentsAndRatingsEnabled?: boolean;
-	lookAndFeelEnabled?: boolean;
 	siteSelectionEnabled?: boolean;
 } = {}) =>
 	render(
@@ -47,7 +47,6 @@ const renderComponent = ({
 			commentsAndRatingsEnabled={commentsAndRatingsEnabled}
 			importPreviewAPIURL="/o/export-import/v1.0/import-preview"
 			importProcessAPIURL="/o/export-import/v1.0/import-processes"
-			lookAndFeelEnabled={lookAndFeelEnabled}
 			scope={SCOPES.SITE}
 			siteSelectionEnabled={siteSelectionEnabled}
 		/>
@@ -79,7 +78,6 @@ const uploadFile = async (fileName = 'site.lar') => {
 const goToDataSelectionStep = async (
 	options: {
 		commentsAndRatingsEnabled?: boolean;
-		lookAndFeelEnabled?: boolean;
 		siteSelectionEnabled?: boolean;
 	} = {}
 ) => {
@@ -329,6 +327,30 @@ describe('NewImport', () => {
 		await checkAccessibility({context: container});
 	});
 
+	it('disables Import and goes to the processes list once the import has started', async () => {
+		fetch.mockResponseOnce(JSON.stringify({id: 1}));
+
+		await goToDataSelectionStep();
+
+		await user.click(screen.getByRole('button', {name: /continue/i}));
+
+		const importButton = screen.getByRole('button', {name: /^import$/i});
+
+		await waitFor(() => expect(importButton).toBeEnabled());
+
+		await user.click(importButton);
+
+		await waitFor(() =>
+			expect(Liferay.Util.navigate).toHaveBeenCalledWith('/some/back/url')
+		);
+
+		expect(Liferay.Util.openToast).toHaveBeenCalledWith({
+			message: 'the-process-has-started',
+			type: 'success',
+		});
+		expect(screen.getByRole('button', {name: /^import$/i})).toBeDisabled();
+	});
+
 	it('shows the section as indeterminate and summarizes the selected handlers when the selection is partial', async () => {
 		await goToDataSelectionStep();
 
@@ -388,8 +410,9 @@ describe('NewImport', () => {
 			Promise.resolve({
 				data: {
 					...mockImportPreview,
-					previewPortletDataHandlerSections:
-						mockPreviewPortletDataHandlerSectionsForFilterTest,
+					portletDataHandlers: toMockPortletDataHandlers(
+						mockPortletDataHandlerSectionsForFilterTest
+					),
 				},
 				error: null,
 			})
@@ -426,7 +449,7 @@ describe('NewImport', () => {
 			Promise.resolve({
 				data: {
 					...mockImportPreview,
-					previewSites: [
+					sites: [
 						{
 							descriptiveName: 'Support',
 							existsInInstance: true,
@@ -473,20 +496,6 @@ describe('NewImport', () => {
 		expect(
 			screen.getByRole('checkbox', {name: 'Content & Data'})
 		).not.toBeChecked();
-	});
-
-	it('renders the Look and Feel block inside the Site Builder section when lookAndFeelEnabled is true', async () => {
-		await goToDataSelectionStep({lookAndFeelEnabled: true});
-
-		expect(screen.getByText('look-and-feel')).toBeInTheDocument();
-		expect(screen.getByLabelText('theme-settings')).toBeInTheDocument();
-		expect(screen.getByLabelText('logo')).toBeInTheDocument();
-		expect(
-			screen.getByLabelText('site-pages-settings')
-		).toBeInTheDocument();
-		expect(
-			screen.getByLabelText('site-template-settings')
-		).toBeInTheDocument();
 	});
 
 	it('renders the Comments and Ratings block inside the Site Content section when commentsAndRatingsEnabled is true', async () => {

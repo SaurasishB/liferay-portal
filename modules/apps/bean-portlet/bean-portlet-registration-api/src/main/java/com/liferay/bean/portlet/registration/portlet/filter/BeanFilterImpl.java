@@ -13,6 +13,8 @@ import java.util.Dictionary;
 import java.util.Map;
 import java.util.Set;
 
+import org.osgi.framework.Constants;
+
 /**
  * @author Neil Griffin
  */
@@ -76,14 +78,15 @@ public class BeanFilterImpl implements BeanFilter {
 		for (Map.Entry<String, String> entry : initParams.entrySet()) {
 			String value = entry.getValue();
 
-			if (value != null) {
-				dictionary.put(
-					"jakarta.portlet.init-param.".concat(entry.getKey()),
-					value);
+			if (value == null) {
+				continue;
 			}
+
+			dictionary.put(
+				"jakarta.portlet.init-param.".concat(entry.getKey()), value);
 		}
 
-		dictionary.put("service.ranking:Integer", getOrdinal());
+		dictionary.put(Constants.SERVICE_RANKING, getOrdinal());
 
 		return dictionary;
 	}

@@ -3,12 +3,11 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import ClayLayout from '@clayui/layout';
 import ClayLoadingIndicator from '@clayui/loading-indicator';
-import React, {ReactNode} from 'react';
+import React from 'react';
 
 import {ExportImportProcess} from '../types/exportImportProcess';
-import {PreviewPortletDataHandlerSection} from '../types/portletDataHandler';
+import {PortletDataHandlerSection} from '../types/portletDataHandler';
 import {PageTreeModalConfiguration} from './PageTreeModal';
 import SectionHeader from './SectionHeader';
 import {DateFilterValues} from './date_filter';
@@ -28,14 +27,12 @@ export default function DataSelection({
 	itemsCount,
 	lastPublishDate,
 	loading = false,
-	lookAndFeelEnabled = false,
 	onApplyFilter,
 	pageTreeModalConfiguration,
 	permissionsDescription,
 	permissionsLabel,
-	previewPortletDataHandlerSections,
+	portletDataHandlerSections,
 	process = 'export',
-	sitesSelection,
 	subtitle,
 	timeZoneId,
 }: {
@@ -46,57 +43,44 @@ export default function DataSelection({
 	itemsCount?: number;
 	lastPublishDate?: string;
 	loading?: boolean;
-	lookAndFeelEnabled?: boolean;
 	onApplyFilter: (dateFilterValues: DateFilterValues) => void;
 	pageTreeModalConfiguration: PageTreeModalConfiguration;
 	permissionsDescription: string;
 	permissionsLabel: string;
-	previewPortletDataHandlerSections: PreviewPortletDataHandlerSection[];
+	portletDataHandlerSections: PortletDataHandlerSection[];
 	process?: ExportImportProcess;
-	sitesSelection?: ReactNode;
 	subtitle: string;
 	timeZoneId: string;
 }) {
 	return (
 		<>
 			<SectionHeader
-				className="mt-4"
 				id={LABEL_ID}
 				subtitle={subtitle}
 				title={Liferay.Language.get('data-selection')}
 			/>
 
-			<ClayLayout.Sheet className="option-group">
+			<FormikFieldCheckbox
+				description={permissionsDescription}
+				label={permissionsLabel}
+				name="permissions"
+			/>
+
+			{deletionCount > 0 && (
 				<FormikFieldCheckbox
-					description={permissionsDescription}
-					label={permissionsLabel}
-					name="permissions"
+					description={deletionsDescription}
+					label={deletionsLabel}
+					name="deletions"
 				/>
-
-				{deletionCount > 0 && (
-					<FormikFieldCheckbox
-						description={deletionsDescription}
-						label={deletionsLabel}
-						name="deletions"
-					/>
-				)}
-			</ClayLayout.Sheet>
-
-			{sitesSelection && (
-				<ClayLayout.Sheet className="mt-4 option-group">
-					{sitesSelection}
-				</ClayLayout.Sheet>
 			)}
 
-			<ClayLayout.Sheet className="mt-4">
-				<FormikFieldDateFilter
-					itemsCount={itemsCount}
-					lastPublishDate={lastPublishDate}
-					name="dateFilter"
-					onApplyFilter={onApplyFilter}
-					timeZoneId={timeZoneId}
-				/>
-			</ClayLayout.Sheet>
+			<FormikFieldDateFilter
+				itemsCount={itemsCount}
+				lastPublishDate={lastPublishDate}
+				name="dateFilterValues"
+				onApplyFilter={onApplyFilter}
+				timeZoneId={timeZoneId}
+			/>
 
 			<div className="sr-only" role="status">
 				{loading
@@ -111,12 +95,9 @@ export default function DataSelection({
 					<FormikFieldContentSelector
 						aria-labelledby={LABEL_ID}
 						commentsAndRatingsEnabled={commentsAndRatingsEnabled}
-						lookAndFeelEnabled={lookAndFeelEnabled}
 						name="contentSelection"
 						pageTreeModalConfiguration={pageTreeModalConfiguration}
-						previewPortletDataHandlerSections={
-							previewPortletDataHandlerSections
-						}
+						portletDataHandlerSections={portletDataHandlerSections}
 						process={process}
 					/>
 				)}

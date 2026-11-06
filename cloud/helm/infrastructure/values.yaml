@@ -1,26 +1,19 @@
 backup:
-    dayOfWeek: Sunday
-    enabled: false
-    frequency: Daily
-    retentionDays: 30
-    timeOfDay: 05:00
-    timeZone: UTC
-    vaultTags: {}
+    restore:
+        sanitizationScripts: {}
 clusterSecretStoreName: ""
-cmk:
-    enabled: false
+cmk: {}
 commonTags: {}
-database:
-    authentication: password
-    highAvailability: false
-    instanceType: GP_Standard_D2s_v3
-    storageGB: 32
-    version: "16"
+database: {}
+databaseAppPassword:
+    enabled: true
 enabled: true
 endpoints: {}
 environmentId: ""
-forceDestroy: false
 gateway:
+    accessControl:
+        allowedCIDRs: []
+        enabled: false
     annotations: {}
     className: ""
     clientTrafficPolicySpec: {}
@@ -29,9 +22,7 @@ license:
     externalSecretKey: ""
     externalSecretProperty: license.xml
     targetSecretName: ""
-orphanOnDelete: false
-overlayAccess:
-    enabled: false
+overlayAccess: {}
 overlayBucket:
     commonTags: {}
     enabled: false
@@ -54,8 +45,9 @@ search:
                 memory: 4Gi
         version: 8.19.11
         volumeSize: 10Gi
-    engine: elasticsearch
+    engine: ""
     opensearch: {}
-storage:
-    enableVersioning: true
-    tags: {}
+    supportedEngines:
+        -   elasticsearch
+secretNames: []
+storage: {}

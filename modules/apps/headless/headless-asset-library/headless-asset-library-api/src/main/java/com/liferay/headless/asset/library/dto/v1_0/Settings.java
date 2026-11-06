@@ -182,6 +182,47 @@ public class Settings implements Serializable {
 	private Supplier<String> _defaultLanguageIdSupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema
+	public String getGoogleMapsAPIKey() {
+		if (_googleMapsAPIKeySupplier != null) {
+			googleMapsAPIKey = _googleMapsAPIKeySupplier.get();
+
+			_googleMapsAPIKeySupplier = null;
+		}
+
+		return googleMapsAPIKey;
+	}
+
+	public void setGoogleMapsAPIKey(String googleMapsAPIKey) {
+		this.googleMapsAPIKey = googleMapsAPIKey;
+
+		_googleMapsAPIKeySupplier = null;
+	}
+
+	@JsonIgnore
+	public void setGoogleMapsAPIKey(
+		UnsafeSupplier<String, Exception> googleMapsAPIKeyUnsafeSupplier) {
+
+		_googleMapsAPIKeySupplier = () -> {
+			try {
+				return googleMapsAPIKeyUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected String googleMapsAPIKey;
+
+	@JsonIgnore
+	private Supplier<String> _googleMapsAPIKeySupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema
 	public String getLogoColor() {
 		if (_logoColorSupplier != null) {
 			logoColor = _logoColorSupplier.get();
@@ -221,6 +262,51 @@ public class Settings implements Serializable {
 
 	@JsonIgnore
 	private Supplier<String> _logoColorSupplier;
+
+	@io.swagger.v3.oas.annotations.media.Schema(
+		description = "Sets the maps API provider to use when displaying geolocalized assets, either GoogleMaps or OpenStreetMap. An empty value clears it so the instance's provider is used."
+	)
+	public String getMapProviderKey() {
+		if (_mapProviderKeySupplier != null) {
+			mapProviderKey = _mapProviderKeySupplier.get();
+
+			_mapProviderKeySupplier = null;
+		}
+
+		return mapProviderKey;
+	}
+
+	public void setMapProviderKey(String mapProviderKey) {
+		this.mapProviderKey = mapProviderKey;
+
+		_mapProviderKeySupplier = null;
+	}
+
+	@JsonIgnore
+	public void setMapProviderKey(
+		UnsafeSupplier<String, Exception> mapProviderKeyUnsafeSupplier) {
+
+		_mapProviderKeySupplier = () -> {
+			try {
+				return mapProviderKeyUnsafeSupplier.get();
+			}
+			catch (RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			catch (Exception exception) {
+				throw new RuntimeException(exception);
+			}
+		};
+	}
+
+	@GraphQLField(
+		description = "Sets the maps API provider to use when displaying geolocalized assets, either GoogleMaps or OpenStreetMap. An empty value clears it so the instance's provider is used."
+	)
+	@JsonProperty(access = JsonProperty.Access.READ_WRITE)
+	protected String mapProviderKey;
+
+	@JsonIgnore
+	private Supplier<String> _mapProviderKeySupplier;
 
 	@io.swagger.v3.oas.annotations.media.Schema
 	@Valid
@@ -510,6 +596,22 @@ public class Settings implements Serializable {
 			sb.append("\"");
 		}
 
+		String googleMapsAPIKey = getGoogleMapsAPIKey();
+
+		if (googleMapsAPIKey != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"googleMapsAPIKey\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(googleMapsAPIKey));
+
+			sb.append("\"");
+		}
+
 		String logoColor = getLogoColor();
 
 		if (logoColor != null) {
@@ -522,6 +624,22 @@ public class Settings implements Serializable {
 			sb.append("\"");
 
 			sb.append(_escape(logoColor));
+
+			sb.append("\"");
+		}
+
+		String mapProviderKey = getMapProviderKey();
+
+		if (mapProviderKey != null) {
+			if (sb.length() > 1) {
+				sb.append(", ");
+			}
+
+			sb.append("\"mapProviderKey\": ");
+
+			sb.append("\"");
+
+			sb.append(_escape(mapProviderKey));
 
 			sb.append("\"");
 		}
@@ -718,4 +836,4 @@ public class Settings implements Serializable {
 	private Map<String, Serializable> _extendedProperties;
 
 }
-// LIFERAY-REST-BUILDER-HASH:132800663
+// LIFERAY-REST-BUILDER-HASH:-204578001

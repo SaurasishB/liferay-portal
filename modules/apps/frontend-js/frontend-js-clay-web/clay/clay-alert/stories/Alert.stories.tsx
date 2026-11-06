@@ -4,12 +4,17 @@
  */
 
 import ClayButton from '@clayui/button';
-import React from 'react';
+import {Provider} from '@clayui/core';
+const spritemap = require('@clayui/css/src/images/icons/icons.svg');
+import React, {useMemo, useState} from 'react';
 
-import ClayAlert from '../src';
+import ClayAlert, {ClayToaster, createToastStore} from '../src';
 
 export default {
 	argTypes: {
+		autoFocus: {
+			control: {type: 'boolean'},
+		},
 		displayType: {
 			control: {type: 'select'},
 			options: ['danger', 'info', 'secondary', 'success', 'warning'],
@@ -25,6 +30,7 @@ export default {
 export function Default(args: any) {
 	return (
 		<ClayAlert
+			autoFocus={args.autoFocus}
 			displayType={args.displayType}
 			title={args.title}
 			variant={args.variant}
@@ -127,7 +133,90 @@ export function Toast() {
 	);
 }
 
+export function ToastWithPersistentAlerts() {
+	const [visible, setVisible] = useState(true);
+
+	return (
+		<Provider persistentAlerts spritemap={spritemap}>
+			{visible && (
+				<ClayAlert.ToastContainer>
+					<ClayAlert
+						autoClose={5000}
+						displayType="info"
+						onClose={() => setVisible(false)}
+						title="Info"
+					>
+						This alert stays until it is dismissed.
+					</ClayAlert>
+				</ClayAlert.ToastContainer>
+			)}
+		</Provider>
+	);
+}
+
+export function Toaster() {
+	const store = useMemo(() => createToastStore(), []);
+
+	return (
+		<Provider spritemap={spritemap}>
+			<ClayButton.Group spaced>
+				<ClayButton
+					displayType="secondary"
+					onClick={() =>
+						store.add({
+							children: 'Data is saved',
+							displayType: 'success',
+							onClose: () => {},
+							title: 'Success',
+						})
+					}
+				>
+					Add single line
+				</ClayButton>
+
+				<ClayButton
+					displayType="secondary"
+					onClick={() =>
+						store.add({
+							children:
+								'Strong kopi-luwak half and half single origin single shot, half and half instant latte brewed latte. At, decaffeinated, blue mountain viennese barista, spoon carajillo shop viennese dark. And ristretto caffeine, plunger pot black, café au lait galão flavour foam strong.',
+							displayType: 'info',
+							onClose: () => {},
+							title: 'Info',
+						})
+					}
+				>
+					Add multiline
+				</ClayButton>
+
+				<ClayButton
+					displayType="secondary"
+					onClick={() =>
+						store.add({
+							actions: (
+								<ClayButton alert displayType="danger" small>
+									Retry
+								</ClayButton>
+							),
+							children: 'Error loading data',
+							displayType: 'danger',
+							onClose: () => {},
+							title: 'Error',
+							variant: 'inline',
+						})
+					}
+				>
+					Add with actions
+				</ClayButton>
+			</ClayButton.Group>
+
+			<ClayToaster store={store} />
+		</Provider>
+	);
+}
+
 Default.args = {
+	autoFocus: false,
 	content: 'This is an alert!',
 	displayType: 'info',
 	title: 'Info',

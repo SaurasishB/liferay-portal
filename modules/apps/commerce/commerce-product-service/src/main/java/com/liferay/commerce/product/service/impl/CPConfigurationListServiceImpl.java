@@ -122,9 +122,8 @@ public class CPConfigurationListServiceImpl
 		throws PortalException {
 
 		CPConfigurationList cpConfigurationList =
-			cpConfigurationListLocalService.
-				fetchCPConfigurationListByExternalReferenceCode(
-					externalReferenceCode, companyId);
+			cpConfigurationListPersistence.fetchByERC_C(
+				externalReferenceCode, companyId);
 
 		if (cpConfigurationList != null) {
 			_checkCommerceCatalog(
@@ -154,9 +153,8 @@ public class CPConfigurationListServiceImpl
 		throws PortalException {
 
 		CPConfigurationList cpConfigurationList =
-			cpConfigurationListLocalService.
-				getCPConfigurationListByExternalReferenceCode(
-					externalReferenceCode, companyId);
+			cpConfigurationListPersistence.findByERC_C(
+				externalReferenceCode, companyId);
 
 		_checkCommerceCatalog(
 			cpConfigurationList.getGroupId(), ActionKeys.VIEW);
@@ -179,11 +177,13 @@ public class CPConfigurationListServiceImpl
 		while (iterator.hasNext()) {
 			CPConfigurationList cpConfigurationList = iterator.next();
 
-			if (!_containsCommerceCatalog(
+			if (_containsCommerceCatalog(
 					cpConfigurationList.getGroupId(), ActionKeys.VIEW)) {
 
-				iterator.remove();
+				continue;
 			}
+
+			iterator.remove();
 		}
 
 		return cpConfigurationLists;

@@ -106,7 +106,7 @@ describe('Event Analysis Create', () => {
 		).toBeInTheDocument();
 		expect(
 			container.querySelector(
-				'.event-analysis-conditions-panel .event-analysis-builder-root'
+				'.conditions-panel .event-analysis-builder-root'
 			)
 		).toBeInTheDocument();
 		expect(
@@ -117,14 +117,13 @@ describe('Event Analysis Create', () => {
 	});
 
 	it('should render empty state', async () => {
-		const {container, getByPlaceholderText, getByText} = render(
-			<WrappedComponent />
-		);
+		const {container, getByPlaceholderText, getByText, queryByRole} =
+			render(<WrappedComponent />);
 
 		await waitForLoadingToBeRemoved(container);
 
 		expect(getByPlaceholderText('New Analysis')).toBeTruthy();
-		expect(getByText('Add an event to analyze.')).toBeTruthy();
+		expect(getByText('No Conditions Yet')).toBeTruthy();
 		expect(
 			container.querySelector('.dropdown-range-key-root button')
 				.textContent
@@ -132,10 +131,12 @@ describe('Event Analysis Create', () => {
 		expect(container.querySelector('.event-list')).toBeNull();
 		expect(
 			container.querySelector('.attribute-breakdown-section-root')
-		).toBeNull();
+		).toBeInTheDocument();
 		expect(
 			container.querySelector('.attribute-filter-section-root')
-		).toBeNull();
+		).toBeInTheDocument();
+		expect(queryByRole('button', {name: /add.breakdown/i})).toBeNull();
+		expect(queryByRole('button', {name: /add.filter/i})).toBeNull();
 		expect(
 			container.querySelector('.compare-to-previous-checkbox input')
 				.checked

@@ -92,7 +92,9 @@ public class KBArticleServiceImpl extends KBArticleServiceBaseImpl {
 			ServiceContext serviceContext)
 		throws PortalException {
 
-		_checkKBArticlePermissions(portletId, serviceContext);
+		_checkPortletResourcePermission(
+			KBActionKeys.ADD_KB_ARTICLE, serviceContext.getScopeGroupId(),
+			portletId);
 
 		return kbArticleLocalService.addKBArticle(
 			externalReferenceCode, getUserId(), parentResourceClassNameId,
@@ -164,6 +166,18 @@ public class KBArticleServiceImpl extends KBArticleServiceBaseImpl {
 
 		_adminPortletResourcePermission.check(
 			getPermissionChecker(), groupId, KBActionKeys.DELETE_KB_ARTICLES);
+
+		for (KBArticle kbArticle :
+				kbArticleLocalService.getKBArticles(
+					resourcePrimKeys, WorkflowConstants.STATUS_ANY, null)) {
+
+			if (kbArticle.getGroupId() == groupId) {
+				continue;
+			}
+
+			_kbArticleModelResourcePermission.check(
+				getPermissionChecker(), kbArticle, KBActionKeys.DELETE);
+		}
 
 		kbArticleLocalService.deleteKBArticles(resourcePrimKeys);
 	}
@@ -839,14 +853,8 @@ public class KBArticleServiceImpl extends KBArticleServiceBaseImpl {
 	public void subscribeGroupKBArticles(long groupId, String portletId)
 		throws PortalException {
 
-		if (portletId.equals(KBPortletKeys.KNOWLEDGE_BASE_ADMIN)) {
-			_adminPortletResourcePermission.check(
-				getPermissionChecker(), groupId, KBActionKeys.SUBSCRIBE);
-		}
-		else if (portletId.equals(KBPortletKeys.KNOWLEDGE_BASE_DISPLAY)) {
-			_displayPortletResourcePermission.check(
-				getPermissionChecker(), groupId, KBActionKeys.SUBSCRIBE);
-		}
+		_checkPortletResourcePermission(
+			KBActionKeys.SUBSCRIBE, groupId, portletId);
 
 		kbArticleLocalService.subscribeGroupKBArticles(getUserId(), groupId);
 	}
@@ -874,14 +882,8 @@ public class KBArticleServiceImpl extends KBArticleServiceBaseImpl {
 	public void unsubscribeGroupKBArticles(long groupId, String portletId)
 		throws PortalException {
 
-		if (portletId.equals(KBPortletKeys.KNOWLEDGE_BASE_ADMIN)) {
-			_adminPortletResourcePermission.check(
-				getPermissionChecker(), groupId, KBActionKeys.SUBSCRIBE);
-		}
-		else if (portletId.equals(KBPortletKeys.KNOWLEDGE_BASE_DISPLAY)) {
-			_displayPortletResourcePermission.check(
-				getPermissionChecker(), groupId, KBActionKeys.SUBSCRIBE);
-		}
+		_checkPortletResourcePermission(
+			KBActionKeys.SUBSCRIBE, groupId, portletId);
 
 		kbArticleLocalService.unsubscribeGroupKBArticles(getUserId(), groupId);
 	}
@@ -1016,19 +1018,20 @@ public class KBArticleServiceImpl extends KBArticleServiceBaseImpl {
 		return kbFolder.getGroupId();
 	}
 
-	private void _checkKBArticlePermissions(
-			String portletId, ServiceContext serviceContext)
+	private void _checkPortletResourcePermission(
+			String actionId, long groupId, String portletId)
 		throws PortalException {
 
 		if (portletId.equals(KBPortletKeys.KNOWLEDGE_BASE_ADMIN)) {
 			_adminPortletResourcePermission.check(
-				getPermissionChecker(), serviceContext.getScopeGroupId(),
-				KBActionKeys.ADD_KB_ARTICLE);
+				getPermissionChecker(), groupId, actionId);
 		}
 		else if (portletId.equals(KBPortletKeys.KNOWLEDGE_BASE_DISPLAY)) {
 			_displayPortletResourcePermission.check(
-				getPermissionChecker(), serviceContext.getScopeGroupId(),
-				KBActionKeys.ADD_KB_ARTICLE);
+				getPermissionChecker(), groupId, actionId);
+		}
+		else {
+			throw new PrincipalException("Invalid portlet ID " + portletId);
 		}
 	}
 
@@ -1128,13 +1131,13 @@ public class KBArticleServiceImpl extends KBArticleServiceBaseImpl {
 				QueryUtil.ALL_POS, orderByComparator);
 		}
 		else if (status == WorkflowConstants.STATUS_APPROVED) {
-			curKBArticles = kbArticlePersistence.findByG_P_M_NotS(
+			curKBArticles = kbArticlePersistence.filterFindByG_P_M_NotS(
 				groupId, resourcePrimKey, true,
 				WorkflowConstants.STATUS_IN_TRASH, QueryUtil.ALL_POS,
 				QueryUtil.ALL_POS, orderByComparator);
 		}
 		else {
-			curKBArticles = kbArticlePersistence.findByG_P_S(
+			curKBArticles = kbArticlePersistence.filterFindByG_P_S(
 				groupId, resourcePrimKey, status, QueryUtil.ALL_POS,
 				QueryUtil.ALL_POS, orderByComparator);
 		}

@@ -82,10 +82,8 @@ test(
 		const spaceName = getRandomString();
 
 		await test.step('Create a new Space', async () => {
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+			await apiHelpers.headlessAssetLibrary.createSpace({
 				name: spaceName,
-				settings: {},
-				type: 'Space',
 			});
 		});
 
@@ -136,10 +134,8 @@ test(
 		const spaceName = getRandomString();
 
 		await test.step('Create a new Space', async () => {
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+			await apiHelpers.headlessAssetLibrary.createSpace({
 				name: spaceName,
-				settings: {},
-				type: 'Space',
 			});
 		});
 
@@ -170,6 +166,8 @@ test(
 
 			await page.getByLabel('Delete').waitFor({state: 'visible'});
 
+			await expect(page.locator('.modal')).toHaveCSS('opacity', '1');
+
 			await checkAccessibility({
 				page,
 				selectors: ['.modal-content'],
@@ -196,16 +194,13 @@ test(
 		const applicationName = 'cms/basic-web-contents';
 		const contentName1 = getRandomString();
 		const contentName2 = getRandomString();
-		const spaceName = getRandomString();
 
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
+		const space = await apiHelpers.headlessAssetLibrary.createSpace({
 			settings: {
 				logoColor: 'outline-3',
 				sharingEnabled: true,
 				trashEnabled: true,
 			},
-			type: 'Space',
 		});
 
 		await apiHelpers.objectEntry.postObjectEntry(
@@ -214,7 +209,7 @@ test(
 				title: contentName1,
 			},
 			applicationName,
-			spaceName
+			space.name
 		);
 
 		await apiHelpers.objectEntry.postObjectEntry(
@@ -223,7 +218,7 @@ test(
 				title: contentName2,
 			},
 			applicationName,
-			spaceName
+			space.name
 		);
 
 		await test.step('Login as CMS Administrator', async () => {
@@ -294,16 +289,13 @@ test(
 		const applicationName = 'cms/basic-web-contents';
 		const contentName1 = getRandomString();
 		const contentName2 = getRandomString();
-		const spaceName = getRandomString();
 
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
+		const space = await apiHelpers.headlessAssetLibrary.createSpace({
 			settings: {
 				logoColor: 'outline-3',
 				sharingEnabled: true,
 				trashEnabled: true,
 			},
-			type: 'Space',
 		});
 
 		await apiHelpers.objectEntry.postObjectEntry(
@@ -312,7 +304,7 @@ test(
 				title: contentName1,
 			},
 			applicationName,
-			spaceName
+			space.name
 		);
 
 		await apiHelpers.objectEntry.postObjectEntry(
@@ -321,7 +313,7 @@ test(
 				title: contentName2,
 			},
 			applicationName,
-			spaceName
+			space.name
 		);
 
 		await test.step('Delete the contents so they can go into the Recycle Bin', async () => {
@@ -378,10 +370,8 @@ test(
 		const spaceName = getRandomString();
 
 		await test.step('Create a new Space', async () => {
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+			await apiHelpers.headlessAssetLibrary.createSpace({
 				name: spaceName,
-				settings: {},
-				type: 'Space',
 			});
 		});
 
@@ -463,16 +453,13 @@ test(
 		const applicationName = 'cms/basic-web-contents';
 		const contentName1 = getRandomString();
 		const contentName2 = getRandomString();
-		const spaceName = getRandomString();
 
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
+		const space = await apiHelpers.headlessAssetLibrary.createSpace({
 			settings: {
 				logoColor: 'outline-3',
 				sharingEnabled: true,
 				trashEnabled: true,
 			},
-			type: 'Space',
 		});
 
 		await apiHelpers.objectEntry.postObjectEntry(
@@ -481,7 +468,7 @@ test(
 				title: contentName1,
 			},
 			applicationName,
-			spaceName
+			space.name
 		);
 
 		await apiHelpers.objectEntry.postObjectEntry(
@@ -490,7 +477,7 @@ test(
 				title: contentName2,
 			},
 			applicationName,
-			spaceName
+			space.name
 		);
 
 		await test.step('Delete the contents so they can go into the Recycle Bin', async () => {
@@ -549,13 +536,8 @@ test(
 	async ({apiHelpers, contentsPage, page, recycleBinPage}) => {
 		const applicationName = 'cms/basic-web-contents';
 		const contentName = getRandomString();
-		const spaceName = getRandomString();
 
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
-			settings: {},
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		await apiHelpers.objectEntry.postObjectEntry(
 			{
@@ -563,7 +545,7 @@ test(
 				title: contentName,
 			},
 			applicationName,
-			spaceName
+			space.name
 		);
 
 		await test.step('Delete the content so it goes into the Recycle Bin', async () => {
@@ -617,10 +599,8 @@ test(
 		const spaceName = getRandomString();
 
 		await test.step('Create a new Space', async () => {
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+			await apiHelpers.headlessAssetLibrary.createSpace({
 				name: spaceName,
-				settings: {},
-				type: 'Space',
 			});
 		});
 
@@ -691,12 +671,9 @@ test(
 	{tag: '@LPD-83226'},
 	async ({apiHelpers, contentsPage, page, recycleBinPage}) => {
 		const contentName = getRandomString();
-		const spaceName = getRandomString();
 
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
+		const space = await apiHelpers.headlessAssetLibrary.createSpace({
 			settings: {trashEnabled: true},
-			type: 'Space',
 		});
 
 		await apiHelpers.objectEntry.postObjectEntry(
@@ -705,7 +682,7 @@ test(
 				title: contentName,
 			},
 			'cms/basic-web-contents',
-			spaceName
+			space.name
 		);
 
 		await test.step('Send the content to the Recycle Bin', async () => {
@@ -755,12 +732,9 @@ test(
 	{tag: '@LPD-83226'},
 	async ({apiHelpers, contentsPage, page, recycleBinPage}) => {
 		const contentName = getRandomString();
-		const spaceName = getRandomString();
 
-		const space = await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
+		const space = await apiHelpers.headlessAssetLibrary.createSpace({
 			settings: {trashEnabled: true},
-			type: 'Space',
 		});
 
 		const objectEntry = await apiHelpers.objectEntry.postObjectEntry(
@@ -769,7 +743,7 @@ test(
 				title: contentName,
 			},
 			'cms/basic-web-contents',
-			spaceName
+			space.name
 		);
 
 		const objectDefinition = await apiHelpers.get(
@@ -862,12 +836,9 @@ test(
 	async ({apiHelpers, contentsPage, page, recycleBinPage}) => {
 		const contentName = getRandomString();
 		const folderName = getRandomString();
-		const spaceName = getRandomString();
 
-		const space = await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
+		const space = await apiHelpers.headlessAssetLibrary.createSpace({
 			settings: {trashEnabled: true},
-			type: 'Space',
 		});
 
 		await apiHelpers.objectEntry.postObjectEntry(
@@ -876,12 +847,12 @@ test(
 				title: contentName,
 			},
 			'cms/basic-web-contents',
-			spaceName
+			space.name
 		);
 
 		await apiHelpers.objectFolder.createObjectEntryFolder({
 			parentObjectEntryFolderExternalReferenceCode: 'L_CONTENTS',
-			scopeKey: spaceName,
+			scopeKey: space.name,
 			title: folderName,
 		});
 
@@ -952,12 +923,9 @@ test(
 	{tag: '@LPD-89104'},
 	async ({apiHelpers, contentsPage, page, recycleBinPage}) => {
 		const contentName = getRandomString();
-		const spaceName = getRandomString();
 
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
+		const space = await apiHelpers.headlessAssetLibrary.createSpace({
 			settings: {trashEnabled: true},
-			type: 'Space',
 		});
 
 		await apiHelpers.objectEntry.postObjectEntry(
@@ -966,7 +934,7 @@ test(
 				title: contentName,
 			},
 			'cms/basic-web-contents',
-			spaceName
+			space.name
 		);
 
 		await test.step('Trash the content', async () => {
@@ -980,7 +948,7 @@ test(
 
 			const row = page.getByRole('row', {name: contentName});
 
-			await expect(row).toContainText(spaceName);
+			await expect(row).toContainText(space.name);
 			await expect(row).toContainText('Basic Web Content');
 			await expect(row).toContainText('Test Test');
 
@@ -1002,10 +970,9 @@ test(
 
 		for (const name of [spaceName1, spaceName2]) {
 			createdSpaces[name] =
-				await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+				await apiHelpers.headlessAssetLibrary.createSpace({
 					name,
 					settings: {trashEnabled: true},
-					type: 'Space',
 				});
 		}
 
@@ -1072,12 +1039,9 @@ test(
 	{tag: '@LPD-95408'},
 	async ({apiHelpers, contentsPage, page, recycleBinPage}) => {
 		const contentName = getRandomString();
-		const spaceName = getRandomString();
 
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
+		const space = await apiHelpers.headlessAssetLibrary.createSpace({
 			settings: {trashEnabled: true},
-			type: 'Space',
 		});
 
 		await apiHelpers.objectEntry.postObjectEntry(
@@ -1086,7 +1050,7 @@ test(
 				title: contentName,
 			},
 			'cms/basic-web-contents',
-			spaceName
+			space.name
 		);
 
 		await test.step('Trash the content', async () => {
@@ -1120,12 +1084,9 @@ test(
 	{tag: '@LPD-95407'},
 	async ({apiHelpers, contentsPage, page, recycleBinPage}) => {
 		const contentName = getRandomString();
-		const spaceName = getRandomString();
 
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
+		const space = await apiHelpers.headlessAssetLibrary.createSpace({
 			settings: {trashEnabled: true},
-			type: 'Space',
 		});
 
 		await apiHelpers.objectEntry.postObjectEntry(
@@ -1134,7 +1095,7 @@ test(
 				title: contentName,
 			},
 			'cms/basic-web-contents',
-			spaceName
+			space.name
 		);
 
 		await test.step('Trash the content', async () => {
@@ -1176,13 +1137,7 @@ test(
 		page,
 		spaceSettingsPage,
 	}) => {
-		const spaceName = getRandomString();
-
-		const space = await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
-			settings: {},
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		await disableOtherSpacesRecycleBin(space.externalReferenceCode);
 
@@ -1199,7 +1154,7 @@ test(
 
 			await waitForAlert(
 				page,
-				`Success:${spaceName} was saved successfully`
+				`Success:${space.name} was saved successfully`
 			);
 
 			await page.goto(PORTLET_URLS.cmsHome);
@@ -1216,7 +1171,7 @@ test(
 
 			await waitForAlert(
 				page,
-				`Success:${spaceName} was saved successfully`
+				`Success:${space.name} was saved successfully`
 			);
 
 			await page.goto(PORTLET_URLS.cmsHome);
@@ -1230,13 +1185,7 @@ test(
 	'Space General Settings Recycle Bin panel honors trashEnabled and max age validation',
 	{tag: '@LPD-89104'},
 	async ({apiHelpers, page, spaceSettingsPage}) => {
-		const spaceName = getRandomString();
-
-		const space = await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
-			settings: {},
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		await spaceSettingsPage.goto(space.id);
 
@@ -1279,7 +1228,7 @@ test(
 			await spaceSettingsPage.saveButton.click();
 			await waitForAlert(
 				page,
-				`Success:${spaceName} was saved successfully`
+				`Success:${space.name} was saved successfully`
 			);
 		});
 	}

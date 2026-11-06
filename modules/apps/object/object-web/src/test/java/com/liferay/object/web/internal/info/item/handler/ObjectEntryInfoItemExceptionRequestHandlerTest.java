@@ -12,12 +12,20 @@ import com.liferay.info.field.InfoField;
 import com.liferay.info.form.InfoForm;
 import com.liferay.info.item.provider.InfoItemFormProvider;
 import com.liferay.object.exception.ObjectEntryValuesException;
+import com.liferay.object.exception.ObjectValidationRuleEngineException;
+import com.liferay.object.rest.manager.exception.ObjectEntryManagerHttpException;
+import com.liferay.object.validation.rule.ObjectValidationRuleResult;
 import com.liferay.portal.kernel.exception.DuplicateExternalReferenceCodeException;
 import com.liferay.portal.kernel.exception.GroupFriendlyURLException;
+import com.liferay.portal.kernel.exception.InfoFormException;
 import com.liferay.portal.kernel.exception.ModelListenerException;
 import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
+import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
+
+import java.util.Collections;
+import java.util.List;
 
 import org.junit.Assert;
 import org.junit.ClassRule;
@@ -37,13 +45,15 @@ public class ObjectEntryInfoItemExceptionRequestHandlerTest {
 		LiferayUnitTestRule.INSTANCE;
 
 	@Test
-	@TestInfo({"LPD-96532", "LPD-97485", "LPD-103252"})
+	@TestInfo({"LPD-96532", "LPD-97485", "LPD-103252", "LPD-109365"})
 	public void testHandleInfoFormException() throws Exception {
 		_testHandleInfoFormExceptionWhenAssetCategoryExceptionTypeIsAtLeastOneCategory();
 		_testHandleInfoFormExceptionWhenAssetCategoryExceptionTypeIsTooManyCategories();
 		_testHandleInfoFormExceptionWhenDuplicateExternalReferenceCode();
 		_testHandleInfoFormExceptionWhenDuplicateFriendlyURL();
 		_testHandleInfoFormExceptionWhenInvalidValue();
+		_testHandleInfoFormExceptionWhenObjectEntryManagerHttpException();
+		_testHandleInfoFormExceptionWhenObjectValidationRuleEngineException();
 		_testHandleInfoFormExceptionWhenRequiredLanguageId();
 	}
 
@@ -164,6 +174,76 @@ public class ObjectEntryInfoItemExceptionRequestHandlerTest {
 						new ObjectEntryValuesException.InvalidValue(
 							RandomTestUtil.randomString()),
 						0, _mockInfoItemFormProvider(), 0));
+	}
+
+	private void _testHandleInfoFormExceptionWhenObjectEntryManagerHttpException()
+		throws Exception {
+
+		String message = RandomTestUtil.randomString();
+
+		InfoFormException infoFormException = Assert.assertThrows(
+			InfoFormException.class,
+			() ->
+				ObjectEntryInfoItemExceptionRequestHandler.
+					handleInfoFormException(
+						new ObjectEntryManagerHttpException(message), 0, null,
+						0));
+
+		Assert.assertEquals(
+			message, infoFormException.getLocalizedMessage(LocaleUtil.US));
+	}
+
+	private void _testHandleInfoFormExceptionWhenObjectValidationRuleEngineException()
+		throws Exception {
+
+		ObjectValidationRuleEngineException
+			objectValidationRuleEngineException = Mockito.mock(
+				ObjectValidationRuleEngineException.class);
+
+		String errorMessage = RandomTestUtil.randomString();
+		String objectEntryExternalReferenceCode = RandomTestUtil.randomString();
+
+		Mockito.when(
+			objectValidationRuleEngineException.getObjectValidationRuleResults()
+		).thenReturn(
+			Collections.singletonList(
+				new ObjectValidationRuleResult(
+					errorMessage, RandomTestUtil.randomString(),
+					objectEntryExternalReferenceCode,
+					RandomTestUtil.randomString()))
+		);
+
+		InfoFormValidationException.RuleValidation
+			infoFormValidationExceptionRuleValidation = Assert.assertThrows(
+				InfoFormValidationException.RuleValidation.class,
+				() ->
+					ObjectEntryInfoItemExceptionRequestHandler.
+						handleInfoFormException(
+							new ModelListenerException(
+								objectValidationRuleEngineException),
+							0, _mockInfoItemFormProvider(), 0));
+
+		List<InfoFormValidationException.CustomValidation>
+			infoFormValidationExceptionCustomValidations =
+				infoFormValidationExceptionRuleValidation.
+					getCustomValidations();
+
+		Assert.assertEquals(
+			infoFormValidationExceptionCustomValidations.toString(), 1,
+			infoFormValidationExceptionCustomValidations.size());
+
+		InfoFormValidationException.CustomValidation
+			infoFormValidationExceptionCustomValidation =
+				infoFormValidationExceptionCustomValidations.get(0);
+
+		Assert.assertEquals(
+			objectEntryExternalReferenceCode,
+			infoFormValidationExceptionCustomValidation.
+				getExternalReferenceCode());
+		Assert.assertEquals(
+			errorMessage,
+			infoFormValidationExceptionCustomValidation.getLocalizedMessage(
+				LocaleUtil.US));
 	}
 
 	private void _testHandleInfoFormExceptionWhenRequiredLanguageId()

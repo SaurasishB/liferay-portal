@@ -203,8 +203,10 @@ public class CPOptionFacetsPortletSharedSearchContributor
 		SearchContext searchContext = new SearchContext();
 
 		searchContext.setCompanyId(themeDisplay.getCompanyId());
+		searchContext.setEnd(0);
 		searchContext.setLayout(themeDisplay.getLayout());
 		searchContext.setLocale(themeDisplay.getLocale());
+		searchContext.setStart(0);
 		searchContext.setTimeZone(themeDisplay.getTimeZone());
 		searchContext.setUserId(themeDisplay.getUserId());
 
@@ -288,16 +290,18 @@ public class CPOptionFacetsPortletSharedSearchContributor
 			CPOption cpOption = _cpOptionLocalService.getCPOption(
 				searchContext.getCompanyId(), termCollector.getTerm());
 
-			if (cpOption.isFacetable()) {
-				MultiValueFacet multiValueFacet = new MultiValueFacet(
-					searchContext);
-
-				multiValueFacet.setFieldName(
-					CPOptionFacetsUtil.getIndexFieldName(
-						termCollector.getTerm(), themeDisplay.getLanguageId()));
-
-				facets.add(multiValueFacet);
+			if (!cpOption.isFacetable()) {
+				continue;
 			}
+
+			MultiValueFacet multiValueFacet = new MultiValueFacet(
+				searchContext);
+
+			multiValueFacet.setFieldName(
+				CPOptionFacetsUtil.getIndexFieldName(
+					termCollector.getTerm(), themeDisplay.getLanguageId()));
+
+			facets.add(multiValueFacet);
 		}
 
 		return facets;

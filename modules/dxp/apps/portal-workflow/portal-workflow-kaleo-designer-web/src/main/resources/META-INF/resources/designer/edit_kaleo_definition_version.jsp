@@ -189,7 +189,7 @@ String randomNamespace = StringUtil.randomId() + StringPool.UNDERLINE;
 								disabled='<%= kaleoDesignerDisplayContext.isDefinitionInputDisabled((Objects.equals(state, WorkflowWebKeys.WORKFLOW_PREVIEW_BEFORE_RESTORE_STATE) || Objects.equals(state, "view")), kaleoDefinitionVersion, permissionChecker) %>'
 								name="title"
 								placeholder="untitled-workflow"
-								xml='<%= BeanPropertiesUtil.getString(kaleoDefinitionVersion, "title") %>'
+								xml="<%= (kaleoDefinitionVersion == null) ? StringPool.BLANK : kaleoDefinitionVersion.getTitle() %>"
 							/>
 						</aui:fieldset>
 
@@ -230,7 +230,7 @@ String randomNamespace = StringUtil.randomId() + StringPool.UNDERLINE;
 													</li>
 													<li class="nav-item">
 														<a class="nav-link" href="javascript:void(0);">
-															<liferay-ui:message key="source" />
+															<liferay-ui:message key="source[code]" />
 														</a>
 													</li>
 												</ul>
