@@ -8,12 +8,15 @@ package com.liferay.sharing.web.internal.portlet;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.portlet.MockLiferayPortletRenderRequest;
 import com.liferay.portal.kernel.test.portlet.MockLiferayPortletRenderResponse;
+import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
 import com.liferay.sharing.web.internal.display.context.ViewSharedAssetsDisplayContext;
 import com.liferay.sharing.web.internal.display.context.ViewSharedAssetsDisplayContextFactory;
 
 import jakarta.portlet.RenderRequest;
 import jakarta.portlet.RenderResponse;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Assert;
 import org.junit.ClassRule;
@@ -37,18 +40,15 @@ public class SharedAssetsPortletTest {
 		MockLiferayPortletRenderRequest mockLiferayPortletRenderRequest =
 			new MockLiferayPortletRenderRequest();
 
-		mockLiferayPortletRenderRequest.setParameter(
-			"mvcRenderCommandName", "/shared_assets/view_sharing_entry");
-
 		MockLiferayPortletRenderResponse mockLiferayPortletRenderResponse =
 			new MockLiferayPortletRenderResponse();
-
-		ViewSharedAssetsDisplayContext viewSharedAssetsDisplayContext =
-			Mockito.mock(ViewSharedAssetsDisplayContext.class);
 
 		ViewSharedAssetsDisplayContextFactory
 			viewSharedAssetsDisplayContextFactory = Mockito.mock(
 				ViewSharedAssetsDisplayContextFactory.class);
+
+		ViewSharedAssetsDisplayContext viewSharedAssetsDisplayContext =
+			Mockito.mock(ViewSharedAssetsDisplayContext.class);
 
 		Mockito.when(
 			viewSharedAssetsDisplayContextFactory.
@@ -59,19 +59,22 @@ public class SharedAssetsPortletTest {
 			viewSharedAssetsDisplayContext
 		);
 
+		String viewTemplatePath = RandomTestUtil.randomString();
+
+		AtomicReference<String> includedPathAtomicReference =
+			new AtomicReference<>();
+
 		SharedAssetsPortlet sharedAssetsPortlet = new SharedAssetsPortlet() {
+			{
+				viewTemplate = viewTemplatePath;
+			}
 
 			@Override
 			protected void include(
 				String path, RenderRequest renderRequest,
 				RenderResponse renderResponse) {
 
-				Assert.assertSame(
-					viewSharedAssetsDisplayContext,
-					renderRequest.getAttribute(
-						ViewSharedAssetsDisplayContext.class.getName()));
-
-				_included = true;
+				includedPathAtomicReference.set(path);
 			}
 
 		};
@@ -83,9 +86,12 @@ public class SharedAssetsPortletTest {
 		sharedAssetsPortlet.doView(
 			mockLiferayPortletRenderRequest, mockLiferayPortletRenderResponse);
 
-		Assert.assertTrue(_included);
+		Assert.assertEquals(
+			viewTemplatePath, includedPathAtomicReference.get());
+		Assert.assertSame(
+			viewSharedAssetsDisplayContext,
+			mockLiferayPortletRenderRequest.getAttribute(
+				ViewSharedAssetsDisplayContext.class.getName()));
 	}
-
-	private boolean _included;
 
 }
