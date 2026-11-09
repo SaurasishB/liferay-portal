@@ -1,12 +1,17 @@
 dependencies {
+	testImplementation group: "com.liferay.jakarta.portlet", name: "com.liferay.jakarta.portlet-api", version: "4.0.0"
+	testImplementation group: "com.liferay.portal", name: "com.liferay.portal.kernel", version: "default"
+	testImplementation project(":apps:frontend-taglib:frontend-taglib-clay")
+	testImplementation project(":apps:item-selector:item-selector-api")
+	testImplementation project(":apps:object:object-api")
+	testImplementation project(":apps:sharing:sharing-api")
+	testImplementation project(":apps:sharing:sharing-web")
 	testIntegrationImplementation project(":apps:configuration-admin:configuration-admin-api")
-	testIntegrationImplementation project(":apps:object:object-api")
 	testIntegrationImplementation project(":apps:object:object-test-util")
 	testIntegrationImplementation project(":apps:portal-search:portal-search-spi")
 	testIntegrationImplementation project(":apps:portal-vulcan:portal-vulcan-api")
 	testIntegrationImplementation project(":apps:portal:portal-notifications-test-util")
 	testIntegrationImplementation project(":apps:portal:portal-upgrade-test-util")
-	testIntegrationImplementation project(":apps:sharing:sharing-api")
 	testIntegrationImplementation project(":apps:static:portal:portal-upgrade-api")
 	testIntegrationImplementation project(":test:arquillian-extension-junit-bridge")
 }
