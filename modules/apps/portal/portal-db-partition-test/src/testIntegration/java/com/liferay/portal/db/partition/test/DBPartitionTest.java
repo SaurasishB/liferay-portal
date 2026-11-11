@@ -429,45 +429,6 @@ public class DBPartitionTest extends BaseDBPartitionTestCase {
 	}
 
 	@Test
-	public void testCounterRename() throws Exception {
-		try (SafeCloseable safeCloseable =
-				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
-					COMPANY_IDS[0])) {
-
-			try {
-				DBPartitionUtil.forEachCompanyId(
-					companyId -> _counterLocalService.increment(_CLASS_NAME));
-
-				_counterLocalService.rename(_CLASS_NAME, _CLASS_NAME + ".test");
-
-				DBPartitionUtil.forEachCompanyId(
-					companyId -> {
-						List<String> counterNames =
-							_counterLocalService.getNames();
-
-						if (companyId.equals(COMPANY_IDS[0])) {
-							Assert.assertFalse(
-								counterNames.contains(_CLASS_NAME));
-							Assert.assertTrue(
-								counterNames.contains(_CLASS_NAME + ".test"));
-						}
-						else {
-							Assert.assertFalse(
-								counterNames.contains(_CLASS_NAME + ".test"));
-							Assert.assertTrue(
-								counterNames.contains(_CLASS_NAME));
-						}
-					});
-			}
-			finally {
-				DBPartitionUtil.forEachCompanyId(
-					companyId -> _counterLocalService.reset(
-						_CLASS_NAME + ".test"));
-			}
-		}
-	}
-
-	@Test
 	public void testCounterReset() throws Exception {
 		try (SafeCloseable safeCloseable =
 				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
@@ -591,6 +552,8 @@ public class DBPartitionTest extends BaseDBPartitionTestCase {
 				true);
 		}
 		else {
+			_testDefaultPartitionName(
+				"/* ' */ use " + defaultPartitionName + " /* ' */", true);
 			_testDefaultPartitionName(
 				"drop view if exists `" + defaultPartitionName + "`.TestView",
 				true);
@@ -1024,6 +987,21 @@ public class DBPartitionTest extends BaseDBPartitionTestCase {
 					COMPANY_IDS[0])) {
 
 			db.runSQL(sql);
+
+			Assert.assertFalse(unsupported);
+		}
+		catch (UnsupportedOperationException unsupportedOperationException) {
+			Assert.assertTrue(unsupported);
+			Assert.assertEquals(
+				"Unsupported SQL: " + sql,
+				unsupportedOperationException.getMessage());
+		}
+
+		try (SafeCloseable safeCloseable =
+				CompanyThreadLocal.setCompanyIdWithSafeCloseable(
+					COMPANY_IDS[0]);
+			PreparedStatement preparedStatement = connection.prepareStatement(
+				sql)) {
 
 			Assert.assertFalse(unsupported);
 		}

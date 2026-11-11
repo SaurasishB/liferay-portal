@@ -24,7 +24,6 @@ import com.liferay.portal.kernel.servlet.BaseFilter;
 import com.liferay.portal.kernel.servlet.HttpHeaders;
 import com.liferay.portal.kernel.servlet.TryFilter;
 import com.liferay.portal.kernel.util.HashMapBuilder;
-import com.liferay.portal.kernel.util.HashMapDictionary;
 import com.liferay.portal.kernel.util.PrefsPropsUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.Validator;
@@ -133,6 +132,12 @@ public class AuditFilter extends BaseFilter implements TryFilter {
 			else {
 				xRequestId = auditRequestContext.getRequestId();
 			}
+
+			auditRequestContext.setHttpMethod(
+				_truncate(75, httpServletRequest.getMethod()));
+			auditRequestContext.setUserAgent(
+				_truncate(
+					255, httpServletRequest.getHeader(HttpHeaders.USER_AGENT)));
 		}
 
 		if (!_auditLogContextConfiguration.enabled()) {
@@ -162,7 +167,7 @@ public class AuditFilter extends BaseFilter implements TryFilter {
 		_auditLogContext = new AuditLogContext();
 
 		_serviceRegistration = bundleContext.registerService(
-			LogContext.class, _auditLogContext, new HashMapDictionary());
+			LogContext.class, _auditLogContext, null);
 
 		_auditLogContextConfiguration = ConfigurableUtil.createConfigurable(
 			AuditLogContextConfiguration.class, properties);
@@ -229,6 +234,14 @@ public class AuditFilter extends BaseFilter implements TryFilter {
 		}
 
 		return true;
+	}
+
+	private String _truncate(int length, String s) {
+		if ((s == null) || (s.length() <= length)) {
+			return s;
+		}
+
+		return s.substring(0, length);
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(AuditFilter.class);

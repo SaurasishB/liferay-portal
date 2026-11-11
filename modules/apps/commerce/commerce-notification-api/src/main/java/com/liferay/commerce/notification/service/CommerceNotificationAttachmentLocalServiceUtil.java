@@ -57,18 +57,6 @@ public class CommerceNotificationAttachmentLocalServiceUtil {
 			commerceNotificationAttachment);
 	}
 
-	public static CommerceNotificationAttachment
-			addCommerceNotificationAttachment(
-				long commerceNotificationQueueEntryId, long fileEntryId,
-				boolean deleteOnSend,
-				com.liferay.portal.kernel.service.ServiceContext serviceContext)
-		throws PortalException {
-
-		return getService().addCommerceNotificationAttachment(
-			commerceNotificationQueueEntryId, fileEntryId, deleteOnSend,
-			serviceContext);
-	}
-
 	/**
 	 * Creates a new commerce notification attachment with the primary key. Does not add the commerce notification attachment to the database.
 	 *
@@ -312,16 +300,6 @@ public class CommerceNotificationAttachmentLocalServiceUtil {
 		return getService().getCommerceNotificationAttachments(start, end);
 	}
 
-	public static List<CommerceNotificationAttachment>
-		getCommerceNotificationAttachments(
-			long commerceNotificationQueueEntryId, int start, int end,
-			OrderByComparator<CommerceNotificationAttachment>
-				orderByComparator) {
-
-		return getService().getCommerceNotificationAttachments(
-			commerceNotificationQueueEntryId, start, end, orderByComparator);
-	}
-
 	/**
 	 * Returns all the commerce notification attachments matching the UUID and company.
 	 *
@@ -429,4 +407,4 @@ public class CommerceNotificationAttachmentLocalServiceUtil {
 			CommerceNotificationAttachmentLocalService.class);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:665624983
+// LIFERAY-SERVICE-BUILDER-HASH:-1911605894
