@@ -1099,6 +1099,8 @@ public class AssetPublisherDisplayContext {
 				redirect = _portal.getCurrentURL(_portletRequest);
 			}
 
+			redirect = AssetPublisherUtil.removeRedirectParameters(redirect);
+
 			if (Validator.isNotNull(redirect)) {
 				portletURL.setParameter("redirect", redirect);
 			}

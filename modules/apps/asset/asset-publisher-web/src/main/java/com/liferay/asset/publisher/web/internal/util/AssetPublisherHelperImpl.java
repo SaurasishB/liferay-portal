@@ -686,8 +686,13 @@ public class AssetPublisherHelperImpl implements AssetPublisherHelper {
 						redirect = _portal.getCurrentURL(liferayPortletRequest);
 					}
 
-					viewURL = HttpComponentsUtil.setParameter(
-						viewURL, "redirect", redirect);
+					redirect = AssetPublisherUtil.removeRedirectParameters(
+						redirect);
+
+					if (Validator.isNotNull(redirect)) {
+						viewURL = HttpComponentsUtil.setParameter(
+							viewURL, "redirect", redirect);
+					}
 				}
 			}
 			catch (Exception exception) {
