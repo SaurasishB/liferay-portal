@@ -603,9 +603,6 @@ public class AssetPublisherHelperTest {
 			journalArticle.getDDMStructureKey(), true,
 			WorkflowConstants.STATUS_APPROVED);
 
-		MockLiferayPortletRenderRequest mockLiferayPortletRenderRequest =
-			new MockLiferayPortletRenderRequest();
-
 		String currentURL =
 			"/web/" + RandomTestUtil.randomString() + "?param=value";
 		String previousRedirect = URLCodec.encodeURL(
@@ -618,21 +615,22 @@ public class AssetPublisherHelperTest {
 			RandomTestUtil.randomString(), "_redirect=", previousRedirect, "&_",
 			RandomTestUtil.randomString(), "_redirect=", previousRedirect);
 
+		MockLiferayPortletRenderRequest mockLiferayPortletRenderRequest =
+			new MockLiferayPortletRenderRequest();
+
 		mockLiferayPortletRenderRequest.setAttribute(
 			WebKeys.CURRENT_URL, nestedRedirectURL);
-
 		mockLiferayPortletRenderRequest.setAttribute(
 			WebKeys.THEME_DISPLAY,
 			ContentLayoutTestUtil.getThemeDisplay(
 				_companyLocalService.getCompany(TestPropsValues.getCompanyId()),
 				_group1, LayoutTestUtil.addTypeContentLayout(_group1)));
 
-		MockLiferayPortletRenderResponse mockLiferayPortletRenderResponse =
-			new MockLiferayPortletRenderResponse();
-
 		AssetEntry assetEntry = _assetEntryLocalService.getEntry(
 			JournalArticle.class.getName(),
 			journalArticle.getResourcePrimKey());
+		MockLiferayPortletRenderResponse mockLiferayPortletRenderResponse =
+			new MockLiferayPortletRenderResponse();
 
 		Assert.assertEquals(
 			URLCodec.encodeURL(currentURL),
