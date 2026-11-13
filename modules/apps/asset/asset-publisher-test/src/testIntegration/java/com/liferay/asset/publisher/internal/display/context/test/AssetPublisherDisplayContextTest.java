@@ -410,84 +410,7 @@ public class AssetPublisherDisplayContextTest {
 
 		Assert.assertTrue(portletURLString.contains("redirect"));
 
-		PortletPreferences portletPreferences = new PortletPreferencesImpl();
-
-		portletPreferences.setValue("paginationType", "regular");
-
-		Object assetPublisherDisplayContext = _getAssetPublisherDisplayContext(
-			LayoutTestUtil.addTypePortletLayout(_group), portletPreferences);
-
-		String currentURL =
-			"/web/" + RandomTestUtil.randomString() + "?param=value";
-		String previousRedirect = URLCodec.encodeURL(
-			StringBundler.concat(
-				"/web/", RandomTestUtil.randomString(), "?redirect=",
-				URLCodec.encodeURL("/web/" + RandomTestUtil.randomString())));
-
-		String nestedRedirectURL = StringBundler.concat(
-			currentURL, "&redirect=", previousRedirect, "&_",
-			RandomTestUtil.randomString(), "_redirect=", previousRedirect, "&_",
-			RandomTestUtil.randomString(), "_redirect=", previousRedirect);
-
-		_mockLiferayPortletRenderRequest.setAttribute(
-			WebKeys.CURRENT_URL, nestedRedirectURL);
-
-		MockLiferayPortletURL mockLiferayPortletURL = ReflectionTestUtil.invoke(
-			assetPublisherDisplayContext, "getPortletURL", new Class<?>[0]);
-
-		Assert.assertEquals(
-			currentURL, mockLiferayPortletURL.getParameter("redirect"));
-
-		_mockLiferayPortletRenderRequest.setAttribute(
-			WebKeys.CURRENT_URL, "/web/" + RandomTestUtil.randomString());
-		_mockLiferayPortletRenderRequest.setParameter(
-			"redirect", nestedRedirectURL);
-
-		mockLiferayPortletURL = ReflectionTestUtil.invoke(
-			assetPublisherDisplayContext, "getPortletURL", new Class<?>[0]);
-
-		Assert.assertEquals(
-			currentURL, mockLiferayPortletURL.getParameter("redirect"));
-
-		String anchor = StringBundler.concat(
-			"#", RandomTestUtil.randomString(), "?",
-			RandomTestUtil.randomString());
-
-		_mockLiferayPortletRenderRequest.setParameter(
-			"redirect", nestedRedirectURL + anchor);
-
-		mockLiferayPortletURL = ReflectionTestUtil.invoke(
-			assetPublisherDisplayContext, "getPortletURL", new Class<?>[0]);
-
-		Assert.assertEquals(
-			currentURL + anchor,
-			mockLiferayPortletURL.getParameter("redirect"));
-
-		String anchorRedirectURL =
-			"/web/" + RandomTestUtil.randomString() + anchor;
-
-		_mockLiferayPortletRenderRequest.setParameter(
-			"redirect", anchorRedirectURL);
-
-		mockLiferayPortletURL = ReflectionTestUtil.invoke(
-			assetPublisherDisplayContext, "getPortletURL", new Class<?>[0]);
-
-		Assert.assertEquals(
-			anchorRedirectURL, mockLiferayPortletURL.getParameter("redirect"));
-
-		String fragmentRedirectURL = StringBundler.concat(
-			currentURL, "#", RandomTestUtil.randomString(), "&redirect=",
-			RandomTestUtil.randomString());
-
-		_mockLiferayPortletRenderRequest.setParameter(
-			"redirect", fragmentRedirectURL);
-
-		mockLiferayPortletURL = ReflectionTestUtil.invoke(
-			assetPublisherDisplayContext, "getPortletURL", new Class<?>[0]);
-
-		Assert.assertEquals(
-			fragmentRedirectURL,
-			mockLiferayPortletURL.getParameter("redirect"));
+		_testGetPortletURLWithNestedRedirect();
 	}
 
 	@Test
@@ -837,6 +760,34 @@ public class AssetPublisherDisplayContextTest {
 				expectedAssetEntries.get(assetEntries.size() - 1 - i),
 				assetEntries.get(i));
 		}
+	}
+
+	private void _testGetPortletURLWithNestedRedirect() throws Exception {
+		PortletPreferences portletPreferences = new PortletPreferencesImpl();
+
+		portletPreferences.setValue("paginationType", "regular");
+
+		Object assetPublisherDisplayContext = _getAssetPublisherDisplayContext(
+			LayoutTestUtil.addTypePortletLayout(_group), portletPreferences);
+
+		String currentURL =
+			"/web/" + RandomTestUtil.randomString() + "?param=value";
+		String previousRedirect = URLCodec.encodeURL(
+			StringBundler.concat(
+				"/web/", RandomTestUtil.randomString(), "?redirect=",
+				URLCodec.encodeURL("/web/" + RandomTestUtil.randomString())));
+
+		_mockLiferayPortletRenderRequest.setAttribute(
+			WebKeys.CURRENT_URL,
+			StringBundler.concat(
+				currentURL, "&redirect=", previousRedirect, "&_",
+				RandomTestUtil.randomString(), "_redirect=", previousRedirect));
+
+		MockLiferayPortletURL mockLiferayPortletURL = ReflectionTestUtil.invoke(
+			assetPublisherDisplayContext, "getPortletURL", new Class<?>[0]);
+
+		Assert.assertEquals(
+			currentURL, mockLiferayPortletURL.getParameter("redirect"));
 	}
 
 	private static Configuration _assetPublisherWebConfiguration;
