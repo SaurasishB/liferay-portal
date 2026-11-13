@@ -37,18 +37,17 @@ public class SharedAssetsPortletTest {
 
 	@Test
 	public void testDoView() throws Exception {
-		MockLiferayPortletRenderRequest mockLiferayPortletRenderRequest =
-			new MockLiferayPortletRenderRequest();
-
-		MockLiferayPortletRenderResponse mockLiferayPortletRenderResponse =
-			new MockLiferayPortletRenderResponse();
-
 		ViewSharedAssetsDisplayContextFactory
 			viewSharedAssetsDisplayContextFactory = Mockito.mock(
 				ViewSharedAssetsDisplayContextFactory.class);
 
 		ViewSharedAssetsDisplayContext viewSharedAssetsDisplayContext =
 			Mockito.mock(ViewSharedAssetsDisplayContext.class);
+
+		MockLiferayPortletRenderRequest mockLiferayPortletRenderRequest =
+			new MockLiferayPortletRenderRequest();
+		MockLiferayPortletRenderResponse mockLiferayPortletRenderResponse =
+			new MockLiferayPortletRenderResponse();
 
 		Mockito.when(
 			viewSharedAssetsDisplayContextFactory.
