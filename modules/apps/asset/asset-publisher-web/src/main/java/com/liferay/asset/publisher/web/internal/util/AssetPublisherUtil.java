@@ -19,10 +19,12 @@ import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.service.GroupLocalServiceUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HttpComponentsUtil;
+import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.Validator;
 
 import jakarta.portlet.PortletPreferences;
+import jakarta.portlet.PortletRequest;
 
 /**
  * @author Lourdes Fernández Besada
@@ -115,7 +117,33 @@ public class AssetPublisherUtil {
 		return 0;
 	}
 
-	public static String removeRedirectParameters(String url) {
+	public static String getRedirect(PortletRequest portletRequest) {
+		String redirect = ParamUtil.getString(portletRequest, "redirect");
+
+		if (Validator.isNull(redirect)) {
+			redirect = PortalUtil.getCurrentURL(portletRequest);
+		}
+
+		return _removeRedirectParameters(redirect);
+	}
+
+	private static AssetListEntry _fetchAssetListEntryByExternalReferenceCode(
+			boolean checkPermissions, String externalReferenceCode,
+			long groupId)
+		throws PortalException {
+
+		if (checkPermissions) {
+			return AssetListEntryServiceUtil.
+				fetchAssetListEntryByExternalReferenceCode(
+					externalReferenceCode, groupId);
+		}
+
+		return AssetListEntryLocalServiceUtil.
+			fetchAssetListEntryByExternalReferenceCode(
+				externalReferenceCode, groupId);
+	}
+
+	private static String _removeRedirectParameters(String url) {
 		if (Validator.isNull(url)) {
 			return url;
 		}
@@ -142,22 +170,6 @@ public class AssetPublisherUtil {
 		}
 
 		return url + urlParts[1];
-	}
-
-	private static AssetListEntry _fetchAssetListEntryByExternalReferenceCode(
-			boolean checkPermissions, String externalReferenceCode,
-			long groupId)
-		throws PortalException {
-
-		if (checkPermissions) {
-			return AssetListEntryServiceUtil.
-				fetchAssetListEntryByExternalReferenceCode(
-					externalReferenceCode, groupId);
-		}
-
-		return AssetListEntryLocalServiceUtil.
-			fetchAssetListEntryByExternalReferenceCode(
-				externalReferenceCode, groupId);
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
