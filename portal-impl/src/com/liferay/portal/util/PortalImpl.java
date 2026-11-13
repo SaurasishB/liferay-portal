@@ -7171,8 +7171,7 @@ public class PortalImpl implements Portal {
 	}
 
 	protected String getServletURL(
-			Portlet portlet, String servletPath, ThemeDisplay themeDisplay)
-		throws PortalException {
+		Portlet portlet, String servletPath, ThemeDisplay themeDisplay) {
 
 		Layout layout = themeDisplay.getLayout();
 
@@ -7225,8 +7224,7 @@ public class PortalImpl implements Portal {
 	}
 
 	protected boolean isAlwaysAllowDoAsUser(
-			HttpServletRequest httpServletRequest)
-		throws Exception {
+		HttpServletRequest httpServletRequest) {
 
 		String ticketKey = ParamUtil.getString(httpServletRequest, "ticketKey");
 
@@ -8068,9 +8066,7 @@ public class PortalImpl implements Portal {
 		return sb.toString();
 	}
 
-	private Group _getLayoutGroup(Layout layout, ThemeDisplay themeDisplay)
-		throws PortalException {
-
+	private Group _getLayoutGroup(Layout layout, ThemeDisplay themeDisplay) {
 		if (themeDisplay == null) {
 			return layout.getGroup();
 		}
@@ -8564,10 +8560,9 @@ public class PortalImpl implements Portal {
 	}
 
 	private String _prependI18nPath(
-			String changeLanguageURL, Locale locale, ThemeDisplay themeDisplay,
-			Layout layout, int localePrependFriendlyURLStyle,
-			boolean includeDefaultLocaleI18nPath)
-		throws PortalException {
+		String changeLanguageURL, Locale locale, ThemeDisplay themeDisplay,
+		Layout layout, int localePrependFriendlyURLStyle,
+		boolean includeDefaultLocaleI18nPath) {
 
 		if (localePrependFriendlyURLStyle == 0) {
 			return changeLanguageURL;
