@@ -15,6 +15,9 @@ import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.model.UserNotificationEvent;
 import com.liferay.portal.kernel.notifications.BaseModelUserNotificationHandler;
 import com.liferay.portal.kernel.notifications.UserNotificationHandler;
+import com.liferay.portal.kernel.portlet.PortletProvider;
+import com.liferay.portal.kernel.portlet.PortletProviderUtil;
+import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserNotificationEventLocalService;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
@@ -92,11 +95,21 @@ public class SharingUserNotificationHandler
 			sharingEntry.hasSharingPermission(SharingEntryAction.UPDATE),
 			themeDisplay);
 
-		if (Validator.isBlank(viewInContextURL)) {
-			return super.getLink(userNotificationEvent, serviceContext);
+		if (!Validator.isBlank(viewInContextURL)) {
+			return viewInContextURL;
 		}
 
-		return viewInContextURL;
+		return PortletURLBuilder.create(
+			PortletProviderUtil.getPortletURL(
+				themeDisplay.getRequest(), SharingEntry.class.getName(),
+				PortletProvider.Action.PREVIEW)
+		).setParameter(
+			"classNameId", sharingEntry.getClassNameId()
+		).setParameter(
+			"classPK", sharingEntry.getClassPK()
+		).setParameter(
+			"sharingEntryId", sharingEntry.getSharingEntryId()
+		).buildString();
 	}
 
 	@Override
