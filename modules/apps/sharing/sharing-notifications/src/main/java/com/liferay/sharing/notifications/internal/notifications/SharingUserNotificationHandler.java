@@ -24,6 +24,8 @@ import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.trash.TrashHandler;
 import com.liferay.portal.kernel.trash.TrashHandlerRegistryUtil;
 import com.liferay.portal.kernel.util.HtmlUtil;
+import com.liferay.portal.kernel.util.HttpComponentsUtil;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.URLCodec;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.sharing.constants.SharingPortletKeys;
@@ -32,6 +34,8 @@ import com.liferay.sharing.security.permission.SharingEntryAction;
 import com.liferay.sharing.service.SharingEntryLocalService;
 
 import jakarta.portlet.PortletURL;
+
+import java.util.Objects;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -108,10 +112,16 @@ public class SharingUserNotificationHandler
 
 		String link = super.getLink(userNotificationEvent, serviceContext);
 
-		String decodedLink = URLCodec.decodeURL(link);
+		String mvcRenderCommandName = URLCodec.decodeURL(
+			HttpComponentsUtil.getParameter(
+				link,
+				PortalUtil.getPortletNamespace(
+					"com_liferay_sharing_web_portlet_SharedAssetsPortlet") +
+						"mvcRenderCommandName",
+				false));
 
-		if (!decodedLink.contains(
-				"mvcRenderCommandName=/shared_assets/view_sharing_entry")) {
+		if (!Objects.equals(
+				mvcRenderCommandName, "/shared_assets/view_sharing_entry")) {
 
 			return link;
 		}

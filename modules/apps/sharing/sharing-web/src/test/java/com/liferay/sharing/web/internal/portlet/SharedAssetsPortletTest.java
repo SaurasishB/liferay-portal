@@ -6,6 +6,7 @@
 package com.liferay.sharing.web.internal.portlet;
 
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
+import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.portlet.MockLiferayPortletRenderRequest;
 import com.liferay.portal.kernel.test.portlet.MockLiferayPortletRenderResponse;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
@@ -36,6 +37,7 @@ public class SharedAssetsPortletTest {
 		LiferayUnitTestRule.INSTANCE;
 
 	@Test
+	@TestInfo("LPD-114364")
 	public void testDoView() throws Exception {
 		ViewSharedAssetsDisplayContextFactory
 			viewSharedAssetsDisplayContextFactory = Mockito.mock(

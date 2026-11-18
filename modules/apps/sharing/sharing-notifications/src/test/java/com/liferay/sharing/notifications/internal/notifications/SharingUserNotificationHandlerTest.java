@@ -28,6 +28,7 @@ import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.portlet.MockLiferayPortletURL;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.URLCodec;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
 import com.liferay.sharing.model.SharingEntry;
@@ -60,6 +61,7 @@ public class SharingUserNotificationHandlerTest {
 	@AfterClass
 	public static void tearDownClass() {
 		_assetRendererFactoryRegistryUtilMockedStatic.close();
+		_portalUtilMockedStatic.close();
 	}
 
 	@Before
@@ -68,6 +70,7 @@ public class SharingUserNotificationHandlerTest {
 			_sharingUserNotificationHandler, "_jsonFactory",
 			new JSONFactoryImpl());
 
+		_setUpPortalUtil();
 		_setUpServiceContext();
 		_setUpSharingEntryLocalService();
 	}
@@ -107,6 +110,10 @@ public class SharingUserNotificationHandlerTest {
 
 		try (MockedStatic<PortletProviderUtil> portletProviderUtilMockedStatic =
 				Mockito.mockStatic(PortletProviderUtil.class)) {
+
+			Assert.assertEquals(entryURL, _getLink(entryURL));
+
+			entryURL = _getEntryURL("/shared_assets/view_sharing_entry_foo");
 
 			Assert.assertEquals(entryURL, _getLink(entryURL));
 
@@ -256,6 +263,15 @@ public class SharingUserNotificationHandlerTest {
 					getAssetRendererFactoryByClassName(className)
 		).thenReturn(
 			assetRendererFactory
+		);
+	}
+
+	private void _setUpPortalUtil() {
+		_portalUtilMockedStatic.when(
+			() -> PortalUtil.getPortletNamespace(
+				"com_liferay_sharing_web_portlet_SharedAssetsPortlet")
+		).thenReturn(
+			"_com_liferay_sharing_web_portlet_SharedAssetsPortlet_"
 		);
 	}
 
@@ -490,6 +506,8 @@ public class SharingUserNotificationHandlerTest {
 	private static final MockedStatic<AssetRendererFactoryRegistryUtil>
 		_assetRendererFactoryRegistryUtilMockedStatic = Mockito.mockStatic(
 			AssetRendererFactoryRegistryUtil.class);
+	private static final MockedStatic<PortalUtil> _portalUtilMockedStatic =
+		Mockito.mockStatic(PortalUtil.class);
 	private static final SharingEntry _sharingEntry = Mockito.mock(
 		SharingEntry.class);
 	private static final SharingUserNotificationHandler
