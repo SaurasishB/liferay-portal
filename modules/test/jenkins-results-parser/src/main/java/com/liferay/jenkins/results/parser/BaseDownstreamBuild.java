@@ -17,6 +17,7 @@ import com.liferay.jenkins.results.parser.failure.message.generator.LocalGitMirr
 import com.liferay.jenkins.results.parser.failure.message.generator.ModulesCompilationFailureMessageGenerator;
 import com.liferay.jenkins.results.parser.failure.message.generator.PMDFailureMessageGenerator;
 import com.liferay.jenkins.results.parser.failure.message.generator.PlaywrightCompilationFailureMessageGenerator;
+import com.liferay.jenkins.results.parser.failure.message.generator.PlaywrightSetupFailureMessageGenerator;
 import com.liferay.jenkins.results.parser.failure.message.generator.PlaywrightTimeoutFailureMessageGenerator;
 import com.liferay.jenkins.results.parser.failure.message.generator.PluginGitIdFailureMessageGenerator;
 import com.liferay.jenkins.results.parser.failure.message.generator.RESTBuilderFailureMessageGenerator;
@@ -168,6 +169,14 @@ public class BaseDownstreamBuild extends BaseBuild implements DownstreamBuild {
 			if (_testrayCaseResultURL == null) {
 				return;
 			}
+
+			TopLevelBuild topLevelBuild = getTopLevelBuild();
+
+			TopLevelBuildReport topLevelBuildReport =
+				topLevelBuild.getTopLevelBuildReport();
+
+			topLevelBuildReport.addDownstreamBuildReport(
+				getDownstreamBuildReport());
 
 			testrayContext.recordTestrayCaseResultFile(
 				axisTestClassGroup, buildTestrayCaseResult);
@@ -431,11 +440,22 @@ public class BaseDownstreamBuild extends BaseBuild implements DownstreamBuild {
 		}
 
 		if (result.equals("FAILURE")) {
-			Element failureMessageElement = getFailureMessageElement();
+			Element failureMessageElement = null;
 
-			if ((failureMessageElement != null) &&
-				!batchName.contains("playwright-js")) {
+			if (batchName.contains("playwright-js")) {
+				PlaywrightSetupFailureMessageGenerator
+					playwrightSetupFailureMessageGenerator =
+						new PlaywrightSetupFailureMessageGenerator();
 
+				failureMessageElement =
+					playwrightSetupFailureMessageGenerator.getMessageElement(
+						this);
+			}
+			else {
+				failureMessageElement = getFailureMessageElement();
+			}
+
+			if (failureMessageElement != null) {
 				messageElement.add(failureMessageElement);
 			}
 
@@ -1369,11 +1389,22 @@ public class BaseDownstreamBuild extends BaseBuild implements DownstreamBuild {
 			workspace.getPrimaryWorkspaceGitRepository();
 
 		sb.append("/");
-		sb.append(workspaceGitRepository.getName());
-		sb.append("/");
-		sb.append(workspaceGitRepository.getBaseBranchSHA());
-		sb.append("/");
-		sb.append(workspaceGitRepository.getSenderBranchSHA());
+
+		if ((workspace instanceof PortalWorkspace) &&
+			(workspaceGitRepository instanceof PortalWorkspaceGitRepository)) {
+
+			PortalWorkspace portalWorkspace = (PortalWorkspace)workspace;
+
+			sb.append(portalWorkspace.getS3ObjectPathName());
+		}
+		else {
+			sb.append(workspaceGitRepository.getName());
+			sb.append("/");
+			sb.append(workspaceGitRepository.getBaseBranchSHA());
+			sb.append("/");
+			sb.append(workspaceGitRepository.getSenderBranchSHA());
+		}
+
 		sb.append("/");
 		sb.append(getBatchName());
 		sb.append("/");

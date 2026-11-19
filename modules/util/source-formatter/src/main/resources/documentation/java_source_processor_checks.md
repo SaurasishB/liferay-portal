@@ -233,6 +233,7 @@ LocaleUtilCheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-check
 [LogMessageCheck](check/message_check.md#messagecheck) | [Styling](styling_checks.md#styling-checks) | Validates messages that are passed to `log.*` calls. |
 LogParametersCheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Validates the values of parameters passed to `_log.*` calls. |
 [MVCCommandNameCheck](check/mvc_command_name_check.md#mvccommandnamecheck) | [Naming Conventions](naming_conventions_checks.md#naming-conventions-checks) | Checks for consistent naming for values of `mvc.command.name`. |
+[MVCRenderCommandViewTemplateCheck](check/mvc_render_command_view_template_check.md#mvcrendercommandviewtemplatecheck) | [Performance](performance_checks.md#performance-checks) | Finds MVC render commands that only map `/` to a constant path that the portlet can declare as `view-template`. |
 [MapBuilderCheck](check/builder_check.md#buildercheck) | [Miscellaneous](miscellaneous_checks.md#miscellaneous-checks) | Checks that `ConcurrentHashMapBuilder`, `HashMapBuilder`, `LinkedHashMapBuilder` or `TreeMapBuilder` is used when possible. |
 [MapIterationCheck](check/map_iteration_check.md#mapiterationcheck) | [Performance](performance_checks.md#performance-checks) | Checks that there are no unnecessary map iterations. |
 [MemberNameCheck](https://checkstyle.sourceforge.io/checks/naming/membername.html) | [Naming Conventions](naming_conventions_checks.md#naming-conventions-checks) | Checks that instance variable names conform to a specified pattern. |
@@ -343,7 +344,7 @@ UnnecessaryTypeCastCheck | [Performance](performance_checks.md#performance-check
 UnparameterizedClassCheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Finds `Class` instantiation without generic type. |
 UnprocessedExceptionCheck | [Performance](performance_checks.md#performance-checks) | Finds cases where an `Exception` is swallowed without being processed. |
 UnusedMethodCheck | [Performance](performance_checks.md#performance-checks) | Finds private methods that are not used. |
-UnusedParameterCheck | [Performance](performance_checks.md#performance-checks) | Finds parameters in private methods that are not used. |
+UnusedParameterCheck | [Performance](performance_checks.md#performance-checks) | Finds parameters in private methods and DS lifecycle methods that are not used. |
 UnusedVariableCheck | [Performance](performance_checks.md#performance-checks) | Finds variables that are declared, but not used. |
 UnwrappedVariableInfoCheck | [Bug Prevention](bug_prevention_checks.md#bug-prevention-checks) | Finds cases where the variable should be wrapped into an inner class in order to defer array elements initialization. |
 UpgradeDeprecatedAPICheck | [Upgrade](upgrade_checks.md#upgrade-checks) | Finds calls to deprecated classes, constructors, fields or methods after an upgrade. |

@@ -19,6 +19,22 @@ ViewTasksDisplayContext viewTasksDisplayContext = (ViewTasksDisplayContext)reque
 		/>
 	</div>
 
+	<c:if test="<%= viewTasksDisplayContext.isCMPMarketplaceBannerVisible() %>">
+		<div>
+			<react:component
+				module="{CMPMarketplaceBanner} from site-cms-site-initializer"
+				props="<%= viewTasksDisplayContext.getCMPMarketplaceBannerProps() %>"
+			/>
+		</div>
+	</c:if>
+
+	<div>
+		<react:component
+			module="{TasksQuickFilters} from site-cms-site-initializer"
+			props="<%= viewTasksDisplayContext.getTasksQuickFiltersProps() %>"
+		/>
+	</div>
+
 	<div class="cms-section custom-empty-state">
 		<frontend-data-set:headless-display
 			apiURL="<%= viewTasksDisplayContext.getAPIURL() %>"
@@ -28,6 +44,7 @@ ViewTasksDisplayContext viewTasksDisplayContext = (ViewTasksDisplayContext)reque
 			id="<%= CMSSiteInitializerFDSNames.TASKS_SECTION %>"
 			itemsPerPage="<%= 20 %>"
 			propsTransformer="{TasksFDSPropsTransformer} from site-cms-site-initializer"
+			uniformActionsDisplay="<%= true %>"
 		/>
 	</div>
 </div>

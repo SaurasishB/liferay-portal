@@ -85,17 +85,25 @@ const CampaignsDataSet: React.FC<ICampaignsDataSetProps> = ({
 						}),
 					countRenderer: columns.countRenderer,
 				}}
+				defaultSort={{key: 'accountsTouched'}}
 				emptyState={{
 					description: Liferay.Language.get(
 						'no-campaigns-were-synced-from-the-connected-data-sources'
 					),
 					image: EMPTY_STATE_IMAGE,
 					imageReducedMotion: EMPTY_STATE_REDUCED_MOTION_IMAGE,
-					title: Liferay.Language.get('no-campaigns-found'),
+					title: Liferay.Language.get('no-campaigns-were-found'),
 				}}
 				filters={[
 					{
-						apiURL: `/o/faro/contacts/${groupId}/account/account-names?channelId=${channelId}`,
+						apiURL: setUriQueryValues(
+							{
+								campaignTouched: true,
+								channelId,
+								...apiRangeParams,
+							},
+							`/o/faro/contacts/${groupId}/account/account-names`
+						),
 						entityFieldType: 'string',
 						id: 'accountId',
 						itemKey: 'id',
@@ -110,20 +118,12 @@ const CampaignsDataSet: React.FC<ICampaignsDataSetProps> = ({
 				]}
 				id="campaigns-list-dataset"
 
-				// `filters` is read only on mount: remount to seed it again.
+				// `filters` is read only on mount: remount to seed it again,
+				// and to list the accounts of the new range.
 
-				key={accountId}
+				key={`${accountId}-${JSON.stringify(apiRangeParams)}`}
 				pagination={pagination}
 				showPagination
-				sorts={[
-					{
-						active: true,
-						default: true,
-						direction: 'desc',
-						key: 'accountsTouched',
-						label: Liferay.Language.get('accounts-touched'),
-					},
-				]}
 				views={views}
 			/>
 		</Card>

@@ -7,6 +7,7 @@ package com.liferay.message.boards.comment.internal;
 
 import com.liferay.comment.constants.CommentConstants;
 import com.liferay.message.boards.constants.MBCategoryConstants;
+import com.liferay.message.boards.exception.NoSuchMessageException;
 import com.liferay.message.boards.model.MBDiscussion;
 import com.liferay.message.boards.model.MBMessage;
 import com.liferay.message.boards.model.MBMessageDisplay;
@@ -18,6 +19,7 @@ import com.liferay.message.boards.service.MBThreadLocalService;
 import com.liferay.message.boards.util.MBUtil;
 import com.liferay.message.boards.util.comparator.MessageThreadComparator;
 import com.liferay.petra.function.transform.TransformUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.comment.Comment;
 import com.liferay.portal.kernel.comment.CommentManager;
@@ -125,8 +127,7 @@ public class MBCommentManagerImpl implements CommentManager {
 			Function<String, ServiceContext> serviceContextFunction)
 		throws PortalException {
 
-		MBMessage parentMessage = _mbMessageLocalService.getMessage(
-			parentCommentId);
+		MBMessage parentMessage = _getDiscussionMessage(parentCommentId);
 
 		ServiceContext serviceContext = serviceContextFunction.apply(
 			MBMessage.class.getName());
@@ -193,6 +194,8 @@ public class MBCommentManagerImpl implements CommentManager {
 
 	@Override
 	public void deleteComment(long commentId) throws PortalException {
+		_getDiscussionMessage(commentId);
+
 		_mbMessageLocalService.deleteDiscussionMessage(commentId);
 	}
 
@@ -213,7 +216,7 @@ public class MBCommentManagerImpl implements CommentManager {
 	public Comment fetchComment(long commentId) {
 		MBMessage mbMessage = _mbMessageLocalService.fetchMBMessage(commentId);
 
-		if (mbMessage == null) {
+		if ((mbMessage == null) || !mbMessage.isDiscussion()) {
 			return null;
 		}
 
@@ -226,7 +229,7 @@ public class MBCommentManagerImpl implements CommentManager {
 			_mbMessageLocalService.fetchMBMessageByExternalReferenceCode(
 				externalReferenceCode, groupId);
 
-		if (mbMessage == null) {
+		if ((mbMessage == null) || !mbMessage.isDiscussion()) {
 			return null;
 		}
 
@@ -272,9 +275,18 @@ public class MBCommentManagerImpl implements CommentManager {
 	public Comment getComment(long groupId, String externalReferenceCode)
 		throws PortalException {
 
-		return new MBCommentImpl(
+		MBMessage mbMessage =
 			_mbMessageLocalService.getMBMessageByExternalReferenceCode(
-				externalReferenceCode, groupId));
+				externalReferenceCode, groupId);
+
+		if (!mbMessage.isDiscussion()) {
+			throw new NoSuchMessageException(
+				StringBundler.concat(
+					"No comment exists with external reference code ",
+					externalReferenceCode, " and group ID ", groupId));
+		}
+
+		return new MBCommentImpl(mbMessage);
 	}
 
 	@Override
@@ -420,6 +432,8 @@ public class MBCommentManagerImpl implements CommentManager {
 			Function<String, ServiceContext> serviceContextFunction)
 		throws PortalException {
 
+		_getDiscussionMessage(commentId);
+
 		ServiceContext serviceContext = serviceContextFunction.apply(
 			MBMessage.class.getName());
 
@@ -536,6 +550,19 @@ public class MBCommentManagerImpl implements CommentManager {
 
 		return new MBDiscussionCommentImpl(
 			treeWalker.getRoot(), treeWalker, ratingsEntries, ratingsStats);
+	}
+
+	private MBMessage _getDiscussionMessage(long commentId)
+		throws PortalException {
+
+		MBMessage mbMessage = _mbMessageLocalService.getMessage(commentId);
+
+		if (!mbMessage.isDiscussion()) {
+			throw new NoSuchMessageException(
+				"No comment exists with comment ID " + commentId);
+		}
+
+		return mbMessage;
 	}
 
 	@Reference

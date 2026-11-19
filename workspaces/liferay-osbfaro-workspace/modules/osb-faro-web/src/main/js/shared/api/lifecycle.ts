@@ -220,6 +220,7 @@ interface ICreateLifecycle {
 	description: string;
 	groupId: string;
 	name: string;
+	segmentId?: string;
 	stages: ILifecycleStagePayload[];
 }
 
@@ -228,6 +229,7 @@ export async function createLifecycle({
 	description,
 	groupId,
 	name,
+	segmentId,
 	stages,
 }: ICreateLifecycle): Promise<ILifecycleDetail> {
 	if (ENABLE_LIFECYCLE_STAGES_MOCK_DATA) {
@@ -240,6 +242,7 @@ export async function createLifecycle({
 				accountLifecycleStages: stages,
 				description,
 				name,
+				...(segmentId && {segmentId}),
 			},
 		},
 		method: 'POST',
@@ -305,9 +308,11 @@ export async function deleteLifecycle({
 	});
 }
 
-export interface IAccountLifecycle {
-	accountId?: string;
-	id: string;
+export interface IAccountLifecycleStage {
+	lifecycleId: string;
+	lifecycleName: string;
+	name: string;
+	stageExternalReferenceCode: string;
 }
 
 export interface IAccountLifecycleStageStatus {
@@ -376,19 +381,5 @@ export async function fetchLifecycleStages({
 		},
 		method: 'GET',
 		path: `contacts/${groupId}/account-lifecycle/${lifecycleId}/stages`,
-	});
-}
-
-export async function fetchAccountLifecycles({
-	channelId,
-	groupId,
-}: {
-	channelId?: string;
-	groupId: string;
-}): Promise<IAccountLifecycle[]> {
-	return fetchLifecycles({
-		channelId,
-		defaultAccountLifecycle: !!channelId,
-		groupId,
 	});
 }

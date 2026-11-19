@@ -22,8 +22,8 @@ public class FaroLifecyclesSectionFragmentRenderer
 	}
 
 	@Override
-	protected String getSection() {
-		return "lifecycle";
+	protected String getModule() {
+		return "{Lifecycles} from osb-faro-web/lifecycles";
 	}
 
 }

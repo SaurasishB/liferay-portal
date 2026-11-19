@@ -15,6 +15,7 @@ import {
 	lifecycleStagesLabelMap,
 } from 'contacts/pages/account/utils/constants';
 import {buildViews} from './utils';
+import {IAccountLifecycleStage} from 'shared/api/lifecycle';
 import {ICatalogField} from 'shared/api/catalog';
 import {RangeKeyTimeRanges} from 'shared/util/constants';
 import {Routes} from 'shared/util/router';
@@ -24,6 +25,8 @@ interface IAccountsDataSetProps {
 	accountLifecycleId?: string;
 	allLifecycles?: boolean;
 	apiURL: string;
+	campaignId?: string;
+	campaignName?: string;
 	channelId: string;
 	countryFilter?: string;
 	dataSetId?: string;
@@ -35,12 +38,6 @@ interface IAccountsDataSetProps {
 	segmentFilter?: string;
 	segmentName?: string;
 	stageSelectionNonce?: number;
-}
-
-interface IAccountLifecycleStage {
-	lifecycleName: string;
-	name: string;
-	stageExternalReferenceCode: string;
 }
 
 export const buildSelectionPreloadedData = (value?: string, label?: string) =>
@@ -55,6 +52,8 @@ const AccountsDataSet: React.FC<IAccountsDataSetProps> = ({
 	accountLifecycleId,
 	allLifecycles = false,
 	apiURL,
+	campaignId,
+	campaignName,
 	channelId,
 	countryFilter,
 	dataSetId = 'accounts-list-dataset',
@@ -178,13 +177,14 @@ const AccountsDataSet: React.FC<IAccountsDataSetProps> = ({
 						columns.dateRenderer({itemData: {}, value}),
 					textRenderer: columns.textRenderer,
 				}}
+				defaultSort={{key: 'lastActive'}}
 				emptyState={{
 					description: Liferay.Language.get(
 						'no-accounts-were-synced-from-the-connected-data-sources'
 					),
 					image: EMPTY_STATE_IMAGE,
 					imageReducedMotion: EMPTY_STATE_REDUCED_MOTION_IMAGE,
-					title: Liferay.Language.get('no-accounts-found'),
+					title: Liferay.Language.get('no-accounts-were-found'),
 				}}
 				filters={[
 					{
@@ -201,14 +201,13 @@ const AccountsDataSet: React.FC<IAccountsDataSetProps> = ({
 					...(accountLifecycleId || allLifecycles
 						? [
 								{
+									autocompleteEnabled: true,
 									entityFieldType: 'string',
 									id: 'lifecycleStatus',
 									items: lifecycleStageItems,
-									label: allLifecycles
-										? Liferay.Language.get(
-												'lifecycle-stage'
-											)
-										: Liferay.Language.get('status'),
+									label: Liferay.Language.get(
+										'lifecycle-stage'
+									),
 									multiple: true,
 									name: 'status',
 									preloadedData: buildSelectionPreloadedData(
@@ -223,8 +222,26 @@ const AccountsDataSet: React.FC<IAccountsDataSetProps> = ({
 								},
 							]
 						: []),
+					...(campaignId
+						? [
+								{
+									apiURL: `/o/faro/contacts/${groupId}/campaigns/campaign-names?channelId=${channelId}`,
+									entityFieldType: 'string',
+									id: 'campaignId',
+									itemKey: 'id',
+									itemLabel: 'name',
+									label: Liferay.Language.get('campaign'),
+									preloadedData: buildSelectionPreloadedData(
+										campaignId,
+										campaignName
+									),
+									type: 'selection' as const,
+								},
+							]
+						: []),
 					{
 						apiURL: `/o/faro/contacts/${groupId}/account/fds_field_values?channelId=${channelId}&fieldMappingFieldName=industry`,
+						autocompleteEnabled: true,
 						entityFieldType: 'string',
 						id: 'industry',
 						itemKey: 'name',
@@ -237,6 +254,7 @@ const AccountsDataSet: React.FC<IAccountsDataSetProps> = ({
 					},
 					{
 						apiURL: `/o/faro/contacts/${groupId}/account/fds_field_values?channelId=${channelId}&fieldMappingFieldName=country`,
+						autocompleteEnabled: true,
 						entityFieldType: 'string',
 						id: 'country',
 						itemKey: 'name',
@@ -249,6 +267,7 @@ const AccountsDataSet: React.FC<IAccountsDataSetProps> = ({
 					},
 					{
 						apiURL: `/o/faro/contacts/${groupId}/individual_segment/search?channelId=${channelId}`,
+						autocompleteEnabled: true,
 						entityFieldType: 'string',
 						id: 'segmentId',
 						itemKey: 'id',
@@ -263,6 +282,7 @@ const AccountsDataSet: React.FC<IAccountsDataSetProps> = ({
 				]}
 				id={dataSetId}
 				key={[
+					campaignId,
 					countryFilter,
 					industryFilter,
 					lifecycleStageFilter,
@@ -272,14 +292,6 @@ const AccountsDataSet: React.FC<IAccountsDataSetProps> = ({
 				pagination={pagination}
 				showPagination
 				snapshotsEnabled
-				sorts={[
-					{
-						active: true,
-						direction: 'desc',
-						key: 'lastActive',
-						label: Liferay.Language.get('last-active'),
-					},
-				]}
 				views={buildViews(fieldCatalog)}
 			/>
 		</Card>

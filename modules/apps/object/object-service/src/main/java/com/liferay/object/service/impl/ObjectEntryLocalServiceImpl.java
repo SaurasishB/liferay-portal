@@ -52,6 +52,7 @@ import com.liferay.object.configuration.ObjectEntryScheduleConfiguration;
 import com.liferay.object.constants.ObjectActionTriggerConstants;
 import com.liferay.object.constants.ObjectDefinitionConstants;
 import com.liferay.object.constants.ObjectDefinitionSettingConstants;
+import com.liferay.object.constants.ObjectEntryConstants;
 import com.liferay.object.constants.ObjectEntryFolderConstants;
 import com.liferay.object.constants.ObjectFieldConstants;
 import com.liferay.object.constants.ObjectFieldSettingConstants;
@@ -193,6 +194,7 @@ import com.liferay.portal.kernel.dao.orm.Session;
 import com.liferay.portal.kernel.encryptor.Encryptor;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.SystemException;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
@@ -213,6 +215,7 @@ import com.liferay.portal.kernel.model.Users_OrgsTable;
 import com.liferay.portal.kernel.model.WorkflowInstanceLink;
 import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.module.service.Snapshot;
+import com.liferay.portal.kernel.preview.Previewable;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.search.BaseModelSearchResult;
 import com.liferay.portal.kernel.search.Field;
@@ -350,6 +353,47 @@ public class ObjectEntryLocalServiceImpl
 	extends ObjectEntryLocalServiceBaseImpl {
 
 	@Override
+	public ObjectEntry addDraftObjectEntry(
+			long userId, long headObjectEntryId, int version,
+			Map<String, Serializable> values, ServiceContext serviceContext)
+		throws PortalException {
+
+		ObjectEntry headObjectEntry = objectEntryPersistence.findByPrimaryKey(
+			headObjectEntryId);
+
+		if (!FeatureFlagManagerUtil.isEnabled(
+				headObjectEntry.getCompanyId(), "LPD-72278")) {
+
+			throw new UnsupportedOperationException();
+		}
+
+		ObjectDefinition objectDefinition =
+			_objectDefinitionPersistence.findByPrimaryKey(
+				headObjectEntry.getObjectDefinitionId());
+
+		if (!objectDefinition.isEnableObjectEntryDraft() ||
+			!objectDefinition.isEnableObjectEntryVersioning()) {
+
+			throw new ObjectEntryStatusException("Draft status is not allowed");
+		}
+
+		ObjectEntry draftObjectEntry = _addObjectEntry(
+			null, headObjectEntry.getGroupId(), userId, headObjectEntryId,
+			objectDefinition, headObjectEntry.getObjectEntryFolderId(),
+			headObjectEntry.getDefaultLanguageId(),
+			ObjectEntryConstants.TYPE_DRAFT, version,
+			WorkflowConstants.STATUS_DRAFT, values);
+
+		_updateAsset(
+			userId, draftObjectEntry, serviceContext.getAssetCategoryIds(),
+			serviceContext.getAssetTagNames(),
+			serviceContext.getAssetLinkEntryIds(),
+			serviceContext.getAssetPriority(), serviceContext);
+
+		return draftObjectEntry;
+	}
+
+	@Override
 	public ObjectEntry addLatestApprovedObjectEntry(
 			String externalReferenceCode, long groupId, long userId,
 			long headObjectEntryId, ObjectDefinition objectDefinition,
@@ -357,59 +401,11 @@ public class ObjectEntryLocalServiceImpl
 			Map<String, Serializable> values)
 		throws PortalException {
 
-		values = new HashMap<>(values);
-
-		ObjectFieldBusinessType objectFieldBusinessType =
-			_objectFieldBusinessTypeRegistry.getObjectFieldBusinessType(
-				ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT);
-
-		for (ObjectField objectField :
-				_objectFieldPersistence.findByObjectDefinitionId(
-					objectDefinition.getObjectDefinitionId())) {
-
-			if (!objectField.compareBusinessType(
-					ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT)) {
-
-				continue;
-			}
-
-			if (objectField.isLocalized()) {
-				Map<String, Object> localizedValues =
-					objectFieldBusinessType.getLocalizedValues(
-						groupId, objectField, userId, new HashMap<>(values));
-
-				if (localizedValues != null) {
-					values.put(
-						objectField.getI18nObjectFieldName(),
-						(Serializable)localizedValues);
-				}
-			}
-			else if (values.containsKey(objectField.getName())) {
-				values.put(
-					objectField.getName(),
-					(Serializable)objectFieldBusinessType.getValue(
-						groupId, objectField, userId, new HashMap<>(values)));
-			}
-		}
-
-		ObjectEntry objectEntry = _addObjectEntry(
+		return _addObjectEntry(
 			externalReferenceCode, groupId, userId, headObjectEntryId,
-			objectDefinition.getObjectDefinitionId(), objectEntryFolderId,
-			defaultLanguageId, version, WorkflowConstants.STATUS_APPROVED);
-
-		_insertIntoLocalizationTable(
-			defaultLanguageId, new HashMap<>(), objectDefinition,
-			objectEntry.getObjectEntryId(), null, false, values);
-		_insertIntoTable(
-			DynamicObjectDefinitionTableUtil.getDynamicObjectDefinitionTable(
-				false, objectDefinition, _objectFieldLocalService),
-			new HashMap<>(), objectEntry.getObjectEntryId(), false, values);
-		_insertIntoTable(
-			DynamicObjectDefinitionTableUtil.getDynamicObjectDefinitionTable(
-				true, objectDefinition, _objectFieldLocalService),
-			new HashMap<>(), objectEntry.getObjectEntryId(), false, values);
-
-		return objectEntry;
+			objectDefinition, objectEntryFolderId, defaultLanguageId,
+			ObjectEntryConstants.TYPE_LATEST_APPROVED, version,
+			WorkflowConstants.STATUS_APPROVED, values);
 	}
 
 	@Override
@@ -633,7 +629,8 @@ public class ObjectEntryLocalServiceImpl
 		return _addObjectEntry(
 			externalReferenceCode, groupId, userId, 0,
 			objectDefinition.getObjectDefinitionId(), objectEntryFolderId, null,
-			0, WorkflowConstants.STATUS_DRAFT);
+			ObjectEntryConstants.TYPE_DEFAULT, 0,
+			WorkflowConstants.STATUS_DRAFT);
 	}
 
 	@Override
@@ -970,6 +967,16 @@ public class ObjectEntryLocalServiceImpl
 				objectEntry.getObjectEntryId());
 		}
 
+		if (objectEntry.isHead()) {
+			for (ObjectEntry draftObjectEntry :
+					objectEntryPersistence.findByHOEI_T(
+						objectEntry.getObjectEntryId(),
+						ObjectEntryConstants.TYPE_DRAFT)) {
+
+				objectEntryLocalService.deleteObjectEntry(draftObjectEntry);
+			}
+		}
+
 		deleteRelatedObjectEntries(
 			objectEntry.getGroupId(), objectDefinition.getObjectDefinitionId(),
 			objectEntry.getPrimaryKey());
@@ -1078,6 +1085,12 @@ public class ObjectEntryLocalServiceImpl
 		}
 
 		return objectEntries.get(0);
+	}
+
+	@Override
+	@Previewable
+	public ObjectEntry fetchObjectEntry(long objectEntryId) {
+		return objectEntryPersistence.fetchByPrimaryKey(objectEntryId);
 	}
 
 	@Override
@@ -1488,6 +1501,14 @@ public class ObjectEntryLocalServiceImpl
 	}
 
 	@Override
+	@Previewable
+	public ObjectEntry getObjectEntry(long objectEntryId)
+		throws PortalException {
+
+		return objectEntryPersistence.findByPrimaryKey(objectEntryId);
+	}
+
+	@Override
 	public ObjectEntry getObjectEntry(
 			String externalReferenceCode, long groupId, long objectDefinitionId)
 		throws PortalException {
@@ -1625,7 +1646,8 @@ public class ObjectEntryLocalServiceImpl
 				externalReferenceCode, groupId, userId, 0, objectDefinitionId,
 				ObjectEntryFolderConstants.
 					PARENT_OBJECT_ENTRY_FOLDER_ID_DEFAULT,
-				null, 0, WorkflowConstants.STATUS_EMPTY),
+				null, ObjectEntryConstants.TYPE_DEFAULT, 0,
+				WorkflowConstants.STATUS_EMPTY),
 			externalReferenceCode,
 			(_externalReferenceCode, _groupId) -> fetchObjectEntry(
 				_externalReferenceCode, _groupId, objectDefinitionId),
@@ -2226,7 +2248,7 @@ public class ObjectEntryLocalServiceImpl
 			long userId, ObjectEntry objectEntry, ServiceContext serviceContext)
 		throws PortalException {
 
-		if (objectEntry.isInTrash()) {
+		if (objectEntry.isInTrash() || objectEntry.isTypeDraft()) {
 			throw new TrashEntryException();
 		}
 
@@ -2941,7 +2963,8 @@ public class ObjectEntryLocalServiceImpl
 			ServiceContext serviceContext, Map<String, Serializable> values)
 		throws PortalException {
 
-		if (ObjectDefinitionUtil.isDefaultFriendlyURLSeparator(
+		if (objectEntry.isTypeDraft() ||
+			ObjectDefinitionUtil.isDefaultFriendlyURLSeparator(
 				objectDefinition.getFriendlyURLSeparator())) {
 
 			return;
@@ -3071,8 +3094,8 @@ public class ObjectEntryLocalServiceImpl
 	private ObjectEntry _addObjectEntry(
 			String externalReferenceCode, long groupId, long userId,
 			long headObjectEntryId, long objectDefinitionId,
-			long objectEntryFolderId, String defaultLanguageId, int version,
-			int status)
+			long objectEntryFolderId, String defaultLanguageId, int type,
+			int version, int status)
 		throws PortalException {
 
 		ObjectEntry objectEntry = objectEntryPersistence.create(
@@ -3094,6 +3117,7 @@ public class ObjectEntryLocalServiceImpl
 		objectEntry.setObjectEntryFolderId(objectEntryFolderId);
 		objectEntry.setDefaultLanguageId(defaultLanguageId);
 		objectEntry.setTreePath(objectEntry.buildTreePath());
+		objectEntry.setType(type);
 		objectEntry.setVersion(version);
 		objectEntry.setStatus(status);
 		objectEntry.setStatusDate(new Date());
@@ -3101,12 +3125,76 @@ public class ObjectEntryLocalServiceImpl
 		return objectEntryPersistence.updateImpl(objectEntry);
 	}
 
+	private ObjectEntry _addObjectEntry(
+			String externalReferenceCode, long groupId, long userId,
+			long headObjectEntryId, ObjectDefinition objectDefinition,
+			long objectEntryFolderId, String defaultLanguageId, int type,
+			int version, int status, Map<String, Serializable> values)
+		throws PortalException {
+
+		values = new HashMap<>(values);
+
+		ObjectFieldBusinessType objectFieldBusinessType =
+			_objectFieldBusinessTypeRegistry.getObjectFieldBusinessType(
+				ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT);
+
+		for (ObjectField objectField :
+				_objectFieldPersistence.findByObjectDefinitionId(
+					objectDefinition.getObjectDefinitionId())) {
+
+			if (!objectField.compareBusinessType(
+					ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT)) {
+
+				continue;
+			}
+
+			if (objectField.isLocalized()) {
+				Map<String, Object> localizedValues =
+					objectFieldBusinessType.getLocalizedValues(
+						groupId, objectField, userId, new HashMap<>(values));
+
+				if (localizedValues != null) {
+					values.put(
+						objectField.getI18nObjectFieldName(),
+						(Serializable)localizedValues);
+				}
+			}
+			else if (values.containsKey(objectField.getName())) {
+				values.put(
+					objectField.getName(),
+					(Serializable)objectFieldBusinessType.getValue(
+						groupId, objectField, userId, new HashMap<>(values)));
+			}
+		}
+
+		ObjectEntry objectEntry = _addObjectEntry(
+			externalReferenceCode, groupId, userId, headObjectEntryId,
+			objectDefinition.getObjectDefinitionId(), objectEntryFolderId,
+			defaultLanguageId, type, version, status);
+
+		_insertIntoLocalizationTable(
+			defaultLanguageId, new HashMap<>(), objectDefinition,
+			objectEntry.getObjectEntryId(), null, false, values);
+		_insertIntoTable(
+			DynamicObjectDefinitionTableUtil.getDynamicObjectDefinitionTable(
+				false, objectDefinition, _objectFieldLocalService),
+			new HashMap<>(), objectEntry.getObjectEntryId(), false, values);
+		_insertIntoTable(
+			DynamicObjectDefinitionTableUtil.getDynamicObjectDefinitionTable(
+				true, objectDefinition, _objectFieldLocalService),
+			new HashMap<>(), objectEntry.getObjectEntryId(), false, values);
+
+		return objectEntry;
+	}
+
 	private ObjectEntry _addObjectEntryVersion(
 			long userId, ObjectDefinition objectDefinition,
 			ObjectEntry objectEntry)
 		throws PortalException {
 
-		if (!objectDefinition.isEnableObjectEntryVersioning()) {
+		if (!objectDefinition.isEnableObjectEntryVersioning() ||
+			objectEntry.isTypeDraft()) {
+
 			return objectEntry;
 		}
 
@@ -4167,6 +4255,10 @@ public class ObjectEntryLocalServiceImpl
 		ObjectDefinition objectDefinition, ObjectEntry objectEntry,
 		ObjectEntry originalObjectEntry, String preferredLanguageId,
 		User user) {
+
+		if (objectEntry.isTypeDraft()) {
+			return;
+		}
 
 		ObjectActionEngine objectActionEngine =
 			_objectActionEngineSnapshot.get();
@@ -8329,7 +8421,9 @@ public class ObjectEntryLocalServiceImpl
 			ObjectEntry objectEntry)
 		throws PortalException {
 
-		if (!objectDefinition.isEnableObjectEntryVersioning()) {
+		if (!objectDefinition.isEnableObjectEntryVersioning() ||
+			objectEntry.isTypeDraft()) {
+
 			return;
 		}
 
@@ -8367,6 +8461,13 @@ public class ObjectEntryLocalServiceImpl
 
 		_contributeValues(
 			objectEntry.getGroupId(), objectDefinition, userId, values);
+
+		if (objectEntry.isTypeDraft()) {
+			serviceContext = (ServiceContext)serviceContext.clone();
+
+			serviceContext.setWorkflowAction(
+				WorkflowConstants.ACTION_SAVE_DRAFT);
+		}
 
 		Map<ObjectField, Set<DLFileEntry>> dlFileEntriesMap = new HashMap<>();
 
@@ -8540,7 +8641,9 @@ public class ObjectEntryLocalServiceImpl
 			objectDefinition.getClassName(), objectEntry.getObjectEntryId(),
 			serviceContext);
 
-		if (!objectDefinition.isEnableObjectEntryVersioning()) {
+		if (!objectDefinition.isEnableObjectEntryVersioning() &&
+			!objectEntry.isTypeDraft()) {
+
 			_deleteFileEntries(
 				objectEntry.getValues(), objectDefinition, transientValues);
 		}
@@ -9337,8 +9440,12 @@ public class ObjectEntryLocalServiceImpl
 					column, objectField.getDBType(), value);
 
 			if (objectEntryId != null) {
+				ObjectEntry objectEntry =
+					objectEntryPersistence.findByPrimaryKey(objectEntryId);
+
 				predicate = predicate.and(
-					ObjectEntryTable.INSTANCE.objectEntryId.neq(objectEntryId));
+					ObjectEntryTable.INSTANCE.headObjectEntryId.neq(
+						objectEntry.getHeadObjectEntryId()));
 			}
 
 			objectEntriesCount = getObjectEntriesCount(

@@ -22,8 +22,8 @@ public class FaroSitesSectionFragmentRenderer
 	}
 
 	@Override
-	protected String getSection() {
-		return "sites";
+	protected String getModule() {
+		return "{Sites} from osb-faro-web/sites";
 	}
 
 }

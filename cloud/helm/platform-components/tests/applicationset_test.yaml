@@ -16,6 +16,16 @@ templates:
     -   templates/appproject-operator.yaml
 tests:
     -   asserts:
+            -   contains:
+                    content: oci://docker.io/envoyproxy/gateway-crds-helm
+                    path: spec.sourceRepos
+                template: templates/appproject-operator.yaml
+            -   contains:
+                    content: oci://docker.io/envoyproxy/gateway-crds-helm/**
+                    path: spec.sourceRepos
+                template: templates/appproject-operator.yaml
+        it: Allows the Envoy Gateway CRD chart repository in the operator AppProject
+    -   asserts:
             -   equal:
                     path: metadata.annotations["argocd.argoproj.io/sync-wave"]
                     value: "-80"
@@ -157,6 +167,14 @@ tests:
                     namespace: liferay-operators
                     values:
                         fullnameOverride: liferay-dxp-operator
+    -   asserts:
+            -   notContains:
+                    any: true
+                    content:
+                        name: liferay-default.network.sessionPersistence.enabled
+                    path: spec.template.spec.sources[0].helm.parameters
+                template: templates/applicationset-liferay.yaml
+        it: Keeps session persistence on with the experimental Gateway API CRDs
     -   asserts:
             -   equal:
                     path: spec.template.spec.syncPolicy.managedNamespaceMetadata.labels
@@ -317,6 +335,19 @@ tests:
                     path: spec.sourceRepos
                 template: templates/appproject-infrastructure.yaml
         it: Omits the unset repository URLs from the AppProject source repositories
+    -   asserts:
+            -   contains:
+                    content:
+                        name: gateway.className
+                        value: envoy-gateway-l4
+                    path: spec.template.spec.sources[0].helm.parameters
+                template: templates/applicationset-infrastructure.yaml
+        it: Passes the configured gateway class to the infrastructure ApplicationSet
+        set:
+            gateway:
+                className: envoy-gateway-l4
+            infrastructure:
+                repoURL: oci://example-registry/liferay-azure-infrastructure
     -   asserts:
             -   contains:
                     content:
@@ -626,6 +657,8 @@ tests:
                         -   https://helm.elastic.co/**
                         -   oci://docker.io/envoyproxy/gateway-helm
                         -   oci://docker.io/envoyproxy/gateway-helm/**
+                        -   oci://docker.io/envoyproxy/gateway-crds-helm
+                        -   oci://docker.io/envoyproxy/gateway-crds-helm/**
                         -   https://charts.external-secrets.io
                         -   https://charts.external-secrets.io/**
                         -   https://kedacore.github.io/charts
@@ -649,6 +682,22 @@ tests:
         set:
             liferay:
                 valuesPrefix: liferay-aws.liferay-default.
+    -   asserts:
+            -   contains:
+                    content:
+                        name: liferay-default.network.sessionPersistence.enabled
+                        value: "false"
+                    path: spec.template.spec.sources[0].helm.parameters
+                template: templates/applicationset-liferay.yaml
+        it: Turns session persistence off with the standard Gateway API CRDs
+        set:
+            operatorApplications:
+                envoyGateway:
+                    crds:
+                        values:
+                            crds:
+                                gatewayAPI:
+                                    channel: standard
     -   asserts:
             -   contains:
                     content:

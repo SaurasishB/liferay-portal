@@ -15,6 +15,7 @@ import com.liferay.asset.list.constants.AssetListEntryTypeConstants;
 import com.liferay.asset.list.model.AssetListEntry;
 import com.liferay.asset.list.service.AssetListEntryAudienceEntryRelLocalService;
 import com.liferay.asset.list.service.AssetListEntryLocalService;
+import com.liferay.asset.publisher.constants.AssetPublisherPortletKeys;
 import com.liferay.asset.publisher.test.util.AssetPublisherTestUtil;
 import com.liferay.asset.publisher.util.AssetEntryResult;
 import com.liferay.asset.publisher.util.AssetPublisherHelper;
@@ -29,9 +30,11 @@ import com.liferay.journal.test.util.JournalTestUtil;
 import com.liferay.layout.page.template.constants.LayoutPageTemplateEntryTypeConstants;
 import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
 import com.liferay.layout.page.template.service.LayoutPageTemplateEntryService;
+import com.liferay.layout.page.template.test.util.DisplayPageTemplateTestUtil;
 import com.liferay.layout.page.template.test.util.LayoutPageTemplateTestUtil;
 import com.liferay.layout.test.util.ContentLayoutTestUtil;
 import com.liferay.layout.test.util.LayoutTestUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.test.util.ConfigurationTestUtil;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
@@ -47,6 +50,8 @@ import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.LayoutPrototypeLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.test.portlet.MockLiferayPortletActionRequest;
+import com.liferay.portal.kernel.test.portlet.MockLiferayPortletRenderRequest;
+import com.liferay.portal.kernel.test.portlet.MockLiferayPortletRenderResponse;
 import com.liferay.portal.kernel.test.portlet.MockPortletPreferences;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
@@ -55,12 +60,15 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
+import com.liferay.portal.kernel.util.HttpComponentsUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.URLCodec;
+import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.view.count.ViewCountManager;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.test.rule.FeatureFlag;
+import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -330,7 +338,12 @@ public class AssetPublisherHelperTest {
 			_getAssetEntries(audienceEntryERC, portletPreferences));
 	}
 
-	@FeatureFlag("LPD-109242")
+	@FeatureFlags(
+		featureFlags = {
+			@FeatureFlag("LPD-109242"),
+			@FeatureFlag(enable = false, value = "LPD-78863")
+		}
+	)
 	@Test
 	public void testGetAssetEntriesForManualCollectionWithAudienceEntryWhenFeatureFlagIsEnabled()
 		throws Exception {
@@ -584,6 +597,55 @@ public class AssetPublisherHelperTest {
 
 		Assert.assertEquals(
 			Arrays.toString(assetTagNames), 0, assetTagNames.length);
+	}
+
+	@Test
+	public void testGetAssetViewURLWithNestedRedirect() throws Exception {
+		JournalArticle journalArticle = JournalTestUtil.addArticleWithWorkflow(
+			_group1.getGroupId(), true);
+
+		DisplayPageTemplateTestUtil.addDisplayPageTemplate(
+			_group1.getGroupId(),
+			_portal.getClassNameId(JournalArticle.class.getName()),
+			journalArticle.getDDMStructureKey(), true,
+			WorkflowConstants.STATUS_APPROVED);
+
+		String currentURL =
+			"/web/" + RandomTestUtil.randomString() + "?param=value";
+		String previousRedirect = URLCodec.encodeURL(
+			StringBundler.concat(
+				"/web/", RandomTestUtil.randomString(), "?redirect=",
+				URLCodec.encodeURL("/web/" + RandomTestUtil.randomString())));
+
+		String nestedRedirectURL = StringBundler.concat(
+			currentURL, "&redirect=", previousRedirect, "&_",
+			AssetPublisherPortletKeys.ASSET_PUBLISHER, "_INSTANCE_",
+			RandomTestUtil.randomString(), "_redirect=", previousRedirect, "&_",
+			AssetPublisherPortletKeys.ASSET_PUBLISHER, "_INSTANCE_",
+			RandomTestUtil.randomString(), "_redirect=", previousRedirect);
+
+		MockLiferayPortletRenderRequest mockLiferayPortletRenderRequest =
+			new MockLiferayPortletRenderRequest();
+
+		mockLiferayPortletRenderRequest.setAttribute(
+			WebKeys.CURRENT_URL, nestedRedirectURL);
+		mockLiferayPortletRenderRequest.setAttribute(
+			WebKeys.THEME_DISPLAY,
+			ContentLayoutTestUtil.getThemeDisplay(
+				_companyLocalService.getCompany(TestPropsValues.getCompanyId()),
+				_group1, LayoutTestUtil.addTypeContentLayout(_group1)));
+
+		AssetEntry assetEntry = _assetEntryLocalService.getEntry(
+			JournalArticle.class.getName(),
+			journalArticle.getResourcePrimKey());
+
+		Assert.assertEquals(
+			URLCodec.encodeURL(currentURL),
+			HttpComponentsUtil.getParameter(
+				_assetPublisherHelper.getAssetViewURL(
+					mockLiferayPortletRenderRequest,
+					new MockLiferayPortletRenderResponse(), assetEntry, true),
+				"redirect", false));
 	}
 
 	@Test

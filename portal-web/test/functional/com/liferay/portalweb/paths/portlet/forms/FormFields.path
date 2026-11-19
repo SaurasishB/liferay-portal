@@ -976,14 +976,6 @@
 	<td></td>
 </tr>
 
-<!--TOOLBAR-->
-
-<tr>
-	<td>TOOLBAR_ANY_ITEM_BUTTON</td>
-	<td>//a[contains(@href,"${key_titleName}")]</td>
-	<td></td>
-</tr>
-
 <!--VALIDATION-->
 
 <tr>

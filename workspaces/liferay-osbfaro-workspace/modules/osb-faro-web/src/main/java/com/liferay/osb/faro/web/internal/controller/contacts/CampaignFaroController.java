@@ -6,15 +6,16 @@
 package com.liferay.osb.faro.web.internal.controller.contacts;
 
 import com.liferay.osb.faro.engine.client.model.Account;
+import com.liferay.osb.faro.engine.client.model.AcquisitionParameter;
 import com.liferay.osb.faro.engine.client.model.Campaign;
 import com.liferay.osb.faro.engine.client.model.CampaignMetric;
+import com.liferay.osb.faro.engine.client.model.CampaignName;
 import com.liferay.osb.faro.engine.client.model.Individual;
 import com.liferay.osb.faro.web.internal.controller.BaseFaroController;
 import com.liferay.osb.faro.web.internal.model.display.FaroFDSResultsDisplay;
 import com.liferay.osb.faro.web.internal.model.display.contacts.AccountDisplay;
 import com.liferay.osb.faro.web.internal.model.display.contacts.CampaignDisplay;
 import com.liferay.osb.faro.web.internal.model.display.contacts.IndividualDisplay;
-import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.model.RoleConstants;
 
@@ -69,6 +70,22 @@ public class CampaignFaroController extends BaseFaroController {
 	}
 
 	@GET
+	@Path("/{id}/acquisition-parameters")
+	@RolesAllowed(RoleConstants.SITE_MEMBER)
+	public List<AcquisitionParameter> getCampaignAcquisitionParameters(
+			@PathParam("groupId") long groupId, @PathParam("id") String id,
+			@QueryParam("channelId") long channelId,
+			@QueryParam("rangeEnd") String rangeEnd,
+			@QueryParam("rangeKey") Integer rangeKey,
+			@QueryParam("rangeStart") String rangeStart)
+		throws Exception {
+
+		return contactsEngineClient.getCampaignAcquisitionParameters(
+			faroProjectLocalService.getFaroProjectByGroupId(groupId), channelId,
+			id, rangeEnd, rangeKey, rangeStart);
+	}
+
+	@GET
 	@Path("/{id}")
 	@RolesAllowed(RoleConstants.SITE_MEMBER)
 	public CampaignDisplay getCampaignDisplay(
@@ -98,6 +115,25 @@ public class CampaignFaroController extends BaseFaroController {
 		return contactsEngineClient.getCampaignMetrics(
 			faroProjectLocalService.getFaroProjectByGroupId(groupId),
 			accountIds, channelId, rangeEnd, rangeKey, rangeStart);
+	}
+
+	@GET
+	@Path("/campaign-names")
+	@RolesAllowed(RoleConstants.SITE_MEMBER)
+	public FaroFDSResultsDisplay<CampaignName>
+			getCampaignNamesFaroFDSResultsDisplay(
+				@PathParam("groupId") long groupId,
+				@QueryParam("channelId") Long channelId,
+				@QueryParam("page") int page,
+				@DefaultValue("20") @QueryParam("pageSize") int pageSize,
+				@QueryParam("search") String search)
+		throws Exception {
+
+		return new FaroFDSResultsDisplay<>(
+			contactsEngineClient.getCampaignNames(
+				faroProjectLocalService.getFaroProjectByGroupId(groupId),
+				channelId, search, page, pageSize),
+			page, pageSize);
 	}
 
 	@GET
@@ -147,26 +183,6 @@ public class CampaignFaroController extends BaseFaroController {
 				channelId, id, search, rangeEnd, rangeKey, rangeStart,
 				sortString, page, pageSize),
 			IndividualDisplay::new, page, pageSize);
-	}
-
-	@GET
-	@Path("/top")
-	@RolesAllowed(RoleConstants.SITE_MEMBER)
-	public List<CampaignDisplay> getTopCampaignDisplays(
-			@PathParam("groupId") long groupId,
-			@QueryParam("channelId") long channelId,
-			@QueryParam("filter") String filterString,
-			@QueryParam("rangeEnd") String rangeEnd,
-			@QueryParam("rangeKey") Integer rangeKey,
-			@QueryParam("rangeStart") String rangeStart,
-			@DefaultValue("5") @QueryParam("size") int size)
-		throws Exception {
-
-		return TransformUtil.transform(
-			contactsEngineClient.getTopCampaigns(
-				faroProjectLocalService.getFaroProjectByGroupId(groupId),
-				channelId, filterString, rangeEnd, rangeKey, rangeStart, size),
-			CampaignDisplay::new);
 	}
 
 }

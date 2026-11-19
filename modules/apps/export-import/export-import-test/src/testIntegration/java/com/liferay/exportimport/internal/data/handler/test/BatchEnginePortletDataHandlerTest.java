@@ -4069,14 +4069,31 @@ public class BatchEnginePortletDataHandlerTest {
 		_userLocalService.deleteUser(user1);
 		_userLocalService.deleteUser(user2);
 
-		ExportImportConfiguration exportImportConfiguration =
-			new ExportImportExecutor(
+		ExportImportConfiguration exportImportConfiguration = null;
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				"com.liferay.batch.engine.internal." +
+					"BatchEngineImportTaskExecutorImpl",
+				LoggerTestUtil.ERROR)) {
+
+			exportImportConfiguration = new ExportImportExecutor(
 			).withGroupId(
 				_getCompanyGroupId()
 			).withIncludeWorkflowDefinitions(
 			).withLARFile(
 				larFile
 			).executeImport();
+
+			List<LogEntry> logEntries = logCapture.getLogEntries();
+
+			Assert.assertEquals(logEntries.toString(), 1, logEntries.size());
+
+			LogEntry logEntry = logEntries.get(0);
+
+			Assert.assertEquals(
+				"Specify at least one assignment for the review task node",
+				logEntry.getMessage());
+		}
 
 		Assert.assertNull(
 			_fetchWorkflowDefinition(
@@ -4397,9 +4414,13 @@ public class BatchEnginePortletDataHandlerTest {
 
 			_objectFieldLocalService.updateObjectField(objectField);
 
-			try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+			try (LogCapture logCapture1 = LoggerTestUtil.configureLog4JLogger(
 					"com.liferay.batch.engine.internal." +
 						"BatchEngineExportTaskExecutorImpl",
+					LoggerTestUtil.ERROR);
+				LogCapture logCapture2 = LoggerTestUtil.configureLog4JLogger(
+					"com.liferay.exportimport.internal.lifecycle." +
+						"LoggerExportImportLifecycleListener",
 					LoggerTestUtil.ERROR)) {
 
 				new ExportImportExecutor(

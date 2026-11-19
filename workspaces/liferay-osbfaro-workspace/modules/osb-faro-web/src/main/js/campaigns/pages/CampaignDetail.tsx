@@ -2,14 +2,16 @@ import * as API from 'shared/api';
 import * as breadcrumbs from 'shared/util/breadcrumbs';
 import AccountDropdown from 'shared/components/AccountDropdown';
 import BasePage from 'shared/components/base-page';
+import CampaignUtmParameters from '../components/CampaignUtmParameters';
 import MembershipsCard from '../components/MembershipsCard';
 import React, {useContext} from 'react';
 import {ChannelContext} from 'shared/context/channel';
 import {DropdownRangeKey} from 'shared/components/dropdown-range-key/DropdownRangeKey';
 import {pickBy} from 'lodash';
+import {SectionHeader} from 'shared/components/SectionHeader';
 import {useAccountFilter} from 'shared/hooks/useAccountFilter';
 import {useParams} from 'react-router-dom';
-import {useQueryRangeSelectors} from 'shared/hooks/useQueryRangeSelectors';
+import {useRangeQueryValues} from 'shared/hooks/useRangeQueryValues';
 import {useRangeSelectorChange} from 'shared/hooks/useRangeSelectorChange';
 import {useRequest} from 'shared/hooks/useRequest';
 
@@ -20,7 +22,7 @@ const CampaignDetail: React.FC = () => {
 
 	const {channelId, groupId, id} = useParams();
 
-	const rangeSelectors = useQueryRangeSelectors();
+	const {apiRangeParams, rangeSelectors} = useRangeQueryValues();
 
 	const {data: campaign} = useRequest({
 		dataSourceFn: API.campaigns.fetchCampaign,
@@ -62,10 +64,12 @@ const CampaignDetail: React.FC = () => {
 
 			<BasePage.SubHeader>
 				<AccountDropdown
+					campaignTouched
 					className="mr-2"
 					initialAccountId={accountId}
 					initialAccountName={accountName}
 					onFilterChange={setAccount}
+					rangeQueryValues={apiRangeParams}
 				/>
 
 				<div className="d-flex justify-content-end w-100">
@@ -79,6 +83,19 @@ const CampaignDetail: React.FC = () => {
 			</BasePage.SubHeader>
 
 			<BasePage.Body>
+				<SectionHeader
+					icon="box-container"
+					title={Liferay.Language.get('details')}
+				/>
+				<CampaignUtmParameters
+					campaignId={id!}
+					channelId={channelId!}
+					groupId={groupId!}
+				/>
+				<SectionHeader
+					icon="users"
+					title={Liferay.Language.get('membership')}
+				/>
 				<MembershipsCard
 					campaignId={id!}
 					channelId={channelId!}

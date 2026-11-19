@@ -152,6 +152,50 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 			getReleaseProperties(), "lp.version.major");
 	}
 
+	@Override
+	public List<File> getModifiedFilesList(
+		boolean checkUnstagedFiles, List<PathMatcher> excludesPathMatchers,
+		List<PathMatcher> includesPathMatchers) {
+
+		List<File> modifiedFiles = super.getModifiedFilesList(
+			checkUnstagedFiles, excludesPathMatchers, includesPathMatchers);
+
+		if (_publicPortalGitWorkingDirectory == null) {
+			return modifiedFiles;
+		}
+
+		List<File> publicModifiedFiles = new ArrayList<>();
+		File publicWorkingDirectory =
+			_publicPortalGitWorkingDirectory.getWorkingDirectory();
+
+		for (File publicModifiedFile :
+				_publicPortalGitWorkingDirectory.getModifiedFilesList(
+					checkUnstagedFiles, null, null)) {
+
+			publicModifiedFiles.add(
+				new File(
+					getWorkingDirectory(),
+					JenkinsResultsParserUtil.getPathRelativeTo(
+						publicModifiedFile, publicWorkingDirectory)));
+		}
+
+		modifiedFiles = new ArrayList<>(modifiedFiles);
+
+		for (File publicModifiedFile :
+				JenkinsResultsParserUtil.getIncludedFiles(
+					excludesPathMatchers, includesPathMatchers,
+					publicModifiedFiles)) {
+
+			if (modifiedFiles.contains(publicModifiedFile)) {
+				continue;
+			}
+
+			modifiedFiles.add(publicModifiedFile);
+		}
+
+		return modifiedFiles;
+	}
+
 	public List<File> getModifiedModuleDirsList() throws IOException {
 		if (_modifiedModuleDirs != null) {
 			return _modifiedModuleDirs;
@@ -477,6 +521,18 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 			testPropertiesFile);
 
 		return _testProperties;
+	}
+
+	public boolean isPrivate() {
+		String upstreamBranchName = getUpstreamBranchName();
+
+		return upstreamBranchName.endsWith("-private");
+	}
+
+	public void setPublicPortalGitWorkingDirectory(
+		PortalGitWorkingDirectory publicPortalGitWorkingDirectory) {
+
+		_publicPortalGitWorkingDirectory = publicPortalGitWorkingDirectory;
 	}
 
 	public synchronized void setUpYarn() {
@@ -955,6 +1011,7 @@ public class PortalGitWorkingDirectory extends GitWorkingDirectory {
 	private Properties _appServerProperties;
 	private List<File> _jsUnitFiles;
 	private List<File> _modifiedModuleDirs;
+	private PortalGitWorkingDirectory _publicPortalGitWorkingDirectory;
 	private Properties _releaseProperties;
 	private boolean _setUpYarn;
 	private Properties _testProperties;

@@ -17,10 +17,13 @@ import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.model.ClassName;
+import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.model.UserGroup;
 import com.liferay.portal.kernel.security.permission.PermissionCheckerFactory;
 import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.service.GroupLocalService;
+import com.liferay.portal.kernel.service.UserGroupLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.servlet.ServletResponseUtil;
 import com.liferay.portal.kernel.struts.StrutsAction;
@@ -32,6 +35,7 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.util.comparator.UserFirstNameComparator;
+import com.liferay.portal.kernel.util.comparator.UserGroupNameComparator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -101,6 +105,29 @@ public class GetContentItemMentionUsersStrutsAction implements StrutsAction {
 		ObjectEntry objectEntry = _objectEntryLocalService.getObjectEntry(
 			classPK);
 
+		long groupId = objectEntry.getGroupId();
+
+		if (groupId == 0) {
+			Group group = _groupLocalService.fetchGroup(
+				themeDisplay.getCompanyId(),
+				_classNameLocalService.getClassNameId(className1), classPK);
+
+			if (group == null) {
+				ServletResponseUtil.write(
+					httpServletResponse,
+					JSONUtil.toString(
+						JSONUtil.put(
+							"userGroups", JSONUtil.putAll()
+						).put(
+							"users", JSONUtil.putAll()
+						)));
+
+				return null;
+			}
+
+			groupId = group.getGroupId();
+		}
+
 		String keywords = ParamUtil.getString(httpServletRequest, "keywords");
 
 		Set<Long> recentUserIds = new HashSet<>();
@@ -113,7 +140,7 @@ public class GetContentItemMentionUsersStrutsAction implements StrutsAction {
 			if (comment.isRoot() || (user == null) ||
 				!_isMatch(keywords, user) || !userIds.add(user.getUserId()) ||
 				!_groupLocalService.hasUserGroup(
-					user.getUserId(), objectEntry.getGroupId(), true) ||
+					user.getUserId(), groupId, true) ||
 				!_isMentionable(className1, classPK, themeDisplay, user)) {
 
 				continue;
@@ -136,7 +163,7 @@ public class GetContentItemMentionUsersStrutsAction implements StrutsAction {
 				LinkedHashMapBuilder.<String, Object>put(
 					"inherit", Boolean.TRUE
 				).put(
-					"usersGroups", objectEntry.getGroupId()
+					"usersGroups", groupId
 				).build(),
 				start, start + _MAX_USERS,
 				UserFirstNameComparator.getInstance(true));
@@ -167,13 +194,39 @@ public class GetContentItemMentionUsersStrutsAction implements StrutsAction {
 			httpServletResponse,
 			JSONUtil.toString(
 				JSONUtil.put(
+					"userGroups",
+					JSONUtil.toJSONArray(
+						_userGroupLocalService.search(
+							themeDisplay.getCompanyId(), keywords, null,
+							LinkedHashMapBuilder.<String, Object>put(
+								"userGroupsGroups", groupId
+							).build(),
+							true, 0, 20,
+							UserGroupNameComparator.getInstance(true)),
+						this::_getUserGroupJSONObject)
+				).put(
 					"users",
 					JSONUtil.toJSONArray(
 						users.values(),
 						user -> _getUserJSONObject(
-							recentUserIds, themeDisplay, user)))));
+							recentUserIds, themeDisplay, user))
+				)));
 
 		return null;
+	}
+
+	private JSONObject _getUserGroupJSONObject(UserGroup userGroup)
+		throws PortalException {
+
+		return JSONUtil.put(
+			"id", userGroup.getExternalReferenceCode()
+		).put(
+			"membersCount",
+			_userLocalService.getUserGroupUsersCount(
+				userGroup.getUserGroupId(), WorkflowConstants.STATUS_APPROVED)
+		).put(
+			"name", userGroup.getName()
+		);
 	}
 
 	private JSONObject _getUserJSONObject(
@@ -255,6 +308,9 @@ public class GetContentItemMentionUsersStrutsAction implements StrutsAction {
 
 	@Reference
 	private PermissionCheckerFactory _permissionCheckerFactory;
+
+	@Reference
+	private UserGroupLocalService _userGroupLocalService;
 
 	@Reference
 	private UserLocalService _userLocalService;

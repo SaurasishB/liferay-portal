@@ -12,7 +12,7 @@ import {
 	waitFor,
 	within,
 } from '@testing-library/react';
-import {MemoryRouter, useLocation} from 'react-router-dom';
+import {MemoryRouter, matchPath, useLocation} from 'react-router-dom';
 import {mockChannelContext} from 'test/mock-channel-context';
 import {Provider} from 'react-redux';
 import {Routes, toRoute} from 'shared/util/router';
@@ -177,6 +177,14 @@ const useRequestImpl =
 				error: metricsError,
 				loading: metricsLoading,
 				refetch: mockRefetchMetrics,
+			};
+		}
+
+		if (dataSourceFn === API.lifecycle.fetchLifecycles) {
+			return {
+				data: [{externalReferenceCode: 'erc-8', id: '8'}],
+				error: false,
+				loading: false,
 			};
 		}
 
@@ -364,7 +372,7 @@ describe('BaseLifecycle', () => {
 
 			expect(screen.getByText('404')).toBeInTheDocument();
 			expect(
-				screen.getByText(/dashboard not found/i)
+				screen.getByText(/dashboard was not found/i)
 			).toBeInTheDocument();
 			expect(
 				screen.getByText(/lifecycle dashboard you are looking for/i)
@@ -424,7 +432,7 @@ describe('BaseLifecycle', () => {
 
 		renderPage();
 
-		expect(screen.queryByText('No Data Sources Connected')).toBeNull();
+		expect(screen.queryByText('No Data Sources Are Connected')).toBeNull();
 		expect(screen.queryByText('No Account Data Available')).toBeNull();
 		expect(screen.queryByTestId('overview-section')).toBeNull();
 	});
@@ -491,11 +499,11 @@ describe('BaseLifecycle', () => {
 			mockedUseDataSources.mockReturnValue({empty: true, loading: false});
 		});
 
-		it('renders the "No Data Sources Connected" empty state', () => {
+		it('renders the "No Data Sources Are Connected" empty state', () => {
 			renderPage();
 
 			expect(
-				screen.getByText('No Data Sources Connected')
+				screen.getByText('No Data Sources Are Connected')
 			).toBeInTheDocument();
 			expect(
 				screen.getByText(
@@ -1183,5 +1191,48 @@ describe('BaseLifecycle', () => {
 				screen.queryByRole('menuitem', {name: /set.default/i})
 			).toBeNull();
 		});
+	});
+
+	it('opens the default lifecycle of the channel without requesting it again', () => {
+		mockUseParams.mockImplementation(() => ({
+			channelId: '123',
+			groupId: '23',
+			lifecycleId: matchPath(
+				'/workspace/:groupId/:channelId/lifecycle/:lifecycleId',
+				useLocation().pathname
+			)?.params.lifecycleId,
+		}));
+
+		mockedUseRequest.mockImplementation(
+			useRequestImpl({
+				lifecycle: {id: '8', name: 'Growth Hub'},
+				totalCount: 5,
+			})
+		);
+
+		renderPage([
+			toRoute(Routes.LIFECYCLE, {channelId: '123', groupId: '23'}),
+		]);
+
+		expect(screen.getByTestId('location')).toHaveTextContent(
+			toRoute(Routes.LIFECYCLE_DASHBOARD, {
+				channelId: '123',
+				groupId: '23',
+				lifecycleId: 'erc-8',
+			})
+		);
+		expect(
+			screen.getByRole('heading', {name: 'Growth Hub'})
+		).toBeInTheDocument();
+
+		const lifecycleIds = mockedUseRequest.mock.calls
+			.filter(
+				([{dataSourceFn, skipRequest}]) =>
+					dataSourceFn === API.lifecycle.fetchLifecycle &&
+					!skipRequest
+			)
+			.map(([{variables}]) => variables.lifecycleId);
+
+		expect(new Set(lifecycleIds)).toEqual(new Set(['erc-8']));
 	});
 });
