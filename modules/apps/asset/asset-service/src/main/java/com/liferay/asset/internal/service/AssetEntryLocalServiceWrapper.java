@@ -5,6 +5,7 @@
 
 package com.liferay.asset.internal.service;
 
+import com.liferay.asset.entry.rel.model.AssetEntryAssetCategoryRel;
 import com.liferay.asset.entry.rel.service.AssetEntryAssetCategoryRelLocalService;
 import com.liferay.asset.kernel.model.AssetEntry;
 import com.liferay.asset.kernel.service.AssetCategoryLocalService;
@@ -12,7 +13,9 @@ import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceWrapper;
 
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -116,14 +119,53 @@ public class AssetEntryLocalServiceWrapper
 			categoryIds = _assetCategoryLocalService.getViewableCategoryIds(
 				className, classPK, categoryIds);
 
-			_assetEntryAssetCategoryRelLocalService.
-				deleteAssetEntryAssetCategoryRelByAssetEntryId(
-					entry.getEntryId());
+			List<AssetEntryAssetCategoryRel> assetEntryAssetCategoryRels =
+				_assetEntryAssetCategoryRelLocalService.
+					getAssetEntryAssetCategoryRelsByAssetEntryId(
+						entry.getEntryId());
 
-			for (long categoryId : categoryIds) {
+			int i = 0;
+			int j = 0;
+			boolean modified = false;
+
+			while ((i < categoryIds.length) &&
+				   (j < assetEntryAssetCategoryRels.size())) {
+
+				AssetEntryAssetCategoryRel assetEntryAssetCategoryRel =
+					assetEntryAssetCategoryRels.get(j++);
+
+				if (assetEntryAssetCategoryRel.getAssetCategoryId() ==
+						categoryIds[i]) {
+
+					i++;
+				}
+				else {
+					_assetEntryAssetCategoryRelLocalService.
+						deleteAssetEntryAssetCategoryRel(
+							assetEntryAssetCategoryRel);
+					modified = true;
+				}
+			}
+
+			while (i < categoryIds.length) {
 				_assetEntryAssetCategoryRelLocalService.
 					addAssetEntryAssetCategoryRel(
-						entry.getEntryId(), categoryId);
+						entry.getEntryId(), categoryIds[i++]);
+				modified = true;
+			}
+
+			while (j < assetEntryAssetCategoryRels.size()) {
+				_assetEntryAssetCategoryRelLocalService.
+					deleteAssetEntryAssetCategoryRel(
+						assetEntryAssetCategoryRels.get(j++));
+				modified = true;
+			}
+
+			if (modified &&
+				((serviceContext == null) ||
+				 serviceContext.isIndexingEnabled())) {
+
+				reindex(Collections.singletonList(entry));
 			}
 		}
 
