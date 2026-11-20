@@ -9,12 +9,12 @@ function main {
 
 	timeout=$(($(date +%s) + 600))
 
-	until PGCONNECT_TIMEOUT=10 psql \
-		--command "SELECT 1" \
-		--dbname "${DATABASE_NAME}" \
+	until mysql \
+		--connect-timeout 10 \
+		--execute "SELECT 1" \
 		--host 127.0.0.1 \
-		--port "${DATABASE_PORT}" \
-		--username "${DATABASE_USERNAME}" > /dev/null 2>&1
+		--user "${DATABASE_USERNAME}" \
+		"${DATABASE_NAME}" > /dev/null 2>&1
 	do
 		if [ $(date +%s) -ge ${timeout} ]
 		then
