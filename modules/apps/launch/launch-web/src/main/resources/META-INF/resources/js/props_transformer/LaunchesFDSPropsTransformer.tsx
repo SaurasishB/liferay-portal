@@ -13,7 +13,11 @@ import {
 	WORKFLOW_STATUS_SCHEDULED,
 } from '../components/WorkflowStatusLabel';
 import openNewLaunchModal from '../modals/openNewLaunchModal';
+import openScheduleLaunchModal from '../modals/openScheduleLaunchModal';
 import fillViewLaunchURL from '../util/fillViewLaunchURL';
+import {openSuccessToast} from '../util/toasts';
+
+import type {TimeZoneOption} from '../util/dateTime';
 
 interface CreationMenu {
 	primaryItems: Array<{[key: string]: unknown}>;
@@ -25,7 +29,14 @@ interface ItemsAction {
 }
 
 interface Props {
-	additionalProps: {unscheduleLaunchURL: string; viewLaunchURL: string};
+	additionalProps: {
+		portletNamespace: string;
+		scheduleLaunchURL: string;
+		timeZoneId: string;
+		timeZones: TimeZoneOption[];
+		unscheduleLaunchURL: string;
+		viewLaunchURL: string;
+	};
 	creationMenu?: CreationMenu;
 	itemsActions?: ItemsAction[];
 	[key: string]: unknown;
@@ -95,6 +106,14 @@ export default function LaunchesFDSPropsTransformer({
 			],
 		},
 		itemsActions: itemsActions?.map((action) => {
+			if (action.data?.id === 'schedule') {
+				return {
+					...action,
+					isVisible: (launch: Launch) =>
+						launch.status?.code === WORKFLOW_STATUS_DRAFT,
+				};
+			}
+
 			if (action.data?.id === 'unschedule') {
 				return {
 					...action,
@@ -114,7 +133,28 @@ export default function LaunchesFDSPropsTransformer({
 			itemData: Launch;
 			loadData: () => void;
 		}) {
-			if (action.data?.id === 'unschedule') {
+			if (action.data?.id === 'schedule') {
+				openScheduleLaunchModal({
+					launchName: itemData.name,
+					onScheduled: () => {
+						loadData();
+
+						openSuccessToast(
+							Liferay.Language.get(
+								'your-request-completed-successfully'
+							)
+						);
+					},
+					portletNamespace: additionalProps.portletNamespace,
+					scheduleLaunchURL: fillViewLaunchURL(
+						additionalProps.scheduleLaunchURL,
+						itemData
+					),
+					timeZoneId: additionalProps.timeZoneId,
+					timeZones: additionalProps.timeZones,
+				});
+			}
+			else if (action.data?.id === 'unschedule') {
 				confirmAndUnscheduleLaunchAction({
 					loadData,
 					unscheduleLaunchURL: fillViewLaunchURL(

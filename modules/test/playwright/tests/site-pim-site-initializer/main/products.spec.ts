@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {expect, mergeTests} from '@playwright/test';
+import {Locator, expect, mergeTests} from '@playwright/test';
 import path from 'path';
 
 import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
@@ -470,6 +470,233 @@ test(
 			);
 
 			expect(response.status()).toBe(404);
+		});
+	}
+);
+
+test(
+	'Show the first image of a product as its icon',
+	{tag: '@LPD-114148'},
+	async ({
+		apiHelpers,
+		productPage,
+		productRelationshipsPage,
+		productsPage,
+	}) => {
+		const dependenciesPath = path.join(
+			__dirname,
+			'../../site-cms-site-initializer/main/dependencies'
+		);
+		const images = productPage.getRepeatableGroupEntries('Images');
+		const imageProductTitle = getRandomString();
+
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
+
+		function getIcon(locator: Locator) {
+			return locator.locator('.sticker img');
+		}
+
+		async function openRelationships(productTitle: string) {
+			await productsPage.goto();
+
+			await productsPage.openProductEditor(productTitle);
+
+			await clickAndExpectToBeVisible({
+				target: productRelationshipsPage.addRelationshipButton,
+				trigger: productPage.getTab('Relationships'),
+			});
+		}
+
+		await test.step('Add a product with two images and one without images', async () => {
+			await productsPage.goto();
+
+			await productsPage.openNewProductEditor(space.name);
+
+			await productPage.sku.fill(getRandomString());
+			await productPage.title.fill(imageProductTitle);
+
+			await images
+				.first()
+				.locator('input[type="file"]')
+				.setInputFiles(
+					path.join(dependenciesPath, 'file_upload_image_1.jpg')
+				);
+
+			await productPage
+				.getRepeatableGroup('Images')
+				.getByRole('button', {name: 'Add New'})
+				.click();
+
+			await expect(images).toHaveCount(2);
+
+			await images
+				.last()
+				.locator('input[type="file"]')
+				.setInputFiles(
+					path.join(dependenciesPath, 'sample_small_wide_400x300.jpg')
+				);
+
+			await productPage.save();
+
+			await expect(
+				productsPage.getProduct(imageProductTitle)
+			).toBeVisible();
+		});
+
+		const productTitle = await addProduct({
+			productPage,
+			productsPage,
+			spaceName: space.name,
+		});
+
+		await test.step('The products list shows the first image', async () => {
+			await expect(
+				getIcon(
+					productsPage.dataSetFragmentPage.getRow(imageProductTitle)
+				)
+			).toHaveAttribute('src', /file_upload_image_1\.jpg/);
+			await expect(
+				getIcon(productsPage.dataSetFragmentPage.getRow(productTitle))
+			).toHaveCount(0);
+		});
+
+		await test.step('The relationship selector and the relationships show the first image', async () => {
+			await openRelationships(productTitle);
+
+			await clickAndExpectToBeVisible({
+				target: productRelationshipsPage.selectorConfirmButton,
+				trigger: productRelationshipsPage.addRelationshipButton,
+			});
+
+			const selectorRow = productRelationshipsPage.selectorDialog
+				.locator('tr')
+				.filter({hasText: imageProductTitle});
+
+			await expect(getIcon(selectorRow)).toHaveAttribute(
+				'src',
+				/file_upload_image_1\.jpg/
+			);
+
+			await selectorRow.getByRole('checkbox').check();
+
+			await productRelationshipsPage.selectorConfirmButton.click();
+
+			await expect(
+				getIcon(
+					productRelationshipsPage.getRelatedProduct(
+						imageProductTitle
+					)
+				)
+			).toHaveAttribute('src', /file_upload_image_1\.jpg/);
+			await expect(
+				getIcon(
+					productRelationshipsPage.getRelatedProduct(productTitle)
+				)
+			).toHaveCount(0);
+		});
+
+		await test.step('Removing the first image shows the next one', async () => {
+			await productsPage.goto();
+
+			await productsPage.openProductEditor(imageProductTitle);
+
+			await expect(images).toHaveCount(2);
+
+			await images.first().getByTitle('Remove', {exact: true}).click();
+
+			await expect(images).toHaveCount(1);
+
+			await productPage.save();
+
+			await expect(
+				getIcon(
+					productsPage.dataSetFragmentPage.getRow(imageProductTitle)
+				)
+			).toHaveAttribute('src', /sample_small_wide_400x300\.jpg/);
+
+			await openRelationships(productTitle);
+
+			await expect(
+				getIcon(
+					productRelationshipsPage.getRelatedProduct(
+						imageProductTitle
+					)
+				)
+			).toHaveAttribute('src', /sample_small_wide_400x300\.jpg/);
+		});
+	}
+);
+
+test(
+	'A product folder lists its products and subfolders',
+	{tag: '@LPD-115762'},
+	async ({apiHelpers, page, productFolderPage, productPage}) => {
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
+
+		const objectEntryFolder =
+			await apiHelpers.objectFolder.createObjectEntryFolder({
+				parentObjectEntryFolderExternalReferenceCode: 'L_PRODUCTS',
+				scopeKey: space.name,
+				title: getRandomString(),
+			});
+
+		const subfolderTitle = getRandomString();
+
+		await apiHelpers.objectFolder.createObjectEntryFolder({
+			parentObjectEntryFolderExternalReferenceCode:
+				objectEntryFolder.externalReferenceCode,
+			scopeKey: space.name,
+			title: subfolderTitle,
+		});
+
+		await productFolderPage.goto(objectEntryFolder.id);
+
+		await test.step('The New menu offers a folder and the product types', async () => {
+			await productFolderPage.openNewMenu();
+
+			await expect(
+				productFolderPage.menuItem('PIM Basic Product')
+			).toBeVisible();
+
+			await page.keyboard.press('Escape');
+		});
+
+		await test.step('A subfolder row has the folder actions', async () => {
+			await expect(
+				productFolderPage.rowLink(subfolderTitle)
+			).toBeVisible();
+
+			await productFolderPage.expectRowActions(subfolderTitle, [
+				'View Folder',
+				'Edit',
+				'Permissions',
+				'Delete',
+			]);
+		});
+
+		await test.step('A product created from the folder is listed in it', async () => {
+			const productTitle = getRandomString();
+
+			await productFolderPage.openNewProductEditor('PIM Basic Product');
+
+			await productPage.sku.fill(getRandomString());
+			await productPage.title.fill(productTitle);
+
+			await productPage.save();
+
+			await expect(productFolderPage.rowLink(productTitle)).toBeVisible();
+
+			await productFolderPage.expectRowActions(productTitle, [
+				'Edit',
+				'Permissions',
+				'Delete',
+			]);
+		});
+
+		await test.step('An empty subfolder shows the products empty state', async () => {
+			await productFolderPage.rowLink(subfolderTitle).click();
+
+			await expect(productFolderPage.emptyState).toBeVisible();
 		});
 	}
 );
