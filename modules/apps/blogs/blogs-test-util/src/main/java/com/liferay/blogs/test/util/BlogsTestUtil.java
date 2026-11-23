@@ -10,6 +10,7 @@ import com.liferay.blogs.service.BlogsEntryLocalServiceUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.editor.constants.EditorConstants;
+import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.util.CalendarFactoryUtil;
@@ -21,6 +22,7 @@ import com.liferay.portal.kernel.workflow.WorkflowThreadLocal;
 import java.io.Serializable;
 
 import java.util.Calendar;
+import java.util.Date;
 
 import org.junit.Assert;
 
@@ -28,6 +30,17 @@ import org.junit.Assert;
  * @author Zsolt Berentey
  */
 public class BlogsTestUtil {
+
+	public static BlogsEntry addEntry(
+			long userId, String title, String content,
+			ServiceContext serviceContext)
+		throws PortalException {
+
+		return BlogsEntryLocalServiceUtil.addEntry(
+			userId, title, StringPool.BLANK, StringPool.BLANK, content,
+			new Date(), true, true, new String[0], StringPool.BLANK, null, null,
+			serviceContext);
+	}
 
 	public static BlogsEntry addEntryWithWorkflow(
 			long userId, String title, boolean approved,

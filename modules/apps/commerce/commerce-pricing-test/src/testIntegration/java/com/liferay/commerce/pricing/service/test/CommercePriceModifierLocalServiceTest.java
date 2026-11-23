@@ -25,7 +25,8 @@ import com.liferay.commerce.pricing.service.CommercePriceModifierLocalService;
 import com.liferay.commerce.pricing.service.CommercePriceModifierRelLocalService;
 import com.liferay.commerce.pricing.service.CommercePricingClassCPDefinitionRelLocalService;
 import com.liferay.commerce.pricing.service.CommercePricingClassLocalService;
-import com.liferay.commerce.pricing.service.persistence.CommercePricingClassCPDefinitionRelUtil;
+import com.liferay.commerce.pricing.service.persistence.CommercePriceModifierUtil;
+import com.liferay.commerce.pricing.test.util.CommercePricingClassCPDefinitionRelTestUtil;
 import com.liferay.commerce.product.model.CPDefinition;
 import com.liferay.commerce.product.model.CPInstance;
 import com.liferay.commerce.product.model.CommerceCatalog;
@@ -136,7 +137,7 @@ public class CommercePriceModifierLocalServiceTest {
 			_serviceContext);
 
 		List<CommercePriceModifier> commercePriceModifiers =
-			_commercePriceModifierLocalService.getCommercePriceModifiers(
+			_getCommercePriceModifiers(
 				commercePriceList.getCommercePriceListId());
 
 		CommercePriceModifier commercePriceModifier2 =
@@ -295,7 +296,7 @@ public class CommercePriceModifierLocalServiceTest {
 				_serviceContext);
 
 		List<CommercePriceModifier> commercePriceModifiers =
-			_commercePriceModifierLocalService.getCommercePriceModifiers(
+			_getCommercePriceModifiers(
 				commercePriceList.getCommercePriceListId());
 
 		CommercePriceModifier commercePriceModifier2 =
@@ -403,7 +404,7 @@ public class CommercePriceModifierLocalServiceTest {
 			commercePricingClass.getCommercePricingClassId(), _serviceContext);
 
 		List<CommercePriceModifier> commercePriceModifiers =
-			_commercePriceModifierLocalService.getCommercePriceModifiers(
+			_getCommercePriceModifiers(
 				commercePriceList.getCommercePriceListId());
 
 		CommercePriceModifier commercePriceModifier2 =
@@ -430,12 +431,10 @@ public class CommercePriceModifierLocalServiceTest {
 			commercePriceModifierRel.getClassPK());
 
 		List<CommercePricingClassCPDefinitionRel>
-			commercePricingClassCPDefinitionRels = TransactionTestUtil.invoke(
-				CommercePricingClassCPDefinitionRelUtil.getPersistence(),
-				commercePricingClassCPDefinitionRelPersistence ->
-					commercePricingClassCPDefinitionRelPersistence.
-						findByCommercePricingClassId(
-							commercePricingClass.getCommercePricingClassId()));
+			commercePricingClassCPDefinitionRels =
+				CommercePricingClassCPDefinitionRelTestUtil.
+					getCommercePricingClassCPDefinitionRels(
+						commercePricingClass.getCommercePricingClassId());
 
 		Assert.assertEquals(
 			commercePricingClassCPDefinitionRels.toString(), 1,
@@ -494,7 +493,7 @@ public class CommercePriceModifierLocalServiceTest {
 			_serviceContext);
 
 		List<CommercePriceModifier> commercePriceModifiers =
-			_commercePriceModifierLocalService.getCommercePriceModifiers(
+			_getCommercePriceModifiers(
 				commercePriceList.getCommercePriceListId());
 
 		CommercePriceModifier commercePriceModifier2 =
@@ -674,6 +673,17 @@ public class CommercePriceModifierLocalServiceTest {
 
 	@Rule
 	public FrutillaRule frutillaRule = new FrutillaRule();
+
+	private List<CommercePriceModifier> _getCommercePriceModifiers(
+			long commercePriceListId)
+		throws Exception {
+
+		return TransactionTestUtil.invoke(
+			CommercePriceModifierUtil.getPersistence(),
+			commercePriceModifierPersistence ->
+				commercePriceModifierPersistence.findByCommercePriceListId(
+					commercePriceListId));
+	}
 
 	@Inject
 	private CommerceCatalogLocalService _commerceCatalogLocalService;

@@ -8,9 +8,9 @@ package com.liferay.portal.search.opensearch2.internal.connection.helper;
 import com.liferay.portal.json.JSONFactoryImpl;
 import com.liferay.portal.search.engine.SearchEngineInformation;
 import com.liferay.portal.search.opensearch2.internal.connection.OpenSearchConnectionManager;
-import com.liferay.portal.search.opensearch2.internal.index.MappingsHelperImpl;
+import com.liferay.portal.search.opensearch2.internal.index.MappingsHelper;
 import com.liferay.portal.search.opensearch2.internal.index.constants.IndexSettingsConstants;
-import com.liferay.portal.search.opensearch2.internal.settings.SettingsHelperImpl;
+import com.liferay.portal.search.opensearch2.internal.settings.SettingsHelper;
 import com.liferay.portal.search.opensearch2.internal.util.ResourceUtil;
 
 import org.opensearch.client.opensearch.OpenSearchClient;
@@ -35,17 +35,17 @@ public class LiferayIndexCreationHelper implements IndexCreationHelper {
 		OpenSearchClient openSearchClient =
 			_openSearchConnectionManager.getOpenSearchClient();
 
-		MappingsHelperImpl mappingsHelperImpl = new MappingsHelperImpl(
+		MappingsHelper mappingsHelper = new MappingsHelper(
 			null, new JSONFactoryImpl(), openSearchClient.indices(), null,
 			_searchEngineInformation);
 
-		mappingsHelperImpl.setDefaultOrOverrideMappings(
+		mappingsHelper.setDefaultOrOverrideMappings(
 			builder, _openSearchConnectionManager.getJsonpMapper(null));
 	}
 
 	@Override
-	public void contributeIndexSettings(SettingsHelperImpl settingsHelperImpl) {
-		settingsHelperImpl.loadFromSource(
+	public void contributeIndexSettings(SettingsHelper settingsHelper) {
+		settingsHelper.loadFromSource(
 			ResourceUtil.getResourceAsString(
 				getClass(), IndexSettingsConstants.INDEX_SETTINGS_FILE_NAME));
 	}

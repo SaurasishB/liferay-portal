@@ -91,7 +91,6 @@ import com.liferay.portal.kernel.portlet.PortletPreferencesFactory;
 import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryUtil;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCPortlet;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
-import com.liferay.portal.kernel.security.permission.ResourceActions;
 import com.liferay.portal.kernel.service.GroupLocalServiceUtil;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.LayoutLocalServiceUtil;
@@ -103,7 +102,6 @@ import com.liferay.portal.kernel.service.PortletPreferencesLocalService;
 import com.liferay.portal.kernel.service.ResourcePermissionLocalServiceUtil;
 import com.liferay.portal.kernel.service.ResourcePermissionServiceUtil;
 import com.liferay.portal.kernel.service.RoleLocalServiceUtil;
-import com.liferay.portal.kernel.service.UserNotificationEventLocalService;
 import com.liferay.portal.kernel.test.AssertUtils;
 import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
@@ -114,6 +112,7 @@ import com.liferay.portal.kernel.test.util.PropsValuesTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
+import com.liferay.portal.kernel.test.util.UserNotificationEventTestUtil;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.Constants;
 import com.liferay.portal.kernel.util.FileUtil;
@@ -891,7 +890,7 @@ public class LayoutSetPrototypePropagationTest
 				layoutSetPrototypeAssetVocabulary2.getVocabularyId());
 
 		LayoutSetLocalServiceUtil.updateLayoutSetPrototypeLinkEnabled(
-			group.getGroupId(), true, true,
+			group.getGroupId(), true, true, true,
 			_privateLayoutSetPrototype.getUuid());
 
 		List<AssetVocabulary> assetVocabularies =
@@ -2038,8 +2037,7 @@ public class LayoutSetPrototypePropagationTest
 		throws Exception {
 
 		List<UserNotificationEvent> userNotificationEvents =
-			_userNotificationEventLocalService.getUserNotificationEvents(
-				userId);
+			UserNotificationEventTestUtil.getUserNotificationEvents(userId);
 
 		for (int i = userNotificationEvents.size() - 1; i >= 0; i--) {
 			UserNotificationEvent userNotificationEvent =
@@ -2608,9 +2606,6 @@ public class LayoutSetPrototypePropagationTest
 	private Layout _prototypeLayout;
 
 	@Inject
-	private ResourceActions _resourceActions;
-
-	@Inject
 	private SegmentsExperienceLocalService _segmentsExperienceLocalService;
 
 	@Inject
@@ -2621,10 +2616,6 @@ public class LayoutSetPrototypePropagationTest
 
 	@DeleteAfterTestRun
 	private User _user2;
-
-	@Inject
-	private UserNotificationEventLocalService
-		_userNotificationEventLocalService;
 
 	private static class TestBackgroundTaskExecutor
 		extends BaseBackgroundTaskExecutor {

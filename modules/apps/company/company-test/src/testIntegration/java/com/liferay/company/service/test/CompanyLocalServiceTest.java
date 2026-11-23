@@ -50,6 +50,7 @@ import com.liferay.portal.kernel.model.BaseModelListener;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
+import com.liferay.portal.kernel.model.LayoutPrototype;
 import com.liferay.portal.kernel.model.LayoutSetPrototype;
 import com.liferay.portal.kernel.model.ModelListener;
 import com.liferay.portal.kernel.model.Organization;
@@ -74,7 +75,6 @@ import com.liferay.portal.kernel.service.OrganizationLocalService;
 import com.liferay.portal.kernel.service.PasswordPolicyLocalService;
 import com.liferay.portal.kernel.service.PortalPreferenceValueLocalService;
 import com.liferay.portal.kernel.service.PortalPreferencesLocalService;
-import com.liferay.portal.kernel.service.PortletLocalService;
 import com.liferay.portal.kernel.service.RoleLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.SystemEventLocalService;
@@ -82,6 +82,7 @@ import com.liferay.portal.kernel.service.UserGroupLocalService;
 import com.liferay.portal.kernel.service.UserGroupRoleLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.service.VirtualHostLocalService;
+import com.liferay.portal.kernel.service.persistence.PortletUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.randomizerbumpers.NumericStringRandomizerBumper;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
@@ -770,14 +771,13 @@ public class CompanyLocalServiceTest {
 
 	@Test
 	public void testDeleteCompanyDeletesLayoutPrototypes() throws Exception {
+		List<LayoutPrototype> layoutPrototypes =
+			_layoutPrototypeLocalService.search(
+				_deletedCompany.getCompanyId(), null, QueryUtil.ALL_POS,
+				QueryUtil.ALL_POS, null);
+
 		Assert.assertEquals(
-			0,
-			_layoutPrototypeLocalService.searchCount(
-				_deletedCompany.getCompanyId(), true));
-		Assert.assertEquals(
-			0,
-			_layoutPrototypeLocalService.searchCount(
-				_deletedCompany.getCompanyId(), false));
+			layoutPrototypes.toString(), 0, layoutPrototypes.size());
 	}
 
 	@Test
@@ -848,7 +848,7 @@ public class CompanyLocalServiceTest {
 			() -> {
 				Assert.assertEquals(
 					0,
-					_portletLocalService.getPortletsCount(
+					PortletUtil.countByCompanyId(
 						_deletedCompany.getCompanyId()));
 
 				return null;
@@ -1932,9 +1932,6 @@ public class CompanyLocalServiceTest {
 
 	@Inject
 	private PortalPreferencesLocalService _portalPreferencesLocalService;
-
-	@Inject
-	private PortletLocalService _portletLocalService;
 
 	@Inject
 	private PrefsProps _prefsProps;

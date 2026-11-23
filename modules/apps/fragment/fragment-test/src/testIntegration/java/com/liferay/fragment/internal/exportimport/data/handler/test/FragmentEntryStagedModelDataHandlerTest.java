@@ -21,6 +21,7 @@ import com.liferay.fragment.renderer.DefaultFragmentRendererContext;
 import com.liferay.fragment.renderer.FragmentRenderer;
 import com.liferay.fragment.service.FragmentEntryLinkLocalService;
 import com.liferay.fragment.service.FragmentEntryLocalService;
+import com.liferay.fragment.test.util.FragmentEntryLinkTestUtil;
 import com.liferay.fragment.test.util.FragmentTestUtil;
 import com.liferay.layout.provider.LayoutStructureProvider;
 import com.liferay.layout.test.util.ContentLayoutTestUtil;
@@ -40,7 +41,6 @@ import com.liferay.portal.kernel.model.StagedModel;
 import com.liferay.portal.kernel.portletfilerepository.PortletFileRepositoryUtil;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.service.CompanyLocalService;
-import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
@@ -279,7 +279,7 @@ public class FragmentEntryStagedModelDataHandlerTest
 				fragmentStyledLayoutStructureItem.getFragmentEntryLinkId());
 
 		FragmentEntryLink publishedFragmentEntryLink =
-			_fragmentEntryLinkLocalService.getFragmentEntryLink(
+			FragmentEntryLinkTestUtil.getFragmentEntryLink(
 				stagingGroup.getGroupId(),
 				originalFragmentEntryLink.getExternalReferenceCode(),
 				_layout.getPlid());
@@ -297,7 +297,7 @@ public class FragmentEntryStagedModelDataHandlerTest
 		_exportImportStagedModel(fragmentEntry);
 
 		FragmentEntry liveFragmentEntry =
-			_fragmentEntryLocalService.getFragmentEntryByUuidAndGroupId(
+			_fragmentEntryLocalService.fetchFragmentEntryByUuidAndGroupId(
 				fragmentEntry.getUuid(), liveGroup.getGroupId());
 
 		Assert.assertEquals(
@@ -329,7 +329,7 @@ public class FragmentEntryStagedModelDataHandlerTest
 		_exportImportStagedModel(fragmentEntry);
 
 		liveFragmentEntry =
-			_fragmentEntryLocalService.getFragmentEntryByUuidAndGroupId(
+			_fragmentEntryLocalService.fetchFragmentEntryByUuidAndGroupId(
 				fragmentEntry.getUuid(), liveGroup.getGroupId());
 
 		Assert.assertEquals(
@@ -351,7 +351,7 @@ public class FragmentEntryStagedModelDataHandlerTest
 	protected StagedModel getStagedModel(String uuid, Group group)
 		throws PortalException {
 
-		return _fragmentEntryLocalService.getFragmentEntryByUuidAndGroupId(
+		return _fragmentEntryLocalService.fetchFragmentEntryByUuidAndGroupId(
 			uuid, group.getGroupId());
 	}
 
@@ -567,9 +567,6 @@ public class FragmentEntryStagedModelDataHandlerTest
 	private FragmentRenderer _fragmentRenderer;
 
 	private Layout _layout;
-
-	@Inject
-	private LayoutLocalService _layoutLocalService;
 
 	@Inject
 	private LayoutStructureProvider _layoutStructureProvider;

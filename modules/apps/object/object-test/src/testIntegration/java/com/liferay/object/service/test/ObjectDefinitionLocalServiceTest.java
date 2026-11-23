@@ -110,6 +110,7 @@ import com.liferay.object.service.test.system.TestSystemObjectDefinitionManager;
 import com.liferay.object.system.BaseSystemObjectDefinitionManager;
 import com.liferay.object.system.JaxRsApplicationDescriptor;
 import com.liferay.object.system.SystemObjectDefinitionManager;
+import com.liferay.object.test.util.ObjectDefinitionSettingTestUtil;
 import com.liferay.object.test.util.ObjectDefinitionTestUtil;
 import com.liferay.object.test.util.ObjectRelationshipTestUtil;
 import com.liferay.object.test.util.TreeTestUtil;
@@ -205,7 +206,6 @@ import com.liferay.portal.language.override.service.PLOEntryLocalService;
 import com.liferay.portal.test.log.LogCapture;
 import com.liferay.portal.test.log.LogEntry;
 import com.liferay.portal.test.log.LoggerTestUtil;
-import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -1046,7 +1046,7 @@ public class ObjectDefinitionLocalServiceTest {
 				workflowDefinitionLinks);
 
 		workflowDefinitionLink =
-			_workflowDefinitionLinkLocalService.getWorkflowDefinitionLink(
+			_workflowDefinitionLinkLocalService.fetchWorkflowDefinitionLink(
 				TestPropsValues.getCompanyId(), 0,
 				objectDefinition.getClassName(), 0, 0, true);
 
@@ -1070,7 +1070,7 @@ public class ObjectDefinitionLocalServiceTest {
 				kaleoDefinition.getTitle(), TestPropsValues.getUserId());
 
 		workflowDefinitionLink =
-			_workflowDefinitionLinkLocalService.getWorkflowDefinitionLink(
+			_workflowDefinitionLinkLocalService.fetchWorkflowDefinitionLink(
 				TestPropsValues.getCompanyId(), 0,
 				objectDefinition.getClassName(), 0, 0, true);
 
@@ -2908,7 +2908,7 @@ public class ObjectDefinitionLocalServiceTest {
 			StringPool.TRUE);
 
 		Assert.assertNotNull(
-			_objectDefinitionSettingLocalService.getObjectDefinitionSetting(
+			ObjectDefinitionSettingTestUtil.getObjectDefinitionSetting(
 				objectDefinition.getObjectDefinitionId(),
 				ObjectDefinitionSettingConstants.NAME_ACCEPT_ALL_GROUPS));
 
@@ -5041,7 +5041,6 @@ public class ObjectDefinitionLocalServiceTest {
 		_objectFolderLocalService.deleteObjectFolder(objectFolder);
 	}
 
-	@FeatureFlag("LPD-11388")
 	@Test
 	public void testUpdateTitleObjectFieldId() throws Exception {
 		ObjectDefinition objectDefinition =
@@ -5875,7 +5874,7 @@ public class ObjectDefinitionLocalServiceTest {
 
 		AssetListEntrySegmentsEntryRel assetListEntrySegmentsEntryRel =
 			_assetListEntrySegmentsEntryRelLocalService.
-				getAssetListEntrySegmentsEntryRel(
+				fetchAssetListEntrySegmentsEntryRel(
 					assetListEntry.getAssetListEntryId(),
 					SegmentsEntryConstants.ID_DEFAULT);
 

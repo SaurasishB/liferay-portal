@@ -72,7 +72,12 @@ public class AccountEntryServiceWhenSearchingAccountEntriesTest {
 
 	@BeforeClass
 	public static void setUpClass() throws Exception {
-		for (AccountEntry accountEntry : _getAllAccountEntries()) {
+		for (AccountEntry accountEntry :
+				AccountEntryTestUtil.getAccountEntries(
+					TestPropsValues.getCompanyId(),
+					WorkflowConstants.STATUS_APPROVED, QueryUtil.ALL_POS,
+					QueryUtil.ALL_POS, null)) {
+
 			_accountEntryLocalService.deleteAccountEntry(accountEntry);
 		}
 	}
@@ -130,7 +135,11 @@ public class AccountEntryServiceWhenSearchingAccountEntriesTest {
 
 		_userLocalService.addRoleUser(role.getRoleId(), _user);
 
-		_assertSearch(_getAllAccountEntries());
+		_assertSearch(
+			AccountEntryTestUtil.getAccountEntries(
+				TestPropsValues.getCompanyId(),
+				WorkflowConstants.STATUS_APPROVED, QueryUtil.ALL_POS,
+				QueryUtil.ALL_POS, null));
 	}
 
 	@Test
@@ -147,7 +156,11 @@ public class AccountEntryServiceWhenSearchingAccountEntriesTest {
 
 		_userLocalService.addRoleUser(role.getRoleId(), _user.getUserId());
 
-		_assertSearch(_getAllAccountEntries());
+		_assertSearch(
+			AccountEntryTestUtil.getAccountEntries(
+				TestPropsValues.getCompanyId(),
+				WorkflowConstants.STATUS_APPROVED, QueryUtil.ALL_POS,
+				QueryUtil.ALL_POS, null));
 	}
 
 	@Test
@@ -297,12 +310,6 @@ public class AccountEntryServiceWhenSearchingAccountEntriesTest {
 
 	@Rule
 	public SearchTestRule searchTestRule = new SearchTestRule();
-
-	private static List<AccountEntry> _getAllAccountEntries() throws Exception {
-		return _accountEntryLocalService.getAccountEntries(
-			TestPropsValues.getCompanyId(), WorkflowConstants.STATUS_APPROVED,
-			QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
-	}
 
 	private Role _addOrganizationRole() throws Exception {
 		return _roleLocalService.addRole(

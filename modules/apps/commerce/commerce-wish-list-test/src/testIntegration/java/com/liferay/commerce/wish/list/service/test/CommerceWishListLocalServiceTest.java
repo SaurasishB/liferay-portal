@@ -14,6 +14,7 @@ import com.liferay.commerce.wish.list.model.CommerceWishList;
 import com.liferay.commerce.wish.list.service.CommerceWishListItemLocalService;
 import com.liferay.commerce.wish.list.service.CommerceWishListLocalService;
 import com.liferay.commerce.wish.list.service.CommerceWishListService;
+import com.liferay.commerce.wish.list.test.util.CommerceWishListItemTestUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.User;
@@ -90,7 +91,7 @@ public class CommerceWishListLocalServiceTest {
 
 		Assert.assertEquals(
 			1,
-			_commerceWishListItemLocalService.getCommerceWishListItemsCount(
+			CommerceWishListItemTestUtil.getCommerceWishListItemsCount(
 				commerceWishList.getCommerceWishListId()));
 
 		_commerceWishListLocalService.deleteCommerceWishLists(
@@ -101,7 +102,7 @@ public class CommerceWishListLocalServiceTest {
 				commerceWishList.getCommerceWishListId()));
 		Assert.assertEquals(
 			0,
-			_commerceWishListItemLocalService.getCommerceWishListItemsCount(
+			CommerceWishListItemTestUtil.getCommerceWishListItemsCount(
 				commerceWishList.getCommerceWishListId()));
 	}
 

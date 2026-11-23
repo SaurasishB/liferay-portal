@@ -8,9 +8,9 @@ package com.liferay.bookmarks.internal.exportimport.data.handler.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.bookmarks.constants.BookmarksPortletKeys;
 import com.liferay.bookmarks.model.BookmarksFolder;
-import com.liferay.bookmarks.service.BookmarksEntryLocalServiceUtil;
-import com.liferay.bookmarks.service.BookmarksFolderLocalServiceUtil;
+import com.liferay.bookmarks.service.BookmarksEntryServiceUtil;
 import com.liferay.bookmarks.service.BookmarksFolderServiceUtil;
+import com.liferay.bookmarks.service.persistence.BookmarksFolderUtil;
 import com.liferay.bookmarks.test.util.BookmarksTestUtil;
 import com.liferay.exportimport.kernel.lar.DataLevel;
 import com.liferay.exportimport.test.util.lar.BasePortletDataHandlerTestCase;
@@ -23,6 +23,7 @@ import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
+import com.liferay.portal.kernel.test.util.TransactionTestUtil;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 
@@ -76,8 +77,10 @@ public class BookmarksPortletDataHandlerTest
 
 		GroupLocalServiceUtil.deleteGroup(group);
 
-		List<BookmarksFolder> folders =
-			BookmarksFolderLocalServiceUtil.getFolders(group.getGroupId());
+		List<BookmarksFolder> folders = TransactionTestUtil.invoke(
+			BookmarksFolderUtil.getPersistence(),
+			bookmarksFolderPersistence ->
+				bookmarksFolderPersistence.findByGroupId(group.getGroupId()));
 
 		Assert.assertEquals(folders.toString(), 0, folders.size());
 	}
@@ -115,13 +118,12 @@ public class BookmarksPortletDataHandlerTest
 	protected List<StagedModel> getStagedModels() {
 		List<StagedModel> stagedModels = new ArrayList<>();
 
-		List<BookmarksFolder> folders =
-			BookmarksFolderLocalServiceUtil.getFolders(
-				portletDataContext.getGroupId());
+		List<BookmarksFolder> folders = BookmarksFolderServiceUtil.getFolders(
+			portletDataContext.getGroupId());
 
 		for (BookmarksFolder folder : folders) {
 			stagedModels.addAll(
-				BookmarksEntryLocalServiceUtil.getEntries(
+				BookmarksEntryServiceUtil.getEntries(
 					portletDataContext.getGroupId(), folder.getFolderId(),
 					QueryUtil.ALL_POS, QueryUtil.ALL_POS));
 		}

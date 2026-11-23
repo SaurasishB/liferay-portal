@@ -20,7 +20,6 @@ import com.liferay.commerce.model.CPDefinitionInventory;
 import com.liferay.commerce.model.CommerceAddress;
 import com.liferay.commerce.model.CommerceOrder;
 import com.liferay.commerce.model.CommerceOrderItem;
-import com.liferay.commerce.model.CommerceShipmentItem;
 import com.liferay.commerce.model.CommerceShippingMethod;
 import com.liferay.commerce.payment.model.CommercePaymentMethodGroupRel;
 import com.liferay.commerce.payment.service.CommercePaymentMethodGroupRelLocalServiceUtil;
@@ -43,8 +42,6 @@ import com.liferay.commerce.service.CommerceAddressLocalServiceUtil;
 import com.liferay.commerce.service.CommerceOrderItemLocalServiceUtil;
 import com.liferay.commerce.service.CommerceOrderLocalServiceUtil;
 import com.liferay.commerce.service.CommerceShippingMethodLocalServiceUtil;
-import com.liferay.commerce.service.persistence.CommerceOrderAttachmentUtil;
-import com.liferay.commerce.service.persistence.CommerceShipmentItemUtil;
 import com.liferay.commerce.shipping.engine.fixed.model.CommerceShippingFixedOption;
 import com.liferay.commerce.shipping.engine.fixed.service.CommerceShippingFixedOptionLocalServiceUtil;
 import com.liferay.commerce.tax.engine.fixed.model.CommerceTaxFixedRate;
@@ -60,18 +57,16 @@ import com.liferay.portal.kernel.model.Country;
 import com.liferay.portal.kernel.model.Region;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.CountryLocalServiceUtil;
-import com.liferay.portal.kernel.service.RegionLocalServiceUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.test.util.CountryTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
-import com.liferay.portal.kernel.test.util.TransactionTestUtil;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 
 import java.math.BigDecimal;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -555,7 +550,8 @@ public class CommerceTestUtil {
 
 		Country country = _setUpCountry(serviceContext);
 
-		Region region = _setUpRegion(country, serviceContext);
+		Region region = CommerceInventoryTestUtil.addRegion(
+			country.getCountryId(), serviceContext);
 
 		return CommerceAddressLocalServiceUtil.addCommerceAddress(
 			StringPool.BLANK, User.class.getName(), userId,
@@ -635,39 +631,6 @@ public class CommerceTestUtil {
 		return CommerceOrderLocalServiceUtil.updateCommerceOrder(commerceOrder);
 	}
 
-	public static int getCommerceOrderAttachmentsCount(long commerceOrderId)
-		throws Exception {
-
-		return TransactionTestUtil.invoke(
-			CommerceOrderAttachmentUtil.getPersistence(),
-			commerceOrderAttachmentPersistence ->
-				commerceOrderAttachmentPersistence.countByCommerceOrderId(
-					commerceOrderId));
-	}
-
-	public static List<CommerceShipmentItem>
-			getCommerceShipmentItemsByCommerceOrderItemId(
-				long commerceOrderItemId)
-		throws Exception {
-
-		return TransactionTestUtil.invoke(
-			CommerceShipmentItemUtil.getPersistence(),
-			commerceShipmentItemPersistence ->
-				commerceShipmentItemPersistence.findByCommerceOrderItemId(
-					commerceOrderItemId));
-	}
-
-	public static int getValidCommerceShipmentItemsCount(
-			long commerceShipmentId)
-		throws Exception {
-
-		return TransactionTestUtil.invoke(
-			CommerceShipmentItemUtil.getPersistence(),
-			commerceShipmentItemPersistence ->
-				commerceShipmentItemPersistence.countByC_NotC_GteQ(
-					commerceShipmentId, 0, BigDecimal.ONE));
-	}
-
 	public static void runWithGuestBrowsingDisabled(
 			long groupId, UnsafeRunnable<Exception> unsafeRunnable)
 		throws Exception {
@@ -738,30 +701,14 @@ public class CommerceTestUtil {
 
 		if (country == null) {
 			country = CountryLocalServiceUtil.addCountry(
-				null, "ZZ", "ZZZ", true, true, null,
-				RandomTestUtil.randomString(), "000",
+				null, CountryTestUtil.randomA2(serviceContext.getCompanyId()),
+				CountryTestUtil.randomA3(serviceContext.getCompanyId()), true,
+				true, null, RandomTestUtil.randomString(), "000",
 				RandomTestUtil.randomDouble(), true, false, false,
 				serviceContext);
 		}
 
 		return country;
-	}
-
-	private static Region _setUpRegion(
-			Country country, ServiceContext serviceContext)
-		throws Exception {
-
-		Region region = RegionLocalServiceUtil.fetchRegion(
-			country.getCountryId(), "ZZ");
-
-		if (region != null) {
-			return region;
-		}
-
-		return RegionLocalServiceUtil.addRegion(
-			null, country.getCountryId(), true, RandomTestUtil.randomString(),
-			RandomTestUtil.randomDouble(), RandomTestUtil.randomString(),
-			serviceContext);
 	}
 
 }

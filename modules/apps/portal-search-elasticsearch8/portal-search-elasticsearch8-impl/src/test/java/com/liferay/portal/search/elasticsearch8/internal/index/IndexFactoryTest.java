@@ -18,6 +18,7 @@ import co.elastic.clients.elasticsearch.indices.IndexState;
 import co.elastic.clients.elasticsearch.indices.get_mapping.IndexMappingRecord;
 import co.elastic.clients.util.NamedValue;
 
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.json.JSONUtil;
 import com.liferay.portal.kernel.module.util.SystemBundleUtil;
@@ -31,10 +32,12 @@ import com.liferay.portal.search.elasticsearch8.internal.document.SingleFieldFix
 import com.liferay.portal.search.elasticsearch8.internal.index.util.IndexFactoryCompanyIdRegistryUtil;
 import com.liferay.portal.search.elasticsearch8.internal.query.QueryFactories;
 import com.liferay.portal.search.elasticsearch8.internal.util.ResourceUtil;
-import com.liferay.portal.search.spi.index.configuration.contributor.CompanyIndexConfigurationContributor;
-import com.liferay.portal.search.spi.index.configuration.contributor.helper.MappingsHelper;
-import com.liferay.portal.search.spi.index.configuration.contributor.helper.SettingsHelper;
+import com.liferay.portal.search.spi.index.configuration.contributor.CompanyIndexMappingsContributor;
+import com.liferay.portal.search.spi.index.configuration.contributor.CompanyIndexSettingsContributor;
 import com.liferay.portal.search.spi.index.listener.CompanyIndexListener;
+import com.liferay.portal.test.log.LogCapture;
+import com.liferay.portal.test.log.LogEntry;
+import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
 
@@ -144,18 +147,18 @@ public class IndexFactoryTest {
 	}
 
 	@Test
-	public void testAddMultipleCompanyIndexConfigurationContributors()
+	public void testAddMultipleCompanyIndexSettingsContributors()
 		throws Exception {
 
 		_serviceRegistrations.add(
 			_bundleContext.registerService(
-				CompanyIndexConfigurationContributor.class,
-				new TestCompanyIndexConfigurationContributor(), null));
+				CompanyIndexSettingsContributor.class, companyId -> null,
+				null));
 
 		_serviceRegistrations.add(
 			_bundleContext.registerService(
-				CompanyIndexConfigurationContributor.class,
-				new TestCompanyIndexConfigurationContributor(), null));
+				CompanyIndexSettingsContributor.class, companyId -> null,
+				null));
 	}
 
 	@Test
@@ -190,29 +193,21 @@ public class IndexFactoryTest {
 
 		_serviceRegistrations.add(
 			_bundleContext.registerService(
-				CompanyIndexConfigurationContributor.class,
-				new CompanyIndexConfigurationContributor() {
+				CompanyIndexMappingsContributor.class,
+				new CompanyIndexMappingsContributor() {
 
 					@Override
-					public void contributeMappings(
-						long companyId, MappingsHelper mappingsHelper) {
-
-						mappingsHelper.putMappings(
+					public String contributeMappings() {
+						return JSONUtil.put(
+							"properties",
 							JSONUtil.put(
-								"properties",
+								"additionalKeyword",
 								JSONUtil.put(
-									"additionalKeyword",
-									JSONUtil.put(
-										"store", true
-									).put(
-										"type", "text"
-									))
-							).toString());
-					}
-
-					@Override
-					public void contributeSettings(
-						long companyId, SettingsHelper settingsHelper) {
+									"store", true
+								).put(
+									"type", "text"
+								))
+						).toString();
 					}
 
 				},
@@ -311,20 +306,19 @@ public class IndexFactoryTest {
 
 		_serviceRegistrations.add(
 			_bundleContext.registerService(
-				CompanyIndexConfigurationContributor.class,
-				new CompanyIndexConfigurationContributor() {
+				CompanyIndexSettingsContributor.class,
+				new CompanyIndexSettingsContributor() {
 
 					@Override
-					public void contributeMappings(
-						long companyId, MappingsHelper mappingsHelper) {
-					}
-
-					@Override
-					public void contributeSettings(
-						long companyId, SettingsHelper settingsHelper) {
-
-						settingsHelper.put("index.number_of_replicas", "3");
-						settingsHelper.put("index.number_of_shards", "4");
+					public String contributeSettings(long companyId) {
+						return JSONUtil.put(
+							"index",
+							JSONUtil.put(
+								"number_of_replicas", "3"
+							).put(
+								"number_of_shards", "4"
+							)
+						).toString();
 					}
 
 				},
@@ -345,24 +339,75 @@ public class IndexFactoryTest {
 	public void testContributeMappings() throws Exception {
 		_serviceRegistrations.add(
 			_bundleContext.registerService(
-				CompanyIndexConfigurationContributor.class,
-				new CompanyIndexConfigurationContributor() {
+				CompanyIndexMappingsContributor.class,
+				new CompanyIndexMappingsContributor() {
 
 					@Override
-					public void contributeMappings(
-						long companyId, MappingsHelper mappingsHelper) {
-
-						mappingsHelper.putMappings(
-							_getAdditionalTypeMappings());
-					}
-
-					@Override
-					public void contributeSettings(
-						long companyId, SettingsHelper settingsHelper) {
+					public String contributeMappings() {
+						return _getAdditionalTypeMappings();
 					}
 
 				},
 				null));
+
+		initializeIndex();
+
+		_assertAdditionalTypeMappings();
+	}
+
+	@Test
+	public void testContributeMappingsAfterFailedLatePut() throws Exception {
+		long companyId = RandomTestUtil.randomLong();
+
+		IndexFactoryCompanyIdRegistryUtil.registerCompanyId(companyId);
+
+		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
+				CompanyIndexHelper.class.getName(), LoggerTestUtil.ERROR)) {
+
+			_serviceRegistrations.add(
+				_bundleContext.registerService(
+					CompanyIndexMappingsContributor.class,
+					new CompanyIndexMappingsContributor() {
+
+						@Override
+						public String contributeMappings() {
+							return _getAdditionalTypeMappings();
+						}
+
+						@Override
+						public String toString() {
+							return "TestCompanyIndexMappingsContributor";
+						}
+
+					},
+					null));
+
+			List<LogEntry> logEntries = logCapture.getLogEntries();
+
+			Assert.assertEquals(logEntries.toString(), 1, logEntries.size());
+
+			LogEntry logEntry = logEntries.get(0);
+
+			Assert.assertEquals(LoggerTestUtil.ERROR, logEntry.getPriority());
+
+			CompanyIndexHelper companyIndexHelper =
+				_indexFactoryFixture.getCompanyIndexHelper();
+
+			Assert.assertEquals(
+				StringBundler.concat(
+					"Unable to put mappings for index ",
+					companyIndexHelper.getIndexName(companyId),
+					" with contributor TestCompanyIndexMappingsContributor"),
+				logEntry.getMessage());
+
+			Throwable throwable = logEntry.getThrowable();
+
+			String message = throwable.getMessage();
+
+			Assert.assertTrue(message.contains("index_not_found_exception"));
+		}
+
+		IndexFactoryCompanyIdRegistryUtil.unregisterCompanyId(companyId);
 
 		initializeIndex();
 
@@ -375,19 +420,12 @@ public class IndexFactoryTest {
 
 		_serviceRegistrations.add(
 			_bundleContext.registerService(
-				CompanyIndexConfigurationContributor.class,
-				new CompanyIndexConfigurationContributor() {
+				CompanyIndexMappingsContributor.class,
+				new CompanyIndexMappingsContributor() {
 
 					@Override
-					public void contributeMappings(
-						long companyId, MappingsHelper mappingsHelper) {
-
-						mappingsHelper.putMappings(_getOverrideTypeMappings());
-					}
-
-					@Override
-					public void contributeSettings(
-						long companyId, SettingsHelper settingsHelper) {
+					public String contributeMappings() {
+						return _getOverrideTypeMappings();
 					}
 
 				},
@@ -402,20 +440,19 @@ public class IndexFactoryTest {
 	public void testContributeSettings() throws Exception {
 		_serviceRegistrations.add(
 			_bundleContext.registerService(
-				CompanyIndexConfigurationContributor.class,
-				new CompanyIndexConfigurationContributor() {
+				CompanyIndexSettingsContributor.class,
+				new CompanyIndexSettingsContributor() {
 
 					@Override
-					public void contributeMappings(
-						long companyId, MappingsHelper mappingsHelper) {
-					}
-
-					@Override
-					public void contributeSettings(
-						long companyId, SettingsHelper settingsHelper) {
-
-						settingsHelper.put("index.number_of_replicas", "2");
-						settingsHelper.put("index.number_of_shards", "3");
+					public String contributeSettings(long companyId) {
+						return JSONUtil.put(
+							"index",
+							JSONUtil.put(
+								"number_of_replicas", "2"
+							).put(
+								"number_of_shards", "3"
+							)
+						).toString();
 					}
 
 				},
@@ -621,27 +658,19 @@ public class IndexFactoryTest {
 
 		_serviceRegistrations.add(
 			_bundleContext.registerService(
-				CompanyIndexConfigurationContributor.class,
-				new CompanyIndexConfigurationContributor() {
+				CompanyIndexMappingsContributor.class,
+				new CompanyIndexMappingsContributor() {
 
 					@Override
-					public void contributeMappings(
-						long companyId, MappingsHelper mappingsHelper) {
-
-						mappingsHelper.putMappings(
+					public String contributeMappings() {
+						return JSONUtil.put(
+							"contributedKeyword",
 							JSONUtil.put(
-								"contributedKeyword",
-								JSONUtil.put(
-									"store", true
-								).put(
-									"type", "keyword"
-								)
-							).toString());
-					}
-
-					@Override
-					public void contributeSettings(
-						long companyId, SettingsHelper settingsHelper) {
+								"store", true
+							).put(
+								"type", "keyword"
+							)
+						).toString();
 					}
 
 				},
@@ -660,11 +689,10 @@ public class IndexFactoryTest {
 	}
 
 	@Test
-	public void testRemoveCompanyIndexConfigurationContributor() {
-		ServiceRegistration<CompanyIndexConfigurationContributor>
+	public void testRemoveCompanyIndexSettingsContributor() {
+		ServiceRegistration<CompanyIndexSettingsContributor>
 			serviceRegistration = _bundleContext.registerService(
-				CompanyIndexConfigurationContributor.class,
-				new TestCompanyIndexConfigurationContributor(), null);
+				CompanyIndexSettingsContributor.class, companyId -> null, null);
 
 		serviceRegistration.unregister();
 	}
@@ -728,21 +756,6 @@ public class IndexFactoryTest {
 
 		_indexFactory.initializeIndex(
 			RandomTestUtil.randomLong(), elasticsearchIndicesClient);
-	}
-
-	protected static class TestCompanyIndexConfigurationContributor
-		implements CompanyIndexConfigurationContributor {
-
-		@Override
-		public void contributeMappings(
-			long companyId, MappingsHelper mappingsHelper) {
-		}
-
-		@Override
-		public void contributeSettings(
-			long companyId, SettingsHelper settingsHelper) {
-		}
-
 	}
 
 	private void _assertAdditionalTypeMappings() throws Exception {

@@ -26,6 +26,7 @@ import com.liferay.object.service.ObjectDefinitionSettingLocalService;
 import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.object.service.ObjectFieldLocalService;
 import com.liferay.object.service.ObjectRelationshipLocalService;
+import com.liferay.object.test.util.ObjectDefinitionSettingTestUtil;
 import com.liferay.object.test.util.ObjectDefinitionTestUtil;
 import com.liferay.object.test.util.ObjectRelationshipTestUtil;
 import com.liferay.petra.function.transform.TransformUtil;
@@ -197,14 +198,13 @@ public class GroupModelListenerTest {
 					ObjectDefinitionSettingConstants.NAME_ACCEPTED_GROUP_IDS,
 					"}"),
 				() ->
-					_objectDefinitionSettingLocalService.
-						getObjectDefinitionSetting(
-							objectDefinition1.getObjectDefinitionId(),
-							ObjectDefinitionSettingConstants.
-								NAME_ACCEPTED_GROUP_IDS));
+					ObjectDefinitionSettingTestUtil.getObjectDefinitionSetting(
+						objectDefinition1.getObjectDefinitionId(),
+						ObjectDefinitionSettingConstants.
+							NAME_ACCEPTED_GROUP_IDS));
 
 			objectDefinitionSetting =
-				_objectDefinitionSettingLocalService.getObjectDefinitionSetting(
+				ObjectDefinitionSettingTestUtil.getObjectDefinitionSetting(
 					objectDefinition2.getObjectDefinitionId(),
 					ObjectDefinitionSettingConstants.NAME_ACCEPTED_GROUP_IDS);
 

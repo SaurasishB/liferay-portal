@@ -5099,7 +5099,7 @@ components:
             type: object
 info:
     description:
-        "A Java client JAR is available for use with the group ID 'com.liferay', artifact ID 'com.liferay.headless.admin.site.client', and version '1.0.38'."
+        "A Java client JAR is available for use with the group ID 'com.liferay', artifact ID 'com.liferay.headless.admin.site.client', and version '1.0.39'."
     license:
         name: Apache 2.0
         url: http://www.apache.org/licenses/LICENSE-2.0.html
@@ -6581,6 +6581,9 @@ paths:
                                 items:
                                     $ref: "#/components/schemas/DisplayPageTemplateFolder"
                                 type: array
+                404:
+                    description:
+                        "The requested site could not be found."
             tags: ["DisplayPageTemplateFolder"]
         post:
             # @review
@@ -6610,6 +6613,15 @@ paths:
                         application/xml:
                             schema:
                                 $ref: "#/components/schemas/DisplayPageTemplateFolder"
+                400:
+                    description:
+                        "The request is invalid. For example, the name is missing or too long, the key contains an invalid character or is too long, the parent display page template folder does not exist or is not a display page template folder, or the external reference code is already in use."
+                404:
+                    description:
+                        "The requested site could not be found."
+                409:
+                    description:
+                        "A display page template folder with the same name or key already exists."
             # @review
             tags: ["DisplayPageTemplateFolder"]
     "/sites/{siteExternalReferenceCode}/display-page-template-folders/{displayPageTemplateFolderExternalReferenceCode}":
@@ -6634,6 +6646,9 @@ paths:
                     content:
                         application/json: {}
                         application/xml: {}
+                404:
+                    description:
+                        "The requested site or display page template folder could not be found."
             tags: ["DisplayPageTemplateFolder"]
         get:
             # @review
@@ -6672,6 +6687,9 @@ paths:
                         application/xml:
                             schema:
                                 $ref: "#/components/schemas/DisplayPageTemplateFolder"
+                404:
+                    description:
+                        "The requested site or display page template folder could not be found."
             tags: ["DisplayPageTemplateFolder"]
         patch:
             # @review
@@ -6718,6 +6736,15 @@ paths:
                         application/xml:
                             schema:
                                 $ref: "#/components/schemas/DisplayPageTemplateFolder"
+                400:
+                    description:
+                        "The request is invalid. For example, the name is missing or too long, or the parent display page template folder does not exist or is not a display page template folder."
+                404:
+                    description:
+                        "The requested site or display page template folder could not be found."
+                409:
+                    description:
+                        "A display page template folder with the same name already exists."
             tags: ["DisplayPageTemplateFolder"]
         put:
             # @review
@@ -6764,6 +6791,15 @@ paths:
                         application/xml:
                             schema:
                                 $ref: "#/components/schemas/DisplayPageTemplateFolder"
+                400:
+                    description:
+                        "The request is invalid. For example, the name is missing or too long, the key contains an invalid character or is too long, or the parent display page template folder does not exist or is not a display page template folder."
+                404:
+                    description:
+                        "The requested site could not be found."
+                409:
+                    description:
+                        "A display page template folder with the same name or key already exists."
             tags: ["DisplayPageTemplateFolder"]
     "/sites/{siteExternalReferenceCode}/display-page-template-folders/{displayPageTemplateFolderExternalReferenceCode}/display-page-templates":
         get:
@@ -9045,6 +9081,9 @@ paths:
                                 items:
                                     $ref: "#/components/schemas/PageTemplateSet"
                                 type: array
+                404:
+                    description:
+                        "The requested site could not be found."
             tags: ["PageTemplateSet"]
         post:
             # @review
@@ -9074,9 +9113,15 @@ paths:
                         application/xml:
                             schema:
                                 $ref: "#/components/schemas/PageTemplateSet"
+                400:
+                    description:
+                        "The request is invalid. For example, the name is missing or too long, the key contains an invalid character or is too long, or the external reference code is already in use."
+                404:
+                    description:
+                        "The requested site could not be found."
                 409:
                     description:
-                        "A page template set with the same name already exists."
+                        "A page template set with the same name or key already exists."
             # @review
             tags: ["PageTemplateSet"]
     "/sites/{siteExternalReferenceCode}/page-template-sets/{pageTemplateSetExternalReferenceCode}":
@@ -9101,6 +9146,9 @@ paths:
                     content:
                         application/json: {}
                         application/xml: {}
+                404:
+                    description:
+                        "The requested site or page template set could not be found."
             tags: ["PageTemplateSet"]
         get:
             # @review
@@ -9139,6 +9187,9 @@ paths:
                         application/xml:
                             schema:
                                 $ref: "#/components/schemas/PageTemplateSet"
+                404:
+                    description:
+                        "The requested site or page template set could not be found."
             tags: ["PageTemplateSet"]
         patch:
             # @review
@@ -9185,6 +9236,15 @@ paths:
                         application/xml:
                             schema:
                                 $ref: "#/components/schemas/PageTemplateSet"
+                400:
+                    description:
+                        "The request is invalid. For example, the name is missing or too long."
+                404:
+                    description:
+                        "The requested site or page template set could not be found."
+                409:
+                    description:
+                        "A page template set with the same name already exists."
             tags: ["PageTemplateSet"]
         put:
             # @review
@@ -9231,6 +9291,15 @@ paths:
                         application/xml:
                             schema:
                                 $ref: "#/components/schemas/PageTemplateSet"
+                400:
+                    description:
+                        "The request is invalid. For example, the name is missing or too long, or the key contains an invalid character or is too long."
+                404:
+                    description:
+                        "The requested site could not be found."
+                409:
+                    description:
+                        "A page template set with the same name or key already exists."
             tags: ["PageTemplateSet"]
     "/sites/{siteExternalReferenceCode}/page-template-sets/{pageTemplateSetExternalReferenceCode}/page-templates":
         get:

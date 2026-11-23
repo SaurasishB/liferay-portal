@@ -335,15 +335,6 @@ public class ObjectDefinitionSettingLocalServiceWrapper
 			objectDefinitionSettingId);
 	}
 
-	@Override
-	public com.liferay.object.model.ObjectDefinitionSetting
-			getObjectDefinitionSetting(long objectDefinitionId, String name)
-		throws com.liferay.portal.kernel.exception.PortalException {
-
-		return _objectDefinitionSettingLocalService.getObjectDefinitionSetting(
-			objectDefinitionId, name);
-	}
-
 	/**
 	 * Returns the object definition setting with the matching UUID and company.
 	 *
@@ -430,6 +421,14 @@ public class ObjectDefinitionSettingLocalServiceWrapper
 			primaryKeyObj);
 	}
 
+	@Override
+	public java.util.Map<Long, long[]> loadGetRootObjectDefinitionIdsMap(
+		long companyId) {
+
+		return _objectDefinitionSettingLocalService.
+			loadGetRootObjectDefinitionIdsMap(companyId);
+	}
+
 	/**
 	 * Updates the object definition setting in the database or adds it if it does not yet exist. Also notifies the appropriate model listeners.
 	 *
@@ -473,4 +472,4 @@ public class ObjectDefinitionSettingLocalServiceWrapper
 		_objectDefinitionSettingLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:813241959
+// LIFERAY-SERVICE-BUILDER-HASH:262940127

@@ -5,13 +5,18 @@
 
 package com.liferay.object.service.impl;
 
+import com.liferay.object.constants.ObjectDefinitionSettingConstants;
 import com.liferay.object.model.ObjectDefinitionSetting;
+import com.liferay.object.model.ObjectDefinitionSettingTable;
 import com.liferay.object.service.base.ObjectDefinitionSettingLocalServiceBaseImpl;
 import com.liferay.object.service.persistence.ObjectDefinitionPersistence;
+import com.liferay.petra.sql.dsl.DSLQueryFactoryUtil;
 import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.UserLocalService;
+import com.liferay.portal.kernel.util.ArrayUtil;
+import com.liferay.portal.kernel.util.StringUtil;
 
 import java.util.HashMap;
 import java.util.List;
@@ -81,15 +86,6 @@ public class ObjectDefinitionSettingLocalServiceImpl
 	}
 
 	@Override
-	public ObjectDefinitionSetting getObjectDefinitionSetting(
-			long objectDefinitionId, String name)
-		throws PortalException {
-
-		return objectDefinitionSettingPersistence.findByODI_N(
-			objectDefinitionId, name);
-	}
-
-	@Override
 	public List<ObjectDefinitionSetting> getObjectDefinitionSettings(
 		long objectDefinitionId) {
 
@@ -113,6 +109,42 @@ public class ObjectDefinitionSettingLocalServiceImpl
 		}
 
 		return objectDefinitionSettingsMap;
+	}
+
+	@Override
+	public Map<Long, long[]> loadGetRootObjectDefinitionIdsMap(long companyId) {
+		List<Object[]> results = objectDefinitionSettingPersistence.dslQuery(
+			DSLQueryFactoryUtil.select(
+				ObjectDefinitionSettingTable.INSTANCE.objectDefinitionId,
+				ObjectDefinitionSettingTable.INSTANCE.value
+			).from(
+				ObjectDefinitionSettingTable.INSTANCE
+			).where(
+				ObjectDefinitionSettingTable.INSTANCE.companyId.eq(
+					companyId
+				).and(
+					ObjectDefinitionSettingTable.INSTANCE.name.eq(
+						ObjectDefinitionSettingConstants.
+							NAME_ROOT_OBJECT_DEFINITION_IDS)
+				)
+			),
+			false);
+
+		Map<Long, long[]> rootObjectDefinitionIdsMap = new HashMap<>();
+
+		for (Object[] result : results) {
+			long[] rootObjectDefinitionIds = StringUtil.split(
+				(String)result[1], 0L);
+
+			if (ArrayUtil.isEmpty(rootObjectDefinitionIds)) {
+				continue;
+			}
+
+			rootObjectDefinitionIdsMap.put(
+				(Long)result[0], rootObjectDefinitionIds);
+		}
+
+		return rootObjectDefinitionIdsMap;
 	}
 
 	@Reference

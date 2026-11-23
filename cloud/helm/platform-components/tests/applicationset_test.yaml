@@ -157,7 +157,13 @@ tests:
                         value: liferay-operators
                     path: spec.template.spec.sources[0].helm.parameters
                 template: templates/applicationset-liferay.yaml
-        it: Grants the DXP operator delivery access to the Liferay namespace
+            -   contains:
+                    content:
+                        name: liferay-default.clientExtensions.policy.separateNamespace
+                        value: liferay-{{path[2]}}-{{path[4]}}-cx
+                    path: spec.template.spec.sources[0].helm.parameters
+                template: templates/applicationset-liferay.yaml
+        it: Grants the DXP operator delivery access and lets DXP accept the separate client extension namespace
         set:
             dxpOperator:
                 namespace: liferay-operators
@@ -349,7 +355,7 @@ tests:
                     path: spec.template.spec.sources[0].helm.parameters
                 template: templates/applicationset-infrastructure.yaml
             -   equal:
-                    path: spec.template.spec.sources[0].helm.parameters[6]
+                    path: spec.template.spec.sources[0].helm.parameters[7]
                     value:
                         name: persistence.storageClassName
                         value: managed-csi-premium-v2

@@ -71,6 +71,7 @@ import com.liferay.portal.kernel.settings.ModifiableSettings;
 import com.liferay.portal.kernel.settings.Settings;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
+import com.liferay.portal.kernel.test.util.CountryTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
@@ -168,9 +169,11 @@ public class CartResourceTest extends BaseCartResourceTestCase {
 			true, _serviceContext);
 
 		_country = _countryLocalService.addCountry(
-			null, "XY", "XYZ", true, true, RandomTestUtil.randomString(),
+			null, CountryTestUtil.randomA2(testCompany.getCompanyId()),
+			CountryTestUtil.randomA3(testCompany.getCompanyId()), true, true,
 			RandomTestUtil.randomString(), RandomTestUtil.randomString(),
-			RandomTestUtil.nextDouble(), true, true, false, _serviceContext);
+			RandomTestUtil.randomString(), RandomTestUtil.nextDouble(), true,
+			true, false, _serviceContext);
 
 		_region = _regionLocalService.addRegion(
 			null, _country.getCountryId(), true, RandomTestUtil.randomString(),
@@ -187,15 +190,8 @@ public class CartResourceTest extends BaseCartResourceTestCase {
 			_accountEntryValidatorServiceRegistration.unregister();
 		}
 
-		List<CommerceOrder> commerceOrders =
-			_commerceOrderLocalService.getCommerceOrders(
-				_commerceChannel.getGroupId(),
-				_accountEntry.getAccountEntryId(), -1, -1, null);
-
-		for (CommerceOrder commerceOrder : commerceOrders) {
-			_commerceOrderLocalService.deleteCommerceOrder(
-				commerceOrder.getCommerceOrderId());
-		}
+		_commerceOrderLocalService.deleteCommerceOrders(
+			_commerceChannel.getGroupId());
 
 		if (_accountEntry != null) {
 			_accountEntryLocalService.deleteAccountEntry(_accountEntry);
@@ -1909,9 +1905,6 @@ public class CartResourceTest extends BaseCartResourceTestCase {
 
 	@Inject
 	private CommerceDiscountLocalService _commerceDiscountLocalService;
-
-	@DeleteAfterTestRun
-	private CommerceOrder _commerceOrder;
 
 	@Inject
 	private CommerceOrderHttpHelper _commerceOrderHttpHelper;

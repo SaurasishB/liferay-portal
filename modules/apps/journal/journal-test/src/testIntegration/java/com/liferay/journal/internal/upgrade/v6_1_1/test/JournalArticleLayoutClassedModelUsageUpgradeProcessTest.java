@@ -10,22 +10,23 @@ import com.liferay.asset.kernel.model.AssetEntry;
 import com.liferay.asset.kernel.service.AssetEntryLocalService;
 import com.liferay.asset.publisher.constants.AssetPublisherPortletKeys;
 import com.liferay.counter.kernel.service.CounterLocalService;
-import com.liferay.exportimport.changeset.Changeset;
-import com.liferay.exportimport.changeset.portlet.action.ExportImportChangesetMVCActionCommandHelper;
+import com.liferay.exportimport.kernel.configuration.ExportImportConfigurationParameterMapFactoryUtil;
 import com.liferay.exportimport.kernel.service.StagingLocalService;
+import com.liferay.exportimport.kernel.staging.StagingUtil;
 import com.liferay.journal.constants.JournalContentPortletKeys;
 import com.liferay.journal.constants.JournalFolderConstants;
 import com.liferay.journal.model.JournalArticle;
-import com.liferay.journal.model.JournalContentSearch;
-import com.liferay.journal.service.JournalContentSearchLocalService;
 import com.liferay.journal.test.util.JournalTestUtil;
-import com.liferay.layout.admin.constants.LayoutAdminPortletKeys;
 import com.liferay.layout.model.LayoutClassedModelUsage;
 import com.liferay.layout.service.LayoutClassedModelUsageLocalService;
 import com.liferay.layout.test.util.ContentLayoutTestUtil;
 import com.liferay.layout.test.util.LayoutTestUtil;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.cache.MultiVMPool;
+import com.liferay.portal.kernel.dao.db.DB;
+import com.liferay.portal.kernel.dao.db.DBManagerUtil;
+import com.liferay.portal.kernel.dao.jdbc.DataAccess;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.Portlet;
@@ -36,8 +37,6 @@ import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.PortletPreferencesLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
-import com.liferay.portal.kernel.test.portlet.MockLiferayPortletActionRequest;
-import com.liferay.portal.kernel.test.portlet.MockLiferayPortletActionResponse;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
@@ -46,16 +45,13 @@ import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.upgrade.UpgradeProcess;
-import com.liferay.portal.kernel.util.Accessor;
 import com.liferay.portal.kernel.util.HashMapBuilder;
-import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.PortletKeys;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.xml.Document;
 import com.liferay.portal.kernel.xml.Element;
 import com.liferay.portal.kernel.xml.SAXReaderUtil;
 import com.liferay.portal.test.log.LogCapture;
-import com.liferay.portal.test.log.LogEntry;
 import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
@@ -63,11 +59,15 @@ import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 import com.liferay.portal.upgrade.registry.UpgradeStepRegistrator;
 import com.liferay.portal.upgrade.test.util.UpgradeTestUtil;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -92,6 +92,15 @@ public class JournalArticleLayoutClassedModelUsageUpgradeProcessTest {
 
 	@Before
 	public void setUp() throws Exception {
+		DB db = DBManagerUtil.getDB();
+
+		db.runSQL(
+			StringBundler.concat(
+				"create table JournalContentSearch (contentSearchId LONG not ",
+				"null primary key, groupId LONG, privateLayout BOOLEAN, ",
+				"layoutId LONG, portletId VARCHAR(200) null, articleId ",
+				"VARCHAR(75) null)"));
+
 		_group = GroupTestUtil.addGroup();
 
 		_journalArticle = JournalTestUtil.addArticle(
@@ -108,6 +117,13 @@ public class JournalArticleLayoutClassedModelUsageUpgradeProcessTest {
 			_group.getGroupId(), true);
 		_publicLayout = LayoutTestUtil.addTypePortletLayout(
 			_group.getGroupId(), false);
+	}
+
+	@After
+	public void tearDown() throws Exception {
+		DB db = DBManagerUtil.getDB();
+
+		db.runSQL("drop table JournalContentSearch");
 	}
 
 	@Test
@@ -244,8 +260,25 @@ public class JournalArticleLayoutClassedModelUsageUpgradeProcessTest {
 				stagingGroup.getCompanyId(), 1, stagingGroup.getGroupId(),
 				false);
 
+			long portletClassNameId = _classNameLocalService.getClassNameId(
+				Portlet.class.getName());
+
+			_assertLayoutClassedModelUsage(
+				expectedPortletId, portletClassNameId, _publicLayout,
+				_journalArticle.getResourcePrimKey());
+
 			_assertLayoutClassedModelUsagesCount(
-				_journalArticle.getResourcePrimKey(), 0);
+				_journalArticle.getResourcePrimKey(), 1);
+
+			Assert.assertEquals(
+				1,
+				_getLayoutClassedModelUsagesCount(
+					_journalArticle.getResourcePrimKey(), _group.getGroupId()));
+			Assert.assertEquals(
+				0,
+				_getLayoutClassedModelUsagesCount(
+					_journalArticle.getResourcePrimKey(),
+					stagingGroup.getGroupId()));
 
 			_runUpgrade();
 
@@ -262,9 +295,6 @@ public class JournalArticleLayoutClassedModelUsageUpgradeProcessTest {
 				1,
 				_getLayoutClassedModelUsagesCount(
 					_journalArticle.getResourcePrimKey(), _group.getGroupId()));
-
-			long portletClassNameId = _classNameLocalService.getClassNameId(
-				Portlet.class.getName());
 
 			_assertLayoutClassedModelUsage(
 				expectedPortletId, portletClassNameId, stagingLayout,
@@ -351,19 +381,23 @@ public class JournalArticleLayoutClassedModelUsageUpgradeProcessTest {
 				"groupId", new String[] {String.valueOf(groupId)}
 			).build());
 
-		JournalContentSearch journalContentSearch =
-			_journalContentSearchLocalService.createJournalContentSearch(
-				_counterLocalService.increment());
+		try (Connection connection = DataAccess.getConnection();
 
-		journalContentSearch.setGroupId(layout.getGroupId());
-		journalContentSearch.setCompanyId(layout.getCompanyId());
-		journalContentSearch.setPrivateLayout(layout.isPrivateLayout());
-		journalContentSearch.setLayoutId(layout.getLayoutId());
-		journalContentSearch.setPortletId(portletId);
-		journalContentSearch.setArticleId(articleId);
+			PreparedStatement preparedStatement = connection.prepareStatement(
+				StringBundler.concat(
+					"insert into JournalContentSearch (contentSearchId, ",
+					"groupId, privateLayout, layoutId, portletId, articleId) ",
+					"values (?, ?, ?, ?, ?, ?)"))) {
 
-		_journalContentSearchLocalService.addJournalContentSearch(
-			journalContentSearch);
+			preparedStatement.setLong(1, _counterLocalService.increment());
+			preparedStatement.setLong(2, layout.getGroupId());
+			preparedStatement.setBoolean(3, layout.isPrivateLayout());
+			preparedStatement.setLong(4, layout.getLayoutId());
+			preparedStatement.setString(5, portletId);
+			preparedStatement.setString(6, articleId);
+
+			preparedStatement.executeUpdate();
+		}
 
 		return portletId;
 	}
@@ -410,7 +444,6 @@ public class JournalArticleLayoutClassedModelUsageUpgradeProcessTest {
 			_addJournalContentPortletToLayout(_journalArticle, _publicLayout));
 
 		_assertAssetPublisherPortletPreferencesCount(2, false);
-		_assertJournalContentSearchesCount(_journalArticle.getArticleId(), 2);
 		_assertLayoutClassedModelUsagesCount(
 			_journalArticle.getResourcePrimKey(), 0);
 
@@ -439,19 +472,6 @@ public class JournalArticleLayoutClassedModelUsageUpgradeProcessTest {
 
 		Assert.assertEquals(
 			portletPreferences.toString(), count, portletPreferences.size());
-	}
-
-	private void _assertJournalContentSearchesCount(
-		String articleId, int count) {
-
-		List<JournalContentSearch> articleContentSearches = ListUtil.filter(
-			_journalContentSearchLocalService.getArticleContentSearches(),
-			journalContentSearch -> articleId.equals(
-				journalContentSearch.getArticleId()));
-
-		Assert.assertEquals(
-			articleContentSearches.toString(), count,
-			articleContentSearches.size());
 	}
 
 	private void _assertLayoutClassedModelUsage(
@@ -570,69 +590,11 @@ public class JournalArticleLayoutClassedModelUsageUpgradeProcessTest {
 	}
 
 	private void _publishToLive(Layout layout) throws Exception {
-		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
-			new MockLiferayPortletActionRequest();
-
-		mockLiferayPortletActionRequest.setAttribute(
-			WebKeys.PORTLET_ID, LayoutAdminPortletKeys.GROUP_PAGES);
-
-		ServiceContext serviceContext =
-			ServiceContextThreadLocal.getServiceContext();
-
-		mockLiferayPortletActionRequest.setAttribute(
-			WebKeys.THEME_DISPLAY, serviceContext.getThemeDisplay());
-
-		mockLiferayPortletActionRequest.setParameter(
-			"groupId", String.valueOf(layout.getGroupId()));
-
-		Changeset.Builder builder = Changeset.create();
-
-		Changeset changeset = builder.addStagedModel(
-			() -> layout
-		).addMultipleStagedModel(
-			Collections::emptyList
-		).build();
-
-		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
-				"com.liferay.portal.background.task.internal.messaging." +
-					"BackgroundTaskMessageListener",
-				LoggerTestUtil.ERROR)) {
-
-			_exportImportChangesetMVCActionCommandHelper.publish(
-				mockLiferayPortletActionRequest,
-				new MockLiferayPortletActionResponse(), changeset);
-
-			List<LogEntry> logEntries = logCapture.getLogEntries();
-
-			Assert.assertTrue(
-				ListUtil.toString(
-					logEntries,
-					new Accessor<LogEntry, String>() {
-
-						@Override
-						public String get(LogEntry logEntry) {
-							Throwable throwable = logEntry.getThrowable();
-
-							while (throwable.getCause() != null) {
-								throwable = throwable.getCause();
-							}
-
-							return throwable.getMessage();
-						}
-
-						@Override
-						public Class<String> getAttributeClass() {
-							return String.class;
-						}
-
-						@Override
-						public Class<LogEntry> getTypeClass() {
-							return LogEntry.class;
-						}
-
-					}),
-				ListUtil.isEmpty(logEntries));
-		}
+		StagingUtil.publishLayouts(
+			TestPropsValues.getUserId(), layout.getGroupId(),
+			_group.getGroupId(), false,
+			ExportImportConfigurationParameterMapFactoryUtil.
+				buildFullPublishParameterMap());
 	}
 
 	private void _pushServiceContext(Group group, Layout layout)
@@ -692,18 +654,11 @@ public class JournalArticleLayoutClassedModelUsageUpgradeProcessTest {
 	@Inject
 	private CounterLocalService _counterLocalService;
 
-	@Inject
-	private ExportImportChangesetMVCActionCommandHelper
-		_exportImportChangesetMVCActionCommandHelper;
-
 	@DeleteAfterTestRun
 	private Group _group;
 
 	private JournalArticle _journalArticle;
 	private long _journalArticleClassNameId;
-
-	@Inject
-	private JournalContentSearchLocalService _journalContentSearchLocalService;
 
 	@Inject
 	private LayoutClassedModelUsageLocalService

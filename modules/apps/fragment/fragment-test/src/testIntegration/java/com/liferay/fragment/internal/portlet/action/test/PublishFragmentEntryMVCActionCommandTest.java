@@ -14,7 +14,7 @@ import com.liferay.fragment.model.FragmentEntryLink;
 import com.liferay.fragment.service.FragmentCollectionLocalService;
 import com.liferay.fragment.service.FragmentEntryLinkLocalService;
 import com.liferay.fragment.service.FragmentEntryLocalService;
-import com.liferay.layout.page.template.service.LayoutPageTemplateStructureLocalService;
+import com.liferay.fragment.test.util.FragmentEntryLinkTestUtil;
 import com.liferay.layout.test.util.ContentLayoutTestUtil;
 import com.liferay.layout.test.util.LayoutTestUtil;
 import com.liferay.layout.util.LayoutServiceContextHelper;
@@ -235,7 +235,7 @@ public class PublishFragmentEntryMVCActionCommandTest {
 				fragmentEntry.getHtml(),
 				_fragmentEntryLinkLocalService.getFragmentEntryLink(
 					fragmentEntryLink.getFragmentEntryLinkId()),
-				_fragmentEntryLinkLocalService.getFragmentEntryLink(
+				FragmentEntryLinkTestUtil.getFragmentEntryLink(
 					_group.getGroupId(),
 					fragmentEntryLink.getExternalReferenceCode(),
 					layout.getPlid()));
@@ -266,7 +266,7 @@ public class PublishFragmentEntryMVCActionCommandTest {
 				fragmentEntry.getHtml(),
 				_fragmentEntryLinkLocalService.getFragmentEntryLink(
 					fragmentEntryLink.getFragmentEntryLinkId()),
-				_fragmentEntryLinkLocalService.getFragmentEntryLink(
+				FragmentEntryLinkTestUtil.getFragmentEntryLink(
 					_group.getGroupId(),
 					fragmentEntryLink.getExternalReferenceCode(),
 					layout.getPlid()));
@@ -299,10 +299,6 @@ public class PublishFragmentEntryMVCActionCommandTest {
 
 	@Inject
 	private LayoutLocalService _layoutLocalService;
-
-	@Inject
-	private LayoutPageTemplateStructureLocalService
-		_layoutPageTemplateStructureLocalService;
 
 	@Inject
 	private LayoutServiceContextHelper _layoutServiceContextHelper;

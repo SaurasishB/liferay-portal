@@ -10,9 +10,9 @@ import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
 
 import com.liferay.portal.json.JSONFactoryImpl;
 import com.liferay.portal.search.elasticsearch8.internal.connection.ElasticsearchClientResolver;
-import com.liferay.portal.search.elasticsearch8.internal.index.MappingsHelperImpl;
+import com.liferay.portal.search.elasticsearch8.internal.index.MappingsHelper;
 import com.liferay.portal.search.elasticsearch8.internal.index.constants.IndexSettingsConstants;
-import com.liferay.portal.search.elasticsearch8.internal.settings.SettingsHelperImpl;
+import com.liferay.portal.search.elasticsearch8.internal.settings.SettingsHelper;
 import com.liferay.portal.search.elasticsearch8.internal.util.ResourceUtil;
 import com.liferay.portal.search.engine.SearchEngineInformation;
 
@@ -34,17 +34,17 @@ public class LiferayIndexCreationHelper implements IndexCreationHelper {
 		ElasticsearchClient elasticsearchClient =
 			_elasticsearchClientResolver.getElasticsearchClient();
 
-		MappingsHelperImpl mappingsHelperImpl = new MappingsHelperImpl(
+		MappingsHelper mappingsHelper = new MappingsHelper(
 			elasticsearchClient.indices(), null, new JSONFactoryImpl(),
 			_elasticsearchClientResolver.getJsonpMapper(null), null,
 			_searchEngineInformation);
 
-		mappingsHelperImpl.setDefaultOrOverrideMappings(builder);
+		mappingsHelper.setDefaultOrOverrideMappings(builder);
 	}
 
 	@Override
-	public void contributeIndexSettings(SettingsHelperImpl settingsHelperImpl) {
-		settingsHelperImpl.loadFromSource(
+	public void contributeIndexSettings(SettingsHelper settingsHelper) {
+		settingsHelper.loadFromSource(
 			ResourceUtil.getResourceAsString(
 				getClass(), IndexSettingsConstants.INDEX_SETTINGS_FILE_NAME));
 	}

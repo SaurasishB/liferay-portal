@@ -16,9 +16,9 @@ import com.liferay.commerce.currency.test.util.CommerceCurrencyTestUtil;
 import com.liferay.commerce.model.CommerceOrder;
 import com.liferay.commerce.model.CommerceSubscriptionEntry;
 import com.liferay.commerce.notification.model.CommerceNotificationTemplate;
-import com.liferay.commerce.notification.service.CommerceNotificationQueueEntryLocalService;
 import com.liferay.commerce.notification.service.CommerceNotificationTemplateLocalService;
 import com.liferay.commerce.notification.service.CommerceNotificationTemplateLocalServiceUtil;
+import com.liferay.commerce.notification.test.util.CommerceNotificationQueueEntryTestUtil;
 import com.liferay.commerce.notification.test.util.CommerceNotificationTestUtil;
 import com.liferay.commerce.order.engine.CommerceOrderEngine;
 import com.liferay.commerce.payment.engine.CommerceSubscriptionEngine;
@@ -157,8 +157,9 @@ public class CommerceSubscriptionsNotificationTest {
 		List<CommerceSubscriptionEntry> commerceSubscriptionEntries =
 			_commerceSubscriptionEntryLocalService.
 				getCommerceSubscriptionEntries(
-					_group.getCompanyId(), _commerceOrder.getUserId(),
-					QueryUtil.ALL_POS, QueryUtil.ALL_POS, null);
+					_group.getCompanyId(), _commerceChannel.getGroupId(),
+					_commerceOrder.getUserId(), QueryUtil.ALL_POS,
+					QueryUtil.ALL_POS, null);
 
 		Assert.assertEquals(
 			commerceSubscriptionEntries.toString(), 1,
@@ -207,7 +208,7 @@ public class CommerceSubscriptionsNotificationTest {
 
 		List<String> commerceNotificationTemplateTypes =
 			TransformUtil.transform(
-				CommerceNotificationTestUtil.
+				CommerceNotificationQueueEntryTestUtil.
 					getCommerceNotificationQueueEntries(
 						_group.getGroupId(), QueryUtil.ALL_POS,
 						QueryUtil.ALL_POS, null),
@@ -242,11 +243,6 @@ public class CommerceSubscriptionsNotificationTest {
 	private CommerceChannelLocalService _commerceChannelLocalService;
 
 	private CommerceCurrency _commerceCurrency;
-
-	@Inject
-	private CommerceNotificationQueueEntryLocalService
-		_commerceNotificationQueueEntryLocalService;
-
 	private List<CommerceNotificationTemplate>
 		_commerceNotificationTemplateList;
 

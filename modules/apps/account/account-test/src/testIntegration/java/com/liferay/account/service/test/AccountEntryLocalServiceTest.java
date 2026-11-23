@@ -462,29 +462,6 @@ public class AccountEntryLocalServiceTest {
 	}
 
 	@Test
-	public void testActivateAccountEntries() throws Exception {
-		List<AccountEntry> accountEntries =
-			AccountEntryTestUtil.addAccountEntries(
-				2, AccountEntryArgs.STATUS_INACTIVE);
-
-		for (AccountEntry accountEntry : accountEntries) {
-			_assertStatus(
-				accountEntry.getAccountEntryId(),
-				WorkflowConstants.STATUS_INACTIVE);
-		}
-
-		_accountEntryLocalService.activateAccountEntries(
-			ListUtil.toLongArray(
-				accountEntries, AccountEntry.ACCOUNT_ENTRY_ID_ACCESSOR));
-
-		for (AccountEntry accountEntry : accountEntries) {
-			_assertStatus(
-				accountEntry.getAccountEntryId(),
-				WorkflowConstants.STATUS_APPROVED);
-		}
-	}
-
-	@Test
 	public void testActivateAccountEntryByModel() throws Exception {
 		AccountEntry accountEntry = AccountEntryTestUtil.addAccountEntry(
 			AccountEntryArgs.STATUS_INACTIVE);
@@ -625,28 +602,6 @@ public class AccountEntryLocalServiceTest {
 	}
 
 	@Test
-	public void testDeactivateAccountEntries() throws Exception {
-		List<AccountEntry> accountEntries =
-			AccountEntryTestUtil.addAccountEntries(2);
-
-		for (AccountEntry accountEntry : accountEntries) {
-			_assertStatus(
-				accountEntry.getAccountEntryId(),
-				WorkflowConstants.STATUS_APPROVED);
-		}
-
-		_accountEntryLocalService.deactivateAccountEntries(
-			ListUtil.toLongArray(
-				accountEntries, AccountEntry.ACCOUNT_ENTRY_ID_ACCESSOR));
-
-		for (AccountEntry accountEntry : accountEntries) {
-			_assertStatus(
-				accountEntry.getAccountEntryId(),
-				WorkflowConstants.STATUS_INACTIVE);
-		}
-	}
-
-	@Test
 	public void testDeactivateAccountEntryByModel() throws Exception {
 		AccountEntry accountEntry = AccountEntryTestUtil.addAccountEntry();
 
@@ -675,20 +630,6 @@ public class AccountEntryLocalServiceTest {
 		_assertStatus(
 			accountEntry.getAccountEntryId(),
 			WorkflowConstants.STATUS_INACTIVE);
-	}
-
-	@Test
-	public void testDeleteAccountEntries() throws Exception {
-		List<AccountEntry> accountEntries =
-			AccountEntryTestUtil.addAccountEntries(2);
-
-		_accountEntryLocalService.deleteAccountEntries(
-			ListUtil.toLongArray(
-				accountEntries, AccountEntry.ACCOUNT_ENTRY_ID_ACCESSOR));
-
-		for (AccountEntry accountEntry : accountEntries) {
-			_assertDeleted(accountEntry);
-		}
 	}
 
 	@Test
@@ -1293,7 +1234,7 @@ public class AccountEntryLocalServiceTest {
 		AccountEntryTestUtil.addAccountEntry();
 
 		List<AccountEntry> expectedAccountEntries =
-			_accountEntryLocalService.getAccountEntries(
+			AccountEntryTestUtil.getAccountEntries(
 				TestPropsValues.getCompanyId(),
 				WorkflowConstants.STATUS_APPROVED, QueryUtil.ALL_POS,
 				QueryUtil.ALL_POS, null);

@@ -25,12 +25,12 @@ import com.liferay.object.model.ObjectState;
 import com.liferay.object.model.ObjectStateFlow;
 import com.liferay.object.model.ObjectStateTransition;
 import com.liferay.object.service.ObjectDefinitionLocalService;
-import com.liferay.object.service.ObjectFieldLocalService;
 import com.liferay.object.service.ObjectFieldSettingLocalService;
 import com.liferay.object.service.ObjectStateFlowLocalService;
 import com.liferay.object.service.ObjectStateLocalService;
 import com.liferay.object.service.ObjectStateTransitionLocalService;
 import com.liferay.object.test.util.ObjectDefinitionTestUtil;
+import com.liferay.object.test.util.ObjectStateTransitionTestUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
@@ -345,7 +345,7 @@ public class ObjectStateFlowLocalServiceTest {
 
 		for (ObjectState objectState : objectStates) {
 			objectState.setObjectStateTransitions(
-				_objectStateTransitionLocalService.
+				ObjectStateTransitionTestUtil.
 					getObjectStateObjectStateTransitions(
 						objectState.getObjectStateId()));
 		}
@@ -359,7 +359,7 @@ public class ObjectStateFlowLocalServiceTest {
 
 		for (ObjectState objectState : objectStates) {
 			List<ObjectStateTransition> objectStateTransitions =
-				_objectStateTransitionLocalService.
+				ObjectStateTransitionTestUtil.
 					getObjectStateObjectStateTransitions(
 						objectState.getObjectStateId());
 
@@ -442,7 +442,8 @@ public class ObjectStateFlowLocalServiceTest {
 	}
 
 	private void _assertEquals(
-		List<ObjectState> objectStates1, List<ObjectState> objectStates2) {
+			List<ObjectState> objectStates1, List<ObjectState> objectStates2)
+		throws Exception {
 
 		Assert.assertEquals(
 			objectStates1.toString(), objectStates1.size(),
@@ -459,7 +460,7 @@ public class ObjectStateFlowLocalServiceTest {
 			List<ObjectStateTransition> objectStateTransitions1 =
 				objectState1.getObjectStateTransitions();
 			List<ObjectStateTransition> objectStateTransitions2 =
-				_objectStateTransitionLocalService.
+				ObjectStateTransitionTestUtil.
 					getObjectStateObjectStateTransitions(
 						objectState2.getObjectStateId());
 
@@ -513,9 +514,6 @@ public class ObjectStateFlowLocalServiceTest {
 
 	@Inject
 	private ObjectDefinitionLocalService _objectDefinitionLocalService;
-
-	@Inject
-	private ObjectFieldLocalService _objectFieldLocalService;
 
 	@Inject
 	private ObjectFieldSettingLocalService _objectFieldSettingLocalService;

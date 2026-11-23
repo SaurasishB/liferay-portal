@@ -13,6 +13,7 @@ import com.liferay.commerce.product.test.util.CPTestUtil;
 import com.liferay.commerce.wish.list.model.CommerceWishList;
 import com.liferay.commerce.wish.list.service.CommerceWishListItemLocalService;
 import com.liferay.commerce.wish.list.service.CommerceWishListService;
+import com.liferay.commerce.wish.list.test.util.CommerceWishListItemTestUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
@@ -70,7 +71,7 @@ public class CommerceWishListItemLocalServiceTest {
 
 		Assert.assertEquals(
 			1,
-			_commerceWishListItemLocalService.getCommerceWishListItemsCount(
+			CommerceWishListItemTestUtil.getCommerceWishListItemsCount(
 				commerceWishList.getCommerceWishListId()));
 
 		_commerceWishListItemLocalService.addOrUpdateCommerceWishListItem(
@@ -79,7 +80,7 @@ public class CommerceWishListItemLocalServiceTest {
 
 		Assert.assertEquals(
 			1,
-			_commerceWishListItemLocalService.getCommerceWishListItemsCount(
+			CommerceWishListItemTestUtil.getCommerceWishListItemsCount(
 				commerceWishList.getCommerceWishListId()));
 	}
 

@@ -18,12 +18,12 @@ import com.liferay.knowledge.base.model.KBArticle;
 import com.liferay.knowledge.base.service.KBArticleLocalService;
 import com.liferay.knowledge.base.service.KBArticleService;
 import com.liferay.knowledge.base.util.comparator.KBArticlePriorityComparator;
+import com.liferay.knowledge.base.util.comparator.KBArticleVersionComparator;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.Role;
-import com.liferay.portal.kernel.model.Subscription;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.repository.model.FileEntry;
@@ -138,6 +138,145 @@ public class KBArticleServiceTest {
 		_testDeleteKBArticlesWithKBArticlesFromDifferentGroups();
 	}
 
+	@Test
+	@TestInfo("LPD-115385")
+	public void testFetchFirstChildKBArticle() throws Exception {
+		KBArticle draftKBArticle = _addDraftKBArticle();
+
+		KBArticle kbArticle = _addKBArticle(new Date());
+
+		_updateKBArticle(kbArticle, WorkflowConstants.ACTION_SAVE_DRAFT);
+
+		Assert.assertEquals(
+			draftKBArticle,
+			_kbArticleService.fetchFirstChildKBArticle(
+				_group1.getGroupId(),
+				KBFolderConstants.DEFAULT_PARENT_FOLDER_ID));
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				_siteMemberUser)) {
+
+			Assert.assertEquals(
+				kbArticle,
+				_kbArticleService.fetchFirstChildKBArticle(
+					_group1.getGroupId(),
+					KBFolderConstants.DEFAULT_PARENT_FOLDER_ID));
+		}
+	}
+
+	@Test
+	@TestInfo("LPD-115385")
+	public void testFetchLatestKBArticle() throws Exception {
+		KBArticle draftKBArticle = _addDraftKBArticle();
+
+		KBArticle kbArticle = _addKBArticle(new Date());
+
+		KBArticle draftVersionKBArticle = _updateKBArticle(
+			kbArticle, WorkflowConstants.ACTION_SAVE_DRAFT);
+
+		Assert.assertEquals(
+			draftKBArticle,
+			_kbArticleService.fetchLatestKBArticle(
+				draftKBArticle.getResourcePrimKey(),
+				WorkflowConstants.STATUS_ANY));
+		Assert.assertEquals(
+			draftVersionKBArticle,
+			_kbArticleService.fetchLatestKBArticle(
+				kbArticle.getResourcePrimKey(), WorkflowConstants.STATUS_ANY));
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				_siteMemberUser)) {
+
+			Assert.assertNull(
+				_kbArticleService.fetchLatestKBArticle(
+					draftKBArticle.getResourcePrimKey(),
+					WorkflowConstants.STATUS_ANY));
+			Assert.assertEquals(
+				kbArticle,
+				_kbArticleService.fetchLatestKBArticle(
+					kbArticle.getResourcePrimKey(),
+					WorkflowConstants.STATUS_ANY));
+		}
+	}
+
+	@Test
+	@TestInfo("LPD-115385")
+	public void testFetchLatestKBArticleByExternalReferenceCode()
+		throws Exception {
+
+		KBArticle draftKBArticle = _addDraftKBArticle();
+
+		KBArticle kbArticle = _addKBArticle(new Date());
+
+		KBArticle draftVersionKBArticle = _updateKBArticle(
+			kbArticle, WorkflowConstants.ACTION_SAVE_DRAFT);
+
+		Assert.assertEquals(
+			draftKBArticle,
+			_kbArticleService.fetchLatestKBArticleByExternalReferenceCode(
+				_group1.getGroupId(),
+				draftKBArticle.getExternalReferenceCode()));
+		Assert.assertEquals(
+			draftVersionKBArticle,
+			_kbArticleService.fetchLatestKBArticleByExternalReferenceCode(
+				_group1.getGroupId(), kbArticle.getExternalReferenceCode()));
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				_siteMemberUser)) {
+
+			Assert.assertNull(
+				_kbArticleService.fetchLatestKBArticleByExternalReferenceCode(
+					_group1.getGroupId(),
+					draftKBArticle.getExternalReferenceCode()));
+			Assert.assertEquals(
+				kbArticle,
+				_kbArticleService.fetchLatestKBArticleByExternalReferenceCode(
+					_group1.getGroupId(),
+					kbArticle.getExternalReferenceCode()));
+		}
+	}
+
+	@Test
+	@TestInfo("LPD-115385")
+	public void testFetchLatestKBArticleByUrlTitle() throws Exception {
+		KBArticle draftKBArticle = _addDraftKBArticle();
+
+		KBArticle kbArticle = _addKBArticle(new Date());
+
+		KBArticle draftVersionKBArticle = _updateKBArticle(
+			kbArticle, WorkflowConstants.ACTION_SAVE_DRAFT);
+
+		Assert.assertEquals(
+			draftKBArticle,
+			_kbArticleService.fetchLatestKBArticleByUrlTitle(
+				_group1.getGroupId(),
+				KBFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+				draftKBArticle.getUrlTitle(), WorkflowConstants.STATUS_ANY));
+		Assert.assertEquals(
+			draftVersionKBArticle,
+			_kbArticleService.fetchLatestKBArticleByUrlTitle(
+				_group1.getGroupId(),
+				KBFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+				kbArticle.getUrlTitle(), WorkflowConstants.STATUS_ANY));
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				_siteMemberUser)) {
+
+			Assert.assertNull(
+				_kbArticleService.fetchLatestKBArticleByUrlTitle(
+					_group1.getGroupId(),
+					KBFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+					draftKBArticle.getUrlTitle(),
+					WorkflowConstants.STATUS_ANY));
+			Assert.assertEquals(
+				kbArticle,
+				_kbArticleService.fetchLatestKBArticleByUrlTitle(
+					_group1.getGroupId(),
+					KBFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+					kbArticle.getUrlTitle(), WorkflowConstants.STATUS_ANY));
+		}
+	}
+
 	@FeatureFlag("LPD-11003")
 	@Test
 	public void testForceLockKBArticle() throws Exception {
@@ -186,13 +325,26 @@ public class KBArticleServiceTest {
 
 		KBArticle kbArticle2 = _addKBArticle(new Date(), serviceContext);
 
+		_testGetAllDescendantKBArticles(
+			WorkflowConstants.STATUS_ANY, kbArticle1, kbArticle2);
+		_testGetAllDescendantKBArticles(
+			WorkflowConstants.STATUS_DRAFT, kbArticle2);
+
 		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
 				_siteMemberUser)) {
 
+			Assert.assertThrows(
+				PrincipalException.class,
+				() -> _kbArticleService.getAllDescendantKBArticles(
+					_group1.getGroupId(), kbArticle2.getResourcePrimKey(),
+					WorkflowConstants.STATUS_ANY,
+					KBArticlePriorityComparator.getInstance(true)));
+
+			_testGetAllDescendantKBArticles(
+				WorkflowConstants.STATUS_ANY, kbArticle1);
 			_testGetAllDescendantKBArticles(
 				WorkflowConstants.STATUS_APPROVED, kbArticle1);
-			_testGetAllDescendantKBArticles(
-				WorkflowConstants.STATUS_DRAFT, kbArticle2);
+			_testGetAllDescendantKBArticles(WorkflowConstants.STATUS_DRAFT);
 		}
 
 		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
@@ -200,6 +352,31 @@ public class KBArticleServiceTest {
 
 			_testGetAllDescendantKBArticles(WorkflowConstants.STATUS_APPROVED);
 			_testGetAllDescendantKBArticles(WorkflowConstants.STATUS_DRAFT);
+		}
+	}
+
+	@Test
+	@TestInfo("LPD-115385")
+	public void testGetGroupKBArticles() throws Exception {
+		KBArticle draftKBArticle = _addDraftKBArticle();
+
+		KBArticle kbArticle = _addKBArticle(new Date());
+
+		KBArticle draftVersionKBArticle = _updateKBArticle(
+			kbArticle, WorkflowConstants.ACTION_SAVE_DRAFT);
+
+		_testGetGroupKBArticles(
+			WorkflowConstants.STATUS_ANY, draftKBArticle,
+			draftVersionKBArticle);
+		_testGetGroupKBArticles(
+			WorkflowConstants.STATUS_DRAFT, draftKBArticle,
+			draftVersionKBArticle);
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				_siteMemberUser)) {
+
+			_testGetGroupKBArticles(WorkflowConstants.STATUS_ANY, kbArticle);
+			_testGetGroupKBArticles(WorkflowConstants.STATUS_DRAFT);
 		}
 	}
 
@@ -218,6 +395,61 @@ public class KBArticleServiceTest {
 		_testGetKBArticleAttachmentWithFileEntryInRootFolder();
 		_testGetKBArticleAttachmentWithNonexistentKBArticle();
 		_testGetKBArticleAttachmentWithoutViewPermission();
+	}
+
+	@Test
+	@TestInfo("LPD-115385")
+	public void testGetKBArticleVersions() throws Exception {
+		KBArticle kbArticle = _addKBArticle(new Date());
+
+		KBArticle draftVersionKBArticle = _updateKBArticle(
+			kbArticle, WorkflowConstants.ACTION_SAVE_DRAFT);
+
+		_testGetKBArticleVersions(
+			kbArticle, WorkflowConstants.STATUS_ANY, draftVersionKBArticle,
+			kbArticle);
+		_testGetKBArticleVersions(
+			kbArticle, WorkflowConstants.STATUS_DRAFT, draftVersionKBArticle);
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				_siteMemberUser)) {
+
+			_testGetKBArticleVersions(
+				kbArticle, WorkflowConstants.STATUS_ANY, kbArticle);
+			_testGetKBArticleVersions(
+				kbArticle, WorkflowConstants.STATUS_DRAFT);
+		}
+	}
+
+	@Test
+	@TestInfo("LPD-115385")
+	public void testGetKBArticles() throws Exception {
+		KBArticle draftKBArticle = _addDraftKBArticle();
+
+		KBArticle kbArticle = _addKBArticle(new Date());
+
+		KBArticle draftVersionKBArticle = _updateKBArticle(
+			kbArticle, WorkflowConstants.ACTION_SAVE_DRAFT);
+
+		long[] resourcePrimKeys = {
+			draftKBArticle.getResourcePrimKey(), kbArticle.getResourcePrimKey()
+		};
+
+		_testGetKBArticles(
+			resourcePrimKeys, WorkflowConstants.STATUS_ANY, draftKBArticle,
+			draftVersionKBArticle);
+		_testGetKBArticles(
+			resourcePrimKeys, WorkflowConstants.STATUS_DRAFT, draftKBArticle,
+			draftVersionKBArticle);
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				_siteMemberUser)) {
+
+			_testGetKBArticles(
+				resourcePrimKeys, WorkflowConstants.STATUS_ANY, kbArticle);
+			_testGetKBArticles(
+				resourcePrimKeys, WorkflowConstants.STATUS_DRAFT);
+		}
 	}
 
 	@Test
@@ -260,6 +492,45 @@ public class KBArticleServiceTest {
 		_testGetLatestKBArticleWithDraftKBArticle();
 		_testGetLatestKBArticleWithDraftVersion();
 		_testGetLatestKBArticleWithPendingKBArticle();
+	}
+
+	@Test
+	@TestInfo("LPD-115385")
+	public void testGetLatestKBArticleByExternalReferenceCode()
+		throws Exception {
+
+		KBArticle draftKBArticle = _addDraftKBArticle();
+
+		KBArticle kbArticle = _addKBArticle(new Date());
+
+		KBArticle draftVersionKBArticle = _updateKBArticle(
+			kbArticle, WorkflowConstants.ACTION_SAVE_DRAFT);
+
+		Assert.assertEquals(
+			draftKBArticle,
+			_kbArticleService.getLatestKBArticleByExternalReferenceCode(
+				_group1.getGroupId(),
+				draftKBArticle.getExternalReferenceCode()));
+		Assert.assertEquals(
+			draftVersionKBArticle,
+			_kbArticleService.getLatestKBArticleByExternalReferenceCode(
+				_group1.getGroupId(), kbArticle.getExternalReferenceCode()));
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				_siteMemberUser)) {
+
+			Assert.assertThrows(
+				NoSuchArticleException.class,
+				() ->
+					_kbArticleService.getLatestKBArticleByExternalReferenceCode(
+						_group1.getGroupId(),
+						draftKBArticle.getExternalReferenceCode()));
+			Assert.assertEquals(
+				kbArticle,
+				_kbArticleService.getLatestKBArticleByExternalReferenceCode(
+					_group1.getGroupId(),
+					kbArticle.getExternalReferenceCode()));
+		}
 	}
 
 	@Test
@@ -325,6 +596,16 @@ public class KBArticleServiceTest {
 		throws Exception {
 
 		return _addAttachment(_addKBArticle(new Date(), serviceContext));
+	}
+
+	private KBArticle _addDraftKBArticle() throws Exception {
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext(
+				_group1, TestPropsValues.getUserId());
+
+		serviceContext.setWorkflowAction(WorkflowConstants.ACTION_SAVE_DRAFT);
+
+		return _addKBArticle(new Date(), serviceContext);
 	}
 
 	private FileEntry _addFileEntry(long folderId) throws Exception {
@@ -394,8 +675,8 @@ public class KBArticleServiceTest {
 				fileEntry.getFileEntryId()));
 	}
 
-	private Subscription _fetchGroupSubscription(long userId) throws Exception {
-		return _subscriptionLocalService.fetchSubscription(
+	private boolean _isGroupSubscribed(long userId) throws Exception {
+		return _subscriptionLocalService.isSubscribed(
 			TestPropsValues.getCompanyId(), userId, KBArticle.class.getName(),
 			_group1.getGroupId());
 	}
@@ -602,6 +883,21 @@ public class KBArticleServiceTest {
 				KBArticlePriorityComparator.getInstance(true)));
 	}
 
+	private void _testGetGroupKBArticles(
+		int status, KBArticle... expectedKBArticles) {
+
+		Assert.assertEquals(
+			Arrays.asList(expectedKBArticles),
+			_kbArticleService.getGroupKBArticles(
+				_group1.getGroupId(), status, QueryUtil.ALL_POS,
+				QueryUtil.ALL_POS,
+				KBArticlePriorityComparator.getInstance(true)));
+		Assert.assertEquals(
+			expectedKBArticles.length,
+			_kbArticleService.getGroupKBArticlesCount(
+				_group1.getGroupId(), status));
+	}
+
 	private void _testGetKBArticleAttachment() throws Exception {
 		FileEntry fileEntry = _addAttachment(true, false);
 
@@ -687,6 +983,21 @@ public class KBArticleServiceTest {
 				() -> _kbArticleService.getKBArticleAttachment(
 					fileEntry.getFileEntryId()));
 		}
+	}
+
+	private void _testGetKBArticleVersions(
+		KBArticle kbArticle, int status, KBArticle... expectedKBArticles) {
+
+		Assert.assertEquals(
+			Arrays.asList(expectedKBArticles),
+			_kbArticleService.getKBArticleVersions(
+				_group1.getGroupId(), kbArticle.getResourcePrimKey(), status,
+				QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+				KBArticleVersionComparator.getInstance(false)));
+		Assert.assertEquals(
+			expectedKBArticles.length,
+			_kbArticleService.getKBArticleVersionsCount(
+				_group1.getGroupId(), kbArticle.getResourcePrimKey(), status));
 	}
 
 	private void _testGetKBArticleWithDraftVersion() throws Exception {
@@ -780,6 +1091,40 @@ public class KBArticleServiceTest {
 				_kbArticleService.getKBArticle(
 					kbArticle.getResourcePrimKey(), kbArticle.getVersion()));
 		}
+	}
+
+	private void _testGetKBArticles(
+		long[] resourcePrimKeys, int status, KBArticle... expectedKBArticles) {
+
+		List<KBArticle> kbArticles = Arrays.asList(expectedKBArticles);
+
+		Assert.assertEquals(
+			kbArticles,
+			_kbArticleService.getKBArticles(
+				_group1.getGroupId(),
+				KBFolderConstants.DEFAULT_PARENT_FOLDER_ID, status,
+				QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+				KBArticlePriorityComparator.getInstance(true)));
+		Assert.assertEquals(
+			kbArticles,
+			_kbArticleService.getKBArticles(
+				_group1.getGroupId(), resourcePrimKeys, status,
+				KBArticlePriorityComparator.getInstance(true)));
+		Assert.assertEquals(
+			kbArticles,
+			_kbArticleService.getKBArticles(
+				_group1.getGroupId(), resourcePrimKeys, status,
+				QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+				KBArticlePriorityComparator.getInstance(true)));
+		Assert.assertEquals(
+			kbArticles.size(),
+			_kbArticleService.getKBArticlesCount(
+				_group1.getGroupId(),
+				KBFolderConstants.DEFAULT_PARENT_FOLDER_ID, status));
+		Assert.assertEquals(
+			kbArticles.size(),
+			_kbArticleService.getKBArticlesCount(
+				_group1.getGroupId(), resourcePrimKeys, status));
 	}
 
 	private void _testGetLatestKBArticleWithDraftKBArticle() throws Exception {
@@ -895,8 +1240,7 @@ public class KBArticleServiceTest {
 				_group1.getGroupId(), portletId);
 		}
 
-		Assert.assertNotNull(
-			_fetchGroupSubscription(_siteMemberUser.getUserId()));
+		Assert.assertTrue(_isGroupSubscribed(_siteMemberUser.getUserId()));
 
 		_kbArticleLocalService.unsubscribeGroupKBArticles(
 			_siteMemberUser.getUserId(), _group1.getGroupId());
@@ -920,7 +1264,7 @@ public class KBArticleServiceTest {
 				principalException.getMessage());
 		}
 
-		Assert.assertNull(_fetchGroupSubscription(_siteMemberUser.getUserId()));
+		Assert.assertFalse(_isGroupSubscribed(_siteMemberUser.getUserId()));
 	}
 
 	private void _testSubscribeGroupKBArticlesWithoutSubscribePermission(
@@ -944,7 +1288,7 @@ public class KBArticleServiceTest {
 			Assert.assertEquals(resourceName, mustHavePermission.resourceName);
 		}
 
-		Assert.assertNull(_fetchGroupSubscription(_user.getUserId()));
+		Assert.assertFalse(_isGroupSubscribed(_user.getUserId()));
 	}
 
 	private void _testUnsubscribeGroupKBArticles(String portletId)
@@ -960,7 +1304,7 @@ public class KBArticleServiceTest {
 				_group1.getGroupId(), portletId);
 		}
 
-		Assert.assertNull(_fetchGroupSubscription(_siteMemberUser.getUserId()));
+		Assert.assertFalse(_isGroupSubscribed(_siteMemberUser.getUserId()));
 	}
 
 	private void _testUnsubscribeGroupKBArticlesWithInvalidPortletId()
@@ -984,8 +1328,7 @@ public class KBArticleServiceTest {
 				principalException.getMessage());
 		}
 
-		Assert.assertNotNull(
-			_fetchGroupSubscription(_siteMemberUser.getUserId()));
+		Assert.assertTrue(_isGroupSubscribed(_siteMemberUser.getUserId()));
 
 		_kbArticleLocalService.unsubscribeGroupKBArticles(
 			_siteMemberUser.getUserId(), _group1.getGroupId());
@@ -1015,7 +1358,7 @@ public class KBArticleServiceTest {
 			Assert.assertEquals(resourceName, mustHavePermission.resourceName);
 		}
 
-		Assert.assertNotNull(_fetchGroupSubscription(_user.getUserId()));
+		Assert.assertTrue(_isGroupSubscribed(_user.getUserId()));
 
 		_kbArticleLocalService.unsubscribeGroupKBArticles(
 			_user.getUserId(), _group1.getGroupId());

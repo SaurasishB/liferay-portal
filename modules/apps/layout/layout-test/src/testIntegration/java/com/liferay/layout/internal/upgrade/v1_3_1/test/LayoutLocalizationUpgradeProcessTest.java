@@ -9,16 +9,13 @@ import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.change.tracking.model.CTCollection;
 import com.liferay.change.tracking.service.CTCollectionLocalService;
 import com.liferay.change.tracking.service.CTEntryLocalService;
-import com.liferay.change.tracking.service.CTProcessLocalService;
 import com.liferay.layout.model.LayoutLocalization;
 import com.liferay.layout.service.LayoutLocalizationLocalService;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.portal.kernel.cache.MultiVMPool;
 import com.liferay.portal.kernel.change.tracking.CTCollectionThreadLocal;
 import com.liferay.portal.kernel.model.Group;
-import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.service.ClassNameLocalService;
-import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
@@ -75,9 +72,18 @@ public class LayoutLocalizationUpgradeProcessTest {
 					_ctCollection1.getCtCollectionId())) {
 
 			layoutLocalization =
+				_layoutLocalizationLocalService.createLayoutLocalization(
+					RandomTestUtil.randomLong());
+
+			layoutLocalization.setGroupId(_group.getGroupId());
+			layoutLocalization.setCompanyId(_group.getCompanyId());
+			layoutLocalization.setContent(RandomTestUtil.randomString());
+			layoutLocalization.setLanguageId("en_US");
+			layoutLocalization.setPlid(RandomTestUtil.randomLong());
+
+			layoutLocalization =
 				_layoutLocalizationLocalService.addLayoutLocalization(
-					_group.getGroupId(), RandomTestUtil.randomString(), "en_US",
-					RandomTestUtil.randomLong(), new ServiceContext());
+					layoutLocalization);
 		}
 
 		_runUpgrade();
@@ -121,14 +127,8 @@ public class LayoutLocalizationUpgradeProcessTest {
 	@Inject
 	private CTEntryLocalService _ctEntryLocalService;
 
-	@Inject
-	private CTProcessLocalService _ctProcessLocalService;
-
 	@DeleteAfterTestRun
 	private Group _group;
-
-	@DeleteAfterTestRun
-	private Layout _layout;
 
 	@Inject
 	private LayoutLocalizationLocalService _layoutLocalizationLocalService;
