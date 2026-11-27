@@ -3,11 +3,9 @@ import InterestsCard, {InterestsList} from '../InterestsCard';
 import React from 'react';
 import {cleanup, render} from '@testing-library/react';
 import {mockSegment} from 'test/data';
-import {SEGMENTS} from 'shared/util/router';
+import {SEGMENTS} from 'shared/util/constants';
 import {MemoryRouter} from 'react-router';
 import {waitForLoadingToBeRemoved} from 'test/helpers';
-
-jest.unmock('react-dom');
 
 describe('InterestsCard', () => {
 	afterEach(cleanup);

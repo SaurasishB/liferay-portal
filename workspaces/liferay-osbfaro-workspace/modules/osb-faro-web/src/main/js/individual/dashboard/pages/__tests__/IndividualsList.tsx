@@ -11,8 +11,6 @@ import {fireEvent, render} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {waitForLoadingToBeRemoved} from 'test/helpers';
 
-jest.unmock('react-dom');
-
 jest.mock('react-router-dom', () => ({
 	...jest.requireActual('react-router-dom'),
 	useParams: () => ({
@@ -179,7 +177,7 @@ describe('Individuals List', () => {
 
 		await waitForLoadingToBeRemoved(document.body);
 
-		expect(getByText(/^no results found$/i)).toBeInTheDocument();
+		expect(getByText(/^no results were found$/i)).toBeInTheDocument();
 		expect(
 			getByText(/^review your filters and try again\.$/i)
 		).toBeInTheDocument();

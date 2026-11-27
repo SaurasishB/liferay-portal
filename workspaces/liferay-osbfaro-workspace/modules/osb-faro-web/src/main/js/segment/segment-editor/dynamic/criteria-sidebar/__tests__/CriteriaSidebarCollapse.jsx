@@ -6,7 +6,9 @@ import React from 'react';
 import {cleanup, render, screen} from '@testing-library/react';
 import {DndProvider} from 'react-dnd';
 import {FieldOwnerTypes} from 'shared/util/constants';
+import {createCampaignProperty} from '../../utils/utils';
 import {
+	getCampaignIds,
 	getIndexFromPropertyName,
 	getIndexFromPropertyNamePrefix
 } from '../../utils/custom-inputs';
@@ -41,8 +43,6 @@ global.Liferay = {
 		get: mockLiferayLanguage
 	}
 };
-
-jest.unmock('react-dom');
 
 describe('CriteriaSidebarCollapse', () => {
 	const ACCOUNT_KEY = FieldOwnerTypes.Account;
@@ -257,6 +257,14 @@ describe('CriteriaSidebarCollapse', () => {
 });
 
 describe('getDefaultValue', () => {
+	it('should set a Campaign criterion to the dragged campaign', () => {
+		const result = getDefaultValue(
+			createCampaignProperty({id: 'c1', name: 'Spring Sale'})
+		);
+
+		expect(getCampaignIds(result)).toEqual(['c1']);
+	});
+
 	it('should return a YYYY-MM-DD string for PropertyTypes.Date', () => {
 		const result = getDefaultValue(
 			new Property({name: 'myDate', type: PropertyTypes.Date})

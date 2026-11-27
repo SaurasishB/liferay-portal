@@ -625,10 +625,15 @@ public class AssetLibraryResourceImpl extends BaseAssetLibraryResourceImpl {
 				settings.getTrashEnabled())
 		).put(
 			"trashEntriesMaxAge",
-			GetterUtil.getInteger(
-				settings.getTrashEntriesMaxAge(),
-				GetterUtil.getInteger(
-					unicodeProperties.getProperty("trashEntriesMaxAge")))
+			() -> {
+				Integer trashEntriesMaxAge = settings.getTrashEntriesMaxAge();
+
+				if (trashEntriesMaxAge == null) {
+					return unicodeProperties.getProperty("trashEntriesMaxAge");
+				}
+
+				return String.valueOf(trashEntriesMaxAge);
+			}
 		).build();
 	}
 
@@ -666,7 +671,15 @@ public class AssetLibraryResourceImpl extends BaseAssetLibraryResourceImpl {
 			GetterUtil.getBoolean(settings.getTrashEnabled(), true)
 		).put(
 			"trashEntriesMaxAge",
-			GetterUtil.getInteger(settings.getTrashEntriesMaxAge())
+			() -> {
+				Integer trashEntriesMaxAge = settings.getTrashEntriesMaxAge();
+
+				if (trashEntriesMaxAge == null) {
+					return null;
+				}
+
+				return String.valueOf(trashEntriesMaxAge);
+			}
 		).build();
 	}
 

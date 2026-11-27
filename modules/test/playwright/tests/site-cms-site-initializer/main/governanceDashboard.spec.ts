@@ -211,6 +211,89 @@ async function addSpaceWithOverdueContent(
 	return space;
 }
 
+async function addSpacesWithOverdueWorkflowTasks(apiHelpers: DataApiHelpers) {
+	const objectDefinition =
+		await apiHelpers.objectAdmin.getObjectDefinitionByName(
+			'CMSBasicWebContent'
+		);
+
+	const workflowDefinition =
+		await apiHelpers.headlessAdminWorkflow.getWorkflowDefinitionByName(
+			'Single Approver'
+		);
+
+	const userAccount = await apiHelpers.headlessAdminUser.getMyUserAccount();
+
+	const addSpaceWithWorkflow = async () => {
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
+
+		await apiHelpers.headlessAdminWorkflow.postWorkflowDefinitionLink(
+			objectDefinition.className,
+			space.siteId,
+			workflowDefinition.id,
+			workflowDefinition.name,
+			Number(workflowDefinition.version)
+		);
+
+		return space;
+	};
+
+	const addContent = (spaceName: string, title: string) =>
+		apiHelpers.objectEntry.postObjectEntry(
+			{
+				objectEntryFolderExternalReferenceCode: 'L_CONTENTS',
+				title,
+			},
+			APPLICATION_NAME,
+			spaceName
+		);
+
+	const addOverdueContent = async (spaceName: string, title: string) => {
+		const objectEntry = await addContent(spaceName, title);
+
+		let workflowTask;
+
+		await expect(async () => {
+			workflowTask =
+				await apiHelpers.headlessAdminWorkflow.getWorkflowTaskByAsset(
+					objectDefinition.className,
+					String(objectEntry.id)
+				);
+
+			expect(workflowTask).toBeTruthy();
+		}).toPass();
+
+		await apiHelpers.headlessAdminWorkflow.postAssignTaskToUser(
+			workflowTask.id,
+			userAccount.id
+		);
+
+		await apiHelpers.headlessAdminWorkflow.postWorkflowTaskUpdateDueDate(
+			workflowTask.id,
+			new Date(Date.parse(workflowTask.dateCreated) + 1000)
+		);
+	};
+
+	const space = await addSpaceWithWorkflow();
+	const otherSpace = await addSpaceWithWorkflow();
+
+	const otherSpaceOverdueTitle = `Overdue ${getRandomString()}`;
+	const overdueTitle = `Overdue ${getRandomString()}`;
+	const pendingTitle = `Pending ${getRandomString()}`;
+
+	await addContent(space.name, pendingTitle);
+	await addOverdueContent(space.name, overdueTitle);
+	await addOverdueContent(otherSpace.name, otherSpaceOverdueTitle);
+
+	return {
+		otherSpaceOverdueTitle,
+		overdueTitle,
+		pendingTitle,
+		space,
+		userAccount,
+	};
+}
+
 async function addSpaceMemberAndSwitch(
 	apiHelpers: DataApiHelpers,
 	page: Page,
@@ -285,6 +368,24 @@ async function viewAndEditContent(page: Page, title: string) {
 	await page.getByRole('menuitem', {name: 'Edit'}).click();
 
 	await expect(page.getByLabel('Title')).toHaveValue(title);
+}
+
+async function openOverdueTasksList(page: Page, spaceName: string) {
+	await page.clock.install({time: Date.now() + 2 * 60 * 1000});
+
+	const overdueTasksCard = page.getByRole('button', {
+		name: /^Overdue Tasks/,
+	});
+
+	await expect(async () => {
+		await page.goto('/web/cms/dashboard');
+
+		await selectSpace(page, spaceName);
+
+		await expect(overdueTasksCard).toContainText('50% of 2 Workflow Tasks');
+	}).toPass();
+
+	await overdueTasksCard.click();
 }
 
 async function selectSpace(page: Page, spaceName: string) {
@@ -1248,6 +1349,116 @@ test.describe('Operations section', () => {
 					page.getByText(approvedTitle, {exact: true})
 				).toBeHidden();
 			});
+		}
+	);
+
+	test(
+		'Lists the overdue tasks of the selected space',
+		{tag: '@LPD-109713'},
+		async ({apiHelpers, page}) => {
+			await performUserSwitchViaApi(page, 'test');
+
+			const {
+				otherSpaceOverdueTitle,
+				overdueTitle,
+				pendingTitle,
+				space,
+				userAccount,
+			} = await addSpacesWithOverdueWorkflowTasks(apiHelpers);
+
+			await openOverdueTasksList(page, space.name);
+
+			const overdueTasksList = page.getByRole('region', {
+				name: 'Overdue Tasks',
+			});
+
+			await test.step('Check the overdue tasks of the space', async () => {
+				await expect(
+					overdueTasksList.getByRole('link', {name: overdueTitle})
+				).toBeVisible();
+				await expect(overdueTasksList).toContainText(
+					`Review · ${userAccount.name} · 0 Days Overdue`
+				);
+				await expect(overdueTasksList).toContainText(
+					'Showing 1 of 1 Items'
+				);
+				await expect(
+					overdueTasksList.getByText(pendingTitle)
+				).toBeHidden();
+				await expect(
+					overdueTasksList.getByText(otherSpaceOverdueTitle)
+				).toBeHidden();
+			});
+
+			await test.step('Show the same actions as the Tasks page', async () => {
+				await overdueTasksList
+					.getByRole('button', {name: /actions/i})
+					.click();
+
+				for (const name of [
+					'Approve',
+					'View',
+					'Assign to...',
+					'Update Due Date',
+				]) {
+					await expect(
+						page.getByRole('menuitem', {exact: true, name})
+					).toBeVisible();
+				}
+
+				for (const name of ['Assign to Me', 'Delete', 'Edit']) {
+					await expect(
+						page.getByRole('menuitem', {exact: true, name})
+					).toBeHidden();
+				}
+			});
+		}
+	);
+
+	test(
+		'Opens the Tasks page with the overdue tasks of the selected space from View All',
+		{tag: '@LPD-109713'},
+		async ({apiHelpers, page}) => {
+			const cmpProjectObjectDefinition =
+				await apiHelpers.objectAdmin.getObjectDefinitionByName(
+					'CMPProject'
+				);
+
+			test.skip(
+				Boolean(cmpProjectObjectDefinition),
+				'CMP overrides the CMS /tasks page with its own tabbed UI (LPD-112720).'
+			);
+
+			await performUserSwitchViaApi(page, 'test');
+
+			const {otherSpaceOverdueTitle, overdueTitle, pendingTitle, space} =
+				await addSpacesWithOverdueWorkflowTasks(apiHelpers);
+
+			await openOverdueTasksList(page, space.name);
+
+			await page
+				.getByRole('link', {name: 'View All Overdue Tasks'})
+				.click();
+
+			await expect(page).toHaveURL(
+				/cms\/tasks\?.*tasksSection_fdsConfig=.*dueDate.*scopeGroupId/
+			);
+
+			await expect(page.getByText(`Space: ${space.name}`)).toBeVisible();
+
+			await expect(
+				page.getByRole('button', {name: /^\d+\s*Overdue$/})
+			).toHaveAttribute('aria-pressed', 'true');
+
+			await expect(
+				page.getByRole('row').filter({hasText: overdueTitle})
+			).toBeVisible();
+			await expect(
+				page.getByRole('row').filter({hasText: pendingTitle})
+			).toBeHidden();
+			await expect(
+				page.getByRole('row').filter({hasText: otherSpaceOverdueTitle})
+			).toBeHidden();
 		}
 	);
 

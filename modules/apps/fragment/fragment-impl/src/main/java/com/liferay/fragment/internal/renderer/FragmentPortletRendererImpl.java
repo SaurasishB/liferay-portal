@@ -9,8 +9,12 @@ import com.liferay.fragment.exception.FragmentEntryContentException;
 import com.liferay.fragment.model.FragmentEntryLink;
 import com.liferay.fragment.renderer.FragmentPortletRenderer;
 import com.liferay.petra.io.unsync.UnsyncStringWriter;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.portlet.constants.PortletPreferencesFactoryConstants;
 import com.liferay.portal.kernel.servlet.PipingServletResponse;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
@@ -38,25 +42,14 @@ public class FragmentPortletRendererImpl implements FragmentPortletRenderer {
 
 		UnsyncStringWriter unsyncStringWriter = new UnsyncStringWriter();
 
-		boolean inheritedFromMaster = false;
-
-		ThemeDisplay themeDisplay =
-			(ThemeDisplay)httpServletRequest.getAttribute(
-				WebKeys.THEME_DISPLAY);
-
-		if ((themeDisplay != null) &&
-			(fragmentEntryLink.getPlid() != themeDisplay.getPlid())) {
-
-			inheritedFromMaster = true;
-		}
-
 		try {
 			RuntimeTag.doTag(
 				portletName, instanceId, StringPool.BLANK,
 				PortletPreferencesFactoryConstants.
 					SETTINGS_SCOPE_PORTLET_INSTANCE,
-				defaultPreferences, inheritedFromMaster, null,
-				httpServletRequest,
+				defaultPreferences,
+				_isInheritedFromMaster(fragmentEntryLink, httpServletRequest),
+				null, httpServletRequest,
 				new PipingServletResponse(
 					httpServletResponse, unsyncStringWriter));
 		}
@@ -66,5 +59,45 @@ public class FragmentPortletRendererImpl implements FragmentPortletRenderer {
 
 		return unsyncStringWriter.toString();
 	}
+
+	private boolean _isInheritedFromMaster(
+		FragmentEntryLink fragmentEntryLink,
+		HttpServletRequest httpServletRequest) {
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
+
+		if ((themeDisplay == null) || (fragmentEntryLink.getPlid() == 0) ||
+			(fragmentEntryLink.getPlid() == themeDisplay.getPlid())) {
+
+			return false;
+		}
+
+		Layout layout = themeDisplay.getLayout();
+
+		if (layout == null) {
+			return false;
+		}
+
+		if (fragmentEntryLink.getPlid() == layout.getMasterLayoutPlid()) {
+			return true;
+		}
+
+		if (_log.isWarnEnabled()) {
+			_log.warn(
+				StringBundler.concat(
+					"Skipping shared preferences for fragment entry link ",
+					fragmentEntryLink.getFragmentEntryLinkId(), " with PLID ",
+					fragmentEntryLink.getPlid(),
+					" because it does not belong to the master of layout ",
+					themeDisplay.getPlid()));
+		}
+
+		return false;
+	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		FragmentPortletRendererImpl.class);
 
 }

@@ -7,6 +7,7 @@ package com.liferay.content.marketing.platform.web.internal.display.context;
 
 import com.liferay.asset.kernel.service.AssetTagLocalService;
 import com.liferay.content.marketing.platform.web.internal.frontend.data.set.filter.AssigneeSelectionFDSFilter;
+import com.liferay.content.marketing.platform.web.internal.frontend.data.set.filter.SpaceSelectionFDSFilter;
 import com.liferay.content.marketing.platform.web.internal.frontend.data.set.filter.WorkflowTaskDueDateRangeFDSFilter;
 import com.liferay.content.marketing.platform.web.internal.frontend.data.set.filter.WorkflowTaskStatusSelectionFDSFilter;
 import com.liferay.content.marketing.platform.web.internal.util.WorkflowTaskSearchURLUtil;
@@ -28,6 +29,7 @@ import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.service.RoleService;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
+import com.liferay.site.cms.site.initializer.users.provider.CMSUsersProvider;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -45,6 +47,7 @@ public class ViewWorkflowTasksSectionDisplayContext
 		ClassNameLocalService classNameLocalService,
 		ObjectDefinition cmpProjectObjectDefinition,
 		ObjectDefinition cmpTaskObjectDefinition,
+		CMSUsersProvider cmsUsersProvider,
 		DepotEntryLocalService depotEntryLocalService,
 		HttpServletRequest httpServletRequest,
 		ListTypeEntryLocalService listTypeEntryLocalService,
@@ -57,7 +60,7 @@ public class ViewWorkflowTasksSectionDisplayContext
 		super(
 			assetTagLocalService, classNameLocalService,
 			cmpProjectObjectDefinition, cmpTaskObjectDefinition,
-			depotEntryLocalService, httpServletRequest,
+			cmsUsersProvider, depotEntryLocalService, httpServletRequest,
 			listTypeEntryLocalService, objectEntryService,
 			objectFieldLocalService, objectStateFlowLocalService,
 			objectStateLocalService, roleService);
@@ -143,8 +146,9 @@ public class ViewWorkflowTasksSectionDisplayContext
 	public List<FDSFilter> getFDSFilters() {
 		return ListUtil.fromArray(
 			new AssigneeSelectionFDSFilter(
-				classNameLocalService,
+				classNameLocalService, cmsUsersProvider,
 				cmpProjectObjectDefinition.getCompanyId(), roleService),
+			new SpaceSelectionFDSFilter(),
 			new WorkflowTaskDueDateRangeFDSFilter(),
 			new WorkflowTaskStatusSelectionFDSFilter());
 	}

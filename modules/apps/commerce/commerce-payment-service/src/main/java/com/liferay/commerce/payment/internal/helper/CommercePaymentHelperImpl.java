@@ -11,17 +11,19 @@ import com.liferay.commerce.model.CommerceOrderItem;
 import com.liferay.commerce.payment.helper.CommercePaymentHelper;
 import com.liferay.commerce.payment.integration.CommercePaymentIntegration;
 import com.liferay.commerce.payment.integration.CommercePaymentIntegrationRegistry;
+import com.liferay.commerce.payment.internal.request.DefaultCommercePaymentRequestProvider;
 import com.liferay.commerce.payment.method.CommercePaymentMethod;
 import com.liferay.commerce.payment.method.CommercePaymentMethodRegistry;
 import com.liferay.commerce.payment.model.CommercePaymentMethodGroupRel;
 import com.liferay.commerce.payment.request.CommercePaymentRequest;
 import com.liferay.commerce.payment.request.CommercePaymentRequestProvider;
-import com.liferay.commerce.payment.request.CommercePaymentRequestProviderRegistry;
 import com.liferay.commerce.payment.result.CommercePaymentResult;
 import com.liferay.commerce.payment.service.CommercePaymentMethodGroupRelLocalService;
 import com.liferay.commerce.product.model.CommerceChannel;
 import com.liferay.commerce.product.service.CommerceChannelLocalService;
 import com.liferay.commerce.service.CommerceOrderLocalService;
+import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMap;
+import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMapFactory;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
@@ -39,7 +41,10 @@ import java.security.Key;
 import java.util.Collections;
 import java.util.Locale;
 
+import org.osgi.framework.BundleContext;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 
 /**
@@ -144,17 +149,13 @@ public class CommercePaymentHelperImpl implements CommercePaymentHelper {
 		CommercePaymentMethod commercePaymentMethod) {
 
 		CommercePaymentRequestProvider commercePaymentRequestProvider =
-			_commercePaymentRequestProviderRegistry.
-				getCommercePaymentRequestProvider(
-					commercePaymentMethod.getKey());
+			_serviceTrackerMap.getService(commercePaymentMethod.getKey());
 
-		if (commercePaymentRequestProvider == null) {
-			commercePaymentRequestProvider =
-				_commercePaymentRequestProviderRegistry.
-					getCommercePaymentRequestProvider("default");
+		if (commercePaymentRequestProvider != null) {
+			return commercePaymentRequestProvider;
 		}
 
-		return commercePaymentRequestProvider;
+		return _defaultCommercePaymentRequestProvider;
 	}
 
 	@Override
@@ -168,6 +169,22 @@ public class CommercePaymentHelperImpl implements CommercePaymentHelper {
 		}
 
 		return true;
+	}
+
+	@Activate
+	protected void activate(BundleContext bundleContext) {
+		_defaultCommercePaymentRequestProvider =
+			new DefaultCommercePaymentRequestProvider(
+				_commerceOrderLocalService);
+
+		_serviceTrackerMap = ServiceTrackerMapFactory.openSingleValueMap(
+			bundleContext, CommercePaymentRequestProvider.class,
+			"commerce.payment.engine.method.key");
+	}
+
+	@Deactivate
+	protected void deactivate() {
+		_serviceTrackerMap.close();
 	}
 
 	private StringBundler _getBaseUrl(
@@ -264,14 +281,16 @@ public class CommercePaymentHelperImpl implements CommercePaymentHelper {
 	@Reference
 	private CommercePaymentMethodRegistry _commercePaymentMethodRegistry;
 
-	@Reference
-	private CommercePaymentRequestProviderRegistry
-		_commercePaymentRequestProviderRegistry;
+	private CommercePaymentRequestProvider
+		_defaultCommercePaymentRequestProvider;
 
 	@Reference
 	private Encryptor _encryptor;
 
 	@Reference
 	private Portal _portal;
+
+	private ServiceTrackerMap<String, CommercePaymentRequestProvider>
+		_serviceTrackerMap;
 
 }

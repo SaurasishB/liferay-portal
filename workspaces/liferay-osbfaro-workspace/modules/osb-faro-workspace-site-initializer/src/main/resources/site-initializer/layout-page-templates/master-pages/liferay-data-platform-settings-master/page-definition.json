@@ -5,6 +5,19 @@
 			{
 				"definition": {
 					"fragment": {
+						"key": "com.liferay.osb.faro.web.internal.fragment.renderer.FaroConstantsFragmentRenderer"
+					},
+					"fragmentConfig": {
+					},
+					"fragmentFields": [
+					]
+				},
+				"id": "8785e34e-b8a8-43b4-be45-125d01af806b",
+				"type": "Fragment"
+			},
+			{
+				"definition": {
+					"fragment": {
 						"key": "com.liferay.osb.faro.web.internal.fragment.renderer.FaroExternalScriptsFragmentRenderer"
 					},
 					"fragmentConfig": {
@@ -17,13 +30,142 @@
 			},
 			{
 				"definition": {
-					"fragmentSettings": {
-						"unallowedFragments": [
-						]
-					}
+					"fragment": {
+						"key": "sidebar"
+					},
+					"fragmentConfig": {
+						"collapsible": false,
+						"sidebarAriaLabel": "Liferay Data Platform Menu"
+					},
+					"fragmentFields": [
+						{
+							"id": "sidebarTitle",
+							"value": {
+								"fragmentLink": {
+								}
+							}
+						}
+					],
+					"indexed": true
 				},
-				"id": "56ffdbee-29e1-571b-8aab-7a1c126de614",
-				"type": "DropZone"
+				"id": "107dbb10-b648-4ecf-abb9-9e21e0ac38b5",
+				"pageElements": [
+					{
+						"definition": {
+							"fragmentDropZoneId": "topBar"
+						},
+						"id": "9da4164c-f01b-435a-be8c-f9a7ab1c33e6",
+						"pageElements": [
+							{
+								"definition": {
+									"fragment": {
+										"key": "page-bar"
+									},
+									"fragmentConfig": {
+									},
+									"fragmentFields": [
+									],
+									"indexed": true
+								},
+								"id": "92aa2408-bc28-4aaf-9f72-4dfed0811f7f",
+								"pageElements": [
+									{
+										"definition": {
+											"fragmentDropZoneId": "brand"
+										},
+										"id": "94736190-e96f-4054-8f70-98f3cde337da",
+										"pageElements": [
+											{
+												"definition": {
+													"fragment": {
+														"key": "com.liferay.osb.faro.web.internal.fragment.renderer.FaroSettingsPageBarFragmentRenderer"
+													},
+													"fragmentConfig": {
+													},
+													"fragmentFields": [
+													],
+													"indexed": true
+												},
+												"id": "9a8a1e0c-aa36-43d8-ad8d-c04ccad04d71",
+												"type": "Fragment"
+											}
+										],
+										"type": "FragmentDropZone"
+									},
+									{
+										"definition": {
+											"fragmentDropZoneId": "sidebarTrigger"
+										},
+										"id": "ce78a51f-7362-405d-92e6-65b17533f9b9",
+										"pageElements": [
+										],
+										"type": "FragmentDropZone"
+									},
+									{
+										"definition": {
+											"fragmentDropZoneId": "actions"
+										},
+										"id": "dca1ba9b-06ed-4c99-b033-a7a87eb9a499",
+										"pageElements": [
+										],
+										"type": "FragmentDropZone"
+									}
+								],
+								"type": "Fragment"
+							}
+						],
+						"type": "FragmentDropZone"
+					},
+					{
+						"definition": {
+							"fragmentDropZoneId": "sidebarBody"
+						},
+						"id": "0a4794eb-9434-44cd-9057-7b68850b7bcc",
+						"pageElements": [
+							{
+								"definition": {
+									"fragment": {
+										"key": "vertical-navigation"
+									},
+									"fragmentConfig": {
+										"ariaLabel": "Liferay Data Platform Settings Navigation",
+										"displayStyle": "stacked",
+										"hoveredItemColor": "",
+										"selectedItemColor": "",
+										"source": "{\"parentSiteNavigationMenuItemId\": \"0\", \"privateLayout\": \"false\", \"siteNavigationMenuExternalReferenceCode\": \"LDPSETTINGSNAVIGATION\", \"title\": \"Liferay Data Platform Settings Navigation\", \"type\": \"class com.liferay.site.navigation.item.selector.SiteNavigationMenuItemSelectorReturnType\"}",
+										"sublevels": "-1"
+									},
+									"fragmentFields": [
+									],
+									"indexed": true
+								},
+								"id": "e9151a3a-176c-47b0-a27f-9072da6609d8",
+								"type": "Fragment"
+							}
+						],
+						"type": "FragmentDropZone"
+					},
+					{
+						"definition": {
+							"fragmentDropZoneId": "content"
+						},
+						"id": "632da665-4269-4bd0-ab2d-077ea950c129",
+						"pageElements": [
+							{
+								"definition": {
+									"fragmentSettings": {
+										"unallowedFragments": [
+										]
+									}
+								},
+								"id": "56ffdbee-29e1-571b-8aab-7a1c126de614",
+								"type": "DropZone"
+							}
+						],
+						"type": "FragmentDropZone"
+					}
+				],
+				"type": "Fragment"
 			}
 		],
 		"type": "Root"

@@ -31,8 +31,10 @@ import UtmParameterInput from '../inputs/UtmParameterInput';
 import VocabularyInput from '../inputs/VocabularyInput';
 import {
 	AddProperty,
+	ReferencedEntities,
 	withReferencedObjectsConsumer,
 } from '../context/referencedObjects';
+import {ClayButtonWithIcon} from '@clayui/button';
 import {compose} from 'redux';
 import {
 	Conjunctions,
@@ -61,6 +63,8 @@ import {
 import {Criterion, CriterionGroup, OnMove, Operator} from '../utils/types';
 import {DragTypes} from '../utils/drag-types';
 import {get} from 'lodash';
+import {getCriterionLabel} from '../utils/getCriterionLabel';
+import {getUnavailableCampaignIds} from '../utils/campaigns';
 import {Map} from 'immutable';
 import {Option, Picker} from '@clayui/core';
 import {Property} from 'shared/util/records';
@@ -228,6 +232,7 @@ interface ICriteriaRowProps extends PropsFromRedux {
 	onChange: (criterion: Criterion | Criterion[]) => void;
 	onDelete: (index: number) => void;
 	onMove: OnMove;
+	referencedEntities: ReferencedEntities;
 	referencedProperties: Map<string, Map<string, Property>>;
 	segmentCategory: SegmentCategories;
 	segmentType: SegmentTypes;
@@ -422,6 +427,7 @@ class CriteriaRow extends React.Component<
 					supportedOperators[0].label
 				) : (
 					<Picker
+						aria-label={Liferay.Language.get('operator')}
 						className="criterion-input operator-input"
 						items={supportedOperators.map(({key, label}) => ({
 							label,
@@ -524,13 +530,20 @@ class CriteriaRow extends React.Component<
 				connectDragPreview,
 				connectDragSource,
 				connectDropTarget,
+				criterion,
 				dragging,
 				hover,
 				keyboardTarget,
+				referencedEntities,
 				stepNumber,
 			},
 			state: {selectedProperty},
 		} = this;
+
+		const unavailableCampaign =
+			getUnavailableCampaignIds(criterion, referencedEntities).length > 0;
+
+		const available = !!selectedProperty && !unavailableCampaign;
 
 		const classes = getCN('criterion-row-root', {
 			'dnd-drag': dragging,
@@ -540,7 +553,14 @@ class CriteriaRow extends React.Component<
 
 		return connectDropTarget(
 			connectDragPreview(
-				<div className={classes}>
+				<div
+					aria-label={
+						getCriterionLabel(criterion, selectedProperty) ||
+						undefined
+					}
+					className={classes}
+					role="group"
+				>
 					<div
 						className={`color-stripe color--${get(
 							selectedProperty,
@@ -567,31 +587,57 @@ class CriteriaRow extends React.Component<
 							</ClaySticker>
 						)}
 
-						{selectedProperty ? (
+						{available ? (
 							this.renderValueInput()
 						) : (
-							<div className="non-existent-property-message">
-								{Liferay.Language.get(
-									'attribute-no-longer-exists'
-								)}
+							<div
+								className="align-items-center d-flex flex-grow-1 non-existent-property-message"
+								role="alert"
+							>
+								<ClayIcon
+									className="flex-shrink-0 mr-2"
+									symbol="exclamation-full"
+								/>
+
+								{unavailableCampaign
+									? Liferay.Language.get(
+											'campaign-no-longer-exists'
+										)
+									: Liferay.Language.get(
+											'attribute-no-longer-exists'
+										)}
 							</div>
 						)}
 
 						<div className="actions">
-							<RowActions
-								actions={[
-									{
-										label: Liferay.Language.get(
-											'duplicate'
-										),
-										onClick: this.handleDuplicate,
-									},
-									{
-										label: Liferay.Language.get('delete'),
-										onClick: this.handleDelete,
-									},
-								]}
-							/>
+							{available ? (
+								<RowActions
+									actions={[
+										{
+											label: Liferay.Language.get(
+												'duplicate'
+											),
+											onClick: this.handleDuplicate,
+										},
+										{
+											label: Liferay.Language.get(
+												'delete'
+											),
+											onClick: this.handleDelete,
+										},
+									]}
+								/>
+							) : (
+								<ClayButtonWithIcon
+									aria-label={Liferay.Language.get('delete')}
+									borderless
+									displayType="secondary"
+									onClick={this.handleDelete}
+									size="sm"
+									symbol="trash"
+									title={Liferay.Language.get('delete')}
+								/>
+							)}
 						</div>
 					</div>
 				</div>

@@ -17,6 +17,7 @@ import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.security.auth.CompanyThreadLocal;
 import com.liferay.portal.kernel.service.RetryAcceptor;
 import com.liferay.portal.kernel.service.SQLStateAcceptor;
+import com.liferay.portal.kernel.upgrade.recorder.UpgradeSQLRecorder;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.StringUtil;
 
@@ -109,6 +110,10 @@ public class OrphanReferencesDataCleanupUtil {
 
 			ResultSet resultSet = preparedStatement1.executeQuery()) {
 
+			if (!resultSet.next()) {
+				return;
+			}
+
 			if (!readOnly) {
 				_executeDelete(
 					connection,
@@ -124,7 +129,7 @@ public class OrphanReferencesDataCleanupUtil {
 				return;
 			}
 
-			while (resultSet.next()) {
+			do {
 				DataCleanupLoggingUtil.logDelete(
 					_log, resultSet.getLong("count"), readOnly, sourceTableName,
 					StringBundler.concat(
@@ -135,6 +140,7 @@ public class OrphanReferencesDataCleanupUtil {
 						String.join(", ", targetColumnNames), " from table ",
 						targetTableName));
 			}
+			while (resultSet.next());
 		}
 		finally {
 			for (SafeCloseable safeCloseable : safeCloseables) {
@@ -251,6 +257,8 @@ public class OrphanReferencesDataCleanupUtil {
 				}
 
 				retryCount++;
+
+				UpgradeSQLRecorder.removeFailedSQL(sqlException);
 
 				if (_log.isDebugEnabled()) {
 					_log.debug(

@@ -5,6 +5,7 @@
 
 package com.liferay.headless.admin.site.internal.resource.v1_0;
 
+import com.liferay.asset.categories.thread.local.AssetVocabularyThreadLocal;
 import com.liferay.exportimport.kernel.lar.PortletDataContext;
 import com.liferay.exportimport.kernel.lar.PortletDataHandlerKeys;
 import com.liferay.exportimport.vulcan.batch.engine.ExportImportVulcanBatchEngineTaskItemDelegate;
@@ -32,6 +33,7 @@ import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.GroupConstants;
 import com.liferay.portal.kernel.model.LayoutSetPrototype;
+import com.liferay.portal.kernel.model.Organization;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.search.filter.Filter;
 import com.liferay.portal.kernel.security.auth.PrincipalException;
@@ -476,7 +478,8 @@ public class SiteResourceImpl
 
 		long[] classNameIds = {
 			_portal.getClassNameId(Company.class.getName()),
-			_portal.getClassNameId(Group.class.getName())
+			_portal.getClassNameId(Group.class.getName()),
+			_portal.getClassNameId(Organization.class.getName())
 		};
 
 		List<Group> groups = _groupService.search(
@@ -1335,15 +1338,24 @@ public class SiteResourceImpl
 		PermissionChecker permissionChecker =
 			PermissionThreadLocal.getPermissionChecker();
 
+		boolean skipRequiredCategoryValidation =
+			AssetVocabularyThreadLocal.isSkipRequiredCategoryValidation();
+
 		try (AutoCloseable autoCloseable =
 				_layoutServiceContextHelper.getServiceContextAutoCloseable(
 					contextCompany, permissionChecker.getUser())) {
 
 			ServiceContext serviceContext = _getServiceContext();
 
+			serviceContext.setAssetCategoryIds(null);
+			serviceContext.setAssetTagNames(null);
+
 			ServiceContextThreadLocal.pushServiceContext(serviceContext);
 
 			try {
+				AssetVocabularyThreadLocal.setSkipRequiredCategoryValidation(
+					true);
+
 				Group updatedGroup = _groupService.updateGroup(
 					group.getGroupId(),
 					_getParentGroupId(
@@ -1364,6 +1376,9 @@ public class SiteResourceImpl
 				return updatedGroup;
 			}
 			finally {
+				AssetVocabularyThreadLocal.setSkipRequiredCategoryValidation(
+					skipRequiredCategoryValidation);
+
 				ServiceContextThreadLocal.popServiceContext();
 			}
 		}

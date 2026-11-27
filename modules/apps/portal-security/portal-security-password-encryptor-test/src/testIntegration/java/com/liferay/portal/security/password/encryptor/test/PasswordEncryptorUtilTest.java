@@ -8,10 +8,10 @@ package com.liferay.portal.security.password.encryptor.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.portal.kernel.exception.PwdEncryptorException;
-import com.liferay.portal.kernel.module.util.SystemBundleUtil;
 import com.liferay.portal.kernel.security.pwd.PasswordEncryptor;
 import com.liferay.portal.kernel.security.pwd.PasswordEncryptorUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
+import com.liferay.portal.kernel.test.util.BundleContextTestUtil;
 import com.liferay.portal.kernel.test.util.PropsValuesTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.test.rule.Inject;
@@ -60,12 +60,31 @@ public class PasswordEncryptorUtilTest {
 			_assertIsComponentEnabled(
 				_CLASS_NAME_CRYPT_PASSWORD_ENCRYPTOR, false);
 
-			Assert.assertThrows(
-				SecurityException.class,
-				() -> _testEncrypt(PasswordEncryptor.TYPE_BCRYPT));
-			Assert.assertThrows(
-				SecurityException.class,
-				() -> _testEncrypt(PasswordEncryptor.TYPE_UFC_CRYPT));
+			try {
+				_testEncrypt(PasswordEncryptor.TYPE_BCRYPT);
+
+				Assert.fail();
+			}
+			catch (PwdEncryptorException.UnavailableAlgorithm
+						pwdEncryptorException) {
+
+				Assert.assertEquals(
+					"Algorithm \"BCRYPT\" is not available in FIPS mode",
+					pwdEncryptorException.getMessage());
+			}
+
+			try {
+				_testEncrypt(PasswordEncryptor.TYPE_UFC_CRYPT);
+
+				Assert.fail();
+			}
+			catch (PwdEncryptorException.UnavailableAlgorithm
+						pwdEncryptorException) {
+
+				Assert.assertEquals(
+					"Algorithm \"UFC-CRYPT\" is not available in FIPS mode",
+					pwdEncryptorException.getMessage());
+			}
 		}
 		finally {
 			_enableComponent(_CLASS_NAME_BCRYPT_PASSWORD_ENCRYPTOR);
@@ -100,7 +119,8 @@ public class PasswordEncryptorUtilTest {
 	}
 
 	private Bundle _getBundle() {
-		BundleContext bundleContext = SystemBundleUtil.getBundleContext();
+		BundleContext bundleContext = BundleContextTestUtil.getBundleContext(
+			PasswordEncryptorUtilTest.class);
 
 		for (Bundle bundle : bundleContext.getBundles()) {
 			if (Objects.equals(

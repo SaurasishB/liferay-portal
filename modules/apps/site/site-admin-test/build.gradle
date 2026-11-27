@@ -1,10 +1,13 @@
 dependencies {
 	testIntegrationImplementation project(":apps:asset:asset-test-util")
+	testIntegrationImplementation project(":apps:blogs:blogs-api")
 	testIntegrationImplementation project(":apps:configuration-admin:configuration-admin-api")
 	testIntegrationImplementation project(":apps:fragment:fragment-api")
 	testIntegrationImplementation project(":apps:layout:layout-page-template-api")
 	testIntegrationImplementation project(":apps:layout:layout-test-util")
 	testIntegrationImplementation project(":apps:layout:layout-utility-page-api")
+	testIntegrationImplementation project(":apps:map:map-api")
 	testIntegrationImplementation project(":apps:site:site-api")
+	testIntegrationImplementation project(":apps:trash:trash-api")
 	testIntegrationImplementation project(":test:arquillian-extension-junit-bridge")
 }

@@ -182,6 +182,8 @@ The procedure runs in two passes over the validations, in the order below. The o
 
 1. [Redundant Assert Message](validations/branch/redundant-assert-message.md)
 
+1. [Redundant Contains on Race Receivers](validations/branch/redundant-contains-race-receivers.md)
+
 1. [Workspace Source Format](validations/workspaces/source-format.md)
 
 1. [Go Source Format](validations/portal/go-source-format.md)
@@ -193,6 +195,8 @@ The procedure runs in two passes over the validations, in the order below. The o
 1. [BND Content](validations/branch/bnd-content.md)
 
 1. [Portlet Title](validations/portal/portlet-title.md)
+
+1. [Index Action Label](validations/portal/index-action-label.md)
 
 1. [BND DS Annotations Options](validations/branch/bnd-dsannotations-options.md)
 
@@ -214,7 +218,9 @@ The procedure runs in two passes over the validations, in the order below. The o
 
 1. [Required Configuration Policy](validations/branch/required-configuration-policy.md)
 
-1. [Component Enabled Default](validations/branch/component-enabled-default.md)
+1. [TransactionTestUtil Usage](validations/branch/transaction-test-util-usage.md)
+
+1. [Own Bundle Context](validations/branch/own-bundle-context.md)
 
 1. [Full Portal Build](validations/portal/full-portal-build.md)
 
@@ -428,9 +434,11 @@ The overall state is `FAIL` when any row is `FAIL` or `NOT RUN`, and `PASS` othe
 
 A validation may qualify its verdict, as **Baseline** does when it names the universe it compared, and the qualifier follows the verdict in the same cell rather than in a note. The overall state reads the verdict alone, so a qualified `PASS` is still a `PASS`.
 
-Every row whose validation returned a note appends it below the table, separated by a blank line. A `FAIL`, a `NO COVERAGE`, and a `NOT VERIFIED` always carry one. A `PASS` carries one only when the run left something unexamined, as **Module Registration** does when a diff pairs an addition it verified with a removal it can only report. A `PASS` that examined the whole change carries none. The notes travel verbatim into the PR description through the `pr` skill and into any comment the `pr-check-publish` skill posts, so keep each to one short sentence naming what failed or what went unexamined. Leave out why a gap is acceptable or what else covers it, and leave out how the run went, such as the commands, flags, task counts, and modules built. Nothing else goes below the table.
+Every row whose validation returned a note appends it below the table, separated by a blank line. A `FAIL`, a `NO COVERAGE`, and a `NOT VERIFIED` always carry one. A `PASS` carries one only when the run left something unexamined, as **Module Registration** does when a diff pairs an addition it verified with a removal it can only report. A `PASS` that examined the whole change carries none. The notes travel verbatim into the PR description through the `pr` skill and into any comment the `pr-check-publish` skill posts, so keep each to one short sentence naming what failed or what went unexamined. Leave out why a gap is acceptable or what else covers it, and leave out how the run went, such as the commands, flags, task counts, and modules built. Nothing else goes below the table, apart from the test plan line that a declined test plan adds.
 
-After the Results Summary block, tell the developer to run the `test-plan` skill in either of these cases. This message is not part of the block.
+Ask the developer whether to run the `test-plan` skill before emitting the Results Summary block in either of these cases, and wait for the answer.
 
 - **Java Unit Tests** names a changed class that has no unit test.
 - The diff changes a `*.batch-engine-data.json` file, a `resource-actions/*.xml` file, or a file under `src/main/resources/site-initializer`.
+
+Do not ask when `build/test-plan/result.json` exists and its `head` is the tested SHA, since the `pr` and `pr-check-publish` skills already record that run. When the developer accepts, run the `test-plan` skill, then emit the block. When the developer declines, end the block with a `Test plan: needed, not run.` line below the notes, so that the pull request records it.

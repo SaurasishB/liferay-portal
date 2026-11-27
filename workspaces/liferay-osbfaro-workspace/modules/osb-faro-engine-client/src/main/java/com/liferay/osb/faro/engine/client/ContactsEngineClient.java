@@ -380,7 +380,8 @@ public interface ContactsEngineClient {
 
 	public List<CampaignMetric> getCampaignMetrics(
 			FaroProject faroProject, String accountIds, long channelId,
-			String rangeEnd, Integer rangeKey, String rangeStart)
+			String rangeEnd, Integer rangeKey, String rangeStart,
+			String selectedMetrics)
 		throws FaroEngineClientException;
 
 	public Results<CampaignName> getCampaignNames(
@@ -512,6 +513,11 @@ public interface ContactsEngineClient {
 
 	public List<FieldMapping> getIndividualAttributes(
 		FaroProject faroProject, String displayName);
+
+	public Results<IndividualSegment> getIndividualIndividualSegments(
+		FaroProject faroProject, String channelId,
+		List<String> excludedChannelIds, String individualId, String query,
+		String status, int cur, int delta, List<OrderByField> orderByFields);
 
 	public Results<IndividualSegment> getIndividualIndividualSegments(
 		FaroProject faroProject, String channelId, String individualId,

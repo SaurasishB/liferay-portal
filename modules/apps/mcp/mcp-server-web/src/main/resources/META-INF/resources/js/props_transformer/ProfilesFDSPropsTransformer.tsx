@@ -3,17 +3,21 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {IInternalRenderer} from '@liferay/frontend-data-set-web';
+import {IInternalRenderer, IItemsActions} from '@liferay/frontend-data-set-web';
 
 import {Profile} from '../types/Profile';
+import copyProfileURL from '../utils/copyProfileURL';
+import styleDeleteAction from '../utils/styleDeleteAction';
 import confirmAndDeleteProfileAction from './actions/confirmAndDeleteProfileAction';
 import MCPStatusRenderer from './cell_renderers/MCPStatusRenderer';
+import ProfilePathRenderer from './cell_renderers/ProfilePathRenderer';
 
 interface ItemsAction {
 	data?: {id?: string};
 }
 
 interface ProfilesFDSPropsTransformerProps {
+	itemsActions?: IItemsActions[];
 	[key: string]: unknown;
 }
 
@@ -29,8 +33,14 @@ export default function ProfilesFDSPropsTransformer(
 					name: 'mcpStatusRenderer',
 					type: 'internal',
 				} as IInternalRenderer,
+				{
+					component: ProfilePathRenderer,
+					name: 'profilePathRenderer',
+					type: 'internal',
+				} as IInternalRenderer,
 			],
 		},
+		itemsActions: props.itemsActions?.map(styleDeleteAction),
 		onActionDropdownItemClick({
 			action,
 			itemData,
@@ -40,7 +50,10 @@ export default function ProfilesFDSPropsTransformer(
 			itemData: Profile;
 			loadData: () => void;
 		}) {
-			if (action?.data?.id === 'delete') {
+			if (action?.data?.id === 'copyURL') {
+				copyProfileURL(itemData.profilePath ?? '');
+			}
+			else if (action?.data?.id === 'delete') {
 				confirmAndDeleteProfileAction({itemData, loadData});
 			}
 		},

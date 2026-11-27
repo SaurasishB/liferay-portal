@@ -56,6 +56,7 @@ import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.zip.ZipReader;
 import com.liferay.portal.test.log.LogCapture;
 import com.liferay.portal.test.log.LoggerTestUtil;
 import com.liferay.portal.test.rule.FeatureFlag;
@@ -584,8 +585,7 @@ public class ImportPreviewResourceTest
 					"WebApplicationExceptionMapper",
 				LoggerTestUtil.WARN);
 			LogCapture logCapture2 = LoggerTestUtil.configureLog4JLogger(
-				"com.liferay.portal.zip.internal.reader.BaseZipReader",
-				LoggerTestUtil.WARN)) {
+				ZipReader.class.getName(), LoggerTestUtil.WARN)) {
 
 			assertHttpResponseStatusCode(400, unsafeFunction.apply(file));
 		}
@@ -603,6 +603,7 @@ public class ImportPreviewResourceTest
 		Assert.assertEquals(file.getName(), importPreview.getFileName());
 		Assert.assertEquals(
 			Long.valueOf(file.length()), importPreview.getFileSize());
+		Assert.assertNotNull(importPreview.getId());
 		Assert.assertTrue(
 			_getAdditionCount(importPreview, objectDefinition.getPortletId()) >
 				0);

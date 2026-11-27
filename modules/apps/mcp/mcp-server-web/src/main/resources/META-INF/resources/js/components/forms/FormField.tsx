@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
-import {ClayInput} from '@clayui/form';
+import ClayForm, {ClayInput} from '@clayui/form';
 import {FieldValidator, useField} from 'formik';
 import {FieldBase} from 'frontend-js-components-web';
 import React from 'react';
@@ -11,6 +11,7 @@ import React from 'react';
 import required from '../../utils/required';
 
 interface FormFieldProps {
+	appendContent?: React.ReactNode;
 	component?: 'input' | 'textarea';
 	disabled?: boolean;
 	helpMessage?: string;
@@ -18,11 +19,14 @@ interface FormFieldProps {
 	label: string;
 	name: string;
 	onChange?: React.ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement>;
+	prefixHelpMessage?: string;
+	prependContent?: string;
 	required?: boolean;
 	validate?: FieldValidator;
 }
 
 export function FormField({
+	appendContent,
 	component = 'input',
 	disabled,
 	helpMessage,
@@ -30,6 +34,8 @@ export function FormField({
 	label,
 	name,
 	onChange,
+	prefixHelpMessage,
+	prependContent,
 	required: isRequired,
 	validate,
 }: FormFieldProps) {
@@ -37,6 +43,30 @@ export function FormField({
 		name,
 		validate: validate ?? (isRequired ? required : undefined),
 	});
+
+	const prefixHelpMessageId = `${id}prefixHelpMessage`;
+
+	const input = (
+		<ClayInput
+			{...field}
+			aria-describedby={
+				prefixHelpMessage
+					? `${prefixHelpMessageId} ${id}fieldFeedback`
+					: `${id}fieldFeedback`
+			}
+			aria-invalid={meta.touched && meta.error ? true : undefined}
+			component={component}
+			disabled={disabled}
+			id={id}
+			onChange={(event) => {
+				field.onChange(event);
+
+				onChange?.(event);
+			}}
+			required={isRequired}
+			type="text"
+		/>
+	);
 
 	return (
 		<FieldBase
@@ -47,21 +77,40 @@ export function FormField({
 			label={label}
 			required={isRequired}
 		>
-			<ClayInput
-				{...field}
-				aria-describedby={`${id}fieldFeedback`}
-				aria-invalid={meta.touched && meta.error ? true : undefined}
-				component={component}
-				disabled={disabled}
-				id={id}
-				onChange={(event) => {
-					field.onChange(event);
+			{prefixHelpMessage && (
+				<ClayForm.FeedbackGroup>
+					<ClayForm.HelpText id={prefixHelpMessageId}>
+						{prefixHelpMessage}
+					</ClayForm.HelpText>
+				</ClayForm.FeedbackGroup>
+			)}
 
-					onChange?.(event);
-				}}
-				required={isRequired}
-				type="text"
-			/>
+			{prependContent || appendContent ? (
+				<ClayInput.Group>
+					{prependContent && (
+						<ClayInput.GroupItem prepend shrink>
+							<ClayInput.GroupText>
+								{prependContent}
+							</ClayInput.GroupText>
+						</ClayInput.GroupItem>
+					)}
+
+					<ClayInput.GroupItem
+						append={!!prependContent}
+						prepend={!!appendContent}
+					>
+						{input}
+					</ClayInput.GroupItem>
+
+					{appendContent && (
+						<ClayInput.GroupItem append shrink>
+							{appendContent}
+						</ClayInput.GroupItem>
+					)}
+				</ClayInput.Group>
+			) : (
+				input
+			)}
 		</FieldBase>
 	);
 }

@@ -8,7 +8,8 @@ import {fromJS} from 'immutable';
 import {Project} from 'shared/util/records';
 import {Provider} from 'react-redux';
 import {render} from '@testing-library/react';
-import {Routes, setUriQueryValue, toRoute} from 'shared/util/router';
+import {setUriQueryValue} from 'shared/util/url';
+import {Routes, toRoute} from 'shared/util/router';
 import {SubscriptionNames} from 'shared/util/subscriptions';
 import {useFetchProjects} from 'shared/hooks/useProjects';
 
@@ -36,8 +37,6 @@ jest.mock('shared/hooks/useCurrentUser', () => ({
 jest.mock('shared/hooks/useProjects', () => ({
 	useFetchProjects: jest.fn()
 }));
-
-jest.unmock('react-dom');
 
 describe('SelectWorkspaceAccount', () => {
 	it('should render', () => {

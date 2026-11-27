@@ -79,7 +79,7 @@ test(
 		tag: '@LRAC-11460',
 	},
 	async ({analyticsChannel: channel, apiHelpers, page, project}) => {
-		const individualName = 'ac';
+		const individualName = 'ac' + getRandomString();
 		const individuals = [
 			generateIndividual({
 				name: individualName,
@@ -89,6 +89,7 @@ test(
 		await test.step('Create new Individual', async () => {
 			await createIndividuals({
 				apiHelpers,
+				channelId: channel.id,
 				individuals,
 			});
 		});
@@ -151,10 +152,9 @@ test(
 				'.dropdown-menu.dropdown-menu-select.show .dropdown-item'
 			);
 
-			await expect(dropdownItems).toHaveCount(1);
-			await expect(dropdownItems).toHaveText(
-				`${individualName}@liferay.com`
-			);
+			await expect(dropdownItems).toHaveText([
+				`${individualName}@liferay.com`,
+			]);
 		});
 	}
 );
@@ -978,7 +978,11 @@ test(
 		const individualName = 'user' + getRandomString();
 		const individuals = [generateIndividual({name: individualName})];
 
-		await createIndividuals({apiHelpers, individuals});
+		await createIndividuals({
+			apiHelpers,
+			channelId: channel.id,
+			individuals,
+		});
 
 		const date = new Date();
 
@@ -1348,7 +1352,11 @@ test(
 			generateIndividual({name: `user1${name}`}),
 		];
 
-		await createIndividuals({apiHelpers, individuals});
+		await createIndividuals({
+			apiHelpers,
+			channelId: channel.id,
+			individuals,
+		});
 
 		const date = new Date();
 
@@ -2040,7 +2048,11 @@ test(
 			generateIndividual({name})
 		);
 
-		await createIndividuals({apiHelpers, individuals});
+		await createIndividuals({
+			apiHelpers,
+			channelId: channel.id,
+			individuals,
+		});
 
 		await navigateToACPageViaURL({
 			acPage: ACPage.segmentPage,

@@ -2,8 +2,6 @@ import Conjunction from '../Conjunction';
 import React from 'react';
 import {cleanup, render} from '@testing-library/react';
 
-jest.unmock('react-dom');
-
 describe('Conjunction', () => {
 	afterEach(cleanup);
 
@@ -13,25 +11,27 @@ describe('Conjunction', () => {
 		expect(container).toMatchSnapshot();
 	});
 
-	it('should render the button as disabled when the disabled prop is set', () => {
-		const {getByRole} = render(
-			<Conjunction conjunctionName='and' disabled />
-		);
+	it('should render the Or label for an OR conjunction', () => {
+		const {getByText} = render(<Conjunction conjunctionName='or' />);
 
-		expect(getByRole('button')).toBeDisabled();
+		expect(getByText(/^or$/i)).toBeInTheDocument();
 	});
 
-	it('should render the Then label for an AND conjunction in sequential mode', () => {
-		const {getByRole} = render(
-			<Conjunction conjunctionName='and' sequential />
-		);
+	it.each`
+		sequential | label         | hidden
+		${false}   | ${/^and$/i}  | ${true}
+		${true}    | ${/^then$/i} | ${false}
+	`(
+		'should hide the separator from assistive technology only when sequential is $sequential',
+		({hidden, label, sequential}) => {
+			const {getByText} = render(
+				<Conjunction conjunctionName='and' sequential={sequential} />
+			);
 
-		expect(getByRole('button')).toHaveTextContent(/then/i);
-	});
-
-	it('should render the And label for an AND conjunction outside sequential mode', () => {
-		const {getByRole} = render(<Conjunction conjunctionName='and' />);
-
-		expect(getByRole('button')).toHaveTextContent(/and/i);
-	});
+			expect(getByText(label)).toHaveAttribute(
+				'aria-hidden',
+				String(hidden)
+			);
+		}
+	);
 });

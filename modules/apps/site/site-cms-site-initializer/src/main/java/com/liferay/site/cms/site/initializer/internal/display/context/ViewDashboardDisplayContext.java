@@ -44,6 +44,7 @@ import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.site.cms.site.initializer.internal.constants.CMSSiteInitializerFDSNames;
 import com.liferay.site.cms.site.initializer.internal.util.CommentUtil;
 import com.liferay.site.cms.site.initializer.internal.util.PermissionUtil;
+import com.liferay.site.cms.site.initializer.internal.util.TasksSectionUtil;
 import com.liferay.translation.exporter.TranslationInfoItemFieldValuesExporterRegistry;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -300,10 +301,21 @@ public class ViewDashboardDisplayContext {
 		).put(
 			"redirect", _themeDisplay.getURLCurrent()
 		).put(
+			"tasksSectionFDSName",
+			() -> TasksSectionUtil.getFDSName(_themeDisplay.getCompanyId())
+		).put(
 			"unlinkedContentFDSActionDropdownItems",
 			() ->
 				_viewUnlinkedContentSectionFDSItemsActions.
 					getFDSActionDropdownItems(_httpServletRequest)
+		).put(
+			"workflowTaskFDSActionDropdownItems",
+			() -> {
+				ViewTasksDisplayContext viewTasksDisplayContext =
+					new ViewTasksDisplayContext(_httpServletRequest);
+
+				return viewTasksDisplayContext.getFDSActionDropdownItems();
+			}
 		).build();
 	}
 

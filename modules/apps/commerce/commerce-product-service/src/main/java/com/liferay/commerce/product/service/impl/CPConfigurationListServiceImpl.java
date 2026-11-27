@@ -11,7 +11,6 @@ import com.liferay.commerce.product.service.CommerceCatalogLocalService;
 import com.liferay.commerce.product.service.base.CPConfigurationListServiceBaseImpl;
 import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.exception.PortalException;
-import com.liferay.portal.kernel.model.SystemEventConstants;
 import com.liferay.portal.kernel.search.Indexable;
 import com.liferay.portal.kernel.search.IndexableType;
 import com.liferay.portal.kernel.security.auth.PrincipalException;
@@ -19,7 +18,6 @@ import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
 import com.liferay.portal.kernel.service.ServiceContext;
-import com.liferay.portal.kernel.systemevent.SystemEvent;
 
 import java.util.Iterator;
 import java.util.List;
@@ -87,19 +85,6 @@ public class CPConfigurationListServiceImpl
 	}
 
 	@Indexable(type = IndexableType.DELETE)
-	@Override
-	@SystemEvent(type = SystemEventConstants.TYPE_DELETE)
-	public CPConfigurationList deleteCPConfigurationList(
-			CPConfigurationList cpConfigurationList)
-		throws PortalException {
-
-		_checkCommerceCatalog(
-			cpConfigurationList.getGroupId(), ActionKeys.UPDATE);
-
-		return cpConfigurationListLocalService.deleteCPConfigurationList(
-			cpConfigurationList);
-	}
-
 	@Override
 	public CPConfigurationList deleteCPConfigurationList(
 			long cpConfigurationListId)

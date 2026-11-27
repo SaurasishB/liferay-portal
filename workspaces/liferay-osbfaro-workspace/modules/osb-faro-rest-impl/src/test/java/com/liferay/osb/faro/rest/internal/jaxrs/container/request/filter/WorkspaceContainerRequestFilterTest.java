@@ -12,16 +12,18 @@ import com.liferay.osb.faro.model.FaroProject;
 import com.liferay.osb.faro.model.FaroUser;
 import com.liferay.osb.faro.service.FaroChannelLocalService;
 import com.liferay.osb.faro.service.FaroProjectLocalService;
-import com.liferay.osb.faro.service.FaroUserLocalService;
+import com.liferay.osb.faro.service.FaroUserLocalServiceUtil;
 import com.liferay.portal.kernel.model.Role;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.UserGroupRole;
 import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
-import com.liferay.portal.kernel.service.RoleLocalService;
-import com.liferay.portal.kernel.service.UserGroupRoleLocalService;
+import com.liferay.portal.kernel.service.RoleLocalServiceUtil;
+import com.liferay.portal.kernel.service.UserGroupRoleLocalServiceUtil;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
+import com.liferay.portal.kernel.test.util.RandomTestUtil;
+import com.liferay.portal.vulcan.jaxrs.exception.mapper.Problem;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -31,7 +33,6 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 
-import java.util.Collections;
 import java.util.List;
 
 import org.junit.After;
@@ -40,6 +41,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 /**
@@ -49,8 +51,6 @@ public class WorkspaceContainerRequestFilterTest {
 
 	@Before
 	public void setUp() {
-		_permissionChecker = PermissionThreadLocal.getPermissionChecker();
-
 		FaroChannel allUsersFaroChannel = _mockFaroChannel(
 			FaroChannelConstants.PERMISSION_ALL_USERS);
 		FaroChannel selectUsersFaroChannel = _mockFaroChannel(
@@ -58,22 +58,16 @@ public class WorkspaceContainerRequestFilterTest {
 
 		Mockito.when(
 			_faroChannelLocalService.fetchFaroChannel(
-				_ALL_USERS_CHANNEL_ID, _GROUP_ID)
+				_CHANNEL_ID_ALL_USERS, _GROUP_ID_WORKSPACE)
 		).thenReturn(
 			allUsersFaroChannel
 		);
 
 		Mockito.when(
 			_faroChannelLocalService.fetchFaroChannel(
-				_SELECT_USERS_CHANNEL_ID, _GROUP_ID)
+				_CHANNEL_ID_SELECT_USERS, _GROUP_ID_WORKSPACE)
 		).thenReturn(
 			selectUsersFaroChannel
-		);
-
-		Mockito.when(
-			_faroProject.getGroupId()
-		).thenReturn(
-			_GROUP_ID
 		);
 
 		Mockito.when(
@@ -83,50 +77,16 @@ public class WorkspaceContainerRequestFilterTest {
 		);
 
 		Mockito.when(
-			_faroProjectLocalService.fetchFaroProjectByGroupId(_GROUP_ID)
+			_faroProject.getGroupId()
+		).thenReturn(
+			_GROUP_ID_WORKSPACE
+		);
+
+		Mockito.when(
+			_faroProjectLocalService.fetchFaroProjectByGroupId(
+				_GROUP_ID_WORKSPACE)
 		).thenReturn(
 			_faroProject
-		);
-
-		FaroUser faroUser = Mockito.mock(FaroUser.class);
-
-		Mockito.when(
-			faroUser.getRoleId()
-		).thenReturn(
-			_ROLE_ID
-		);
-
-		Mockito.when(
-			faroUser.getStatus()
-		).thenReturn(
-			FaroUserConstants.STATUS_APPROVED
-		);
-
-		Mockito.when(
-			_faroUserLocalService.fetchFaroUser(_GROUP_ID, _MEMBER_USER_ID)
-		).thenReturn(
-			faroUser
-		);
-
-		Role role = Mockito.mock(Role.class);
-
-		Mockito.when(
-			role.getName()
-		).thenReturn(
-			RoleConstants.SITE_MEMBER
-		);
-
-		Mockito.when(
-			_roleLocalService.fetchRole(_ROLE_ID)
-		).thenReturn(
-			role
-		);
-
-		Mockito.when(
-			_userGroupRoleLocalService.getUserGroupRoles(
-				_MEMBER_USER_ID, _CHANNEL_GROUP_ID)
-		).thenReturn(
-			Collections.emptyList()
 		);
 
 		ReflectionTestUtil.setFieldValue(
@@ -136,56 +96,57 @@ public class WorkspaceContainerRequestFilterTest {
 			_workspaceContainerRequestFilter, "_faroProjectLocalService",
 			_faroProjectLocalService);
 		ReflectionTestUtil.setFieldValue(
-			_workspaceContainerRequestFilter, "_faroUserLocalService",
-			_faroUserLocalService);
-		ReflectionTestUtil.setFieldValue(
 			_workspaceContainerRequestFilter, "_httpServletRequest",
 			Mockito.mock(HttpServletRequest.class));
-		ReflectionTestUtil.setFieldValue(
-			_workspaceContainerRequestFilter, "_roleLocalService",
-			_roleLocalService);
-		ReflectionTestUtil.setFieldValue(
-			_workspaceContainerRequestFilter, "_userGroupRoleLocalService",
-			_userGroupRoleLocalService);
+
+		_mockFaroUser(RoleConstants.SITE_ADMINISTRATOR, _USER_ID_ADMINISTRATOR);
+		_mockFaroUser(RoleConstants.SITE_MEMBER, _USER_ID_MEMBER);
+		_mockFaroUser(RoleConstants.SITE_OWNER, _USER_ID_OWNER);
+
+		_permissionChecker = PermissionThreadLocal.getPermissionChecker();
 	}
 
 	@After
 	public void tearDown() {
 		PermissionThreadLocal.setPermissionChecker(_permissionChecker);
+
+		_faroUserLocalServiceUtilMockedStatic.close();
+		_roleLocalServiceUtilMockedStatic.close();
+		_userGroupRoleLocalServiceUtilMockedStatic.close();
 	}
 
 	@Test
 	public void testFilter() {
-		Assert.assertNull(_filter(null, null, _MEMBER_USER_ID));
-		Assert.assertNull(_filter(null, _GROUP_ID, _MEMBER_USER_ID));
 		Assert.assertNull(
-			_filter(_ALL_USERS_CHANNEL_ID, _GROUP_ID, _MEMBER_USER_ID));
-		Assert.assertNull(_filter(null, _GROUP_ID, _OMNIADMIN_USER_ID));
+			_filter(
+				_CHANNEL_ID_ALL_USERS, _GROUP_ID_WORKSPACE, _USER_ID_MEMBER));
+		Assert.assertNull(_filter(null, _GROUP_ID_WORKSPACE, _USER_ID_MEMBER));
+		Assert.assertNull(
+			_filter(null, _GROUP_ID_WORKSPACE, _USER_ID_OMNIADMIN));
+		Assert.assertNull(_filter(null, null, _USER_ID_MEMBER));
 
 		_assertResponseStatus(
-			_filter(null, 999L, _MEMBER_USER_ID), Response.Status.NOT_FOUND);
+			_filter(
+				_CHANNEL_ID_SELECT_USERS, _GROUP_ID_WORKSPACE, _USER_ID_MEMBER),
+			Response.Status.FORBIDDEN);
 		_assertResponseStatus(
-			_filter(null, _GROUP_ID, _GUEST_USER_ID),
+			_filter(null, _GROUP_ID_WORKSPACE, _USER_ID_GUEST),
 			Response.Status.UNAUTHORIZED);
 		_assertResponseStatus(
-			_filter(null, _GROUP_ID, _OUTSIDER_USER_ID),
-			Response.Status.FORBIDDEN);
-		_assertResponseStatus(
-			_filter("unknown", _GROUP_ID, _MEMBER_USER_ID),
-			Response.Status.NOT_FOUND);
-		_assertResponseStatus(
-			_filter(_SELECT_USERS_CHANNEL_ID, _GROUP_ID, _MEMBER_USER_ID),
+			_filter(null, _GROUP_ID_WORKSPACE, _USER_ID_OUTSIDER),
 			Response.Status.FORBIDDEN);
 
-		Mockito.when(
-			_userGroupRoleLocalService.getUserGroupRoles(
-				_MEMBER_USER_ID, _CHANNEL_GROUP_ID)
+		_userGroupRoleLocalServiceUtilMockedStatic.when(
+			() -> UserGroupRoleLocalServiceUtil.getUserGroupRoles(
+				_USER_ID_MEMBER, _GROUP_ID_CHANNEL)
 		).thenReturn(
 			List.of(Mockito.mock(UserGroupRole.class))
 		);
 
 		Assert.assertNull(
-			_filter(_SELECT_USERS_CHANNEL_ID, _GROUP_ID, _MEMBER_USER_ID));
+			_filter(
+				_CHANNEL_ID_SELECT_USERS, _GROUP_ID_WORKSPACE,
+				_USER_ID_MEMBER));
 
 		Mockito.when(
 			_faroProject.isAllowedIPAddress(Mockito.any())
@@ -194,9 +155,82 @@ public class WorkspaceContainerRequestFilterTest {
 		);
 
 		_assertResponseStatus(
-			_filter(null, _GROUP_ID, _MEMBER_USER_ID),
+			_filter(null, _GROUP_ID_WORKSPACE, _USER_ID_MEMBER),
 			Response.Status.FORBIDDEN);
-		Assert.assertNull(_filter(null, _GROUP_ID, _OMNIADMIN_USER_ID));
+		Assert.assertNull(
+			_filter(null, _GROUP_ID_WORKSPACE, _USER_ID_OMNIADMIN));
+	}
+
+	@Test
+	public void testFilterWithAllUsersFaroChannel() {
+		Assert.assertNull(
+			_filter(
+				_CHANNEL_ID_ALL_USERS, _GROUP_ID_WORKSPACE,
+				_USER_ID_ADMINISTRATOR));
+		Assert.assertNull(
+			_filter(
+				_CHANNEL_ID_ALL_USERS, _GROUP_ID_WORKSPACE, _USER_ID_MEMBER));
+		Assert.assertNull(
+			_filter(
+				_CHANNEL_ID_ALL_USERS, _GROUP_ID_WORKSPACE,
+				_USER_ID_OMNIADMIN));
+		Assert.assertNull(
+			_filter(
+				_CHANNEL_ID_ALL_USERS, _GROUP_ID_WORKSPACE, _USER_ID_OWNER));
+	}
+
+	@Test
+	public void testFilterWithOutsiderUser() {
+		_assertResponse(
+			"Unable to access the workspace with group ID " +
+				_GROUP_ID_WORKSPACE,
+			_filter(null, _GROUP_ID_WORKSPACE, _USER_ID_OUTSIDER),
+			Response.Status.FORBIDDEN);
+	}
+
+	@Test
+	public void testFilterWithSelectUsersFaroChannel() {
+		Assert.assertNull(
+			_filter(
+				_CHANNEL_ID_SELECT_USERS, _GROUP_ID_WORKSPACE,
+				_USER_ID_ADMINISTRATOR));
+		Assert.assertNull(
+			_filter(
+				_CHANNEL_ID_SELECT_USERS, _GROUP_ID_WORKSPACE,
+				_USER_ID_OMNIADMIN));
+		Assert.assertNull(
+			_filter(
+				_CHANNEL_ID_SELECT_USERS, _GROUP_ID_WORKSPACE, _USER_ID_OWNER));
+
+		_assertResponse(
+			"Unable to access the property with channel ID " +
+				_CHANNEL_ID_SELECT_USERS,
+			_filter(
+				_CHANNEL_ID_SELECT_USERS, _GROUP_ID_WORKSPACE, _USER_ID_MEMBER),
+			Response.Status.FORBIDDEN);
+
+		_userGroupRoleLocalServiceUtilMockedStatic.when(
+			() -> UserGroupRoleLocalServiceUtil.getUserGroupRoles(
+				_USER_ID_MEMBER, _GROUP_ID_CHANNEL)
+		).thenReturn(
+			List.of(Mockito.mock(UserGroupRole.class))
+		);
+
+		Assert.assertNull(
+			_filter(
+				_CHANNEL_ID_SELECT_USERS, _GROUP_ID_WORKSPACE,
+				_USER_ID_MEMBER));
+	}
+
+	private void _assertResponse(
+		String expectedTitle, Response response, Response.Status status) {
+
+		_assertResponseStatus(response, status);
+
+		Problem problem = (Problem)response.getEntity();
+
+		Assert.assertEquals(expectedTitle, problem.getTitle());
+		Assert.assertNull(problem.getType());
 	}
 
 	private void _assertResponseStatus(
@@ -208,14 +242,32 @@ public class WorkspaceContainerRequestFilterTest {
 	private Response _filter(String channelId, Long groupId, long userId) {
 		User user = Mockito.mock(User.class);
 
+		boolean guestUser = false;
+
+		if (userId == _USER_ID_GUEST) {
+			guestUser = true;
+		}
+
 		Mockito.when(
 			user.isGuestUser()
 		).thenReturn(
-			userId == _GUEST_USER_ID
+			guestUser
 		);
 
 		PermissionChecker permissionChecker = Mockito.mock(
 			PermissionChecker.class);
+
+		boolean omniadmin = false;
+
+		if (userId == _USER_ID_OMNIADMIN) {
+			omniadmin = true;
+		}
+
+		Mockito.when(
+			permissionChecker.isOmniadmin()
+		).thenReturn(
+			omniadmin
+		);
 
 		Mockito.when(
 			permissionChecker.getUser()
@@ -229,23 +281,17 @@ public class WorkspaceContainerRequestFilterTest {
 			userId
 		);
 
-		Mockito.when(
-			permissionChecker.isOmniadmin()
-		).thenReturn(
-			userId == _OMNIADMIN_USER_ID
-		);
-
 		PermissionThreadLocal.setPermissionChecker(permissionChecker);
 
 		MultivaluedMap<String, String> pathParameters =
 			new MultivaluedHashMap<>();
 
-		if (groupId != null) {
-			pathParameters.putSingle("groupId", String.valueOf(groupId));
-		}
-
 		if (channelId != null) {
 			pathParameters.putSingle("channelId", channelId);
+		}
+
+		if (groupId != null) {
+			pathParameters.putSingle("groupId", String.valueOf(groupId));
 		}
 
 		UriInfo uriInfo = Mockito.mock(UriInfo.class);
@@ -297,7 +343,7 @@ public class WorkspaceContainerRequestFilterTest {
 		Mockito.when(
 			faroChannel.getGroupId()
 		).thenReturn(
-			_CHANNEL_GROUP_ID
+			_GROUP_ID_CHANNEL
 		);
 
 		Mockito.when(
@@ -306,39 +352,92 @@ public class WorkspaceContainerRequestFilterTest {
 			permissionType
 		);
 
+		Mockito.when(
+			faroChannel.getWorkspaceGroupId()
+		).thenReturn(
+			_GROUP_ID_WORKSPACE
+		);
+
 		return faroChannel;
 	}
 
-	private static final String _ALL_USERS_CHANNEL_ID = "100";
+	private FaroUser _mockFaroUser(String roleName, long userId) {
+		FaroUser faroUser = Mockito.mock(FaroUser.class);
 
-	private static final long _CHANNEL_GROUP_ID = 200L;
+		Mockito.when(
+			faroUser.getRoleId()
+		).thenReturn(
+			userId
+		);
 
-	private static final long _GROUP_ID = 300L;
+		Mockito.when(
+			faroUser.getStatus()
+		).thenReturn(
+			FaroUserConstants.STATUS_APPROVED
+		);
 
-	private static final long _GUEST_USER_ID = 1L;
+		_faroUserLocalServiceUtilMockedStatic.when(
+			() -> FaroUserLocalServiceUtil.fetchFaroUser(
+				_GROUP_ID_WORKSPACE, userId)
+		).thenReturn(
+			faroUser
+		);
 
-	private static final long _MEMBER_USER_ID = 2L;
+		Role role = Mockito.mock(Role.class);
 
-	private static final long _OMNIADMIN_USER_ID = 4L;
+		Mockito.when(
+			role.getName()
+		).thenReturn(
+			roleName
+		);
 
-	private static final long _OUTSIDER_USER_ID = 3L;
+		_roleLocalServiceUtilMockedStatic.when(
+			() -> RoleLocalServiceUtil.fetchRole(userId)
+		).thenReturn(
+			role
+		);
 
-	private static final long _ROLE_ID = 400L;
+		return faroUser;
+	}
 
-	private static final String _SELECT_USERS_CHANNEL_ID = "500";
+	private static final String _CHANNEL_ID_ALL_USERS =
+		RandomTestUtil.randomString();
+
+	private static final String _CHANNEL_ID_SELECT_USERS =
+		RandomTestUtil.randomString();
+
+	private static final long _GROUP_ID_CHANNEL = RandomTestUtil.randomLong();
+
+	private static final long _GROUP_ID_WORKSPACE = RandomTestUtil.randomLong();
+
+	private static final long _USER_ID_ADMINISTRATOR =
+		RandomTestUtil.randomLong();
+
+	private static final long _USER_ID_GUEST = RandomTestUtil.randomLong();
+
+	private static final long _USER_ID_MEMBER = RandomTestUtil.randomLong();
+
+	private static final long _USER_ID_OMNIADMIN = RandomTestUtil.randomLong();
+
+	private static final long _USER_ID_OUTSIDER = RandomTestUtil.randomLong();
+
+	private static final long _USER_ID_OWNER = RandomTestUtil.randomLong();
 
 	private final FaroChannelLocalService _faroChannelLocalService =
 		Mockito.mock(FaroChannelLocalService.class);
 	private final FaroProject _faroProject = Mockito.mock(FaroProject.class);
 	private final FaroProjectLocalService _faroProjectLocalService =
 		Mockito.mock(FaroProjectLocalService.class);
-	private final FaroUserLocalService _faroUserLocalService = Mockito.mock(
-		FaroUserLocalService.class);
+	private final MockedStatic<FaroUserLocalServiceUtil>
+		_faroUserLocalServiceUtilMockedStatic = Mockito.mockStatic(
+			FaroUserLocalServiceUtil.class);
 	private PermissionChecker _permissionChecker;
-	private final RoleLocalService _roleLocalService = Mockito.mock(
-		RoleLocalService.class);
-	private final UserGroupRoleLocalService _userGroupRoleLocalService =
-		Mockito.mock(UserGroupRoleLocalService.class);
+	private final MockedStatic<RoleLocalServiceUtil>
+		_roleLocalServiceUtilMockedStatic = Mockito.mockStatic(
+			RoleLocalServiceUtil.class);
+	private final MockedStatic<UserGroupRoleLocalServiceUtil>
+		_userGroupRoleLocalServiceUtilMockedStatic = Mockito.mockStatic(
+			UserGroupRoleLocalServiceUtil.class);
 	private final WorkspaceContainerRequestFilter
 		_workspaceContainerRequestFilter =
 			new WorkspaceContainerRequestFilter();

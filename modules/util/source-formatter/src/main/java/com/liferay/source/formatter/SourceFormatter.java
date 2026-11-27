@@ -5,6 +5,7 @@
 
 package com.liferay.source.formatter;
 
+import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
@@ -81,6 +82,12 @@ import com.puppycrawl.tools.checkstyle.api.CheckstyleException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.StringReader;
+
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -294,6 +301,10 @@ public class SourceFormatter {
 					Arrays.asList(sourceFormatterProperties));
 			}
 
+			sourceFormatterArgs.setValidateAllowedFilePaths(
+				ArgumentsUtil.getBoolean(
+					arguments, "validate.allowed.file.paths",
+					SourceFormatterArgs.VALIDATE_ALLOWED_FILE_PATHS));
 			sourceFormatterArgs.setValidateCommitMessages(
 				ArgumentsUtil.getBoolean(
 					arguments, "validate.commit.messages",
@@ -355,6 +366,10 @@ public class SourceFormatter {
 			"org.apache.xerces.jaxp.SAXParserFactoryImpl");
 
 		_init();
+
+		if (_sourceFormatterArgs.isValidateAllowedFilePaths()) {
+			_validateAllowedFilePaths();
+		}
 
 		if (_sourceFormatterArgs.isValidateCommitMessages()) {
 			_validateCommitMessages();
@@ -950,6 +965,14 @@ public class SourceFormatter {
 		return JSONUtil.toString(jsonObject);
 	}
 
+	private List<PathMatcher> _getPathMatchers(String[] filePaths) {
+		FileSystem fileSystem = FileSystems.getDefault();
+
+		return TransformUtil.transformToList(
+			filePaths,
+			filePath -> fileSystem.getPathMatcher("glob:" + filePath));
+	}
+
 	private List<String> _getPluginsInsideModulesDirectoryNames() {
 		List<String> pluginsInsideModulesDirectoryNames = new ArrayList<>();
 
@@ -1233,6 +1256,16 @@ public class SourceFormatter {
 		return false;
 	}
 
+	private boolean _isMatchingPath(Path path, List<PathMatcher> pathMatchers) {
+		for (PathMatcher pathMatcher : pathMatchers) {
+			if (pathMatcher.matches(path)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	private boolean _isRootTestPropertiesChanges(String recentChangesFileName) {
 		File portalDir = SourceFormatterUtil.getPortalDir(
 			_sourceFormatterArgs.getBaseDirName(),
@@ -1363,6 +1396,108 @@ public class SourceFormatter {
 			sourceProcessor.getSourceFormatterMessages());
 		_sourceMismatchExceptions.addAll(
 			sourceProcessor.getSourceMismatchExceptions());
+	}
+
+	private void _validateAllowedFilePaths() throws Exception {
+		File portalDir = SourceFormatterUtil.getPortalDir(
+			_sourceFormatterArgs.getBaseDirName(),
+			_sourceFormatterArgs.getMaxDirLevel());
+
+		if (portalDir == null) {
+			return;
+		}
+
+		Properties testProperties = _getProperties(
+			new File(portalDir, "test.properties"));
+
+		String[] privateFilePaths = StringUtil.split(
+			testProperties.getProperty(
+				"working.dir.private.allowed.file.paths"));
+		String[] sharedFilePaths = StringUtil.split(
+			testProperties.getProperty(
+				"working.dir.shared.allowed.file.paths"));
+
+		if (ArrayUtil.isEmpty(privateFilePaths) &&
+			ArrayUtil.isEmpty(sharedFilePaths)) {
+
+			return;
+		}
+
+		List<String> prohibitedFilePaths = new ArrayList<>();
+
+		String gitWorkingBranchName =
+			_sourceFormatterArgs.getGitWorkingBranchName();
+
+		boolean privateBranch = gitWorkingBranchName.endsWith("-private");
+
+		List<PathMatcher> privatePathMatchers = _getPathMatchers(
+			privateFilePaths);
+		List<PathMatcher> sharedPathMatchers = _getPathMatchers(
+			sharedFilePaths);
+
+		String portalDirName = SourceUtil.getAbsolutePath(portalDir.getPath());
+
+		for (String fileName :
+				GitUtil.getCurrentBranchFileNames(
+					_sourceFormatterArgs.getBaseDirName(),
+					gitWorkingBranchName)) {
+
+			String absolutePath = SourceUtil.getAbsolutePath(
+				_sourceFormatterArgs.getBaseDirName() + fileName);
+
+			String relativePath = absolutePath.substring(
+				portalDirName.length() + 1);
+
+			Path path = Paths.get(relativePath);
+
+			if (_isMatchingPath(path, sharedPathMatchers)) {
+				continue;
+			}
+
+			boolean privateFilePath = _isMatchingPath(
+				path, privatePathMatchers);
+
+			if ((privateBranch && privateFilePath) ||
+				(!privateBranch && !privateFilePath)) {
+
+				continue;
+			}
+
+			prohibitedFilePaths.add(relativePath);
+		}
+
+		if (prohibitedFilePaths.isEmpty()) {
+			return;
+		}
+
+		String companionBranchName = gitWorkingBranchName + "-private";
+
+		if (privateBranch) {
+			companionBranchName = StringUtil.replaceLast(
+				gitWorkingBranchName, "-private", StringPool.BLANK);
+		}
+
+		int prohibitedFilePathsCount = prohibitedFilePaths.size();
+
+		StringBundler sb = new StringBundler(
+			(prohibitedFilePathsCount * 8) + 3);
+
+		sb.append("Found ");
+		sb.append(prohibitedFilePathsCount);
+		sb.append(" formatting issues:");
+
+		for (int i = 0; i < prohibitedFilePathsCount; i++) {
+			sb.append("\n");
+			sb.append(i + 1);
+			sb.append(": ./");
+			sb.append(prohibitedFilePaths.get(i));
+			sb.append(" is not allowed in ");
+			sb.append(gitWorkingBranchName);
+			sb.append(", please submit it to ");
+			sb.append(companionBranchName);
+		}
+
+		throw new Exception(sb.toString());
 	}
 
 	private void _validateCommitMessages() throws Exception {

@@ -6,12 +6,8 @@
 package com.liferay.osb.faro.web.internal.fragment.renderer;
 
 import com.liferay.fragment.renderer.FragmentRenderer;
-import com.liferay.portal.kernel.util.HashMapBuilder;
-import com.liferay.portal.kernel.util.ParamUtil;
 
 import jakarta.servlet.http.HttpServletRequest;
-
-import java.util.Map;
 
 import org.osgi.service.component.annotations.Component;
 
@@ -20,7 +16,7 @@ import org.osgi.service.component.annotations.Component;
  */
 @Component(service = FragmentRenderer.class)
 public class FaroRecommendationSectionFragmentRenderer
-	extends BaseSettingsSectionFragmentRenderer {
+	extends BaseSectionFragmentRenderer {
 
 	@Override
 	protected String getLabelKey() {
@@ -28,19 +24,8 @@ public class FaroRecommendationSectionFragmentRenderer
 	}
 
 	@Override
-	protected String getModule() {
+	protected String getModule(HttpServletRequest httpServletRequest) {
 		return "{Recommendation} from osb-faro-web/settings";
-	}
-
-	@Override
-	protected Map<String, String> getParams(
-		HttpServletRequest httpServletRequest) {
-
-		return HashMapBuilder.putAll(
-			super.getParams(httpServletRequest)
-		).put(
-			"jobId", ParamUtil.getString(httpServletRequest, "jobId")
-		).build();
 	}
 
 }

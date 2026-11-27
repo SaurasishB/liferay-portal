@@ -5,12 +5,11 @@
 
 package com.liferay.data.cleanup.internal.verify.util;
 
-import com.liferay.portal.kernel.module.util.SystemBundleUtil;
-
 import java.util.function.Predicate;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.wiring.BundleRevision;
 
 /**
@@ -41,13 +40,16 @@ public class PostUpgradeDataCleanupProcessUtil {
 	}
 
 	private static boolean _isEveryLiferayBundle(Predicate<Bundle> predicate) {
-		BundleContext bundleContext = SystemBundleUtil.getBundleContext();
+		Bundle bundle1 = FrameworkUtil.getBundle(
+			PostUpgradeDataCleanupProcessUtil.class);
 
-		for (Bundle bundle : bundleContext.getBundles()) {
-			String bundleSymbolicName = bundle.getSymbolicName();
+		BundleContext bundleContext = bundle1.getBundleContext();
+
+		for (Bundle bundle2 : bundleContext.getBundles()) {
+			String bundleSymbolicName = bundle2.getSymbolicName();
 
 			if (bundleSymbolicName.startsWith("com.liferay.") &&
-				!predicate.test(bundle)) {
+				!predicate.test(bundle2)) {
 
 				return false;
 			}

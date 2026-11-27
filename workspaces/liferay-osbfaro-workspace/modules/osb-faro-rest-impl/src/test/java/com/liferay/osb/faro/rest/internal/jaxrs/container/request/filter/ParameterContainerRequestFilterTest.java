@@ -5,9 +5,12 @@
 
 package com.liferay.osb.faro.rest.internal.jaxrs.container.request.filter;
 
+import com.liferay.osb.faro.rest.resource.v1_0.AccountLifecycleResource;
 import com.liferay.osb.faro.rest.resource.v1_0.AccountLifecycleStageTransitionResource;
 import com.liferay.osb.faro.rest.resource.v1_0.IndividualSegmentMembershipResource;
+import com.liferay.petra.string.StringBundler;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
+import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.vulcan.jaxrs.exception.mapper.Problem;
 
 import jakarta.ws.rs.container.ContainerRequestContext;
@@ -48,11 +51,18 @@ public class ParameterContainerRequestFilterTest {
 	public void testFilter() {
 		Assert.assertNull(_filter("pageSize", "100"));
 		Assert.assertNull(_filter("rangeKey", "LAST_30_DAYS"));
+		Assert.assertNull(
+			_filter(
+				_getQueryParameters(
+					"selectedMetrics", "accountsTouched", "closedWonAmount")));
 		Assert.assertNull(_filter("sort", "transitionDate:desc"));
 		Assert.assertNull(
 			_filter(_getRangeQueryParameters("2026-10-02", "2026-04-06")));
 		Assert.assertNull(_filter(null, null));
 
+		_assertTitle(
+			"\"accountLifecycleId\" must be a numeric ID",
+			_filter("accountLifecycleId", RandomTestUtil.randomString()));
 		_assertTitle(
 			"Date range must be at most 180 days",
 			_filter(_getRangeQueryParameters("2026-10-02", "2026-04-05")));
@@ -76,12 +86,34 @@ public class ParameterContainerRequestFilterTest {
 			"\"rangeStart\" must not be after \"rangeEnd\"",
 			_filter(_getRangeQueryParameters("2026-10-01", "2026-10-20")));
 		_assertTitle(
+			"\"selectedMetrics\" must be one of accountsTouched, " +
+				"campaignCount, closedWonAmount, openPipelineAmount",
+			_filter(
+				_getQueryParameters(
+					"selectedMetrics", "accountsTouched", "bogusMetric")));
+		_assertTitle(
 			"\"sort\" accepts only one column on this endpoint",
 			_filter("sort", "accountName:asc,transitionDate:desc"));
 		_assertTitle(
 			"\"sort\" must be a comma separated list of \"column:asc\" or " +
 				"\"column:desc\" expressions",
 			_filter("sort", "accountName:sideways"));
+	}
+
+	@Test
+	public void testFilterWithAccountLifecycleResourceMethod() {
+		_setResourceMethod(
+			AccountLifecycleResource.class,
+			"getWorkspaceGroupChannelAccountLifecyclesPage");
+
+		String fieldName = RandomTestUtil.randomString();
+
+		_assertTitle(
+			StringBundler.concat(
+				"\"", fieldName,
+				"\" is not a sortable column. Sortable columns: dateModified, ",
+				"id, name"),
+			_filter("sort", fieldName + ":asc"));
 	}
 
 	@Test
@@ -161,6 +193,17 @@ public class ParameterContainerRequestFilterTest {
 		}
 
 		return _filter(queryParameters);
+	}
+
+	private MultivaluedMap<String, String> _getQueryParameters(
+		String name, String... values) {
+
+		MultivaluedMap<String, String> queryParameters =
+			new MultivaluedHashMap<>();
+
+		queryParameters.addAll(name, values);
+
+		return queryParameters;
 	}
 
 	private MultivaluedMap<String, String> _getRangeQueryParameters(

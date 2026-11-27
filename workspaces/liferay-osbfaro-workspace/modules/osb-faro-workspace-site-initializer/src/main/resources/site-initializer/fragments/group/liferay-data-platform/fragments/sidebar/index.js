@@ -6,7 +6,6 @@
 /* eslint-disable no-undef */
 
 const sidebarId = `${fragmentEntryLinkNamespace}sidebar`;
-const sidebarOpenKey = `${fragmentEntryLinkNamespace}sidebarOpen`;
 
 const sidebar = fragmentElement.querySelector('.sidebar-container');
 const sidebarCloseButton = fragmentElement.querySelector(
@@ -15,26 +14,34 @@ const sidebarCloseButton = fragmentElement.querySelector(
 const sidebarContainer = fragmentElement.querySelector('.sidebar-layout');
 const sidebarTrigger = fragmentElement.querySelector('.sidebar-toggle');
 
-if (sidebarTrigger) {
-	sidebar.setAttribute('id', sidebarId);
-	sidebarTrigger.setAttribute('aria-controls', sidebarId);
+const mobileMediaQueryList = window.matchMedia('(max-width: 991.98px)');
 
-	addSidebarToggleClickEventListener(sidebarTrigger);
-}
+let mobileSidebarOpen = false;
+let sidebarOpen = sidebarContainer.classList.contains('open');
 
-if (sidebarCloseButton) {
-	addSidebarToggleClickEventListener(sidebarCloseButton);
-}
+if (!sidebarContainer.classList.contains('fixed')) {
+	if (sidebarTrigger) {
+		sidebar.setAttribute('id', sidebarId);
+		sidebarTrigger.setAttribute('aria-controls', sidebarId);
 
-const sidebarOpenString = Liferay.Util.LocalStorage.getItem(
-	sidebarOpenKey,
-	Liferay.Util.LocalStorage.TYPES.FUNCTIONAL
-);
+		addSidebarToggleClickEventListener(sidebarTrigger);
+	}
 
-let sidebarOpen = sidebarOpenString === 'false' ? false : true;
+	if (sidebarCloseButton) {
+		addSidebarToggleClickEventListener(sidebarCloseButton);
+	}
 
-if (!sidebarOpen) {
-	toggleSidebar(false);
+	const content = sidebarContainer.querySelector('.content');
+
+	content.addEventListener('click', () => {
+		if (mobileMediaQueryList.matches && mobileSidebarOpen) {
+			handleSidebarToggleClick();
+		}
+	});
+
+	mobileMediaQueryList.addEventListener('change', () => updateSidebar());
+
+	updateSidebar();
 }
 
 function addSidebarToggleClickEventListener(node) {
@@ -44,47 +51,55 @@ function addSidebarToggleClickEventListener(node) {
 }
 
 function handleSidebarToggleClick() {
-	sidebarOpen = !sidebarOpen;
+	if (mobileMediaQueryList.matches) {
+		mobileSidebarOpen = !mobileSidebarOpen;
 
-	toggleSidebar();
+		sidebarContainer.classList.toggle('open-mobile', mobileSidebarOpen);
+	}
+	else {
+		sidebarOpen = !sidebarOpen;
 
-	Liferay.Util.LocalStorage.setItem(
-		sidebarOpenKey,
-		sidebarOpen,
-		Liferay.Util.LocalStorage.TYPES.FUNCTIONAL
-	);
-}
+		sidebarContainer.classList.toggle('open', sidebarOpen);
 
-function toggleSidebar(moveFocus = true) {
-	sidebarContainer.classList.toggle('open');
-
-	sidebar.toggleAttribute('inert');
-
-	if (sidebarTrigger) {
-		sidebarTrigger
-			.querySelectorAll('.inline-item')
-			.forEach((node) => node.classList.toggle('hide'));
-
-		sidebarTrigger.toggleAttribute('aria-expanded');
-		sidebarTrigger.toggleAttribute('aria-pressed');
-
-		if (sidebarOpen) {
-			sidebarTrigger.setAttribute(
-				'title',
-				sidebarTrigger.dataset.titleclose
-			);
-		}
-		else {
-			sidebarTrigger.setAttribute(
-				'title',
-				sidebarTrigger.dataset.titleopen
-			);
-		}
+		Liferay.Util.Session.set(
+			'com.liferay.osb.faro.workspace.site.initializer_sidebarOpen',
+			String(sidebarOpen)
+		).catch(() => {});
 	}
 
-	if (moveFocus) {
-		if (sidebarTrigger) {
-			sidebarTrigger.focus();
-		}
+	updateSidebar();
+
+	if (sidebarTrigger) {
+		sidebarTrigger.focus();
+	}
+}
+
+function updateSidebar() {
+	let open = sidebarOpen;
+
+	if (mobileMediaQueryList.matches) {
+		open = mobileSidebarOpen;
+	}
+
+	sidebar.toggleAttribute('inert', !open);
+
+	if (!sidebarTrigger) {
+		return;
+	}
+
+	const [openIcon, closedIcon] =
+		sidebarTrigger.querySelectorAll('.inline-item');
+
+	openIcon.classList.toggle('hide', !open);
+	closedIcon.classList.toggle('hide', open);
+
+	sidebarTrigger.setAttribute('aria-expanded', String(open));
+	sidebarTrigger.setAttribute('aria-pressed', String(open));
+
+	if (open) {
+		sidebarTrigger.setAttribute('title', sidebarTrigger.dataset.titleclose);
+	}
+	else {
+		sidebarTrigger.setAttribute('title', sidebarTrigger.dataset.titleopen);
 	}
 }

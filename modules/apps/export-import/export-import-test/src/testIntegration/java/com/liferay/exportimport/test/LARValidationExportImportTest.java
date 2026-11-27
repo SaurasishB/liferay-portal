@@ -37,12 +37,9 @@ import com.liferay.portal.kernel.xml.Document;
 import com.liferay.portal.kernel.xml.Element;
 import com.liferay.portal.kernel.xml.SAXReaderUtil;
 import com.liferay.portal.kernel.zip.ZipReader;
-import com.liferay.portal.kernel.zip.ZipReaderFactory;
 import com.liferay.portal.kernel.zip.ZipWriter;
-import com.liferay.portal.kernel.zip.ZipWriterFactory;
 import com.liferay.portal.test.log.LogCapture;
 import com.liferay.portal.test.log.LoggerTestUtil;
-import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 
 import java.io.File;
@@ -119,8 +116,7 @@ public class LARValidationExportImportTest extends BaseExportImportTestCase {
 		larFile = FileUtil.createTempFile("lar");
 
 		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
-				"com.liferay.portal.zip.internal.reader.BaseZipReader",
-				LoggerTestUtil.ERROR)) {
+				ZipReader.class.getName(), LoggerTestUtil.ERROR)) {
 
 			_validateImportLayoutsFile();
 
@@ -181,8 +177,7 @@ public class LARValidationExportImportTest extends BaseExportImportTestCase {
 		larFile = FileUtil.createTempFile("lar");
 
 		try (LogCapture logCapture = LoggerTestUtil.configureLog4JLogger(
-				"com.liferay.portal.zip.internal.reader.BaseZipReader",
-				LoggerTestUtil.ERROR)) {
+				ZipReader.class.getName(), LoggerTestUtil.ERROR)) {
 
 			_validateImportPortletInfo();
 
@@ -242,7 +237,7 @@ public class LARValidationExportImportTest extends BaseExportImportTestCase {
 
 		Bundle bundle = FrameworkUtil.getBundle(getClass());
 
-		ZipWriter zipWriter = _zipWriterFactory.getZipWriter();
+		ZipWriter zipWriter = new ZipWriter();
 
 		Enumeration<URL> enumeration = bundle.findEntries(path, "*", true);
 
@@ -333,7 +328,7 @@ public class LARValidationExportImportTest extends BaseExportImportTestCase {
 
 		Document document = null;
 
-		try (ZipReader zipReader = _zipReaderFactory.getZipReader(file)) {
+		try (ZipReader zipReader = new ZipReader(file)) {
 			document = SAXReaderUtil.read(
 				zipReader.getEntryAsInputStream("manifest.xml"));
 		}
@@ -344,7 +339,7 @@ public class LARValidationExportImportTest extends BaseExportImportTestCase {
 
 		element.addAttribute(name, value);
 
-		ZipWriter zipWriter = _zipWriterFactory.getZipWriter(file);
+		ZipWriter zipWriter = new ZipWriter(file);
 
 		zipWriter.addEntry("manifest.xml", document.formattedString());
 
@@ -388,11 +383,5 @@ public class LARValidationExportImportTest extends BaseExportImportTestCase {
 							getImportParameterMap())),
 			larFile);
 	}
-
-	@Inject
-	private ZipReaderFactory _zipReaderFactory;
-
-	@Inject
-	private ZipWriterFactory _zipWriterFactory;
 
 }

@@ -378,7 +378,8 @@ public class JUnitBatchBuildTestrayCaseResult
 			return null;
 		}
 
-		_testClassReports = _getTestClassReports(downstreamBuildReport);
+		_testClassReports = downstreamBuildReport.getTestClassReports(
+			getName());
 
 		return _testClassReports;
 	}
@@ -431,17 +432,33 @@ public class JUnitBatchBuildTestrayCaseResult
 
 		TopLevelBuildReport topLevelBuildReport = getTopLevelBuildReport();
 
+		String axisName = getAxisName();
+
+		DownstreamBuildReport axisDownstreamBuildReport =
+			topLevelBuildReport.getDownstreamBuildReport(axisName);
+
+		if (axisDownstreamBuildReport != null) {
+			List<TestClassReport> testClassReports =
+				axisDownstreamBuildReport.getTestClassReports(getName());
+
+			if (!testClassReports.isEmpty()) {
+				setBuildReport(axisDownstreamBuildReport);
+
+				return;
+			}
+		}
+
 		for (DownstreamBuildReport downstreamBuildReport :
 				topLevelBuildReport.getDownstreamBuildReports()) {
 
 			if (!Objects.equals(
-					downstreamBuildReport.getAxisName(), getAxisName())) {
+					downstreamBuildReport.getAxisName(), axisName)) {
 
 				continue;
 			}
 
-			List<TestClassReport> testClassReports = _getTestClassReports(
-				downstreamBuildReport);
+			List<TestClassReport> testClassReports =
+				downstreamBuildReport.getTestClassReports(getName());
 
 			if (!testClassReports.isEmpty()) {
 				setBuildReport(downstreamBuildReport);
@@ -449,43 +466,6 @@ public class JUnitBatchBuildTestrayCaseResult
 				return;
 			}
 		}
-	}
-
-	private List<TestClassReport> _getTestClassReports(
-		DownstreamBuildReport downstreamBuildReport) {
-
-		String name = getName();
-		List<TestClassReport> testClassReports = new ArrayList<>();
-
-		for (TestClassReport testClassReport :
-				downstreamBuildReport.getTestClassReports()) {
-
-			String testClassName = testClassReport.getTestClassName();
-
-			if (testClassName.equals(name) ||
-				testClassName.startsWith(name + "$")) {
-
-				testClassReports.add(testClassReport);
-
-				continue;
-			}
-
-			if (!testClassName.equals("junit.framework.TestSuite")) {
-				continue;
-			}
-
-			for (TestReport testReport : testClassReport.getTestReports()) {
-				String testName = testReport.getTestName();
-
-				if (testName.equals(name)) {
-					testClassReports.add(testClassReport);
-
-					break;
-				}
-			}
-		}
-
-		return testClassReports;
 	}
 
 	private boolean _isTestClassReportsFailing() {

@@ -41,7 +41,6 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.UnicodePropertiesBuilder;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
-import com.liferay.portal.kernel.zip.ZipReaderFactory;
 import com.liferay.subscription.service.SubscriptionLocalService;
 import com.liferay.trash.TrashHelper;
 import com.liferay.trash.exception.RestoreEntryException;
@@ -303,11 +302,6 @@ public class WikiNodeLocalServiceImpl extends WikiNodeLocalServiceBaseImpl {
 	}
 
 	@Override
-	public WikiNode fetchNodeByUuidAndGroupId(String uuid, long groupId) {
-		return wikiNodePersistence.fetchByUUID_G(uuid, groupId);
-	}
-
-	@Override
 	public WikiNode getNode(long nodeId) throws PortalException {
 		return wikiNodePersistence.findByPrimaryKey(nodeId);
 	}
@@ -338,35 +332,9 @@ public class WikiNodeLocalServiceImpl extends WikiNodeLocalServiceBaseImpl {
 	}
 
 	@Override
-	public List<WikiNode> getNodes(long groupId, int start, int end)
-		throws PortalException {
-
-		return getNodes(groupId, WorkflowConstants.STATUS_APPROVED, start, end);
-	}
-
-	@Override
-	public List<WikiNode> getNodes(long groupId, int status, int start, int end)
-		throws PortalException {
-
-		List<WikiNode> nodes = wikiNodePersistence.findByG_S(
-			groupId, status, start, end);
-
-		if (nodes.isEmpty()) {
-			nodes = _addDefaultNode(groupId);
-		}
-
-		return nodes;
-	}
-
-	@Override
 	public int getNodesCount(long groupId) {
 		return wikiNodePersistence.countByG_S(
 			groupId, WorkflowConstants.STATUS_APPROVED);
-	}
-
-	@Override
-	public int getNodesCount(long groupId, int status) {
-		return wikiNodePersistence.countByG_S(groupId, status);
 	}
 
 	@Override
@@ -535,7 +503,7 @@ public class WikiNodeLocalServiceImpl extends WikiNodeLocalServiceBaseImpl {
 		_mediaWikiImporter = new MediaWikiImporter(
 			_assetTagLocalService, _companyLocalService, _configurationProvider,
 			_portletFileRepository, _userLocalService, _wikiPageLocalService,
-			_wikiPageTitleValidator, _zipReaderFactory);
+			_wikiPageTitleValidator);
 
 		_portalCache = _multiVMPool.getPortalCache(
 			WikiPageDisplay.class.getName());
@@ -689,8 +657,5 @@ public class WikiNodeLocalServiceImpl extends WikiNodeLocalServiceBaseImpl {
 
 	@Reference
 	private WikiPageTitleValidator _wikiPageTitleValidator;
-
-	@Reference
-	private ZipReaderFactory _zipReaderFactory;
 
 }

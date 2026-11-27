@@ -74,6 +74,7 @@ import com.liferay.object.entry.util.ObjectEntryThreadLocal;
 import com.liferay.object.entry.util.ObjectEntryValuesUtil;
 import com.liferay.object.exception.DuplicateObjectEntryExternalReferenceCodeException;
 import com.liferay.object.exception.NoSuchObjectDefinitionException;
+import com.liferay.object.exception.NoSuchObjectEntryException;
 import com.liferay.object.exception.ObjectDefinitionScopeException;
 import com.liferay.object.exception.ObjectEntryDefaultLanguageIdException;
 import com.liferay.object.exception.ObjectEntryExpirationDateException;
@@ -1015,79 +1016,6 @@ public class ObjectEntryLocalServiceImpl
 	}
 
 	@Override
-	public ObjectEntry fetchManyToOneObjectEntry(
-			long groupId, long objectRelationshipId, long primaryKey)
-		throws PortalException {
-
-		ObjectRelationship objectRelationship =
-			_objectRelationshipPersistence.findByPrimaryKey(
-				objectRelationshipId);
-
-		if (!Objects.equals(
-				objectRelationship.getType(),
-				ObjectRelationshipConstants.TYPE_ONE_TO_MANY)) {
-
-			throw new UnsupportedOperationException();
-		}
-
-		DynamicObjectDefinitionTable dynamicObjectDefinitionTable = null;
-
-		ObjectDefinition objectDefinition =
-			_objectDefinitionPersistence.findByPrimaryKey(
-				objectRelationship.getObjectDefinitionId1());
-
-		ObjectDefinition relatedObjectDefinition =
-			_objectDefinitionPersistence.findByPrimaryKey(
-				objectRelationship.getObjectDefinitionId2());
-
-		if (relatedObjectDefinition.isUnmodifiableSystemObject()) {
-			dynamicObjectDefinitionTable =
-				DynamicObjectDefinitionTableUtil.
-					getDynamicObjectDefinitionTable(
-						true, relatedObjectDefinition,
-						_objectFieldLocalService);
-		}
-		else {
-			dynamicObjectDefinitionTable =
-				DynamicObjectDefinitionTableUtil.
-					getDynamicObjectDefinitionTable(
-						false, relatedObjectDefinition,
-						_objectFieldLocalService);
-
-			Column<DynamicObjectDefinitionTable, Long> column =
-				(Column<DynamicObjectDefinitionTable, Long>)
-					dynamicObjectDefinitionTable.getColumn(
-						ObjectRelationshipUtil.getObjectRelationshipFieldName(
-							objectDefinition, objectRelationship.getName()));
-
-			if (column == null) {
-				dynamicObjectDefinitionTable =
-					DynamicObjectDefinitionTableUtil.
-						getDynamicObjectDefinitionTable(
-							true, relatedObjectDefinition,
-							_objectFieldLocalService);
-			}
-		}
-
-		DSLQuery dslQuery = _getFetchManyToOneObjectEntryDSLQuery(
-			dynamicObjectDefinitionTable, groupId, objectRelationship,
-			primaryKey, dynamicObjectDefinitionTable.getPrimaryKeyColumn());
-
-		if (_log.isDebugEnabled()) {
-			_log.debug("Get one to many related object entries: " + dslQuery);
-		}
-
-		List<ObjectEntry> objectEntries = objectEntryPersistence.dslQuery(
-			dslQuery);
-
-		if (objectEntries.isEmpty()) {
-			return null;
-		}
-
-		return objectEntries.get(0);
-	}
-
-	@Override
 	@Previewable
 	public ObjectEntry fetchObjectEntry(long objectEntryId) {
 		return objectEntryPersistence.fetchByPrimaryKey(objectEntryId);
@@ -1152,6 +1080,82 @@ public class ObjectEntryLocalServiceImpl
 
 		return objectEntryPersistence.fetchByHeadObjectEntryId(
 			headObjectEntryId, false);
+	}
+
+	@Override
+	public ObjectEntry fetchRelatedObjectEntry(
+			long groupId, long objectRelationshipId, long primaryKey)
+		throws PortalException {
+
+		ObjectRelationship objectRelationship =
+			_objectRelationshipPersistence.findByPrimaryKey(
+				objectRelationshipId);
+
+		if (!Objects.equals(
+				objectRelationship.getType(),
+				ObjectRelationshipConstants.TYPE_ONE_TO_MANY) &&
+			!Objects.equals(
+				objectRelationship.getType(),
+				ObjectRelationshipConstants.TYPE_ONE_TO_ONE)) {
+
+			throw new UnsupportedOperationException();
+		}
+
+		DynamicObjectDefinitionTable dynamicObjectDefinitionTable = null;
+
+		ObjectDefinition objectDefinition =
+			_objectDefinitionPersistence.findByPrimaryKey(
+				objectRelationship.getObjectDefinitionId1());
+
+		ObjectDefinition relatedObjectDefinition =
+			_objectDefinitionPersistence.findByPrimaryKey(
+				objectRelationship.getObjectDefinitionId2());
+
+		if (relatedObjectDefinition.isUnmodifiableSystemObject()) {
+			dynamicObjectDefinitionTable =
+				DynamicObjectDefinitionTableUtil.
+					getDynamicObjectDefinitionTable(
+						true, relatedObjectDefinition,
+						_objectFieldLocalService);
+		}
+		else {
+			dynamicObjectDefinitionTable =
+				DynamicObjectDefinitionTableUtil.
+					getDynamicObjectDefinitionTable(
+						false, relatedObjectDefinition,
+						_objectFieldLocalService);
+
+			Column<DynamicObjectDefinitionTable, Long> column =
+				(Column<DynamicObjectDefinitionTable, Long>)
+					dynamicObjectDefinitionTable.getColumn(
+						ObjectRelationshipUtil.getObjectRelationshipFieldName(
+							objectDefinition, objectRelationship.getName()));
+
+			if (column == null) {
+				dynamicObjectDefinitionTable =
+					DynamicObjectDefinitionTableUtil.
+						getDynamicObjectDefinitionTable(
+							true, relatedObjectDefinition,
+							_objectFieldLocalService);
+			}
+		}
+
+		DSLQuery dslQuery = _getFetchRelatedObjectEntryDSLQuery(
+			dynamicObjectDefinitionTable, groupId, objectRelationship,
+			primaryKey, dynamicObjectDefinitionTable.getPrimaryKeyColumn());
+
+		if (_log.isDebugEnabled()) {
+			_log.debug("Get related object entries: " + dslQuery);
+		}
+
+		List<ObjectEntry> objectEntries = objectEntryPersistence.dslQuery(
+			dslQuery);
+
+		if (objectEntries.isEmpty()) {
+			return null;
+		}
+
+		return objectEntries.get(0);
 	}
 
 	@Override
@@ -1556,7 +1560,7 @@ public class ObjectEntryLocalServiceImpl
 		Table table = _objectFieldLocalService.getTable(
 			objectDefinitionId, aggregationTerm);
 
-		DSLQuery dslQuery = _getOneToManyObjectEntriesGroupByStep(
+		DSLQuery dslQuery = _getRelatedObjectEntriesGroupByStep(
 			DSLQueryFactoryUtil.select(
 				table.getColumn(objectField.getDBColumnName()),
 				DSLFunctionFactoryUtil.countDistinct(
@@ -1578,57 +1582,6 @@ public class ObjectEntryLocalServiceImpl
 		}
 
 		return aggregationCounts;
-	}
-
-	@Override
-	public List<ObjectEntry> getOneToManyObjectEntries(
-			long groupId, long objectRelationshipId, Predicate predicate,
-			boolean preferApproved, long primaryKey, boolean related,
-			String search, int start, int end, Sort[] sorts)
-		throws PortalException {
-
-		DSLQuery dslQuery = _getOneToManyObjectEntriesGroupByStep(
-			DSLQueryFactoryUtil.select(ObjectEntryTable.INSTANCE), groupId,
-			objectRelationshipId, predicate, preferApproved, primaryKey,
-			related, search
-		).limit(
-			start, end
-		);
-
-		if (sorts == null) {
-			sorts = new Sort[] {new Sort("id", Sort.LONG_TYPE, false)};
-		}
-
-		ObjectRelationship objectRelationship =
-			_objectRelationshipPersistence.findByPrimaryKey(
-				objectRelationshipId);
-
-		return objectEntryPersistence.dslQuery(
-			_applyOrderBy(
-				dslQuery,
-				_objectDefinitionPersistence.findByPrimaryKey(
-					objectRelationship.getObjectDefinitionId2()),
-				sorts));
-	}
-
-	@Override
-	public int getOneToManyObjectEntriesCount(
-			long groupId, long objectRelationshipId, Predicate predicate,
-			long primaryKey, boolean related, String search)
-		throws PortalException {
-
-		DSLQuery dslQuery = _getOneToManyObjectEntriesGroupByStep(
-			DSLQueryFactoryUtil.countDistinct(
-				ObjectEntryTable.INSTANCE.objectEntryId),
-			groupId, objectRelationshipId, predicate, false, primaryKey,
-			related, search);
-
-		if (_log.isDebugEnabled()) {
-			_log.debug(
-				"Get one to many related object entries count: " + dslQuery);
-		}
-
-		return objectEntryPersistence.dslQueryCount(dslQuery);
 	}
 
 	@Transactional(propagation = Propagation.REQUIRED)
@@ -1732,6 +1685,56 @@ public class ObjectEntryLocalServiceImpl
 			value -> (Long)_getResult(
 				value, objectFieldBag,
 				dynamicObjectDefinitionTable.getPrimaryKeyColumn()));
+	}
+
+	@Override
+	public List<ObjectEntry> getRelatedObjectEntries(
+			long groupId, long objectRelationshipId, Predicate predicate,
+			boolean preferApproved, long primaryKey, boolean related,
+			String search, int start, int end, Sort[] sorts)
+		throws PortalException {
+
+		DSLQuery dslQuery = _getRelatedObjectEntriesGroupByStep(
+			DSLQueryFactoryUtil.select(ObjectEntryTable.INSTANCE), groupId,
+			objectRelationshipId, predicate, preferApproved, primaryKey,
+			related, search
+		).limit(
+			start, end
+		);
+
+		if (sorts == null) {
+			sorts = new Sort[] {new Sort("id", Sort.LONG_TYPE, false)};
+		}
+
+		ObjectRelationship objectRelationship =
+			_objectRelationshipPersistence.findByPrimaryKey(
+				objectRelationshipId);
+
+		return objectEntryPersistence.dslQuery(
+			_applyOrderBy(
+				dslQuery,
+				_objectDefinitionPersistence.findByPrimaryKey(
+					objectRelationship.getObjectDefinitionId2()),
+				sorts));
+	}
+
+	@Override
+	public int getRelatedObjectEntriesCount(
+			long groupId, long objectRelationshipId, Predicate predicate,
+			long primaryKey, boolean related, String search)
+		throws PortalException {
+
+		DSLQuery dslQuery = _getRelatedObjectEntriesGroupByStep(
+			DSLQueryFactoryUtil.countDistinct(
+				ObjectEntryTable.INSTANCE.objectEntryId),
+			groupId, objectRelationshipId, predicate, false, primaryKey,
+			related, search);
+
+		if (_log.isDebugEnabled()) {
+			_log.debug("Get related object entries count: " + dslQuery);
+		}
+
+		return objectEntryPersistence.dslQueryCount(dslQuery);
 	}
 
 	@Override
@@ -2280,6 +2283,56 @@ public class ObjectEntryLocalServiceImpl
 		return _updateObjectEntry(
 			userId, objectEntryId, objectEntryFolderId, values, serviceContext,
 			false, true);
+	}
+
+	@Override
+	public ObjectEntry publishDraftObjectEntry(
+			long userId, long objectEntryId, ServiceContext serviceContext)
+		throws PortalException {
+
+		ObjectEntry draftObjectEntry = objectEntryPersistence.findByPrimaryKey(
+			objectEntryId);
+
+		if (!draftObjectEntry.isTypeDraft()) {
+			throw new NoSuchObjectEntryException(
+				StringBundler.concat(
+					"No ObjectEntry exists with the key {objectEntryId=",
+					objectEntryId, ", type=", ObjectEntryConstants.TYPE_DRAFT,
+					"}"));
+		}
+
+		ObjectEntry headObjectEntry = objectEntryPersistence.findByPrimaryKey(
+			draftObjectEntry.getHeadObjectEntryId());
+
+		if (headObjectEntry.isInTrash()) {
+			throw new NoSuchObjectEntryException(
+				StringBundler.concat(
+					"No ObjectEntry exists with the key {objectEntryId=",
+					headObjectEntry.getObjectEntryId(), ", status=",
+					WorkflowConstants.STATUS_IN_TRASH, "}"));
+		}
+
+		serviceContext = (ServiceContext)serviceContext.clone();
+
+		AssetEntry assetEntry = _assetEntryLocalService.fetchEntry(
+			draftObjectEntry.getModelClassName(),
+			draftObjectEntry.getObjectEntryId());
+
+		if (assetEntry != null) {
+			serviceContext.setAssetCategoryIds(assetEntry.getCategoryIds());
+			serviceContext.setAssetTagNames(assetEntry.getTagNames());
+		}
+
+		serviceContext.setWorkflowAction(WorkflowConstants.ACTION_PUBLISH);
+
+		headObjectEntry = updateObjectEntry(
+			userId, headObjectEntry.getObjectEntryId(),
+			headObjectEntry.getObjectEntryFolderId(),
+			draftObjectEntry.getValues(), serviceContext);
+
+		objectEntryLocalService.deleteObjectEntry(draftObjectEntry);
+
+		return headObjectEntry;
 	}
 
 	@Override
@@ -2904,8 +2957,13 @@ public class ObjectEntryLocalServiceImpl
 			Objects.equals(
 				dlFileEntryFolder.getFolderId(), dlFolder.getFolderId())) {
 
+			ObjectEntry objectEntry = objectEntryPersistence.fetchByPrimaryKey(
+				dlFileEntry.getClassPK());
+
 			if (Validator.isNull(dlFileEntry.getClassName()) ||
-				(dlFileEntry.getClassPK() <= 0)) {
+				(dlFileEntry.getClassPK() <= 0) ||
+				((objectEntry != null) && objectEntry.isTypeDraft() &&
+				 (objectEntry.getHeadObjectEntryId() == objectEntryId))) {
 
 				dlFileEntry.setClassName(objectDefinition.getClassName());
 				dlFileEntry.setClassPK(objectEntryId);
@@ -3925,7 +3983,7 @@ public class ObjectEntryLocalServiceImpl
 				ObjectRelationshipUtil.getObjectRelationshipFieldName(
 					objectDefinition, objectRelationship.getName());
 
-			List<ObjectEntry> relatedObjectEntries = getOneToManyObjectEntries(
+			List<ObjectEntry> relatedObjectEntries = getRelatedObjectEntries(
 				sourceObjectEntry.getGroupId(),
 				objectRelationship.getObjectRelationshipId(), null, false,
 				sourceObjectEntry.getObjectEntryId(), true, null,
@@ -5039,7 +5097,7 @@ public class ObjectEntryLocalServiceImpl
 		return null;
 	}
 
-	private DSLQuery _getFetchManyToOneObjectEntryDSLQuery(
+	private DSLQuery _getFetchRelatedObjectEntryDSLQuery(
 			DynamicObjectDefinitionTable dynamicObjectDefinitionTable,
 			long groupId, ObjectRelationship objectRelationship,
 			long primaryKey,
@@ -5769,121 +5827,6 @@ public class ObjectEntryLocalServiceImpl
 			objectFieldPredicate, preferredLanguageId);
 	}
 
-	private GroupByStep _getOneToManyObjectEntriesGroupByStep(
-			FromStep fromStep, long groupId, long objectRelationshipId,
-			Predicate predicate, boolean preferApproved, long primaryKey,
-			boolean related, String search)
-		throws PortalException {
-
-		ObjectRelationship objectRelationship =
-			_objectRelationshipPersistence.findByPrimaryKey(
-				objectRelationshipId);
-
-		ObjectDefinition objectDefinition =
-			_objectDefinitionPersistence.findByPrimaryKey(
-				objectRelationship.getObjectDefinitionId2());
-
-		DynamicObjectDefinitionLocalizationTable
-			dynamicObjectDefinitionLocalizationTable =
-				DynamicObjectDefinitionLocalizationTableFactory.create(
-					objectDefinition, _objectFieldLocalService);
-		DynamicObjectDefinitionTable dynamicObjectDefinitionTable =
-			DynamicObjectDefinitionTableUtil.getDynamicObjectDefinitionTable(
-				false, objectDefinition, _objectFieldLocalService);
-		DynamicObjectDefinitionTable extensionDynamicObjectDefinitionTable =
-			DynamicObjectDefinitionTableUtil.getDynamicObjectDefinitionTable(
-				true, objectDefinition, _objectFieldLocalService);
-
-		ObjectEntry objectEntry = fetchObjectEntry(primaryKey);
-		ObjectField objectField = _objectFieldPersistence.fetchByPrimaryKey(
-			objectRelationship.getObjectFieldId2());
-		Column<DynamicObjectDefinitionTable, Long> primaryKeyColumn =
-			dynamicObjectDefinitionTable.getPrimaryKeyColumn();
-
-		DynamicObjectDefinitionTable rootDynamicObjectDefinitionTable =
-			_getRootDynamicObjectDefinitionTable(objectEntry);
-
-		return fromStep.from(
-			dynamicObjectDefinitionTable
-		).leftJoinOn(
-			extensionDynamicObjectDefinitionTable,
-			_getExtensionLeftJoinPredicate(
-				dynamicObjectDefinitionTable,
-				extensionDynamicObjectDefinitionTable)
-		).innerJoinON(
-			ObjectEntryTable.INSTANCE,
-			ObjectEntryTable.INSTANCE.objectEntryId.eq(primaryKeyColumn)
-		).leftJoinOn(
-			rootDynamicObjectDefinitionTable,
-			_getLeftJoinRootObjectDefinitionTablePredicate(
-				rootDynamicObjectDefinitionTable)
-		).leftJoinOn(
-			dynamicObjectDefinitionLocalizationTable,
-			ObjectEntrySearchUtil.getLeftJoinLocalizationTablePredicate(
-				dynamicObjectDefinitionLocalizationTable,
-				dynamicObjectDefinitionTable, null)
-		).where(
-			ObjectEntryTable.INSTANCE.companyId.eq(
-				objectRelationship.getCompanyId()
-			).and(
-				() -> {
-					if (!related && (groupId > 0)) {
-						return ObjectEntryTable.INSTANCE.groupId.eq(groupId);
-					}
-
-					return null;
-				}
-			).and(
-				ObjectEntryTable.INSTANCE.objectDefinitionId.eq(
-					objectRelationship.getObjectDefinitionId2())
-			).and(
-				() -> {
-					Column<?, Long> column =
-						(Column<?, Long>)_objectFieldLocalService.getColumn(
-							objectField.getObjectDefinitionId(),
-							objectField.getName());
-
-					return column.eq(related ? primaryKey : 0L);
-				}
-			).and(
-				() ->
-					objectRelationship.isSelf() ?
-						primaryKeyColumn.neq(primaryKey) : null
-			).and(
-				_getHeadObjectEntryPredicate(preferApproved)
-			).and(
-				() -> {
-					if (ObjectEntryThreadLocal.
-							isSkipObjectEntryResourcePermission() ||
-						(PermissionThreadLocal.getPermissionChecker() ==
-							null)) {
-
-						return null;
-					}
-
-					long rootObjectDefinitionId = 0L;
-
-					if ((objectEntry != null) &&
-						(objectEntry.getRootObjectEntryId() != 0)) {
-
-						ObjectEntry rootObjectEntry = fetchObjectEntry(
-							objectEntry.getRootObjectEntryId());
-
-						rootObjectDefinitionId =
-							rootObjectEntry.getObjectDefinitionId();
-					}
-
-					return _getPermissionWherePredicate(
-						dynamicObjectDefinitionTable, groupId,
-						rootObjectDefinitionId);
-				}
-			).and(
-				Predicate.withParentheses(
-					_fillPredicate(objectDefinition, predicate, search))
-			)
-		);
-	}
-
 	private Set<String> _getOrderByTableNames(
 		ObjectDefinition objectDefinition, Sort[] sorts) {
 
@@ -6170,6 +6113,121 @@ public class ObjectEntryLocalServiceImpl
 		}
 
 		return queryExpressions;
+	}
+
+	private GroupByStep _getRelatedObjectEntriesGroupByStep(
+			FromStep fromStep, long groupId, long objectRelationshipId,
+			Predicate predicate, boolean preferApproved, long primaryKey,
+			boolean related, String search)
+		throws PortalException {
+
+		ObjectRelationship objectRelationship =
+			_objectRelationshipPersistence.findByPrimaryKey(
+				objectRelationshipId);
+
+		ObjectDefinition objectDefinition =
+			_objectDefinitionPersistence.findByPrimaryKey(
+				objectRelationship.getObjectDefinitionId2());
+
+		DynamicObjectDefinitionLocalizationTable
+			dynamicObjectDefinitionLocalizationTable =
+				DynamicObjectDefinitionLocalizationTableFactory.create(
+					objectDefinition, _objectFieldLocalService);
+		DynamicObjectDefinitionTable dynamicObjectDefinitionTable =
+			DynamicObjectDefinitionTableUtil.getDynamicObjectDefinitionTable(
+				false, objectDefinition, _objectFieldLocalService);
+		DynamicObjectDefinitionTable extensionDynamicObjectDefinitionTable =
+			DynamicObjectDefinitionTableUtil.getDynamicObjectDefinitionTable(
+				true, objectDefinition, _objectFieldLocalService);
+
+		ObjectEntry objectEntry = fetchObjectEntry(primaryKey);
+		ObjectField objectField = _objectFieldPersistence.fetchByPrimaryKey(
+			objectRelationship.getObjectFieldId2());
+		Column<DynamicObjectDefinitionTable, Long> primaryKeyColumn =
+			dynamicObjectDefinitionTable.getPrimaryKeyColumn();
+
+		DynamicObjectDefinitionTable rootDynamicObjectDefinitionTable =
+			_getRootDynamicObjectDefinitionTable(objectEntry);
+
+		return fromStep.from(
+			dynamicObjectDefinitionTable
+		).leftJoinOn(
+			extensionDynamicObjectDefinitionTable,
+			_getExtensionLeftJoinPredicate(
+				dynamicObjectDefinitionTable,
+				extensionDynamicObjectDefinitionTable)
+		).innerJoinON(
+			ObjectEntryTable.INSTANCE,
+			ObjectEntryTable.INSTANCE.objectEntryId.eq(primaryKeyColumn)
+		).leftJoinOn(
+			rootDynamicObjectDefinitionTable,
+			_getLeftJoinRootObjectDefinitionTablePredicate(
+				rootDynamicObjectDefinitionTable)
+		).leftJoinOn(
+			dynamicObjectDefinitionLocalizationTable,
+			ObjectEntrySearchUtil.getLeftJoinLocalizationTablePredicate(
+				dynamicObjectDefinitionLocalizationTable,
+				dynamicObjectDefinitionTable, null)
+		).where(
+			ObjectEntryTable.INSTANCE.companyId.eq(
+				objectRelationship.getCompanyId()
+			).and(
+				() -> {
+					if (!related && (groupId > 0)) {
+						return ObjectEntryTable.INSTANCE.groupId.eq(groupId);
+					}
+
+					return null;
+				}
+			).and(
+				ObjectEntryTable.INSTANCE.objectDefinitionId.eq(
+					objectRelationship.getObjectDefinitionId2())
+			).and(
+				() -> {
+					Column<?, Long> column =
+						(Column<?, Long>)_objectFieldLocalService.getColumn(
+							objectField.getObjectDefinitionId(),
+							objectField.getName());
+
+					return column.eq(related ? primaryKey : 0L);
+				}
+			).and(
+				() ->
+					objectRelationship.isSelf() ?
+						primaryKeyColumn.neq(primaryKey) : null
+			).and(
+				_getHeadObjectEntryPredicate(preferApproved)
+			).and(
+				() -> {
+					if (ObjectEntryThreadLocal.
+							isSkipObjectEntryResourcePermission() ||
+						(PermissionThreadLocal.getPermissionChecker() ==
+							null)) {
+
+						return null;
+					}
+
+					long rootObjectDefinitionId = 0L;
+
+					if ((objectEntry != null) &&
+						(objectEntry.getRootObjectEntryId() != 0)) {
+
+						ObjectEntry rootObjectEntry = fetchObjectEntry(
+							objectEntry.getRootObjectEntryId());
+
+						rootObjectDefinitionId =
+							rootObjectEntry.getObjectDefinitionId();
+					}
+
+					return _getPermissionWherePredicate(
+						dynamicObjectDefinitionTable, groupId,
+						rootObjectDefinitionId);
+				}
+			).and(
+				Predicate.withParentheses(
+					_fillPredicate(objectDefinition, predicate, search))
+			)
+		);
 	}
 
 	private Predicate _getRelationshipObjectFieldPredicate(

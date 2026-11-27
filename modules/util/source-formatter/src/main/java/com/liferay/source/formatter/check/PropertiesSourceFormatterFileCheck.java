@@ -8,6 +8,7 @@ package com.liferay.source.formatter.check;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
@@ -121,9 +122,9 @@ public class PropertiesSourceFormatterFileCheck extends BaseFileCheck {
 			String fileName, String absolutePath, String content)
 		throws Exception {
 
-		int pos = absolutePath.lastIndexOf(CharPool.SLASH);
+		int index = absolutePath.lastIndexOf(CharPool.SLASH);
 
-		String fileLocation = absolutePath.substring(0, pos);
+		String fileLocation = absolutePath.substring(0, index);
 
 		String rootDirName = SourceUtil.getRootDirName(absolutePath);
 
@@ -158,16 +159,16 @@ public class PropertiesSourceFormatterFileCheck extends BaseFileCheck {
 				continue;
 			}
 
-			pos = sourceFormatterProperties.indexOf(propertyKey);
+			index = sourceFormatterProperties.indexOf(propertyKey);
 
-			if (pos == -1) {
+			if (index == -1) {
 				previousLine = line;
 
 				continue;
 			}
 
 			if ((previousPropertyPosition != -1) &&
-				(pos < previousPropertyPosition)) {
+				(index < previousPropertyPosition)) {
 
 				addMessage(
 					fileName,
@@ -182,7 +183,7 @@ public class PropertiesSourceFormatterFileCheck extends BaseFileCheck {
 
 			previousLine = line;
 			previousPropertyKey = propertyKey;
-			previousPropertyPosition = pos;
+			previousPropertyPosition = index;
 		}
 	}
 
@@ -196,6 +197,37 @@ public class PropertiesSourceFormatterFileCheck extends BaseFileCheck {
 		}
 
 		_checkPropertiesGroupAndOrder(fileName, prefix, properties);
+	}
+
+	private void _checkWildcardDirName(
+		String fileName, String key, String propertyValue) {
+
+		if (!propertyValue.startsWith("**/")) {
+			return;
+		}
+
+		String dirName = propertyValue.substring(3);
+
+		int index = dirName.indexOf(CharPool.SLASH);
+
+		if (index == -1) {
+			return;
+		}
+
+		dirName = dirName.substring(0, index);
+
+		if (dirName.contains(StringPool.STAR) ||
+			ArrayUtil.contains(_ALLOWED_DIR_NAMES, dirName)) {
+
+			return;
+		}
+
+		addMessage(
+			fileName,
+			StringBundler.concat(
+				"Property value \"", propertyValue, "\" of \"", key,
+				"\" should use the full path from the repository root instead ",
+				"of starting with \"**/\""));
 	}
 
 	private String _fixCheckProperties(String content) throws Exception {
@@ -260,28 +292,32 @@ public class PropertiesSourceFormatterFileCheck extends BaseFileCheck {
 				continue;
 			}
 
-			for (String propertyFileName : propertyValues) {
-				if (propertyFileName.contains(StringPool.STAR) ||
-					propertyFileName.endsWith("-ext.properties") ||
+			for (String propertyValue : propertyValues) {
+				if (key.endsWith("excludes")) {
+					_checkWildcardDirName(fileName, key, propertyValue);
+				}
+
+				if (propertyValue.contains(StringPool.STAR) ||
+					propertyValue.endsWith("-ext.properties") ||
 					(isPortalSource() && !_hasPrivateAppsDir() &&
-					 isModulesApp(propertyFileName, true))) {
+					 isModulesApp(propertyValue, true))) {
 
 					continue;
 				}
 
-				int pos = propertyFileName.indexOf(CharPool.AT);
+				int index = propertyValue.indexOf(CharPool.AT);
 
-				if (pos != -1) {
-					propertyFileName = propertyFileName.substring(0, pos);
+				if (index != -1) {
+					propertyValue = propertyValue.substring(0, index);
 				}
 
-				pos = propertyFileName.indexOf("->");
+				index = propertyValue.indexOf("->");
 
-				if (pos != -1) {
-					propertyFileName = propertyFileName.substring(pos + 2);
+				if (index != -1) {
+					propertyValue = propertyValue.substring(index + 2);
 				}
 
-				File file = getFile(propertyFileName, getMaxDirLevel());
+				File file = getFile(propertyValue, getMaxDirLevel());
 
 				if (file != null) {
 					continue;
@@ -290,7 +326,7 @@ public class PropertiesSourceFormatterFileCheck extends BaseFileCheck {
 				addMessage(
 					fileName,
 					StringBundler.concat(
-						"Property value \"", propertyFileName,
+						"Property value \"", propertyValue,
 						"\" points to file or directory that does not ",
 						"exist"));
 			}
@@ -551,6 +587,11 @@ public class PropertiesSourceFormatterFileCheck extends BaseFileCheck {
 
 		return content;
 	}
+
+	private static final String[] _ALLOWED_DIR_NAMES = {
+		".cache", ".m2", ".m2-tmp", ".task-cache", "bower_components",
+		"build_gradle", "bun dles", "webapps"
+	};
 
 	private static final Pattern _checkPropertyPattern = Pattern.compile(
 		"\n\\s*#?(checkstyle|source\\.check)\\.(.*\\.check)\\.");

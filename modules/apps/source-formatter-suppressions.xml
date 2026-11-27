@@ -18,7 +18,6 @@
 		<suppress checks="ComponentExposureCheck" files="flags/flags-taglib/src/main/java/com/liferay/flags/taglib/internal/servlet/ServletContextUtil\.java" />
 		<suppress checks="ComponentExposureCheck" files="frontend-data-set/frontend-data-set-taglib/src/main/java/com/liferay/frontend/data/set/taglib/internal/servlet/ServletContextUtil\.java" />
 		<suppress checks="ComponentExposureCheck" files="frontend-taglib/frontend-taglib/src/main/java/com/liferay/frontend/taglib/internal/servlet/ServletContextUtil\.java" />
-		<suppress checks="ComponentExposureCheck" files="frontend-taglib/frontend-taglib-clay/src/main/java/com/liferay/frontend/taglib/clay/internal/js/loader/modules/extender/npm/NPMResolverProvider\.java" />
 		<suppress checks="ComponentExposureCheck" files="frontend-taglib/frontend-taglib-clay/src/main/java/com/liferay/frontend/taglib/clay/internal/servlet/ServletContextUtil\.java" />
 		<suppress checks="ComponentExposureCheck" files="image-uploader/image-uploader-web/src/main/java/com/liferay/image/uploader/web/internal/util/UploadImageUtil\.java" />
 		<suppress checks="ComponentExposureCheck" files="info/info-taglib/src/main/java/com/liferay/info/taglib/internal/servlet/ServletContextUtil\.java" />
@@ -27,7 +26,6 @@
 		<suppress checks="ComponentExposureCheck" files="item-selector/item-selector-taglib/src/main/java/com/liferay/item/selector/taglib/internal/util/GroupItemSelectorProviderRegistryUtil\.java" />
 		<suppress checks="ComponentExposureCheck" files="journal/journal-taglib/src/main/java/com/liferay/journal/taglib/internal/servlet/ServletContextUtil\.java" />
 		<suppress checks="ComponentExposureCheck" files="knowledge-base/knowledge-base-web/src/main/java/com/liferay/knowledge/base/web/internal/display/context/DLMimeTypeDisplayContextUtil\.java" />
-		<suppress checks="ComponentExposureCheck" files="layout/layout-taglib/src/main/java/com/liferay/layout/taglib/internal/frontend/js/loader/modules/extender/npm/NPMResolverProvider\.java" />
 		<suppress checks="ComponentExposureCheck" files="layout/layout-taglib/src/main/java/com/liferay/layout/taglib/internal/servlet/ServletContextUtil\.java" />
 		<suppress checks="ComponentExposureCheck" files="map/map-taglib/src/main/java/com/liferay/map/taglib/internal/servlet/ServletContextUtil\.java" />
 		<suppress checks="ComponentExposureCheck" files="portal-workflow/portal-workflow-taglib/src/main/java/com/liferay/portal/workflow/taglib/internal/servlet/ServletContextUtil\.java" />
@@ -66,7 +64,7 @@
 		<suppress checks="ModifiedServiceMethodCheck" files="portal-remote/portal-remote-json-web-service-web/src/main/java/com/liferay/portal/remote/json/web/service/web/internal/JSONWebServiceActionsManagerImpl\.java" />
 		<suppress checks="ModifiedServiceMethodCheck" files="portal-search/portal-search/src/main/java/com/liferay/portal/search/internal/osgi/util/tracker/ModelSearchConfiguratorServiceTrackerCustomizer\.java" />
 		<suppress checks="ModifiedServiceMethodCheck" files="portal-validation/portal-validation-api/src/main/java/com/liferay/portal/validation/ModelValidatorRegistryUtil\.java" />
-		<suppress checks="ModifiedServiceMethodCheck" files="portal-workflow/portal-workflow-api/src/main/java/com/liferay/portal/workflow/definition/link/update/handler/WorkflowDefinitionLinkUpdateHandlerRegistryUtil\.java" />
+		<suppress checks="ModifiedServiceMethodCheck" files="portal-workflow/portal-workflow-web/src/main/java/com/liferay/portal/workflow/web/internal/handler/WorkflowDefinitionLinkUpdateHandlerRegistryUtil\.java" />
 		<suppress checks="ModifiedServiceMethodCheck" files="segments/segments-service/src/main/java/com/liferay/segments/internal/context/RequestContextMapperImpl\.java" />
 		<suppress checks="ModifiedServiceMethodCheck" files="site-navigation/site-navigation-menu-item-display-page/src/main/java/com/liferay/site/navigation/menu/item/display/page/internal/type/provider/DisplayPageSiteNavigationMenuItemTypeProviderTracker\.java" />
 		<suppress checks="ModifiedServiceMethodCheck" files="template/template-service/src/main/java/com/liferay/template/internal/info/item/provider/TemplateInfoItemCapabilitiesProviderTracker\.java" />

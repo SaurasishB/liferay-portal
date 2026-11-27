@@ -1156,6 +1156,25 @@ public class AssetLibraryResourceTest extends BaseAssetLibraryResourceTestCase {
 				TestPropsValues.getCompanyId(), PropsKeys.TRASH_ENTRIES_MAX_AGE,
 				PropsValues.TRASH_ENTRIES_MAX_AGE),
 			(int)settings.getTrashEntriesMaxAge());
+
+		Group group = _groupLocalService.getGroupByExternalReferenceCode(
+			postedAssetLibrary.getExternalReferenceCode(),
+			testCompany.getCompanyId());
+
+		Assert.assertNull(group.getTypeSettingsProperty("trashEntriesMaxAge"));
+
+		AssetLibrary patchAssetLibrary = new AssetLibrary();
+
+		patchAssetLibrary.setName(RandomTestUtil.randomString());
+
+		assetLibraryResource.patchAssetLibrary(
+			postedAssetLibrary.getExternalReferenceCode(), patchAssetLibrary);
+
+		group = _groupLocalService.getGroupByExternalReferenceCode(
+			postedAssetLibrary.getExternalReferenceCode(),
+			testCompany.getCompanyId());
+
+		Assert.assertNull(group.getTypeSettingsProperty("trashEntriesMaxAge"));
 	}
 
 	private void _testPostAssetLibraryWithNoSettings() throws Exception {

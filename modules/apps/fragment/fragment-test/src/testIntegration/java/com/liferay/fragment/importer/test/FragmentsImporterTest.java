@@ -54,7 +54,6 @@ import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.URLUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.zip.ZipWriter;
-import com.liferay.portal.kernel.zip.ZipWriterFactory;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
@@ -246,6 +245,7 @@ public class FragmentsImporterTest {
 	}
 
 	@Test
+	@TestInfo("LPD-115706")
 	public void testImportFragmentEntriesSystem() throws Exception {
 		List<FragmentCollection> fragmentCollections =
 			_fragmentCollectionLocalService.getFragmentCollections(
@@ -253,9 +253,21 @@ public class FragmentsImporterTest {
 
 		long initialFragmentCollectionsCount = fragmentCollections.size();
 
-		_fragmentsImporter.importFragmentEntries(
-			_user.getUserId(), CompanyConstants.SYSTEM, 0, _file,
-			FragmentsImportStrategy.DO_NOT_OVERWRITE, false);
+		List<FragmentsImporterResultEntry> fragmentsImporterResultEntries =
+			_fragmentsImporter.importFragmentEntries(
+				_user.getUserId(), CompanyConstants.SYSTEM, 0, _file,
+				FragmentsImportStrategy.DO_NOT_OVERWRITE, false);
+
+		_assertFragmentsImporterResultEntries(
+			ListUtil.filter(
+				fragmentsImporterResultEntries,
+				fragmentsImporterResultEntry -> ArrayUtil.contains(
+					new String[] {
+						"Card", "Heading", "Image", "Input", "Line", "Text"
+					},
+					fragmentsImporterResultEntry.getName())),
+			FragmentsImporterResultEntry.Status.IMPORTED,
+			FragmentsImporterResultEntry.Type.FRAGMENT);
 
 		fragmentCollections =
 			_fragmentCollectionLocalService.getFragmentCollections(
@@ -964,7 +976,7 @@ public class FragmentsImporterTest {
 	}
 
 	private File _generateResourcesZipFile() throws Exception {
-		ZipWriter zipWriter = _zipWriterFactory.getZipWriter();
+		ZipWriter zipWriter = new ZipWriter();
 
 		_addZipWriterEntry(
 			zipWriter, _PATH_DEPENDENCIES + "resources-collection",
@@ -977,7 +989,7 @@ public class FragmentsImporterTest {
 	}
 
 	private File _generateUpdatedResourcesZipFile() throws Exception {
-		ZipWriter zipWriter = _zipWriterFactory.getZipWriter();
+		ZipWriter zipWriter = new ZipWriter();
 
 		_addZipWriterEntry(
 			zipWriter, _PATH_DEPENDENCIES + "resources-collection",
@@ -990,7 +1002,7 @@ public class FragmentsImporterTest {
 	}
 
 	private File _generateUpdatedZipFileWithFolderResources() throws Exception {
-		ZipWriter zipWriter = _zipWriterFactory.getZipWriter();
+		ZipWriter zipWriter = new ZipWriter();
 
 		_addZipWriterEntry(
 			zipWriter, _PATH_DEPENDENCIES + "fragments-with-folder-resources",
@@ -1008,7 +1020,7 @@ public class FragmentsImporterTest {
 	}
 
 	private File _generateZipFile(String path) throws Exception {
-		ZipWriter zipWriter = _zipWriterFactory.getZipWriter();
+		ZipWriter zipWriter = new ZipWriter();
 
 		URL collectionURL = _bundle.getEntry(
 			path + StringPool.FORWARD_SLASH +
@@ -1026,7 +1038,7 @@ public class FragmentsImporterTest {
 	}
 
 	private File _generateZipFileWithFolderResources() throws Exception {
-		ZipWriter zipWriter = _zipWriterFactory.getZipWriter();
+		ZipWriter zipWriter = new ZipWriter();
 
 		_addZipWriterEntry(
 			zipWriter, _PATH_DEPENDENCIES + "fragments-with-folder-resources",
@@ -1307,8 +1319,5 @@ public class FragmentsImporterTest {
 
 	private File _resourcesFile;
 	private User _user;
-
-	@Inject
-	private ZipWriterFactory _zipWriterFactory;
 
 }

@@ -44,8 +44,9 @@ public class CSDiagramPinServiceImpl extends CSDiagramPinServiceBaseImpl {
 	}
 
 	@Override
-	public void deleteCSDiagramPin(CSDiagramPin csDiagramPin)
-		throws PortalException {
+	public void deleteCSDiagramPin(long csDiagramPinId) throws PortalException {
+		CSDiagramPin csDiagramPin = csDiagramPinPersistence.findByPrimaryKey(
+			csDiagramPinId);
 
 		_cpDefinitionModelResourcePermission.check(
 			getPermissionChecker(), csDiagramPin.getCPDefinitionId(),

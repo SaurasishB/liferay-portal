@@ -8,8 +8,6 @@ import {validateSegmentInputs} from '../../utils/utils';
 
 const connectDnd = jest.fn(el => el);
 
-jest.unmock('react-dom');
-
 describe('CriteriaSidebarItem', () => {
 	afterEach(cleanup);
 
@@ -39,6 +37,21 @@ describe('CriteriaSidebarItem', () => {
 
 		expect(sticker.querySelector('.lexicon-icon-click')).toBeTruthy();
 		expect(container.querySelector('.lexicon-icon-drag')).toBeNull();
+	});
+
+	it('shows a campaign with the same check icon as an interest', () => {
+		const {container} = render(
+			<CriteriaSidebarItem
+				connectDragSource={connectDnd}
+				label='Spring Sale'
+				propertyKey='campaign'
+				type={PropertyTypes.Campaign}
+			/>
+		);
+
+		expect(
+			container.querySelector('.sticker .lexicon-icon-check')
+		).toBeTruthy();
 	});
 
 	it('marks the item as dragging while it is being dragged', () => {
@@ -207,6 +220,30 @@ describe('CriteriaSidebarItem', () => {
 
 			expect(criterion.touched).toEqual({customInput: false});
 			expect(criterion.valid).toEqual({customInput: false});
+			expect(validateSegmentInputs(criterion)).toBe(false);
+		});
+
+		it('should seed a Campaign criterion valid when the dragged campaign carries its ID', () => {
+			const {criterion} = beginDrag({
+				defaultValue: {},
+				name: 'id',
+				property: {id: 'c1'},
+				type: PropertyTypes.Campaign
+			});
+
+			expect(criterion.valid).toBe(true);
+			expect(validateSegmentInputs(criterion)).toBe(true);
+		});
+
+		it('should seed a Campaign criterion invalid when no campaign is set', () => {
+			const {criterion} = beginDrag({
+				defaultValue: {},
+				name: 'id',
+				property: {},
+				type: PropertyTypes.Campaign
+			});
+
+			expect(criterion.valid).toBe(false);
 			expect(validateSegmentInputs(criterion)).toBe(false);
 		});
 

@@ -10,6 +10,8 @@ import com.liferay.depot.service.DepotEntryGroupRelLocalService;
 import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.document.library.helper.DLURLHelper;
 import com.liferay.fragment.constants.FragmentEntryLinkConstants;
+import com.liferay.fragment.contributor.util.FragmentCollectionContributorRegistryUtil;
+import com.liferay.fragment.exception.NoSuchEntryException;
 import com.liferay.fragment.listener.FragmentEntryLinkListener;
 import com.liferay.fragment.listener.FragmentEntryLinkListenerRegistry;
 import com.liferay.fragment.model.FragmentCollection;
@@ -18,6 +20,9 @@ import com.liferay.fragment.model.FragmentEntryLink;
 import com.liferay.fragment.model.FragmentEntryLinkTable;
 import com.liferay.fragment.processor.DefaultFragmentEntryProcessorContext;
 import com.liferay.fragment.processor.FragmentEntryProcessorRegistry;
+import com.liferay.fragment.renderer.DefaultFragmentRendererContext;
+import com.liferay.fragment.renderer.FragmentRenderer;
+import com.liferay.fragment.renderer.util.FragmentRendererRegistryUtil;
 import com.liferay.fragment.service.base.FragmentEntryLinkLocalServiceBaseImpl;
 import com.liferay.fragment.service.persistence.FragmentCollectionPersistence;
 import com.liferay.fragment.service.persistence.FragmentEntryPersistence;
@@ -93,6 +98,51 @@ import org.osgi.service.component.annotations.Reference;
 )
 public class FragmentEntryLinkLocalServiceImpl
 	extends FragmentEntryLinkLocalServiceBaseImpl {
+
+	@Override
+	public FragmentEntryLink addFragmentEntryLink(
+			String externalReferenceCode, long userId, long groupId,
+			String fragmentEntryERC, String fragmentEntryScopeERC,
+			long segmentsExperienceId, long plid, String editableValues,
+			String rendererKey, ServiceContext serviceContext)
+		throws PortalException {
+
+		FragmentEntry fragmentEntry = _fetchFragmentEntry(
+			fragmentEntryERC, fragmentEntryScopeERC, groupId, rendererKey);
+
+		if (fragmentEntry != null) {
+			return addFragmentEntryLink(
+				externalReferenceCode, userId, groupId, null, fragmentEntryERC,
+				fragmentEntryScopeERC, segmentsExperienceId, plid,
+				fragmentEntry.getCss(), fragmentEntry.getHtml(),
+				fragmentEntry.getJs(), fragmentEntry.getConfiguration(),
+				editableValues, StringPool.BLANK, 0, rendererKey,
+				fragmentEntry.getType(), serviceContext);
+		}
+
+		if (Validator.isNotNull(fragmentEntryERC) ||
+			Validator.isNull(rendererKey)) {
+
+			throw new NoSuchEntryException();
+		}
+
+		FragmentRenderer fragmentRenderer =
+			FragmentRendererRegistryUtil.getFragmentRenderer(rendererKey);
+
+		if (fragmentRenderer == null) {
+			throw new NoSuchEntryException();
+		}
+
+		return addFragmentEntryLink(
+			externalReferenceCode, userId, groupId, null, null, null,
+			segmentsExperienceId, plid, StringPool.BLANK, StringPool.BLANK,
+			StringPool.BLANK,
+			_jsonFactory.toString(
+				fragmentRenderer.getConfigurationJSONObject(
+					new DefaultFragmentRendererContext(null))),
+			editableValues, StringPool.BLANK, 0, rendererKey,
+			fragmentRenderer.getType(), serviceContext);
+	}
 
 	@Override
 	public FragmentEntryLink addFragmentEntryLink(
@@ -336,20 +386,23 @@ public class FragmentEntryLinkLocalServiceImpl
 			OrderByComparator<FragmentEntryLink> orderByComparator)
 		throws PortalException {
 
-		return fragmentEntryLinkPersistence.dslQuery(
-			DSLQueryFactoryUtil.select(
-				FragmentEntryLinkTable.INSTANCE
-			).from(
-				FragmentEntryLinkTable.INSTANCE
-			).where(
-				_getLatestFragmentEntryLinkPredicate(
-					_getAllFragmentEntryLinksByFragmentEntryPredicate(
-						fragmentEntry))
-			).orderBy(
-				_getOrderByStepLimitStepFunction(orderByComparator)
-			).limit(
-				start, end
-			));
+		return _getLatestFragmentEntryLinks(
+			_getAllFragmentEntryLinksByFragmentEntryPredicate(fragmentEntry),
+			start, end, orderByComparator);
+	}
+
+	@Override
+	public List<FragmentEntryLink> getAllFragmentEntryLinksByFragmentEntry(
+			long groupId, FragmentEntry fragmentEntry, int start, int end,
+			OrderByComparator<FragmentEntryLink> orderByComparator)
+		throws PortalException {
+
+		return _getLatestFragmentEntryLinks(
+			_getGroupPredicate(
+				groupId,
+				_getAllFragmentEntryLinksByFragmentEntryPredicate(
+					fragmentEntry)),
+			start, end, orderByComparator);
 	}
 
 	@Override
@@ -357,20 +410,20 @@ public class FragmentEntryLinkLocalServiceImpl
 			FragmentEntry fragmentEntry)
 		throws PortalException {
 
-		return fragmentEntryLinkPersistence.dslQueryCount(
-			DSLQueryFactoryUtil.count(
-			).from(
-				DSLQueryFactoryUtil.selectDistinct(
-					FragmentEntryLinkTable.INSTANCE.classPK
-				).from(
-					FragmentEntryLinkTable.INSTANCE
-				).where(
-					_getAllFragmentEntryLinksByFragmentEntryPredicate(
-						fragmentEntry)
-				).as(
-					"tempFragmentEntryLinkTable"
-				)
-			));
+		return _getFragmentEntryLinksClassPKsCount(
+			_getAllFragmentEntryLinksByFragmentEntryPredicate(fragmentEntry));
+	}
+
+	@Override
+	public int getAllFragmentEntryLinksCountByFragmentEntry(
+			long groupId, FragmentEntry fragmentEntry)
+		throws PortalException {
+
+		return _getFragmentEntryLinksClassPKsCount(
+			_getGroupPredicate(
+				groupId,
+				_getAllFragmentEntryLinksByFragmentEntryPredicate(
+					fragmentEntry)));
 	}
 
 	@Override
@@ -380,20 +433,25 @@ public class FragmentEntryLinkLocalServiceImpl
 				OrderByComparator<FragmentEntryLink> orderByComparator)
 		throws PortalException {
 
-		return fragmentEntryLinkPersistence.dslQuery(
-			DSLQueryFactoryUtil.select(
-				FragmentEntryLinkTable.INSTANCE
-			).from(
-				FragmentEntryLinkTable.INSTANCE
-			).where(
-				_getLatestFragmentEntryLinkPredicate(
-					_getAllLayoutFragmentEntryLinksByFragmentEntryPredicate(
-						fragmentEntry))
-			).orderBy(
-				_getOrderByStepLimitStepFunction(orderByComparator)
-			).limit(
-				start, end
-			));
+		return _getLatestFragmentEntryLinks(
+			_getAllLayoutFragmentEntryLinksByFragmentEntryPredicate(
+				fragmentEntry),
+			start, end, orderByComparator);
+	}
+
+	@Override
+	public List<FragmentEntryLink>
+			getAllLayoutFragmentEntryLinksByFragmentEntry(
+				long groupId, FragmentEntry fragmentEntry, int start, int end,
+				OrderByComparator<FragmentEntryLink> orderByComparator)
+		throws PortalException {
+
+		return _getLatestFragmentEntryLinks(
+			_getGroupPredicate(
+				groupId,
+				_getAllLayoutFragmentEntryLinksByFragmentEntryPredicate(
+					fragmentEntry)),
+			start, end, orderByComparator);
 	}
 
 	@Override
@@ -401,15 +459,21 @@ public class FragmentEntryLinkLocalServiceImpl
 			FragmentEntry fragmentEntry)
 		throws PortalException {
 
-		return fragmentEntryLinkPersistence.dslQueryCount(
-			DSLQueryFactoryUtil.countDistinct(
-				FragmentEntryLinkTable.INSTANCE.plid
-			).from(
-				FragmentEntryLinkTable.INSTANCE
-			).where(
+		return _getFragmentEntryLinksPlidsCount(
+			_getAllLayoutFragmentEntryLinksByFragmentEntryPredicate(
+				fragmentEntry));
+	}
+
+	@Override
+	public int getAllLayoutFragmentEntryLinksCountByFragmentEntry(
+			long groupId, FragmentEntry fragmentEntry)
+		throws PortalException {
+
+		return _getFragmentEntryLinksPlidsCount(
+			_getGroupPredicate(
+				groupId,
 				_getAllLayoutFragmentEntryLinksByFragmentEntryPredicate(
-					fragmentEntry)
-			));
+					fragmentEntry)));
 	}
 
 	@Override
@@ -420,20 +484,26 @@ public class FragmentEntryLinkLocalServiceImpl
 				OrderByComparator<FragmentEntryLink> orderByComparator)
 		throws PortalException {
 
-		return fragmentEntryLinkPersistence.dslQuery(
-			DSLQueryFactoryUtil.select(
-				FragmentEntryLinkTable.INSTANCE
-			).from(
-				FragmentEntryLinkTable.INSTANCE
-			).where(
-				_getLatestFragmentEntryLinkPredicate(
-					_getAllLayoutPageTemplateFragmentEntryLinksByFragmentEntryPredicate(
-						fragmentEntry, layoutPageTemplateType))
-			).orderBy(
-				_getOrderByStepLimitStepFunction(orderByComparator)
-			).limit(
-				start, end
-			));
+		return _getLatestFragmentEntryLinks(
+			_getAllLayoutPageTemplateFragmentEntryLinksByFragmentEntryPredicate(
+				fragmentEntry, layoutPageTemplateType),
+			start, end, orderByComparator);
+	}
+
+	@Override
+	public List<FragmentEntryLink>
+			getAllLayoutPageTemplateFragmentEntryLinksByFragmentEntry(
+				long groupId, FragmentEntry fragmentEntry,
+				int layoutPageTemplateType, int start, int end,
+				OrderByComparator<FragmentEntryLink> orderByComparator)
+		throws PortalException {
+
+		return _getLatestFragmentEntryLinks(
+			_getGroupPredicate(
+				groupId,
+				_getAllLayoutPageTemplateFragmentEntryLinksByFragmentEntryPredicate(
+					fragmentEntry, layoutPageTemplateType)),
+			start, end, orderByComparator);
 	}
 
 	@Override
@@ -441,15 +511,22 @@ public class FragmentEntryLinkLocalServiceImpl
 			FragmentEntry fragmentEntry, int layoutPageTemplateType)
 		throws PortalException {
 
-		return fragmentEntryLinkPersistence.dslQueryCount(
-			DSLQueryFactoryUtil.countDistinct(
-				FragmentEntryLinkTable.INSTANCE.plid
-			).from(
-				FragmentEntryLinkTable.INSTANCE
-			).where(
+		return _getFragmentEntryLinksPlidsCount(
+			_getAllLayoutPageTemplateFragmentEntryLinksByFragmentEntryPredicate(
+				fragmentEntry, layoutPageTemplateType));
+	}
+
+	@Override
+	public int getAllLayoutPageTemplateFragmentEntryLinksCountByFragmentEntry(
+			long groupId, FragmentEntry fragmentEntry,
+			int layoutPageTemplateType)
+		throws PortalException {
+
+		return _getFragmentEntryLinksPlidsCount(
+			_getGroupPredicate(
+				groupId,
 				_getAllLayoutPageTemplateFragmentEntryLinksByFragmentEntryPredicate(
-					fragmentEntry, layoutPageTemplateType)
-			));
+					fragmentEntry, layoutPageTemplateType)));
 	}
 
 	@Override
@@ -824,6 +901,36 @@ public class FragmentEntryLinkLocalServiceImpl
 		}
 	}
 
+	private FragmentEntry _fetchFragmentEntry(
+			String fragmentEntryERC, String fragmentEntryScopeERC, long groupId,
+			String rendererKey)
+		throws PortalException {
+
+		if (Validator.isNotNull(fragmentEntryERC)) {
+			Group group = _groupLocalService.getGroup(groupId);
+
+			Long fragmentEntryGroupId = ScopeUtil.getItemGroupId(
+				group.getCompanyId(), fragmentEntryScopeERC, groupId);
+
+			if (fragmentEntryGroupId != null) {
+				FragmentEntry fragmentEntry =
+					_fragmentEntryPersistence.fetchByERC_G_Head(
+						fragmentEntryERC, fragmentEntryGroupId, true);
+
+				if (fragmentEntry != null) {
+					return fragmentEntry;
+				}
+			}
+		}
+
+		if (Validator.isNull(rendererKey)) {
+			return null;
+		}
+
+		return FragmentCollectionContributorRegistryUtil.getFragmentEntry(
+			rendererKey);
+	}
+
 	private Predicate _getAllFragmentEntryLinksByFragmentEntryPredicate(
 			FragmentEntry fragmentEntry)
 		throws PortalException {
@@ -867,6 +974,33 @@ public class FragmentEntryLinkLocalServiceImpl
 		);
 	}
 
+	private int _getFragmentEntryLinksClassPKsCount(Predicate predicate) {
+		return fragmentEntryLinkPersistence.dslQueryCount(
+			DSLQueryFactoryUtil.count(
+			).from(
+				DSLQueryFactoryUtil.selectDistinct(
+					FragmentEntryLinkTable.INSTANCE.classPK
+				).from(
+					FragmentEntryLinkTable.INSTANCE
+				).where(
+					predicate
+				).as(
+					"tempFragmentEntryLinkTable"
+				)
+			));
+	}
+
+	private int _getFragmentEntryLinksPlidsCount(Predicate predicate) {
+		return fragmentEntryLinkPersistence.dslQueryCount(
+			DSLQueryFactoryUtil.countDistinct(
+				FragmentEntryLinkTable.INSTANCE.plid
+			).from(
+				FragmentEntryLinkTable.INSTANCE
+			).where(
+				predicate
+			));
+	}
+
 	private Predicate _getFragmentEntryScopePredicate(Group group)
 		throws PortalException {
 
@@ -907,6 +1041,14 @@ public class FragmentEntryLinkLocalServiceImpl
 			));
 	}
 
+	private Predicate _getGroupPredicate(long groupId, Predicate predicate) {
+		return FragmentEntryLinkTable.INSTANCE.groupId.eq(
+			groupId
+		).and(
+			predicate
+		);
+	}
+
 	private Predicate _getLatestFragmentEntryLinkPredicate(
 		Predicate predicate) {
 
@@ -920,6 +1062,24 @@ public class FragmentEntryLinkLocalServiceImpl
 				predicate
 			).groupBy(
 				FragmentEntryLinkTable.INSTANCE.plid
+			));
+	}
+
+	private List<FragmentEntryLink> _getLatestFragmentEntryLinks(
+		Predicate predicate, int start, int end,
+		OrderByComparator<FragmentEntryLink> orderByComparator) {
+
+		return fragmentEntryLinkPersistence.dslQuery(
+			DSLQueryFactoryUtil.select(
+				FragmentEntryLinkTable.INSTANCE
+			).from(
+				FragmentEntryLinkTable.INSTANCE
+			).where(
+				_getLatestFragmentEntryLinkPredicate(predicate)
+			).orderBy(
+				_getOrderByStepLimitStepFunction(orderByComparator)
+			).limit(
+				start, end
 			));
 	}
 

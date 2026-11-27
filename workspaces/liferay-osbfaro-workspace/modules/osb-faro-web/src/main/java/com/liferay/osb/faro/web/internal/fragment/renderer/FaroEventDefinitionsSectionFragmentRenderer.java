@@ -8,12 +8,8 @@ package com.liferay.osb.faro.web.internal.fragment.renderer;
 import com.liferay.fragment.renderer.FragmentRenderer;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.NavigationItemList;
 import com.liferay.osb.faro.web.internal.display.context.EventDefinitionsNavigationDisplayContext;
-import com.liferay.portal.kernel.util.HashMapBuilder;
-import com.liferay.portal.kernel.util.ParamUtil;
 
 import jakarta.servlet.http.HttpServletRequest;
-
-import java.util.Map;
 
 import org.osgi.service.component.annotations.Component;
 
@@ -22,7 +18,7 @@ import org.osgi.service.component.annotations.Component;
  */
 @Component(service = FragmentRenderer.class)
 public class FaroEventDefinitionsSectionFragmentRenderer
-	extends BaseSettingsSectionFragmentRenderer {
+	extends BaseSectionFragmentRenderer {
 
 	@Override
 	protected String getLabelKey() {
@@ -30,7 +26,7 @@ public class FaroEventDefinitionsSectionFragmentRenderer
 	}
 
 	@Override
-	protected String getModule() {
+	protected String getModule(HttpServletRequest httpServletRequest) {
 		return "{EventDefinitions} from osb-faro-web/settings";
 	}
 
@@ -45,17 +41,6 @@ public class FaroEventDefinitionsSectionFragmentRenderer
 					httpServletRequest);
 
 		return eventDefinitionsNavigationDisplayContext.getNavigationItems();
-	}
-
-	@Override
-	protected Map<String, String> getParams(
-		HttpServletRequest httpServletRequest) {
-
-		return HashMapBuilder.putAll(
-			super.getParams(httpServletRequest)
-		).put(
-			"tab", ParamUtil.getString(httpServletRequest, "tab")
-		).build();
 	}
 
 }

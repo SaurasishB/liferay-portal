@@ -8,12 +8,8 @@ package com.liferay.osb.faro.web.internal.fragment.renderer;
 import com.liferay.fragment.renderer.FragmentRenderer;
 import com.liferay.frontend.taglib.clay.servlet.taglib.util.NavigationItemList;
 import com.liferay.osb.faro.web.internal.display.context.SegmentNavigationDisplayContext;
-import com.liferay.portal.kernel.util.HashMapBuilder;
-import com.liferay.portal.kernel.util.ParamUtil;
 
 import jakarta.servlet.http.HttpServletRequest;
-
-import java.util.Map;
 
 import org.osgi.service.component.annotations.Component;
 
@@ -30,7 +26,7 @@ public class FaroSegmentMembershipSectionFragmentRenderer
 	}
 
 	@Override
-	protected String getModule() {
+	protected String getModule(HttpServletRequest httpServletRequest) {
 		return "{SegmentMembership} from osb-faro-web/segments";
 	}
 
@@ -43,17 +39,6 @@ public class FaroSegmentMembershipSectionFragmentRenderer
 			new SegmentNavigationDisplayContext(httpServletRequest);
 
 		return segmentNavigationDisplayContext.getNavigationItems();
-	}
-
-	@Override
-	protected Map<String, String> getParams(
-		HttpServletRequest httpServletRequest) {
-
-		return HashMapBuilder.putAll(
-			super.getParams(httpServletRequest)
-		).put(
-			"id", ParamUtil.getString(httpServletRequest, "id")
-		).build();
 	}
 
 }

@@ -13,12 +13,15 @@ import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.portal.kernel.exception.ModelListenerException;
 import com.liferay.portal.kernel.test.AssertUtils;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
+import com.liferay.portal.kernel.test.rule.DataGuard;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
+import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.FeatureFlags;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
+import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 import com.liferay.portal.util.PortalInstances;
 
 import org.junit.Assert;
@@ -31,6 +34,7 @@ import org.junit.runner.RunWith;
 /**
  * @author Jose Luis Navarro
  */
+@DataGuard(scope = DataGuard.Scope.METHOD)
 @FeatureFlags(featureFlags = @FeatureFlag("LPD-63311"))
 @RunWith(Arquillian.class)
 public class MCPServerProfileDataMaskObjectEntryModelListenerTest {
@@ -38,7 +42,9 @@ public class MCPServerProfileDataMaskObjectEntryModelListenerTest {
 	@ClassRule
 	@Rule
 	public static final AggregateTestRule aggregateTestRule =
-		new LiferayIntegrationTestRule();
+		new AggregateTestRule(
+			false, PermissionCheckerMethodTestRule.INSTANCE,
+			new LiferayIntegrationTestRule());
 
 	@Before
 	public void setUp() {
@@ -53,6 +59,7 @@ public class MCPServerProfileDataMaskObjectEntryModelListenerTest {
 			MCPServerTestUtil.addMCPServerProfileObjectEntry(
 				RandomTestUtil.randomString(), null,
 				RandomTestUtil.randomString(),
+				StringUtil.toLowerCase(RandomTestUtil.randomString()),
 				"mcp-server-profiles getMCPServerProfilesPage");
 
 		ObjectEntry mcpServerProfileDataMaskObjectEntry =
@@ -89,6 +96,7 @@ public class MCPServerProfileDataMaskObjectEntryModelListenerTest {
 			MCPServerTestUtil.addMCPServerProfileObjectEntry(
 				RandomTestUtil.randomString(), null,
 				RandomTestUtil.randomString(),
+				StringUtil.toLowerCase(RandomTestUtil.randomString()),
 				"mcp-server-profiles getMCPServerProfilesPage");
 
 		ObjectEntry mcpServerProfileDataMaskObjectEntry =

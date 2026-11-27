@@ -8,6 +8,7 @@ package com.liferay.commerce.pricing.service.impl;
 import com.liferay.commerce.pricing.model.CommercePricingClass;
 import com.liferay.commerce.pricing.model.CommercePricingClassCPDefinitionRel;
 import com.liferay.commerce.pricing.service.base.CommercePricingClassCPDefinitionRelServiceBaseImpl;
+import com.liferay.commerce.product.model.CPDefinition;
 import com.liferay.portal.aop.AopService;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
@@ -42,27 +43,12 @@ public class CommercePricingClassCPDefinitionRelServiceImpl
 
 		_commercePricingClassResourcePermission.check(
 			getPermissionChecker(), commercePricingClassId, ActionKeys.UPDATE);
+		_cpDefinitionModelResourcePermission.check(
+			getPermissionChecker(), cpDefinitionId, ActionKeys.VIEW);
 
 		return commercePricingClassCPDefinitionRelLocalService.
 			addCommercePricingClassCPDefinitionRel(
 				commercePricingClassId, cpDefinitionId, serviceContext);
-	}
-
-	@Override
-	public CommercePricingClassCPDefinitionRel
-			deleteCommercePricingClassCPDefinitionRel(
-				CommercePricingClassCPDefinitionRel
-					commercePricingClassCPDefinitionRel)
-		throws PortalException {
-
-		_commercePricingClassResourcePermission.check(
-			getPermissionChecker(),
-			commercePricingClassCPDefinitionRel.getCommercePricingClassId(),
-			ActionKeys.UPDATE);
-
-		return commercePricingClassCPDefinitionRelLocalService.
-			deleteCommercePricingClassCPDefinitionRel(
-				commercePricingClassCPDefinitionRel);
 	}
 
 	@Override
@@ -83,7 +69,7 @@ public class CommercePricingClassCPDefinitionRelServiceImpl
 
 		return commercePricingClassCPDefinitionRelLocalService.
 			deleteCommercePricingClassCPDefinitionRel(
-				commercePricingClassCPDefinitionRelId);
+				commercePricingClassCPDefinitionRel);
 	}
 
 	@Override
@@ -197,5 +183,11 @@ public class CommercePricingClassCPDefinitionRelServiceImpl
 	)
 	private ModelResourcePermission<CommercePricingClass>
 		_commercePricingClassResourcePermission;
+
+	@Reference(
+		target = "(model.class.name=com.liferay.commerce.product.model.CPDefinition)"
+	)
+	private ModelResourcePermission<CPDefinition>
+		_cpDefinitionModelResourcePermission;
 
 }

@@ -8,8 +8,8 @@ package com.liferay.commerce.inventory.internal.method;
 import com.liferay.commerce.inventory.constants.CommerceInventoryAvailabilityConstants;
 import com.liferay.commerce.inventory.constants.CommerceInventoryConstants;
 import com.liferay.commerce.inventory.engine.contributor.CommerceInventoryEngineContributor;
-import com.liferay.commerce.inventory.engine.contributor.CommerceInventoryEngineContributorRegistry;
 import com.liferay.commerce.inventory.exception.MVCCException;
+import com.liferay.commerce.inventory.internal.engine.contributor.comparator.CommerceInventoryEngineContributorServiceReferenceComparator;
 import com.liferay.commerce.inventory.method.CommerceInventoryMethod;
 import com.liferay.commerce.inventory.model.CommerceInventoryWarehouseItem;
 import com.liferay.commerce.inventory.service.CommerceInventoryAuditLocalService;
@@ -18,6 +18,8 @@ import com.liferay.commerce.inventory.service.CommerceInventoryWarehouseItemLoca
 import com.liferay.commerce.inventory.service.CommerceInventoryWarehouseItemService;
 import com.liferay.commerce.inventory.type.CommerceInventoryAuditType;
 import com.liferay.commerce.inventory.type.CommerceInventoryAuditTypeRegistry;
+import com.liferay.osgi.service.tracker.collections.list.ServiceTrackerList;
+import com.liferay.osgi.service.tracker.collections.list.ServiceTrackerListFactory;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.log.Log;
@@ -33,7 +35,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 
+import org.osgi.framework.BundleContext;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 
 /**
@@ -79,9 +84,7 @@ public class DefaultCommerceInventoryMethodImpl
 			unitOfMeasureKey);
 
 		for (CommerceInventoryEngineContributor
-				commerceInventoryEngineContributor :
-					_commerceInventoryEngineContributorRegistry.
-						getCommerceInventoryEngineContributors()) {
+				commerceInventoryEngineContributor : _serviceTrackerList) {
 
 			commerceInventoryEngineContributor.consumeQuantityContribute(
 				userId, commerceInventoryBookedQuantityId,
@@ -118,9 +121,7 @@ public class DefaultCommerceInventoryMethodImpl
 				commerceInventoryWarehouseItem.getMvccVersion());
 
 		for (CommerceInventoryEngineContributor
-				commerceInventoryEngineContributor :
-					_commerceInventoryEngineContributorRegistry.
-						getCommerceInventoryEngineContributors()) {
+				commerceInventoryEngineContributor : _serviceTrackerList) {
 
 			commerceInventoryEngineContributor.decreaseStockQuantityContribute(
 				userId, commerceInventoryWarehouseId, quantity, sku,
@@ -240,14 +241,24 @@ public class DefaultCommerceInventoryMethodImpl
 			unitOfMeasureKey);
 
 		for (CommerceInventoryEngineContributor
-				commerceInventoryEngineContributor :
-					_commerceInventoryEngineContributorRegistry.
-						getCommerceInventoryEngineContributors()) {
+				commerceInventoryEngineContributor : _serviceTrackerList) {
 
 			commerceInventoryEngineContributor.increaseStockQuantityContribute(
 				userId, commerceInventoryWarehouseId, quantity, sku,
 				unitOfMeasureKey);
 		}
+	}
+
+	@Activate
+	protected void activate(BundleContext bundleContext) {
+		_serviceTrackerList = ServiceTrackerListFactory.open(
+			bundleContext, CommerceInventoryEngineContributor.class,
+			new CommerceInventoryEngineContributorServiceReferenceComparator());
+	}
+
+	@Deactivate
+	protected void deactivate() {
+		_serviceTrackerList.close();
 	}
 
 	private String _getAvailabilityStatus(
@@ -286,10 +297,6 @@ public class DefaultCommerceInventoryMethodImpl
 		_commerceInventoryBookedQuantityLocalService;
 
 	@Reference
-	private CommerceInventoryEngineContributorRegistry
-		_commerceInventoryEngineContributorRegistry;
-
-	@Reference
 	private CommerceInventoryWarehouseItemLocalService
 		_commerceInventoryWarehouseItemLocalService;
 
@@ -299,5 +306,8 @@ public class DefaultCommerceInventoryMethodImpl
 
 	@Reference
 	private Language _language;
+
+	private ServiceTrackerList<CommerceInventoryEngineContributor>
+		_serviceTrackerList;
 
 }

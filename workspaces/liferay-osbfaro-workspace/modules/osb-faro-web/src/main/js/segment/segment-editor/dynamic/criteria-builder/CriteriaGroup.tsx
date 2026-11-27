@@ -5,11 +5,11 @@ import CriteriaRow from './CriteriaRow';
 import DropZone from './DropZone';
 import EmptyDropZone from './EmptyDropZone';
 import getCN from 'classnames';
+import GroupOperator, {getGroupOperatorLabel} from './GroupOperator';
 import React, {Fragment} from 'react';
 import {
 	NESTED_OR_LIMIT_ALERT,
 	SEQUENTIAL_LIMIT_ALERT,
-	SUPPORTED_CONJUNCTION_OPTIONS,
 } from '../utils/constants';
 import {
 	ConnectDragPreview,
@@ -110,28 +110,17 @@ class CriteriaGroup extends React.Component<ICriteriaGroupProps> {
 			CriteriaGroup
 		) as React.ComponentType<any>;
 
-		this.handleConjunctionClick = this.handleConjunctionClick.bind(this);
 		this.handleCriterionAdd = this.handleCriterionAdd.bind(this);
 		this.handleCriterionDelete = this.handleCriterionDelete.bind(this);
+		this.handleOperatorChange = this.handleOperatorChange.bind(this);
 	}
 
-	handleConjunctionClick(event: React.MouseEvent) {
-		event.preventDefault();
-
+	handleOperatorChange(conjunctionName: string) {
 		const {criteria, onChange} = this.props;
-
-		const index = SUPPORTED_CONJUNCTION_OPTIONS.findIndex(
-			({name}) => name === criteria.conjunctionName
-		);
-
-		const conjunctionSelected =
-			index === SUPPORTED_CONJUNCTION_OPTIONS.length - 1
-				? SUPPORTED_CONJUNCTION_OPTIONS[0].name
-				: SUPPORTED_CONJUNCTION_OPTIONS[index + 1].name;
 
 		onChange({
 			...criteria,
-			conjunctionName: conjunctionSelected,
+			conjunctionName,
 		});
 	}
 
@@ -205,8 +194,6 @@ class CriteriaGroup extends React.Component<ICriteriaGroupProps> {
 
 				<Conjunction
 					conjunctionName={criteria.conjunctionName}
-					disabled={!!sequential}
-					onClick={this.handleConjunctionClick}
 					sequential={sequential}
 				/>
 
@@ -356,8 +343,20 @@ class CriteriaGroup extends React.Component<ICriteriaGroupProps> {
 			);
 		}
 
+		// A group names itself with its operator sentence. A single item or a
+		// sequential group has no operator to announce, so it stays unnamed.
+
+		const hasOperator = !sequential && !singleRow;
+		const groupLabel = hasOperator
+			? getGroupOperatorLabel(criteria.conjunctionName)
+			: undefined;
+
 		return connectDragPreview(
-			<div className={classes}>
+			<div
+				aria-label={groupLabel}
+				className={classes}
+				role={groupLabel ? 'group' : undefined}
+			>
 				<>
 					<DropZone
 						criteriaGroupId={criteriaGroupId}
@@ -376,6 +375,14 @@ class CriteriaGroup extends React.Component<ICriteriaGroupProps> {
 								<ClayIcon className="icon-root" symbol="drag" />
 							</div>
 						)}
+
+					{hasOperator && (
+						<GroupOperator
+							conjunctionName={criteria.conjunctionName}
+							id={`${criteriaGroupId}-operator`}
+							onChange={this.handleOperatorChange}
+						/>
+					)}
 
 					{isCriterionGroup(criteria) &&
 						criteria.items.map((criterion, index) => (

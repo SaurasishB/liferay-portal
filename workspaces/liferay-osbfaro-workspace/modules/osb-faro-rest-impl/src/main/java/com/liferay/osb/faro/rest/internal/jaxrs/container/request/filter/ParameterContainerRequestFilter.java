@@ -36,6 +36,7 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -115,15 +116,20 @@ public class ParameterContainerRequestFilter implements ContainerRequestFilter {
 		MultivaluedMap<String, String> pathParameters,
 		MultivaluedMap<String, String> queryParameters) {
 
-		for (String name : new String[] {"individualSegmentId", "segmentId"}) {
-			_validateId(name, pathParameters.getFirst(name));
-			_validateId(name, queryParameters.getFirst(name));
-		}
+		_validateId("accountLifecycleId", pathParameters, queryParameters);
+		_validateId("individualSegmentId", pathParameters, queryParameters);
+		_validateId("segmentId", pathParameters, queryParameters);
 
 		for (Map.Entry<String, String[]> entry : _validValues.entrySet()) {
-			_validateValue(
-				entry.getKey(), entry.getValue(),
-				queryParameters.getFirst(entry.getKey()));
+			List<String> values = queryParameters.get(entry.getKey());
+
+			if (values == null) {
+				continue;
+			}
+
+			for (String value : values) {
+				_validateValue(entry.getKey(), entry.getValue(), value);
+			}
 		}
 
 		_validateInteger(
@@ -135,8 +141,16 @@ public class ParameterContainerRequestFilter implements ContainerRequestFilter {
 		_validateSort(queryParameters.getFirst("sort"));
 	}
 
-	private void _validateId(String name, String value) {
-		if ((value != null) && !Validator.isNumber(value)) {
+	private void _validateId(
+		String name, MultivaluedMap<String, String> pathParameters,
+		MultivaluedMap<String, String> queryParameters) {
+
+		String pathParameter = pathParameters.getFirst(name);
+		String queryParameter = queryParameters.getFirst(name);
+
+		if (((pathParameter != null) && !Validator.isNumber(pathParameter)) ||
+			((queryParameter != null) && !Validator.isNumber(queryParameter))) {
+
 			throw new BadRequestException(
 				StringBundler.concat("\"", name, "\" must be a numeric ID"));
 		}
@@ -266,6 +280,9 @@ public class ParameterContainerRequestFilter implements ContainerRequestFilter {
 				"toAccountLifecycleStageId", "transitionDate"
 			}
 		).put(
+			"getWorkspaceGroupChannelAccountLifecyclesPage",
+			new String[] {"dateModified", "id", "name"}
+		).put(
 			"getWorkspaceGroupChannelAccountsPage",
 			new String[] {
 				"accountName", "accountType", "activitiesCount",
@@ -278,6 +295,20 @@ public class ParameterContainerRequestFilter implements ContainerRequestFilter {
 			new String[] {
 				"downloadsMetric", "impressionsMetric", "readsMetric",
 				"viewsMetric"
+			}
+		).put(
+			"getWorkspaceGroupChannelCampaignAccountsPage",
+			new String[] {
+				"accountName", "accountType", "activitiesCount",
+				"annualRevenue", "country", "createDate", "firstActivityDate",
+				"industry", "lastActivityDate", "modifiedDate",
+				"numberOfEmployees", "state", "yearStarted"
+			}
+		).put(
+			"getWorkspaceGroupChannelCampaignsPage",
+			new String[] {
+				"accountsTouched", "campaignType", "individualsTouched", "name",
+				"origin", "status"
 			}
 		).put(
 			"getWorkspaceGroupChannelIndividualsPage",
@@ -307,6 +338,12 @@ public class ParameterContainerRequestFilter implements ContainerRequestFilter {
 			"profileType", new String[] {"ANONYMOUS", "KNOWN"}
 		).put(
 			"rangeKey", _getNames(TimeRange.values())
+		).put(
+			"selectedMetrics",
+			new String[] {
+				"accountsTouched", "campaignCount", "closedWonAmount",
+				"openPipelineAmount"
+			}
 		).put(
 			"status", new String[] {"ACTIVE", "INACTIVE"}
 		).build();

@@ -24,6 +24,7 @@ String field = (String)request.getAttribute("liferay-ui:input-field:field");
 String fieldParam = GetterUtil.getString((String)request.getAttribute("liferay-ui:input-field:fieldParam"));
 Format format = (Format)request.getAttribute("liferay-ui:input-field:format");
 String formName = (String)request.getAttribute("liferay-ui:input-field:formName");
+long groupId = GetterUtil.getLong(request.getAttribute("liferay-ui:input-field:groupId"));
 String id = GetterUtil.getString((String)request.getAttribute("liferay-ui:input-field:id"));
 boolean ignoreRequestValue = GetterUtil.getBoolean((String)request.getAttribute("liferay-ui:input-field:ignoreRequestValue"));
 String languageId = (String)request.getAttribute("liferay-ui:input-field:languageId");
@@ -76,7 +77,7 @@ if (hints != null) {
 				}
 			}
 
-			boolean value = BeanPropertiesUtil.getBooleanSilent(bean, methodName, defaultBoolean);
+			boolean value = BeanGetterUtil.getBooleanSilent(bean, methodName, defaultBoolean);
 
 			if (!ignoreRequestValue && Validator.isNotNull(ParamUtil.getString(request, "checkboxNames"))) {
 				value = ParamUtil.getBoolean(request, fieldParam, value);
@@ -106,7 +107,7 @@ if (hints != null) {
 			else {
 				cal = CalendarFactoryUtil.getCalendar(timeZone, locale);
 
-				Date date = (Date)BeanPropertiesUtil.getObject(bean, methodName);
+				Date date = (Date)BeanGetterUtil.getObject(bean, methodName);
 
 				if (date == null) {
 					checkDefaultDelta = true;
@@ -277,51 +278,45 @@ if (hints != null) {
 					var checkbox = A.one('#<portlet:namespace /><%= formName + fieldParam %>');
 
 					if (checkbox) {
-						checkbox.once(
-							'click',
-							function () {
-								Liferay.component('<portlet:namespace /><%= fieldParam %>DatePicker');
-							}
-						);
+						checkbox.once('click', function () {
+							Liferay.component('<portlet:namespace /><%= fieldParam %>DatePicker');
+						});
 
 						var form = document.<portlet:namespace /><%= formName %>;
 
-						checkbox.on(
-							'click',
-							function(event) {
-								var checked = checkbox.get('checked');
+						checkbox.on('click', function (event) {
+							var checked = checkbox.get('checked');
 
-								var elements = [
-									Liferay.Util.getFormElement(form, '<%= fieldParam %>'),
-									Liferay.Util.getFormElement(form, '<%= fieldParam %>Day'),
-									Liferay.Util.getFormElement(form, '<%= fieldParam %>Month'),
-									Liferay.Util.getFormElement(form, '<%= fieldParam %>Year'),
-									Liferay.Util.getFormElement(form, '<%= fieldParam %>Time'),
-									Liferay.Util.getFormElement(form, '<%= fieldParam %>Hour'),
-									Liferay.Util.getFormElement(form, '<%= fieldParam %>Minute'),
-									Liferay.Util.getFormElement(form, '<%= fieldParam %>AmPm')
-								].filter(Boolean);
+							var elements = [
+								Liferay.Util.getFormElement(form, '<%= fieldParam %>'),
+								Liferay.Util.getFormElement(form, '<%= fieldParam %>Day'),
+								Liferay.Util.getFormElement(form, '<%= fieldParam %>Month'),
+								Liferay.Util.getFormElement(form, '<%= fieldParam %>Year'),
+								Liferay.Util.getFormElement(form, '<%= fieldParam %>Time'),
+								Liferay.Util.getFormElement(form, '<%= fieldParam %>Hour'),
+								Liferay.Util.getFormElement(form, '<%= fieldParam %>Minute'),
+								Liferay.Util.getFormElement(form, '<%= fieldParam %>AmPm'),
+							].filter(Boolean);
 
-								elements.forEach(
-									function(element) {
-										if (checked) {
-											element.setAttribute('disabled', '');
-										}
-										else {
-											element.removeAttribute('disabled');
-										}
-
-										A.one(element).toggleClass('disabled', checked);
-									}
-								);
-
-								var label = A.one('label[for="<portlet:namespace /><%= fieldParam %>"]');
-
-								if (label) {
-									label.toggleClass('disabled', checked);
+							elements.forEach(function (element) {
+								if (checked) {
+									element.setAttribute('disabled', '');
 								}
+								else {
+									element.removeAttribute('disabled');
+								}
+
+								A.one(element).toggleClass('disabled', checked);
+							});
+
+							var label = A.one(
+								'label[for="<portlet:namespace /><%= fieldParam %>"]'
+							);
+
+							if (label) {
+								label.toggleClass('disabled', checked);
 							}
-						);
+						});
 					}
 				</aui:script>
 			</c:if>
@@ -338,7 +333,7 @@ if (hints != null) {
 			String value = null;
 
 			if (type.equals("double")) {
-				double doubleValue = BeanPropertiesUtil.getDoubleSilent(bean, methodName, GetterUtil.getDouble(defaultString));
+				double doubleValue = BeanGetterUtil.getDoubleSilent(bean, methodName, GetterUtil.getDouble(defaultString));
 
 				if (!ignoreRequestValue) {
 					doubleValue = ParamUtil.getDouble(request, fieldParam, doubleValue, locale);
@@ -352,7 +347,7 @@ if (hints != null) {
 				}
 			}
 			else if (type.equals("int")) {
-				int intValue = BeanPropertiesUtil.getIntegerSilent(bean, methodName, GetterUtil.getInteger(defaultString));
+				int intValue = BeanGetterUtil.getIntegerSilent(bean, methodName, GetterUtil.getInteger(defaultString));
 
 				if (!ignoreRequestValue) {
 					intValue = ParamUtil.getInteger(request, fieldParam, intValue);
@@ -366,7 +361,7 @@ if (hints != null) {
 				}
 			}
 			else if (type.equals("long")) {
-				long longValue = BeanPropertiesUtil.getLongSilent(bean, methodName, GetterUtil.getLong(defaultString));
+				long longValue = BeanGetterUtil.getLongSilent(bean, methodName, GetterUtil.getLong(defaultString));
 
 				if (!ignoreRequestValue) {
 					longValue = ParamUtil.getLong(request, fieldParam, longValue);
@@ -380,7 +375,7 @@ if (hints != null) {
 				}
 			}
 			else {
-				value = BeanPropertiesUtil.getStringSilent(bean, methodName, defaultString);
+				value = BeanGetterUtil.getStringSilent(bean, methodName, defaultString);
 
 				if (!ignoreRequestValue) {
 					value = ParamUtil.getString(request, fieldParam, value);
@@ -427,15 +422,10 @@ if (hints != null) {
 			String xml = StringPool.BLANK;
 
 			if (localized) {
-				if (ModelHintsUtil.hasField(model, "groupId")) {
-					availableLocales = LanguageUtil.getAvailableLocales(BeanPropertiesUtil.getLongSilent(bean, "groupId", themeDisplay.getSiteGroupId()));
-				}
-				else {
-					availableLocales = LanguageUtil.getAvailableLocales();
-				}
+				availableLocales = LanguageUtil.getAvailableLocales(groupId);
 
 				if (Validator.isNotNull(bean)) {
-					xml = BeanPropertiesUtil.getString(bean, methodName);
+					xml = BeanGetterUtil.getString(bean, methodName);
 				}
 			}
 			%>
@@ -571,14 +561,11 @@ if (hints != null) {
 
 					<c:if test="<%= autoSize && !localized %>">
 						<aui:script use="aui-autosize">
-							A.one('#<%= namespace %><%= id %>').plug(
-								A.Plugin.Autosize,
-								{
-									<c:if test="<%= Validator.isDigit(displayHeight) %>">
-										minHeight: <%= displayHeight %>
-									</c:if>
-								}
-							);
+							A.one('#<%= namespace %><%= id %>').plug(A.Plugin.Autosize, {
+								<c:if test="<%= Validator.isDigit(displayHeight) %>">
+									minHeight: <%= displayHeight %>,
+								</c:if>
+							});
 						</aui:script>
 					</c:if>
 				</c:otherwise>
@@ -597,14 +584,18 @@ if (hints != null) {
 
 <aui:script sandbox="<%= true %>">
 	var state = null;
-	var textarea = document.querySelector('textarea#<portlet:namespace /><%= id %>')
-	var counterWrapper = document.querySelector('#<portlet:namespace /><%= id %>_counterWrapper')
+	var textarea = document.querySelector(
+		'textarea#<portlet:namespace /><%= id %>'
+	);
+	var counterWrapper = document.querySelector(
+		'#<portlet:namespace /><%= id %>_counterWrapper'
+	);
 
 	var setCounter = (textarea) => {
-		var counter = counterWrapper.querySelector('.form-feedback-counter')
+		var counter = counterWrapper.querySelector('.form-feedback-counter');
 
-		counter.innerHTML = textarea.value.length + "/" + maxLength;
-	}
+		counter.innerHTML = textarea.value.length + '/' + maxLength;
+	};
 
 	if (textarea) {
 		var maxLength = parseInt(textarea.getAttribute('maxLength'));
@@ -617,23 +608,27 @@ if (hints != null) {
 		'keyup',
 		'textarea[id=<portlet:namespace /><%= id %>]',
 		({target}) => {
-			var indicator = counterWrapper.querySelector('.form-feedback-indicator');
+			var indicator = counterWrapper.querySelector(
+				'.form-feedback-indicator'
+			);
 			var message = counterWrapper.querySelector('.form-feedback-message');
 
 			var feedback = {
 				success: {
-					message: "<%= LanguageUtil.get(resourceBundle, "the-characters-are-under-the-limit") %>",
-					indicator: "<%= UnicodeFormatter.toString(successHTML) %>"
+					message:
+						'<%= LanguageUtil.get(resourceBundle, "the-characters-are-under-the-limit") %>',
+					indicator: '<%= UnicodeFormatter.toString(successHTML) %>',
 				},
 				info: {
-					message: "<%= LanguageUtil.get(resourceBundle, "the-character-limit-has-been-reached-you-cannot-continue-typing") %>",
-					indicator: "<%= UnicodeFormatter.toString(infoHTML) %>"
+					message:
+						'<%= LanguageUtil.get(resourceBundle, "the-character-limit-has-been-reached-you-cannot-continue-typing") %>',
+					indicator: '<%= UnicodeFormatter.toString(infoHTML) %>',
 				},
-			}
+			};
 
 			var setStatus = (nextState) => {
 				if (state !== nextState) {
-					counterWrapper.removeAttribute('class')
+					counterWrapper.removeAttribute('class');
 					counterWrapper.classList.add('label-' + nextState);
 
 					indicator.innerHTML = feedback[nextState].indicator;
@@ -641,7 +636,7 @@ if (hints != null) {
 
 					state = nextState;
 				}
-			}
+			};
 
 			if (state !== 'info' && target.value.length === maxLength) {
 				setStatus('info');

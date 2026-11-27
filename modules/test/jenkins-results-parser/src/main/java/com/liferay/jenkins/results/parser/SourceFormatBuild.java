@@ -361,22 +361,60 @@ public class SourceFormatBuild
 
 		int ownerAheadBy = _getAheadBy(
 			pullRequest, senderBranchSHA, ownerUsername);
+
+		String overrideUsername = null;
+
+		try {
+			overrideUsername = JenkinsResultsParserUtil.getBuildProperty(
+				"portal.upstream.override.username",
+				pullRequest.getUpstreamRemoteGitBranchName());
+		}
+		catch (IOException ioException) {
+			System.out.println(
+				JenkinsResultsParserUtil.combine(
+					"Unable to get the upstream override username for ",
+					pullRequest.getUpstreamRemoteGitBranchName(), ": ",
+					ioException.getMessage()));
+		}
+
+		int overrideAheadBy = -1;
+		String overrideMessage = "";
+
+		if (!JenkinsResultsParserUtil.isNullOrEmpty(overrideUsername) &&
+			!overrideUsername.equals(ownerUsername) &&
+			!overrideUsername.equals(upstreamUsername)) {
+
+			overrideAheadBy = _getAheadBy(
+				pullRequest, senderBranchSHA, overrideUsername);
+
+			overrideMessage = JenkinsResultsParserUtil.combine(
+				", ", String.valueOf(overrideAheadBy), " commits ahead of ",
+				overrideUsername);
+		}
+
 		int upstreamAheadBy = _getAheadBy(
 			pullRequest, senderBranchSHA, upstreamUsername);
 
 		System.out.println(
 			JenkinsResultsParserUtil.combine(
 				senderBranchSHA, " is ", String.valueOf(ownerAheadBy),
-				" commits ahead of ", ownerUsername, " and ",
+				" commits ahead of ", ownerUsername, overrideMessage, " and ",
 				String.valueOf(upstreamAheadBy), " commits ahead of ",
 				upstreamUsername));
 
-		String baseBranchUsername = ownerUsername;
+		String baseBranchUsername = upstreamUsername;
 
-		if ((ownerAheadBy < 0) || (upstreamAheadBy < 0) ||
-			(ownerAheadBy >= upstreamAheadBy)) {
+		if ((ownerAheadBy >= 0) && (upstreamAheadBy >= 0)) {
+			int baseAheadBy = upstreamAheadBy;
 
-			baseBranchUsername = upstreamUsername;
+			if ((overrideAheadBy >= 0) && (overrideAheadBy < baseAheadBy)) {
+				baseAheadBy = overrideAheadBy;
+				baseBranchUsername = overrideUsername;
+			}
+
+			if (ownerAheadBy < baseAheadBy) {
+				baseBranchUsername = ownerUsername;
+			}
 		}
 
 		System.out.println(

@@ -5,15 +5,18 @@
 
 package com.liferay.trash.web.internal.portlet;
 
-import com.liferay.asset.kernel.model.AssetEntry;
-import com.liferay.asset.kernel.service.AssetEntryService;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.TrashPermissionException;
+import com.liferay.portal.kernel.model.ClassName;
+import com.liferay.portal.kernel.model.ContainerModel;
+import com.liferay.portal.kernel.model.GroupedModel;
 import com.liferay.portal.kernel.model.Release;
+import com.liferay.portal.kernel.model.TrashedModel;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCPortlet;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
 import com.liferay.portal.kernel.security.auth.PrincipalException;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
+import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextFactory;
 import com.liferay.portal.kernel.servlet.SessionErrors;
@@ -346,33 +349,125 @@ public class TrashPortlet extends MVCPortlet {
 		}
 	}
 
+	private void _checkPermission(
+			String className, long classPK, long groupId,
+			RenderRequest renderRequest, TrashHandler trashHandler)
+		throws PortalException {
+
+		ThemeDisplay themeDisplay = (ThemeDisplay)renderRequest.getAttribute(
+			WebKeys.THEME_DISPLAY);
+
+		if ((trashHandler == null) ||
+			(groupId != themeDisplay.getScopeGroupId()) ||
+			!trashHandler.hasTrashPermission(
+				themeDisplay.getPermissionChecker(), groupId, classPK,
+				ActionKeys.VIEW)) {
+
+			throw new PrincipalException.MustHavePermission(
+				_portal.getUserId(renderRequest), className, classPK,
+				ActionKeys.VIEW);
+		}
+	}
+
 	private void _checkPermissions(RenderRequest renderRequest)
 		throws PortalException {
 
 		long trashEntryId = ParamUtil.getLong(renderRequest, "trashEntryId");
 
-		if (trashEntryId == 0) {
+		if (trashEntryId > 0) {
+			TrashEntry trashEntry = _trashEntryLocalService.getTrashEntry(
+				trashEntryId);
+
+			_checkPermission(
+				trashEntry.getClassName(), trashEntry.getClassPK(),
+				trashEntry.getGroupId(), renderRequest,
+				TrashHandlerRegistryUtil.getTrashHandler(
+					trashEntry.getClassName()));
+		}
+
+		long classNameId = ParamUtil.getLong(renderRequest, "classNameId");
+
+		if (classNameId == 0) {
 			return;
 		}
 
-		TrashEntry trashEntry = _trashEntryLocalService.getTrashEntry(
-			trashEntryId);
+		String className = _getClassName(classNameId);
+		long classPK = ParamUtil.getLong(renderRequest, "classPK");
 
-		AssetEntry assetEntry = _assetEntryService.getEntry(
-			trashEntry.getClassName(), trashEntry.getClassPK());
+		TrashHandler trashHandler = TrashHandlerRegistryUtil.getTrashHandler(
+			className);
 
-		ThemeDisplay themeDisplay = (ThemeDisplay)renderRequest.getAttribute(
-			WebKeys.THEME_DISPLAY);
+		TrashEntry trashEntry = _getTrashEntry(
+			className, classPK, trashHandler);
 
-		if (assetEntry.getGroupId() != themeDisplay.getScopeGroupId()) {
+		if (trashEntry == null) {
 			throw new PrincipalException.MustHavePermission(
-				themeDisplay.getUserId(), trashEntry.getClassName(),
-				trashEntry.getClassPK(), ActionKeys.VIEW);
+				_portal.getUserId(renderRequest), className, classPK,
+				ActionKeys.VIEW);
 		}
+
+		_checkPermission(
+			className, classPK, trashEntry.getGroupId(), renderRequest,
+			trashHandler);
+
+		long containerModelId = ParamUtil.getLong(
+			renderRequest, "containerModelId");
+
+		if (containerModelId == 0) {
+			return;
+		}
+
+		String containerModelClassName =
+			trashHandler.getContainerModelClassName(classPK);
+
+		long containerModelClassNameId = ParamUtil.getLong(
+			renderRequest, "containerModelClassNameId");
+
+		if (containerModelClassNameId != 0) {
+			containerModelClassName = _getClassName(containerModelClassNameId);
+		}
+
+		long groupId = 0;
+
+		ContainerModel containerModel = trashHandler.getContainerModel(
+			containerModelId);
+
+		if (containerModel instanceof GroupedModel) {
+			GroupedModel groupedModel = (GroupedModel)containerModel;
+
+			groupId = groupedModel.getGroupId();
+		}
+
+		_checkPermission(
+			containerModelClassName, containerModelId, groupId, renderRequest,
+			TrashHandlerRegistryUtil.getTrashHandler(containerModelClassName));
+	}
+
+	private String _getClassName(long classNameId) throws PortalException {
+		ClassName className = _classNameLocalService.getClassName(classNameId);
+
+		return className.getValue();
+	}
+
+	private TrashEntry _getTrashEntry(
+			String className, long classPK, TrashHandler trashHandler)
+		throws PortalException {
+
+		if (trashHandler == null) {
+			return null;
+		}
+
+		TrashedModel trashedModel = trashHandler.getTrashedModel(classPK);
+
+		if (trashedModel != null) {
+			return _trashHelper.getTrashEntry(trashedModel);
+		}
+
+		return _trashEntryLocalService.fetchEntry(className, classPK);
 	}
 
 	@Reference
-	private AssetEntryService _assetEntryService;
+	private ClassNameLocalService _classNameLocalService;
 
 	@Reference
 	private Portal _portal;

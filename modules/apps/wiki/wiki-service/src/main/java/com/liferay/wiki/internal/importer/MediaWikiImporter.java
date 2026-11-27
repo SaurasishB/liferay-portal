@@ -44,7 +44,6 @@ import com.liferay.portal.kernel.xml.DocumentException;
 import com.liferay.portal.kernel.xml.Element;
 import com.liferay.portal.kernel.xml.SAXReaderUtil;
 import com.liferay.portal.kernel.zip.ZipReader;
-import com.liferay.portal.kernel.zip.ZipReaderFactory;
 import com.liferay.wiki.configuration.WikiGroupServiceConfiguration;
 import com.liferay.wiki.constants.WikiConstants;
 import com.liferay.wiki.constants.WikiPageConstants;
@@ -83,8 +82,7 @@ public class MediaWikiImporter {
 		PortletFileRepository portletFileRepository,
 		UserLocalService userLocalService,
 		WikiPageLocalService wikiPageLocalService,
-		WikiPageTitleValidator wikiPageTitleValidator,
-		ZipReaderFactory zipReaderFactory) {
+		WikiPageTitleValidator wikiPageTitleValidator) {
 
 		_assetTagLocalService = assetTagLocalService;
 		_companyLocalService = companyLocalService;
@@ -93,7 +91,6 @@ public class MediaWikiImporter {
 		_userLocalService = userLocalService;
 		_wikiPageLocalService = wikiPageLocalService;
 		_wikiPageTitleValidator = wikiPageTitleValidator;
-		_zipReaderFactory = zipReaderFactory;
 	}
 
 	public void importPages(
@@ -343,9 +340,7 @@ public class MediaWikiImporter {
 			return;
 		}
 
-		try (ZipReader zipReader = _zipReaderFactory.getZipReader(
-				imagesInputStream)) {
-
+		try (ZipReader zipReader = new ZipReader(imagesInputStream)) {
 			List<String> entries = zipReader.getEntries();
 
 			if (entries == null) {
@@ -821,6 +816,5 @@ public class MediaWikiImporter {
 	private final UserLocalService _userLocalService;
 	private final WikiPageLocalService _wikiPageLocalService;
 	private final WikiPageTitleValidator _wikiPageTitleValidator;
-	private final ZipReaderFactory _zipReaderFactory;
 
 }

@@ -35,6 +35,28 @@ const createFile = (name: string, size: number, type = 'image/png') => {
 	return new File(['a'.repeat(size)], name, {type});
 };
 
+const selectFiles = async ({
+	files = [createFile('image1.png', 1024), createFile('image2.png', 3072)],
+	validExtensions,
+}: {files?: File[]; validExtensions?: string} = {}) => {
+	const user = userEvent.setup({applyAccept: false});
+
+	const {container} = render(
+		<MultipleFileUploader
+			{...DEFAULT_PROPS}
+			maxFileSize={2000}
+			validExtensions={validExtensions}
+		/>
+	);
+
+	const input =
+		container.querySelector<HTMLInputElement>('input[type="file"]')!;
+
+	await user.upload(input, files);
+
+	return {input, user};
+};
+
 describe('MultipleFileUploader', () => {
 	afterEach(() => {
 		jest.clearAllMocks();
@@ -500,6 +522,55 @@ describe('MultipleFileUploader', () => {
 		).toBeInTheDocument();
 
 		expect(getByRole('button', {name: 'upload-(1)'})).toBeInTheDocument();
+	});
+
+	it('shows the error of a rejected file selected together with a valid one', async () => {
+		await selectFiles();
+
+		expect(await screen.findByText('image1.png')).toBeInTheDocument();
+
+		expect(screen.getByRole('alert')).toHaveTextContent(
+			'please-enter-a-file-with-a-valid-file-size-no-larger-than-2000 MB'
+		);
+
+		expect(
+			screen.getByRole('button', {name: 'upload-(1)'})
+		).toBeInTheDocument();
+	});
+
+	it('shows an error for each reason files are rejected in the same selection', async () => {
+		await selectFiles({
+			files: [
+				createFile('image1.png', 1024),
+				createFile('document1.pdf', 1024, 'application/pdf'),
+				createFile('image2.png', 3072),
+			],
+			validExtensions: '.png',
+		});
+
+		expect(await screen.findByText('image1.png')).toBeInTheDocument();
+
+		const alerts = screen.getAllByRole('alert');
+
+		expect(alerts).toHaveLength(2);
+		expect(alerts[0]).toHaveTextContent(
+			'please-enter-a-file-with-a-valid-e.pngtension-x'
+		);
+		expect(alerts[1]).toHaveTextContent(
+			'please-enter-a-file-with-a-valid-file-size-no-larger-than-2000 MB'
+		);
+	});
+
+	it('clears the error when the next selection has no rejected files', async () => {
+		const {input, user} = await selectFiles();
+
+		expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+		await user.upload(input, createFile('image3.png', 1024));
+
+		expect(await screen.findByText('image3.png')).toBeInTheDocument();
+
+		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 	});
 
 	describe('batch upload', () => {

@@ -9,7 +9,7 @@ import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.portal.dao.orm.hibernate.VerifySessionFactoryWrapper;
 import com.liferay.portal.kernel.dao.orm.Session;
 import com.liferay.portal.kernel.dao.orm.SessionFactory;
-import com.liferay.portal.kernel.module.util.SystemBundleUtil;
+import com.liferay.portal.kernel.test.util.BundleContextTestUtil;
 import com.liferay.portal.kernel.test.util.TransactionTestUtil;
 import com.liferay.portal.kernel.transaction.Propagation;
 import com.liferay.portal.kernel.transaction.TransactionConfig;
@@ -46,7 +46,8 @@ public class TransactionTestUtilTest {
 
 	@Test
 	public void testInvoke() throws Throwable {
-		BundleContext bundleContext = SystemBundleUtil.getBundleContext();
+		BundleContext bundleContext = BundleContextTestUtil.getBundleContext(
+			TransactionTestUtilTest.class);
 
 		Collection<ServiceReference<SessionFactory>> serviceReferences =
 			bundleContext.getServiceReferences(
@@ -99,7 +100,8 @@ public class TransactionTestUtilTest {
 
 	@Test
 	public void testInvokeUnsafeFunction() throws Exception {
-		BundleContext bundleContext = SystemBundleUtil.getBundleContext();
+		BundleContext bundleContext = BundleContextTestUtil.getBundleContext(
+			TransactionTestUtilTest.class);
 
 		Collection<ServiceReference<SessionFactory>> serviceReferences =
 			bundleContext.getServiceReferences(
@@ -144,19 +146,19 @@ public class TransactionTestUtilTest {
 
 			Assert.assertEquals(logEntries.toString(), 0, logEntries.size());
 
-			Error error = new Error();
+			Error error1 = new Error();
 
 			try {
 				TransactionTestUtil.invoke(
 					ploEntryPersistence,
 					curPLOEntryPersistence -> {
-						throw error;
+						throw error1;
 					});
 
 				Assert.fail();
 			}
-			catch (Exception exception) {
-				Assert.assertSame(error, exception.getCause());
+			catch (Error error2) {
+				Assert.assertSame(error1, error2);
 			}
 		}
 		finally {

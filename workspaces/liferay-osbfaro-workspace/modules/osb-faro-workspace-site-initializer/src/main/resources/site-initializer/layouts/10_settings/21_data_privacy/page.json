@@ -1,7 +1,10 @@
 {
 	"friendlyURL": "/data-privacy",
-	"hidden": true,
+	"hidden": false,
 	"name": "Data Privacy",
+	"name_i18n": {
+		"en_US": "Data Privacy"
+	},
 	"permissions": [
 		{
 			"actionIds": [

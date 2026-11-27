@@ -1,0 +1,32 @@
+{
+	"friendlyURL": "/access-requests",
+	"hidden": true,
+	"name": "Access Requests",
+	"name_i18n": {
+		"en_US": "Access Requests"
+	},
+	"permissions": [
+		{
+			"actionIds": [
+			],
+			"roleName": "Guest",
+			"scope": 4
+		},
+		{
+			"actionIds": [
+			],
+			"roleName": "Site Member",
+			"scope": 4
+		},
+		{
+			"actionIds": [
+				"VIEW"
+			],
+			"roleName": "Workspace Administrator",
+			"scope": 4
+		}
+	],
+	"private": false,
+	"system": false,
+	"type": "Content"
+}

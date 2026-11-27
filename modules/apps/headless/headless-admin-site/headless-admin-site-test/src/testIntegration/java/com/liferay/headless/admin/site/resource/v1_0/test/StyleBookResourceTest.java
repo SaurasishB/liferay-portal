@@ -43,6 +43,7 @@ import com.liferay.portal.kernel.search.Indexer;
 import com.liferay.portal.kernel.search.IndexerRegistryUtil;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
+import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.util.FeatureFlagTestUtil;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
@@ -110,6 +111,7 @@ public class StyleBookResourceTest extends BaseStyleBookResourceTestCase {
 
 	@Override
 	@Test
+	@TestInfo("LPD-117347")
 	public void testDeleteSiteStyleBook() throws Exception {
 		super.testDeleteSiteStyleBook();
 
@@ -145,6 +147,7 @@ public class StyleBookResourceTest extends BaseStyleBookResourceTestCase {
 
 	@Override
 	@Test
+	@TestInfo("LPD-117347")
 	public void testGetSiteStyleBook() throws Exception {
 		super.testGetSiteStyleBook();
 
@@ -157,6 +160,7 @@ public class StyleBookResourceTest extends BaseStyleBookResourceTestCase {
 
 	@Override
 	@Test
+	@TestInfo("LPD-117347")
 	public void testGetSiteStyleBooksPage() throws Exception {
 		super.testGetSiteStyleBooksPage();
 
@@ -178,9 +182,11 @@ public class StyleBookResourceTest extends BaseStyleBookResourceTestCase {
 
 	@Override
 	@Test
+	@TestInfo("LPD-117347")
 	public void testPatchSiteStyleBook() throws Exception {
 		_testPatchSiteStyleBook();
 		_testPatchSiteStyleBookForNonexistingStyleBook();
+		_testPatchSiteStyleBookWithDesignLibraryExternalReferenceCode();
 		_testPatchSiteStyleBookWithThumbnailURLReference();
 		_testPatchSiteStyleBookWithoutFrontendTokenDefinition();
 	}
@@ -195,6 +201,7 @@ public class StyleBookResourceTest extends BaseStyleBookResourceTestCase {
 
 	@Override
 	@Test
+	@TestInfo("LPD-117347")
 	public void testPostSiteStyleBook() throws Exception {
 		super.testPostSiteStyleBook();
 
@@ -226,6 +233,7 @@ public class StyleBookResourceTest extends BaseStyleBookResourceTestCase {
 
 	@Override
 	@Test
+	@TestInfo("LPD-117347")
 	public void testPutSiteStyleBook() throws Exception {
 		super.testPutSiteStyleBook();
 
@@ -564,7 +572,7 @@ public class StyleBookResourceTest extends BaseStyleBookResourceTestCase {
 			_getDesignLibraryExternalReferenceCode(), randomStyleBook());
 
 		ProblemExceptionTestUtil.assertProblemException(
-			"BAD_REQUEST", null,
+			"BAD_REQUEST", "The site does not support this operation",
 			() -> styleBookResource.deleteSiteStyleBook(
 				_getDesignLibraryExternalReferenceCode(),
 				styleBook.getExternalReferenceCode()));
@@ -681,6 +689,9 @@ public class StyleBookResourceTest extends BaseStyleBookResourceTestCase {
 		StyleBookResource styleBookResource = StyleBookResource.builder(
 		).authentication(
 			"test@liferay.com", PropsValues.DEFAULT_ADMIN_PASSWORD
+		).endpoint(
+			testCompany.getVirtualHostname(),
+			PortalUtil.getPortalServerPort(false), "http"
 		).locale(
 			LocaleUtil.getDefault()
 		).parameters(
@@ -962,7 +973,7 @@ public class StyleBookResourceTest extends BaseStyleBookResourceTestCase {
 			_getDesignLibraryExternalReferenceCode(), randomStyleBook());
 
 		ProblemExceptionTestUtil.assertProblemException(
-			"BAD_REQUEST", null,
+			"BAD_REQUEST", "The site does not support this operation",
 			() -> styleBookResource.getSiteStyleBook(
 				_getDesignLibraryExternalReferenceCode(),
 				styleBook.getExternalReferenceCode()));
@@ -1052,7 +1063,7 @@ public class StyleBookResourceTest extends BaseStyleBookResourceTestCase {
 		throws Exception {
 
 		ProblemExceptionTestUtil.assertProblemException(
-			"BAD_REQUEST", null,
+			"BAD_REQUEST", "The site does not support this operation",
 			() -> styleBookResource.getSiteStyleBooksPage(
 				_getDesignLibraryExternalReferenceCode(), null, null, null,
 				Pagination.of(1, 10), null));
@@ -1272,6 +1283,19 @@ public class StyleBookResourceTest extends BaseStyleBookResourceTestCase {
 				RandomTestUtil.randomString(), randomPatchStyleBook()));
 	}
 
+	private void _testPatchSiteStyleBookWithDesignLibraryExternalReferenceCode()
+		throws Exception {
+
+		StyleBook styleBook = styleBookResource.postDesignLibraryStyleBook(
+			_getDesignLibraryExternalReferenceCode(), randomStyleBook());
+
+		ProblemExceptionTestUtil.assertProblemException(
+			"BAD_REQUEST", "The site does not support this operation",
+			() -> styleBookResource.patchSiteStyleBook(
+				_getDesignLibraryExternalReferenceCode(),
+				styleBook.getExternalReferenceCode(), randomPatchStyleBook()));
+	}
+
 	private void _testPatchSiteStyleBookWithThumbnailURLReference()
 		throws Exception {
 
@@ -1376,7 +1400,7 @@ public class StyleBookResourceTest extends BaseStyleBookResourceTestCase {
 		throws Exception {
 
 		ProblemExceptionTestUtil.assertProblemException(
-			"BAD_REQUEST", null,
+			"BAD_REQUEST", "The site does not support this operation",
 			() -> styleBookResource.postSiteStyleBook(
 				_getDesignLibraryExternalReferenceCode(), randomStyleBook()));
 	}
@@ -1754,7 +1778,7 @@ public class StyleBookResourceTest extends BaseStyleBookResourceTestCase {
 			_getDesignLibraryExternalReferenceCode(), randomStyleBook());
 
 		ProblemExceptionTestUtil.assertProblemException(
-			"BAD_REQUEST", null,
+			"BAD_REQUEST", "The site does not support this operation",
 			() -> styleBookResource.putSiteStyleBook(
 				_getDesignLibraryExternalReferenceCode(),
 				styleBook.getExternalReferenceCode(), randomStyleBook()));

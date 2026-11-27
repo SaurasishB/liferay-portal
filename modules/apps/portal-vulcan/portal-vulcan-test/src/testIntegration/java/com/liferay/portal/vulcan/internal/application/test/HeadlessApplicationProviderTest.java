@@ -9,6 +9,8 @@ import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.lang.SafeCloseable;
 import com.liferay.petra.string.StringBundler;
+import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClassDefinition;
+import com.liferay.portal.configuration.test.util.ConfigurationTestUtil;
 import com.liferay.portal.kernel.feature.flag.FeatureFlagManager;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
@@ -317,6 +319,33 @@ public class HeadlessApplicationProviderTest {
 		}
 
 		Assert.assertNull(_getApplication("/test-vulcan-application-added"));
+
+		String pid = _createFactoryConfiguration(
+			TestPropsValues.getCompanyId() + 1);
+
+		try {
+			Assert.assertNotNull(_getApplication("/test-vulcan-application"));
+		}
+		finally {
+			ConfigurationTestUtil.deleteFactoryConfiguration(
+				pid,
+				"com.liferay.portal.vulcan.internal.configuration." +
+					"VulcanCompanyConfiguration");
+		}
+
+		pid = _createFactoryConfiguration(TestPropsValues.getCompanyId());
+
+		try {
+			Assert.assertNull(_getApplication("/test-vulcan-application"));
+		}
+		finally {
+			ConfigurationTestUtil.deleteFactoryConfiguration(
+				pid,
+				"com.liferay.portal.vulcan.internal.configuration." +
+					"VulcanCompanyConfiguration");
+		}
+
+		Assert.assertNotNull(_getApplication("/test-vulcan-application"));
 	}
 
 	@FeatureFlag(enable = false, value = _FEATURE_FLAG_KEY)
@@ -454,6 +483,22 @@ public class HeadlessApplicationProviderTest {
 			return type;
 		}
 
+	}
+
+	private String _createFactoryConfiguration(long companyId)
+		throws Exception {
+
+		return ConfigurationTestUtil.createFactoryConfiguration(
+			"com.liferay.portal.vulcan.internal.configuration." +
+				"VulcanCompanyConfiguration",
+			HashMapDictionaryBuilder.<String, Object>put(
+				ExtendedObjectClassDefinition.Scope.COMPANY.getPropertyKey(),
+				companyId
+			).put(
+				"path", "/test-vulcan-application"
+			).put(
+				"restEnabled", false
+			).build());
 	}
 
 	private HeadlessApplicationProvider.Application _getApplication(

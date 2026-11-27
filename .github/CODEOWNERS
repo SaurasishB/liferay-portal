@@ -279,7 +279,6 @@ modules/apps/portal/portal-verify-extender    @liferay-database-infra
 modules/apps/portal/portal-verify-test    @liferay-database-infra
 modules/apps/portal/portal-verify-test-util    @liferay-database-infra
 modules/apps/portal/portal-weblogic-support/    @liferay-core-infra
-modules/apps/portal/portal-zip/    @liferay-core-infra
 modules/apps/portal-background-task/    @liferay-core-infra
 modules/apps/portal-cache/    @liferay-core-infra
 modules/apps/portal-configuration/
@@ -357,6 +356,8 @@ modules/apps/shared-dependencies/
 modules/apps/sharing/    @liferay-content-management
 modules/apps/site/    @liferay-site-management
 modules/apps/site/site-cms-site-initializer/    @liferay-content-management
+modules/apps/site/site-cms-site-initializer/src/main/resources/META-INF/resources/js/structure_builder/    @liferay-page-management
+modules/apps/site/site-cms-site-initializer/test/js/structure_builder/    @liferay-page-management
 modules/apps/site/site-cms-site-initializer-api/    @liferay-content-management
 modules/apps/site/site-cms-site-initializer-test/    @liferay-content-management
 modules/apps/site/site-cms-standalone-site-initializer/    @liferay-content-management
@@ -544,7 +545,6 @@ modules/util/portal-tools-rest-builder-test-client-js/    @liferay-headless
 modules/util/portal-tools-rest-builder-test-impl/    @liferay-headless
 modules/util/portal-tools-rest-builder-test-test/    @liferay-headless
 modules/util/portal-tools-sample-sql-builder/    @liferay-core-infra
-modules/util/portal-tools-schema-manifest-builder/    @liferay-database-infra
 modules/util/portal-tools-service-builder/    @liferay-core-infra
 modules/util/portal-tools-service-builder-spring-sample-api/    @liferay-core-infra
 modules/util/portal-tools-service-builder-spring-sample-service/    @liferay-core-infra

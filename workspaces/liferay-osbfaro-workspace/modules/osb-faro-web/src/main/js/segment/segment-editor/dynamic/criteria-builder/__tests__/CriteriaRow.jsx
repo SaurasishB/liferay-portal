@@ -3,15 +3,16 @@ import CriteriaRow from '../CriteriaRow';
 import mockStore from 'test/mock-store';
 import React from 'react';
 import {ApolloProvider} from '@apollo/client';
-import {cleanup, fireEvent, render} from '@testing-library/react';
+import {CAMPAIGN_PROPERTY} from '../../utils/properties';
+import {cleanup, fireEvent, render, screen} from '@testing-library/react';
 import {DndProvider} from 'react-dnd';
-import {fromJS, Map} from 'immutable';
+import {fromJS, List, Map} from 'immutable';
+import {getDefaultValue} from '../../criteria-sidebar/CriteriaSidebarCollapse';
 import {HTML5Backend} from 'react-dnd-html5-backend';
 import {MockedProvider} from '@apollo/client/testing';
 import {mockPreferenceReq} from 'test/graphql-data';
 import {Provider} from 'react-redux';
-
-jest.unmock('react-dom');
+import {ReferencedObjectsContext} from '../../context/referencedObjects';
 
 const WrapperComponent = ({children}) => (
 	<ApolloProvider client={client}>
@@ -21,6 +22,37 @@ const WrapperComponent = ({children}) => (
 			</MockedProvider>
 		</Provider>
 	</ApolloProvider>
+);
+
+const CampaignRow = ({campaignId, onDelete = jest.fn()}) => (
+	<WrapperComponent>
+		<ReferencedObjectsContext.Provider
+			value={{
+				referencedEntities: fromJS({
+					campaigns: {c1: {campaignName: 'Spring Sale', id: 'c1'}}
+				}),
+				referencedProperties: Map()
+			}}
+		>
+			<DndProvider backend={HTML5Backend}>
+				<CriteriaRow
+					criterion={{
+						operatorName: 'campaigns-filter',
+						propertyName: 'id',
+						rowId: 'row_0',
+						touched: false,
+						valid: true,
+						value: getDefaultValue(CAMPAIGN_PROPERTY).setIn(
+							['criterionGroup', 'items', 0, 'value'],
+							List([campaignId])
+						)
+					}}
+					index={0}
+					onDelete={onDelete}
+				/>
+			</DndProvider>
+		</ReferencedObjectsContext.Provider>
+	</WrapperComponent>
 );
 
 describe('CriteriaRow', () => {
@@ -77,11 +109,19 @@ describe('CriteriaRow', () => {
 		expect(getByText('is unknown')).toBeInTheDocument();
 	});
 
-	it('should render w/ Non-Existent Property message', () => {
-		const {queryByText} = render(
+	it('should name the row with its attribute, operator and value, and its operator picker', () => {
+		const {getByRole} = render(
 			<WrapperComponent>
 				<DndProvider backend={HTML5Backend}>
 					<CriteriaRow
+						criterion={{
+							operatorName: 'eq',
+							propertyName: 'knownSinceDate',
+							rowId: 'row_0',
+							touched: false,
+							valid: true,
+							value: '2026-01-15'
+						}}
 						referencedAssetsIMap={new Map()}
 						referencedPropertiesIMap={new Map()}
 					/>
@@ -89,6 +129,61 @@ describe('CriteriaRow', () => {
 			</WrapperComponent>
 		);
 
-		expect(queryByText(/^attribute no longer exists\.$/i)).toBeTruthy();
+		expect(
+			getByRole('group', {name: /known since date.*2026/i})
+		).toBeInTheDocument();
+		expect(getByRole('combobox', {name: /^operator$/i})).toBeInTheDocument();
+		expect(getByRole('button', {name: /^menu$/i})).toBeInTheDocument();
+	});
+
+	it('should render w/ Non-Existent Property message and only the delete action', () => {
+		const onDelete = jest.fn();
+
+		const {getByRole, queryByRole} = render(
+			<WrapperComponent>
+				<DndProvider backend={HTML5Backend}>
+					<CriteriaRow
+						index={3}
+						onDelete={onDelete}
+						referencedAssetsIMap={new Map()}
+						referencedPropertiesIMap={new Map()}
+					/>
+				</DndProvider>
+			</WrapperComponent>
+		);
+
+		expect(getByRole('alert')).toHaveTextContent(
+			/^attribute no longer exists\.$/i
+		);
+		expect(queryByRole('button', {name: /^menu$/i})).not.toBeInTheDocument();
+
+		fireEvent.click(getByRole('button', {name: /^delete$/i}));
+
+		expect(onDelete).toHaveBeenCalledWith(3);
+	});
+
+	it('should not flag a campaign that still exists', () => {
+		render(<CampaignRow campaignId="c1" />);
+
+		expect(
+			screen.queryByText(/campaign no longer exists/i)
+		).not.toBeInTheDocument();
+	});
+
+	it('should only offer to remove a campaign that no longer exists', () => {
+		const onDelete = jest.fn();
+
+		render(<CampaignRow campaignId="deleted" onDelete={onDelete} />);
+
+		expect(screen.getByRole('alert')).toHaveTextContent(
+			/^campaign no longer exists\.$/i
+		);
+		expect(
+			screen.queryByRole('button', {name: /^menu$/i})
+		).not.toBeInTheDocument();
+
+		fireEvent.click(screen.getByRole('button', {name: /^delete$/i}));
+
+		expect(onDelete).toHaveBeenCalledWith(0);
 	});
 });

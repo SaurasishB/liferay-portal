@@ -31,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.LongFunction;
 
 import org.junit.After;
 import org.junit.AfterClass;
@@ -131,10 +132,33 @@ public class PortalInstancesTest {
 
 	@After
 	public void tearDown() {
+		Map<Long, ?> companyIdsInCopyProcess = ReflectionTestUtil.getFieldValue(
+			PortalInstances.class, "_companyIdsInCopyProcess");
+
+		companyIdsInCopyProcess.clear();
+
 		Map<Long, ?> companyIdsInDeletionProcess =
 			_getCompanyIdsInDeletionProcess();
 
 		companyIdsInDeletionProcess.clear();
+	}
+
+	@Test
+	public void testIsCompanyInCopyProcess() {
+		long fromCompanyId = RandomTestUtil.randomLong();
+		long toCompanyId = RandomTestUtil.randomLong();
+
+		try (SafeCloseable safeCloseable =
+				PortalInstances.setCopyInProcessCompanyIdWithSafeCloseable(
+					fromCompanyId, toCompanyId)) {
+
+			Assert.assertFalse(
+				PortalInstances.isCompanyInCopyProcess(fromCompanyId));
+			Assert.assertTrue(
+				PortalInstances.isCompanyInCopyProcess(toCompanyId));
+		}
+
+		Assert.assertFalse(PortalInstances.isCompanyInCopyProcess(toCompanyId));
 	}
 
 	@Test
@@ -339,27 +363,40 @@ public class PortalInstancesTest {
 	}
 
 	@Test
-	public void testSetCompanyInDeletionProcessWithSafeCloseableWhenAlreadyInDeletion() {
-		long companyId = RandomTestUtil.randomLong();
+	public void testSetCompanyInDeletionProcessWithSafeCloseableWhenInProcess() {
+		_assertUnsupportedOperationException(
+			PortalInstances::setCompanyInDeletionProcessWithSafeCloseable,
+			PortalInstances::setCompanyInDeletionProcessWithSafeCloseable,
+			" is already in deletion");
+		_assertUnsupportedOperationException(
+			this::_addCompanyIdInCopyProcess,
+			PortalInstances::setCompanyInDeletionProcessWithSafeCloseable,
+			" is being copied");
+		_assertUnsupportedOperationException(
+			this::_setCopyInProcessCompanyIdWithSafeCloseable,
+			PortalInstances::setCompanyInDeletionProcessWithSafeCloseable,
+			" is being copied");
+	}
 
-		try (SafeCloseable safeCloseable =
-				PortalInstances.setCompanyInDeletionProcessWithSafeCloseable(
-					companyId)) {
+	@Test
+	public void testSetCopyInProcessCompanyIdWithSafeCloseableWhenInProcess() {
+		_assertUnsupportedOperationException(
+			PortalInstances::setCompanyInDeletionProcessWithSafeCloseable,
+			this::_setCopyInProcessCompanyIdWithSafeCloseable,
+			" is being deleted");
+		_assertUnsupportedOperationException(
+			this::_addCompanyIdInCopyProcess,
+			this::_setCopyInProcessCompanyIdWithSafeCloseable,
+			" is being copied");
+	}
 
-			try {
-				PortalInstances.setCompanyInDeletionProcessWithSafeCloseable(
-					companyId);
+	private SafeCloseable _addCompanyIdInCopyProcess(long companyId) {
+		ReflectionTestUtil.invoke(
+			PortalInstances.class, "_addCompanyIdInCopyProcess",
+			new Class<?>[] {long.class, String.class, long.class}, companyId,
+			RandomTestUtil.randomString(), System.currentTimeMillis());
 
-				Assert.fail();
-			}
-			catch (UnsupportedOperationException
-						unsupportedOperationException) {
-
-				Assert.assertEquals(
-					companyId + " is already in deletion",
-					unsupportedOperationException.getMessage());
-			}
-		}
+		return SafeCloseable.EMPTY;
 	}
 
 	private void _addCompanyIdInDeletionProcess(
@@ -369,6 +406,25 @@ public class PortalInstancesTest {
 			PortalInstances.class, "_addCompanyIdInDeletionProcess",
 			new Class<?>[] {long.class, String.class, long.class}, companyId,
 			clusterNodeId, timestamp);
+	}
+
+	private void _assertUnsupportedOperationException(
+		LongFunction<SafeCloseable> heldLongFunction,
+		LongFunction<SafeCloseable> rejectedLongFunction,
+		String rejectionMessage) {
+
+		long companyId = RandomTestUtil.randomLong();
+
+		try (SafeCloseable safeCloseable = heldLongFunction.apply(companyId)) {
+			UnsupportedOperationException unsupportedOperationException =
+				Assert.assertThrows(
+					UnsupportedOperationException.class,
+					() -> rejectedLongFunction.apply(companyId));
+
+			Assert.assertEquals(
+				companyId + rejectionMessage,
+				unsupportedOperationException.getMessage());
+		}
 	}
 
 	private Map<Long, ?> _getCompanyIdsInDeletionProcess() {
@@ -383,6 +439,13 @@ public class PortalInstancesTest {
 			PortalInstances.class, "_removeCompanyIdInDeletionProcess",
 			new Class<?>[] {long.class, String.class, long.class}, companyId,
 			clusterNodeId, timestamp);
+	}
+
+	private SafeCloseable _setCopyInProcessCompanyIdWithSafeCloseable(
+		long fromCompanyId) {
+
+		return PortalInstances.setCopyInProcessCompanyIdWithSafeCloseable(
+			fromCompanyId, RandomTestUtil.randomLong());
 	}
 
 	private static final Set<String> _aliveClusterNodeIds = new HashSet<>();

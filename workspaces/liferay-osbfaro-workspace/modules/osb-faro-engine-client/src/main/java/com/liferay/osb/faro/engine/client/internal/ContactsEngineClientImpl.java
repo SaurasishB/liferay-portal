@@ -83,12 +83,16 @@ import com.liferay.osb.faro.engine.client.util.FilterUtil;
 import com.liferay.osb.faro.engine.client.util.OrderByField;
 import com.liferay.osb.faro.model.FaroProject;
 import com.liferay.osb.faro.model.FaroUser;
+import com.liferay.osb.faro.util.EmailUtil;
 import com.liferay.osb.faro.util.FaroPropsValues;
 import com.liferay.petra.function.transform.TransformUtil;
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.feature.flag.FeatureFlagManagerUtil;
+import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
@@ -1963,7 +1967,8 @@ public class ContactsEngineClientImpl
 	@Override
 	public List<CampaignMetric> getCampaignMetrics(
 			FaroProject faroProject, String accountIds, long channelId,
-			String rangeEnd, Integer rangeKey, String rangeStart)
+			String rangeEnd, Integer rangeKey, String rangeStart,
+			String selectedMetrics)
 		throws FaroEngineClientException {
 
 		Map<String, Object> uriVariables = getUriVariables(faroProject);
@@ -1984,6 +1989,10 @@ public class ContactsEngineClientImpl
 
 		if (Validator.isNotNull(rangeStart)) {
 			uriVariables.put("rangeStart", rangeStart);
+		}
+
+		if (Validator.isNotNull(selectedMetrics)) {
+			uriVariables.put("selectedMetrics", selectedMetrics);
 		}
 
 		return get(
@@ -2887,9 +2896,9 @@ public class ContactsEngineClientImpl
 
 	@Override
 	public Results<IndividualSegment> getIndividualIndividualSegments(
-		FaroProject faroProject, String channelId, String individualId,
-		String query, String status, int cur, int delta,
-		List<OrderByField> orderByFields) {
+		FaroProject faroProject, String channelId,
+		List<String> excludedChannelIds, String individualId, String query,
+		String status, int cur, int delta, List<OrderByField> orderByFields) {
 
 		Map<String, Object> uriVariables = getUriVariables(
 			faroProject, cur, delta, orderByFields,
@@ -2903,6 +2912,12 @@ public class ContactsEngineClientImpl
 			filterBuilder.addFilter(
 				"channelId", FilterConstants.COMPARISON_OPERATOR_EQUALS,
 				Long.valueOf(channelId));
+		}
+
+		for (String excludedChannelId : excludedChannelIds) {
+			filterBuilder.addFilter(
+				"channelId", FilterConstants.COMPARISON_OPERATOR_NOT_EQUALS,
+				GetterUtil.getLong(excludedChannelId));
 		}
 
 		filterBuilder.addFilter(
@@ -2922,6 +2937,17 @@ public class ContactsEngineClientImpl
 			uriVariables);
 
 		return pagedModel.getResults();
+	}
+
+	@Override
+	public Results<IndividualSegment> getIndividualIndividualSegments(
+		FaroProject faroProject, String channelId, String individualId,
+		String query, String status, int cur, int delta,
+		List<OrderByField> orderByFields) {
+
+		return getIndividualIndividualSegments(
+			faroProject, channelId, Collections.emptyList(), individualId,
+			query, status, cur, delta, orderByFields);
 	}
 
 	@Override
@@ -4177,6 +4203,14 @@ public class ContactsEngineClientImpl
 	}
 
 	protected String getWorkspaceURL(long groupId) {
+		Group group = _groupLocalService.fetchGroup(groupId);
+
+		if (FeatureFlagManagerUtil.isEnabled(
+				group.getCompanyId(), "LPD-114293")) {
+
+			return EmailUtil.getWorkspaceURL(group);
+		}
+
 		return FaroPropsValues.FARO_URL + "/workspace/" + groupId;
 	}
 
@@ -4234,6 +4268,9 @@ public class ContactsEngineClientImpl
 	private static final String _FARO_TEMP_FIELD = "faro_temp_field";
 
 	private static final int _PAYLOAD_MAX_BYTE_SIZE = 200000;
+
+	@Reference
+	private GroupLocalService _groupLocalService;
 
 	@Reference
 	private UserLocalService _userLocalService;

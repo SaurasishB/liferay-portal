@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: LGPL-2.1-or-later OR LicenseRef-Liferay-DXP-EULA-2.0.0-2023-06
  */
 
+import {TextHighlight} from '@clayui/core';
 import ClayDropDown from '@clayui/drop-down';
-import ClayIcon from '@clayui/icon';
 import {useNavigation} from '@clayui/shared';
 import Sticker from '@clayui/sticker';
 import {ReactPortal} from '@liferay/frontend-js-react-web';
@@ -21,8 +21,13 @@ import React, {
 	useState,
 } from 'react';
 
-import CommentService, {MentionUser} from '../../services/CommentService';
+import {getInitials, getStickerColor} from '../../../common/utils/stickerUtil';
+import CommentService, {
+	MentionUser,
+	MentionUserGroup,
+} from '../../services/CommentService';
 import {
+	Mention,
 	MentionQuery,
 	MentionUserQuery,
 } from '../../utils/getCommentMentionConfig';
@@ -41,8 +46,9 @@ export default function MentionUserPicker({
 	const [query, setQuery] = useState<MentionQuery | null>(null);
 	const [results, setResults] = useState<{
 		keywords?: string;
+		userGroups: MentionUserGroup[];
 		users: MentionUser[];
-	}>({users: []});
+	}>({userGroups: [], users: []});
 	const [status, setStatus] = useState<Status>('loading');
 	const [, updateAnchor] = useReducer((count: number) => count + 1, 0);
 
@@ -53,18 +59,35 @@ export default function MentionUserPicker({
 	const id = useId();
 
 	const keywords = query?.keywords;
-	const {users} = results;
+	const {userGroups, users} = results;
 
-	const open = !!query && (!!users.length || status !== 'loading');
+	const mentions: Mention[] = [
+		...users.map(
+			(user): Mention => ({
+				id: user.id,
+				name: user.name || user.screenName,
+				type: 'user',
+			})
+		),
+		...userGroups.map(
+			(userGroup): Mention => ({
+				id: userGroup.id,
+				name: userGroup.name,
+				type: 'usergroup',
+			})
+		),
+	];
+
+	const open = !!query && (!!mentions.length || status !== 'loading');
 
 	const activeDescendant =
-		open && users.length ? `${id}-${activeIndex}` : null;
+		open && mentions.length ? `${id}-${activeIndex}` : null;
 	const listboxId = `${id}-listbox`;
 
 	const close = useCallback(() => {
 		setKeyboardNavigation(false);
 		setQuery(null);
-		setResults({users: []});
+		setResults({userGroups: [], users: []});
 		setStatus('loading');
 	}, []);
 
@@ -94,7 +117,11 @@ export default function MentionUserPicker({
 			}
 
 			setActiveIndex(0);
-			setResults({keywords, users: data?.users ?? []});
+			setResults({
+				keywords,
+				userGroups: data?.userGroups ?? [],
+				users: data?.users ?? [],
+			});
 			setStatus('loaded');
 		});
 
@@ -144,8 +171,8 @@ export default function MentionUserPicker({
 		});
 	}, [activeDescendant, editor, listboxId]);
 
-	const select = (user: MentionUser) => {
-		query?.insert(user);
+	const select = (mention: Mention) => {
+		query?.insert(mention);
 
 		close();
 	};
@@ -155,7 +182,7 @@ export default function MentionUserPicker({
 
 		mentionUserQuery.handler = {
 			onKeyDown: (event) => {
-				if (!open || !users.length) {
+				if (!open || !mentions.length) {
 					return false;
 				}
 
@@ -172,7 +199,7 @@ export default function MentionUserPicker({
 					(event.key === 'Tab' && !event.shiftKey)
 				) {
 					if (results.keywords === keywords) {
-						select(users[activeIndex]);
+						select(mentions[activeIndex]);
 					}
 
 					return true;
@@ -209,21 +236,27 @@ export default function MentionUserPicker({
 			}
 		};
 
+		const onScroll = (event: Event) => {
+			if (!menuRef.current?.contains(event.target as Node)) {
+				updateAnchor();
+			}
+		};
+
 		window.addEventListener('keydown', onEscape, true);
 		window.addEventListener('resize', updateAnchor);
-		window.addEventListener('scroll', updateAnchor, true);
+		window.addEventListener('scroll', onScroll, true);
 
 		return () => {
 			window.removeEventListener('keydown', onEscape, true);
 			window.removeEventListener('resize', updateAnchor);
-			window.removeEventListener('scroll', updateAnchor, true);
+			window.removeEventListener('scroll', onScroll, true);
 		};
 	}, [close, open]);
 
 	const screenReaderAnnouncerRef = useScreenReaderAnnouncement({
 		keywords,
 		open,
-		resultsCount: users.length,
+		resultsCount: mentions.length,
 		status,
 	});
 
@@ -256,84 +289,99 @@ export default function MentionUserPicker({
 						suppress={[editableRef, menuRef]}
 						triggerRef={editableRef}
 					>
-						{users.length ? (
-							<>
-								<div
-									aria-hidden="true"
-									className="dropdown-subheader text-secondary"
-								>
-									{Liferay.Language.get('people')}
-								</div>
-
-								<ClayDropDown.ItemList
-									aria-label={Liferay.Language.get('people')}
-									id={listboxId}
-									role="listbox"
-								>
-									{users.map((user, index) => (
-										<ClayDropDown.Item
-											active={index === activeIndex}
-											className={classNames({
-												focus:
+						{mentions.length ? (
+							<ClayDropDown.ItemList
+								aria-label={Liferay.Language.get('mentions')}
+								id={listboxId}
+								role="listbox"
+							>
+								{!!users.length && (
+									<MentionSection
+										header={Liferay.Language.get('people')}
+										id={`${id}-people`}
+									>
+										{users.map((user, index) => (
+											<MentionItem
+												active={index === activeIndex}
+												focus={
 													keyboardNavigation &&
-													index === activeIndex,
-											})}
-											id={`${id}-${index}`}
-											key={user.id}
-											onClick={() => select(user)}
-											onMouseDown={(event) =>
-												event.preventDefault()
-											}
-											onMouseEnter={() =>
-												setActiveIndex(index)
-											}
-											roleItem="option"
-										>
-											<span className="align-items-center d-flex">
-												<Sticker
-													className={classNames(
-														'flex-shrink-0 mr-3',
-														{
-															[`user-icon-color-${user.id.charCodeAt(0) % 10}`]:
-																!user.portraitURL,
-														}
+													index === activeIndex
+												}
+												id={`${id}-${index}`}
+												key={user.id}
+												keywords={results.keywords}
+												onMouseEnter={() =>
+													setActiveIndex(index)
+												}
+												onSelect={() =>
+													select(mentions[index])
+												}
+												portraitURL={user.portraitURL}
+												stickerDisplayType={getStickerColor(
+													user.id
+												)}
+												stickerShape="circle"
+												subtitle={`@${user.screenName}`}
+												title={user.name}
+											/>
+										))}
+									</MentionSection>
+								)}
+
+								{!!userGroups.length && (
+									<MentionSection
+										header={Liferay.Language.get('groups')}
+										id={`${id}-groups`}
+									>
+										{userGroups.map((userGroup, index) => {
+											const mentionIndex =
+												users.length + index;
+
+											return (
+												<MentionItem
+													active={
+														mentionIndex ===
+														activeIndex
+													}
+													focus={
+														keyboardNavigation &&
+														mentionIndex ===
+															activeIndex
+													}
+													id={`${id}-${mentionIndex}`}
+													key={userGroup.id}
+													keywords={results.keywords}
+													onMouseEnter={() =>
+														setActiveIndex(
+															mentionIndex
+														)
+													}
+													onSelect={() =>
+														select(
+															mentions[
+																mentionIndex
+															]
+														)
+													}
+													stickerDisplayType="outline"
+													subtitle={sub(
+														userGroup.membersCount ===
+															1
+															? Liferay.Language.get(
+																	'up-to-x-user-will-be-notified'
+																)
+															: Liferay.Language.get(
+																	'up-to-x-users-will-be-notified'
+																),
+														userGroup.membersCount
 													)}
-													shape="user-icon"
-												>
-													{user.portraitURL ? (
-														<Sticker.Image
-															alt=""
-															src={
-																user.portraitURL
-															}
-														/>
-													) : (
-														<ClayIcon symbol="user" />
-													)}
-												</Sticker>
-
-												<span className="autofit-col autofit-col-expand">
-													<span className="font-weight-semi-bold text-3 text-dark text-truncate">
-														{user.name}
-													</span>
-
-													<span className="text-2 text-secondary text-truncate">
-														{`@${user.screenName}`}
-													</span>
-												</span>
-											</span>
-										</ClayDropDown.Item>
-									))}
-								</ClayDropDown.ItemList>
-
-								<ClayDropDown.Divider />
-
-								<ClayDropDown.Caption>
-									{Liferay.Language.get(
-										'only-people-with-access-to-this-asset-are-shown'
-									)}
-								</ClayDropDown.Caption>
-							</>
+													title={userGroup.name}
+												/>
+											);
+										})}
+									</MentionSection>
+								)}
+							</ClayDropDown.ItemList>
 						) : status === 'searching' ? (
 							<ClayDropDown.Caption className="font-weight-semi-bold text-dark">
 								{Liferay.Language.get('searching')}
@@ -341,12 +389,12 @@ export default function MentionUserPicker({
 						) : (
 							<>
 								<ClayDropDown.Caption className="font-weight-semi-bold text-dark">
-									{getNoPeopleMessage(keywords)}
+									{getNoMentionsMessage(keywords)}
 								</ClayDropDown.Caption>
 
 								<ClayDropDown.Caption>
 									{Liferay.Language.get(
-										'only-people-with-access-to-this-asset-can-be-mentioned'
+										'only-people-and-groups-with-access-to-this-asset-can-be-mentioned'
 									)}
 								</ClayDropDown.Caption>
 							</>
@@ -358,12 +406,107 @@ export default function MentionUserPicker({
 	);
 }
 
-function getNoPeopleMessage(keywords?: string) {
+function MentionItem({
+	active,
+	focus,
+	id,
+	keywords = '',
+	onMouseEnter,
+	onSelect,
+	portraitURL,
+	stickerDisplayType,
+	stickerShape,
+	subtitle,
+	title,
+}: {
+	active: boolean;
+	focus: boolean;
+	id: string;
+	keywords?: string;
+	onMouseEnter: () => void;
+	onSelect: () => void;
+	portraitURL?: string;
+	stickerDisplayType: React.ComponentProps<typeof Sticker>['displayType'];
+	stickerShape?: React.ComponentProps<typeof Sticker>['shape'];
+	subtitle: string;
+	title: string;
+}) {
+	return (
+		<ClayDropDown.Item
+			active={active}
+			className={classNames({focus})}
+			id={id}
+			onClick={onSelect}
+			onMouseDown={(event) => event.preventDefault()}
+			onMouseEnter={onMouseEnter}
+			roleItem="option"
+		>
+			<span className="align-items-center d-flex">
+				<Sticker
+					aria-hidden="true"
+					className="flex-shrink-0 mr-2"
+					displayType={stickerDisplayType}
+					shape={stickerShape}
+					size="sm"
+				>
+					{portraitURL ? (
+						<Sticker.Image alt="" src={portraitURL} />
+					) : (
+						getInitials(title)
+					)}
+				</Sticker>
+
+				<span className="autofit-col autofit-col-expand">
+					<span className="font-weight-semi-bold text-3 text-dark text-truncate">
+						<TextHighlight match={keywords}>{title}</TextHighlight>
+					</span>
+
+					<span className="text-2 text-secondary text-truncate">
+						{subtitle}
+					</span>
+				</span>
+			</span>
+		</ClayDropDown.Item>
+	);
+}
+
+function MentionSection({
+	children,
+	header,
+	id,
+}: {
+	children: React.ReactNode;
+	header: string;
+	id: string;
+}) {
+	return (
+		<>
+			<li
+				aria-hidden="true"
+				className="dropdown-subheader text-secondary"
+				id={id}
+				role="presentation"
+			>
+				{header}
+			</li>
+
+			<li role="presentation">
+				<ul aria-labelledby={id} className="list-unstyled" role="group">
+					{children}
+				</ul>
+			</li>
+		</>
+	);
+}
+
+function getNoMentionsMessage(keywords?: string) {
 	if (!keywords) {
-		return Liferay.Language.get('no-people-are-available-to-mention');
+		return Liferay.Language.get(
+			'no-people-or-groups-are-available-to-mention'
+		);
 	}
 
-	return sub(Liferay.Language.get('no-people-match-x'), keywords);
+	return sub(Liferay.Language.get('no-people-or-groups-match-x'), keywords);
 }
 
 function useScreenReaderAnnouncement({
@@ -396,7 +539,7 @@ function useScreenReaderAnnouncement({
 			announcement = Liferay.Language.get('searching');
 		}
 		else {
-			announcement = getNoPeopleMessage(keywords);
+			announcement = getNoMentionsMessage(keywords);
 		}
 	}
 

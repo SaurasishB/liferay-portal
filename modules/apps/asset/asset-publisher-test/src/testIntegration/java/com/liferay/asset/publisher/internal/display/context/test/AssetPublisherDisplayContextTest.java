@@ -20,6 +20,8 @@ import com.liferay.asset.list.service.AssetListEntryLocalService;
 import com.liferay.asset.publisher.constants.AssetPublisherPortletKeys;
 import com.liferay.asset.publisher.constants.AssetPublisherWebKeys;
 import com.liferay.asset.publisher.util.AssetEntryResult;
+import com.liferay.audiences.model.AudiencesEntry;
+import com.liferay.audiences.service.AudiencesEntryLocalService;
 import com.liferay.blogs.constants.BlogsPortletKeys;
 import com.liferay.blogs.model.BlogsEntry;
 import com.liferay.blogs.service.BlogsEntryLocalService;
@@ -258,7 +260,9 @@ public class AssetPublisherDisplayContextTest {
 
 		AssetEntry assetEntry = _addAssetEntry();
 
-		String audienceEntryERC = RandomTestUtil.randomString();
+		AudiencesEntry audiencesEntry = _addAudiencesEntry();
+
+		String audienceEntryERC = audiencesEntry.getExternalReferenceCode();
 
 		PortletPreferences portletPreferences = _getPortletPreferences(
 			assetEntry, _addAssetEntry(), audienceEntryERC);
@@ -282,7 +286,9 @@ public class AssetPublisherDisplayContextTest {
 		AssetEntry assetEntry1 = _addAssetEntry();
 		AssetEntry assetEntry2 = _addAssetEntry();
 
-		String audienceEntryERC = RandomTestUtil.randomString();
+		AudiencesEntry audiencesEntry = _addAudiencesEntry();
+
+		String audienceEntryERC = audiencesEntry.getExternalReferenceCode();
 
 		PortletPreferences portletPreferences = _getPortletPreferences(
 			assetEntry1, assetEntry2, audienceEntryERC);
@@ -494,6 +500,13 @@ public class AssetPublisherDisplayContextTest {
 		return _assetEntryLocalService.updateAssetEntry(assetEntry);
 	}
 
+	private AudiencesEntry _addAudiencesEntry() throws Exception {
+		return _audiencesEntryLocalService.addAudiencesEntry(
+			RandomTestUtil.randomString(), TestPropsValues.getUserId(),
+			"{\"conjunction\": \"AND\", \"rules\": []}",
+			RandomTestUtil.randomString(), null);
+	}
+
 	private JournalArticle _addJournalArticle(
 			long[] assetCategoryIds, String[] assetTagNames)
 		throws Exception {
@@ -540,33 +553,32 @@ public class AssetPublisherDisplayContextTest {
 			String audienceEntryERC, PortletPreferences portletPreferences)
 		throws Exception {
 
-		Object assetPublisherDisplayContext = _getAssetPublisherDisplayContext(
-			LayoutTestUtil.addTypePortletLayout(_group), portletPreferences);
-
-		MockHttpServletRequest mockHttpServletRequest =
-			(MockHttpServletRequest)_portal.getHttpServletRequest(
-				_mockLiferayPortletRenderRequest);
-
-		mockHttpServletRequest.setCookies(
-			new Cookie(
-				"com.liferay.frontend.js.audiences",
-				URLCodec.encodeURL(
-					JSONUtil.putAll(
-						audienceEntryERC
-					).toString())));
-
 		return ReflectionTestUtil.invoke(
-			assetPublisherDisplayContext, "getAssetEntryResults",
-			new Class<?>[0]);
+			_getAssetPublisherDisplayContext(
+				LayoutTestUtil.addTypePortletLayout(_group), portletPreferences,
+				new Cookie(
+					"com.liferay.frontend.js.audiences",
+					URLCodec.encodeURL(
+						JSONUtil.putAll(
+							audienceEntryERC
+						).toString()))),
+			"getAssetEntryResults", new Class<?>[0]);
 	}
 
 	private Object _getAssetPublisherDisplayContext(
-			Layout layout, PortletPreferences portletPreferences)
+			Layout layout, PortletPreferences portletPreferences,
+			Cookie... cookies)
 		throws Exception {
 
 		_mockLiferayPortletRenderRequest =
 			new TestMockLiferayPortletRenderRequest(
 				new MockHttpServletRequest());
+
+		MockHttpServletRequest mockHttpServletRequest =
+			(MockHttpServletRequest)_portal.getHttpServletRequest(
+				_mockLiferayPortletRenderRequest);
+
+		mockHttpServletRequest.setCookies(cookies);
 
 		com.liferay.portal.kernel.model.Portlet portlet =
 			_portletLocalService.getPortletById(
@@ -814,6 +826,9 @@ public class AssetPublisherDisplayContextTest {
 
 	@Inject
 	private AssetVocabularyLocalService _assetVocabularyLocalService;
+
+	@Inject
+	private AudiencesEntryLocalService _audiencesEntryLocalService;
 
 	@Inject
 	private BlogsEntryLocalService _blogsEntryLocalService;

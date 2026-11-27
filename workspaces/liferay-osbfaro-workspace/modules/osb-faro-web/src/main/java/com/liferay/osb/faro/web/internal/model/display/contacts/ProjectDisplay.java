@@ -12,6 +12,7 @@ import com.liferay.osb.faro.model.FaroUser;
 import com.liferay.osb.faro.provisioning.client.model.OSBAccountEntry;
 import com.liferay.osb.faro.provisioning.client.model.display.main.FaroSubscriptionDisplay;
 import com.liferay.osb.faro.service.FaroUserLocalServiceUtil;
+import com.liferay.osb.faro.web.internal.util.FaroNavigationUtil;
 import com.liferay.osb.faro.web.internal.util.JSONUtil;
 import com.liferay.osb.faro.web.internal.util.TimeZoneUtil;
 import com.liferay.portal.kernel.log.Log;
@@ -19,6 +20,7 @@ import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.service.GroupLocalServiceUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
+import com.liferay.portal.kernel.util.Validator;
 
 import java.util.Date;
 import java.util.List;
@@ -54,16 +56,21 @@ public class ProjectDisplay {
 
 		_groupId = faroProject.getGroupId();
 
-		try {
-			_incidentReportEmailAddresses = JSONUtil.readValue(
-				faroProject.getIncidentReportEmailAddresses(),
-				new TypeReference<List<String>>() {
-				});
-		}
-		catch (Exception exception) {
-			_log.error(exception);
+		if (Validator.isNotNull(
+				faroProject.getIncidentReportEmailAddresses())) {
+
+			try {
+				_incidentReportEmailAddresses = JSONUtil.readValue(
+					faroProject.getIncidentReportEmailAddresses(),
+					new TypeReference<List<String>>() {
+					});
+			}
+			catch (Exception exception) {
+				_log.error(exception);
+			}
 		}
 
+		_ldpEnabled = FaroNavigationUtil.isLDPEnabled(_faroSubscriptionDisplay);
 		_name = faroProject.getName();
 
 		FaroUser faroUser = FaroUserLocalServiceUtil.fetchOwnerFaroUser(
@@ -96,7 +103,11 @@ public class ProjectDisplay {
 		_accountName = osbAccountEntry.getCorpEntryName();
 		_corpProjectName = osbAccountEntry.getName();
 		_corpProjectUuid = osbAccountEntry.getCorpProjectUuid();
+
 		_faroSubscriptionDisplay = new FaroSubscriptionDisplay(osbAccountEntry);
+
+		_ldpEnabled = FaroNavigationUtil.isLDPEnabled(_faroSubscriptionDisplay);
+
 		_salesforceAccountId = osbAccountEntry.getSalesforceAccountId();
 	}
 
@@ -155,6 +166,7 @@ public class ProjectDisplay {
 	private String _friendlyURL;
 	private long _groupId;
 	private List<String> _incidentReportEmailAddresses;
+	private boolean _ldpEnabled;
 	private String _name;
 	private String _ownerEmailAddress;
 	private boolean _recommendationsEnabled;

@@ -94,7 +94,9 @@ test(
 
 				await page.keyboard.type('@zzzzz');
 
-				await expect(picker).toContainText('No people match "zzzzz".');
+				await expect(picker).toContainText(
+					'No people or groups match "zzzzz".'
+				);
 
 				for (let i = 0; i < 6; i++) {
 					await page.keyboard.press('Backspace');
@@ -201,6 +203,27 @@ test(
 				await comment.getByRole('button', {name: 'Cancel'}).click();
 			});
 
+			await test.step('The picker highlights the typed letters in the name of the member', async () => {
+				const keywords = member1.givenName.slice(0, 3);
+
+				await editor.click();
+
+				await page.keyboard.type(`@${keywords}`);
+
+				await expect(
+					picker
+						.getByRole('option')
+						.filter({hasText: member1.name})
+						.locator('strong')
+				).toHaveText([...keywords]);
+
+				for (let i = 0; i <= keywords.length; i++) {
+					await page.keyboard.press('Backspace');
+				}
+
+				await expect(picker).toBeHidden();
+			});
+
 			await test.step('The picker waits for the current search before inserting a member', async () => {
 				await editor.click();
 
@@ -226,7 +249,9 @@ test(
 
 				await expect(editor.locator('span.mention')).toHaveCount(0);
 
-				await expect(picker).toContainText('No people match "zzzzz".');
+				await expect(picker).toContainText(
+					'No people or groups match "zzzzz".'
+				);
 
 				await page.unroute('**/get_content_item_mention_users**');
 
@@ -348,16 +373,16 @@ test(
 		const picker = page.locator('.comments-panel__mention-user-picker');
 
 		await expect(picker).toContainText(
-			'No people are available to mention.'
+			'No people or groups are available to mention.'
 		);
 		await expect(picker).toContainText(
-			'Only people with access to this asset can be mentioned.'
+			'Only people and groups with access to this asset can be mentioned.'
 		);
-		await expect(picker).not.toContainText('No people match');
+		await expect(picker).not.toContainText('No people or groups match');
 
 		await expect(
 			page.locator('[aria-live="polite"]', {
-				hasText: 'No people are available to mention.',
+				hasText: 'No people or groups are available to mention.',
 			})
 		).toBeAttached();
 	}
@@ -432,5 +457,117 @@ test(
 		await expect(page.locator('article[aria-current="true"]')).toHaveCount(
 			0
 		);
+	}
+);
+
+test(
+	'Mention a user group of the space in an asset comment',
+	{tag: ['@LPD-113903', '@LPD-115686']},
+	async ({apiHelpers, assetsPage, infoPanelPage, page}) => {
+		const commentText = getRandomString();
+		const title = getRandomString();
+
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
+
+		const userGroup = await apiHelpers.headlessAdminUser.postUserGroup({
+			name: getRandomString(),
+		});
+		const userGroupOutsideSpace =
+			await apiHelpers.headlessAdminUser.postUserGroup({
+				name: getRandomString(),
+			});
+
+		const member1 = await apiHelpers.headlessAdminUser.postUserAccount();
+		const member2 = await apiHelpers.headlessAdminUser.postUserAccount();
+
+		await apiHelpers.headlessAdminUser.assignUsersToUserGroup(
+			userGroup.id!,
+			[String(member1.id), String(member2.id)]
+		);
+
+		await apiHelpers.headlessAssetLibrary.putAssetLibraryUserGroup(
+			space.externalReferenceCode,
+			userGroup.externalReferenceCode!
+		);
+
+		await apiHelpers.objectEntry.postObjectEntry(
+			{
+				objectEntryFolderExternalReferenceCode: 'L_CONTENTS',
+				title,
+			},
+			'cms/basic-web-contents',
+			space.name
+		);
+
+		await assetsPage.gotoAll();
+
+		await assetsPage.execItemAction({
+			action: 'Show Details',
+			filter: title,
+		});
+
+		await infoPanelPage.selectTab('Comments').click();
+
+		const editor = page.getByLabel('Add Comment.').first();
+		const picker = page.locator('.comments-panel__mention-user-picker');
+
+		await test.step('The picker does not list user groups outside the space', async () => {
+			await editor.click();
+
+			await page.keyboard.type(`@${userGroupOutsideSpace.name}`);
+
+			await expect(picker).toContainText(
+				`No people or groups match "${userGroupOutsideSpace.name}".`
+			);
+
+			for (let i = 0; i <= userGroupOutsideSpace.name.length; i++) {
+				await page.keyboard.press('Backspace');
+			}
+
+			await expect(picker).toBeHidden();
+		});
+
+		await test.step('The picker lists the user group of the space with the users it will notify', async () => {
+			await page.keyboard.type(`${commentText} @${userGroup.name}`);
+
+			const option = picker
+				.getByRole('group', {name: 'Groups'})
+				.getByRole('option')
+				.filter({hasText: userGroup.name});
+
+			await expect(option).toContainText(
+				'Up to 2 users will be notified.'
+			);
+
+			await option.click();
+		});
+
+		await test.step('Selecting the user group inserts its mention', async () => {
+			await expect(picker).toBeHidden();
+
+			await expect(
+				editor.locator(
+					`span.mention.mention-usergroup-${userGroup.externalReferenceCode}`
+				)
+			).toHaveText(`@${userGroup.name}`);
+
+			await page
+				.getByRole('button', {exact: true, name: 'Save'})
+				.first()
+				.click();
+
+			await waitForAlert(page, 'Success:Your comment has been posted.', {
+				autoClose: true,
+			});
+
+			await expect(
+				page
+					.locator('article')
+					.filter({hasText: commentText})
+					.locator(
+						`span.mention.mention-usergroup-${userGroup.externalReferenceCode}`
+					)
+			).toHaveText(`@${userGroup.name}`);
+		});
 	}
 );

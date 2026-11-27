@@ -4,6 +4,7 @@ import {cleanup, render, screen} from '@testing-library/react';
 import {Conjunctions} from '../../utils/constants';
 import {DndProvider} from 'react-dnd';
 import {HTML5Backend} from 'react-dnd-html5-backend';
+import {selectPickerOption} from 'test/helpers';
 
 jest.mock('../Conjunction', () => () => <div />);
 jest.mock(
@@ -18,8 +19,6 @@ jest.mock(
 jest.mock('../DropZone', () => props => (
 	<div data-disabled={String(!!props.disabled)} data-testid='drop-zone' />
 ));
-
-jest.unmock('react-dom');
 
 const LIMIT_MESSAGE =
 	'The maximum number of sequential criteria has been reached.';
@@ -114,6 +113,88 @@ describe('CriteriaGroup', () => {
 			).toBeTrue();
 		}
 	);
+
+	it.each`
+		scenario                   | count | sequential
+		${'has a single item'}     | ${1}  | ${false}
+		${'is a sequential group'} | ${3}  | ${true}
+	`(
+		'should not render the group operator picker when the group $scenario',
+		({count, sequential}) => {
+			renderGroup({
+				conjunction: Conjunctions.And,
+				count,
+				root: true,
+				sequential
+			});
+
+			expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+			expect(screen.queryByRole('group')).not.toBeInTheDocument();
+		}
+	);
+
+	it('should make each nested group announce its own operator', () => {
+		const rootCriteria = {
+			conjunctionName: Conjunctions.And,
+			criteriaGroupId: 'root',
+			items: [
+				{rowId: 'r0', valid: true},
+				{
+					conjunctionName: Conjunctions.Or,
+					criteriaGroupId: 'nested',
+					items: [
+						{rowId: 'n0', valid: true},
+						{rowId: 'n1', valid: true}
+					]
+				}
+			]
+		};
+
+		render(
+			<DndProvider backend={HTML5Backend}>
+				<CriteriaGroup
+					criteria={rootCriteria}
+					criteriaGroupId='root'
+					onChange={() => {}}
+					onMove={() => {}}
+					root
+				/>
+			</DndProvider>
+		);
+
+		expect(
+			screen.getByRole('group', {
+				name: /^all of these criteria must be met\.$/i
+			})
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole('group', {
+				name: /^any of these criteria must be met\.$/i
+			})
+		).toBeInTheDocument();
+	});
+
+	it('should change the conjunction of the group when another match is chosen', () => {
+		const onChange = jest.fn();
+
+		render(
+			<DndProvider backend={HTML5Backend}>
+				<CriteriaGroup
+					criteria={makeCriteria(Conjunctions.And, 2)}
+					criteriaGroupId='group'
+					onChange={onChange}
+					onMove={() => {}}
+					root
+				/>
+			</DndProvider>
+		);
+
+		selectPickerOption(/^match logic$/i, /^any$/i);
+
+		expect(onChange).toHaveBeenCalledWith(
+			expect.objectContaining({conjunctionName: Conjunctions.Or})
+		);
+	});
 
 	it('should render numbered step stickers on each top-level criterion when root and sequential', () => {
 		const {container} = render(

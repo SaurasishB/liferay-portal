@@ -163,18 +163,37 @@ public class ObjectEntryServiceImpl extends ObjectEntryServiceBaseImpl {
 	}
 
 	@Override
-	@Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+	@Transactional(enabled = false)
+	public void checkModelResourcePermission(
+			ModelResourcePermission<ObjectEntry> modelResourcePermission,
+			ObjectEntry objectEntry, String actionId)
+		throws PortalException {
+
+		if (objectEntry.isRootDescendantNode() &&
+			(actionId.equals(ActionKeys.DELETE) ||
+			 actionId.equals(ActionKeys.VIEW)) &&
+			modelResourcePermission.contains(
+				getPermissionChecker(), objectEntry, ActionKeys.UPDATE)) {
+
+			return;
+		}
+
+		modelResourcePermission.check(
+			getPermissionChecker(), objectEntry, actionId);
+	}
+
+	@Override
+	@Transactional(enabled = false)
 	public void checkModelResourcePermission(
 			ObjectEntry objectEntry, String actionId)
 		throws PortalException {
 
 		ObjectDefinition objectDefinition = objectEntry.getObjectDefinition();
 
-		_checkPermission(
-			actionId,
+		checkModelResourcePermission(
 			ModelResourcePermissionRegistryUtil.getModelResourcePermission(
 				objectDefinition.getClassName()),
-			objectEntry);
+			objectEntry, actionId);
 	}
 
 	@Override
@@ -240,26 +259,6 @@ public class ObjectEntryServiceImpl extends ObjectEntryServiceBaseImpl {
 	}
 
 	@Override
-	public ObjectEntry fetchManyToOneObjectEntry(
-			long groupId, long objectRelationshipId, long primaryKey)
-		throws PortalException {
-
-		ObjectEntry objectEntry =
-			objectEntryLocalService.fetchManyToOneObjectEntry(
-				groupId, objectRelationshipId, primaryKey);
-
-		if ((objectEntry != null) &&
-			!ObjectEntryThreadLocal.isSkipObjectEntryResourcePermission()) {
-
-			objectEntryService.checkModelResourcePermission(
-				objectEntry.getObjectDefinitionId(),
-				objectEntry.getObjectEntryId(), ActionKeys.VIEW);
-		}
-
-		return objectEntry;
-	}
-
-	@Override
 	public ObjectEntry fetchObjectEntry(long objectEntryId)
 		throws PortalException {
 
@@ -289,6 +288,26 @@ public class ObjectEntryServiceImpl extends ObjectEntryServiceBaseImpl {
 			_checkPermission(
 				ActionKeys.VIEW, objectEntry.getObjectDefinitionId(),
 				objectEntry);
+		}
+
+		return objectEntry;
+	}
+
+	@Override
+	public ObjectEntry fetchRelatedObjectEntry(
+			long groupId, long objectRelationshipId, long primaryKey)
+		throws PortalException {
+
+		ObjectEntry objectEntry =
+			objectEntryLocalService.fetchRelatedObjectEntry(
+				groupId, objectRelationshipId, primaryKey);
+
+		if ((objectEntry != null) &&
+			!ObjectEntryThreadLocal.isSkipObjectEntryResourcePermission()) {
+
+			objectEntryService.checkModelResourcePermission(
+				objectEntry.getObjectDefinitionId(),
+				objectEntry.getObjectEntryId(), ActionKeys.VIEW);
 		}
 
 		return objectEntry;
@@ -464,31 +483,6 @@ public class ObjectEntryServiceImpl extends ObjectEntryServiceBaseImpl {
 	}
 
 	@Override
-	public List<ObjectEntry> getOneToManyObjectEntries(
-			long groupId, long objectRelationshipId, Predicate predicate,
-			boolean preferApproved, long primaryKey, boolean related,
-			String search, int start, int end, Sort[] sorts)
-		throws PortalException {
-
-		return _getObjectEntries(
-			groupId,
-			objectEntryLocalService.getOneToManyObjectEntries(
-				groupId, objectRelationshipId, predicate, preferApproved,
-				primaryKey, related, search, start, end, sorts));
-	}
-
-	@Override
-	public int getOneToManyObjectEntriesCount(
-			long groupId, long objectRelationshipId, Predicate predicate,
-			long primaryKey, boolean related, String search)
-		throws PortalException {
-
-		return objectEntryLocalService.getOneToManyObjectEntriesCount(
-			groupId, objectRelationshipId, predicate, primaryKey, related,
-			search);
-	}
-
-	@Override
 	public ObjectEntry getOrAddEmptyObjectEntry(
 			String externalReferenceCode, long groupId, long objectDefinitionId)
 		throws PortalException {
@@ -509,6 +503,31 @@ public class ObjectEntryServiceImpl extends ObjectEntryServiceBaseImpl {
 
 		return objectEntryLocalService.getOrAddEmptyObjectEntry(
 			externalReferenceCode, groupId, getUserId(), objectDefinitionId);
+	}
+
+	@Override
+	public List<ObjectEntry> getRelatedObjectEntries(
+			long groupId, long objectRelationshipId, Predicate predicate,
+			boolean preferApproved, long primaryKey, boolean related,
+			String search, int start, int end, Sort[] sorts)
+		throws PortalException {
+
+		return _getObjectEntries(
+			groupId,
+			objectEntryLocalService.getRelatedObjectEntries(
+				groupId, objectRelationshipId, predicate, preferApproved,
+				primaryKey, related, search, start, end, sorts));
+	}
+
+	@Override
+	public int getRelatedObjectEntriesCount(
+			long groupId, long objectRelationshipId, Predicate predicate,
+			long primaryKey, boolean related, String search)
+		throws PortalException {
+
+		return objectEntryLocalService.getRelatedObjectEntriesCount(
+			groupId, objectRelationshipId, predicate, primaryKey, related,
+			search);
 	}
 
 	@Override
@@ -861,28 +880,9 @@ public class ObjectEntryServiceImpl extends ObjectEntryServiceBaseImpl {
 			String actionId, long objectDefinitionId, ObjectEntry objectEntry)
 		throws PortalException {
 
-		_checkPermission(
-			actionId, getModelResourcePermission(objectDefinitionId),
-			objectEntry);
-	}
-
-	private void _checkPermission(
-			String actionId,
-			ModelResourcePermission<ObjectEntry> modelResourcePermission,
-			ObjectEntry objectEntry)
-		throws PortalException {
-
-		if (objectEntry.isRootDescendantNode() &&
-			(actionId.equals(ActionKeys.DELETE) ||
-			 actionId.equals(ActionKeys.VIEW)) &&
-			modelResourcePermission.contains(
-				getPermissionChecker(), objectEntry, ActionKeys.UPDATE)) {
-
-			return;
-		}
-
-		modelResourcePermission.check(
-			getPermissionChecker(), objectEntry, actionId);
+		checkModelResourcePermission(
+			getModelResourcePermission(objectDefinitionId), objectEntry,
+			actionId);
 	}
 
 	private void _checkUpdatePermissions(

@@ -344,10 +344,6 @@ public class MenuItemProvider {
 		_serviceTrackerMap.close();
 
 		_dlFileEntryTypeIconProviderServiceTrackerMap.close();
-
-		_serviceTrackerMap = null;
-
-		_dlFileEntryTypeLocalService = null;
 	}
 
 	private long _getDefaultFileEntryTypeId(long folderId) {
@@ -573,11 +569,11 @@ public class MenuItemProvider {
 	private static final Log _log = LogFactoryUtil.getLog(
 		MenuItemProvider.class);
 
-	private static ServiceTrackerMap<String, DLFileEntryTypeIconProvider>
-		_dlFileEntryTypeIconProviderServiceTrackerMap;
-
 	@Reference
 	private AICreatorOpenAIMenuItemFactory _aiCreatorOpenAIMenuItemFactory;
+
+	private ServiceTrackerMap<String, DLFileEntryTypeIconProvider>
+		_dlFileEntryTypeIconProviderServiceTrackerMap;
 
 	@Reference
 	private DLFileEntryTypeLocalService _dlFileEntryTypeLocalService;

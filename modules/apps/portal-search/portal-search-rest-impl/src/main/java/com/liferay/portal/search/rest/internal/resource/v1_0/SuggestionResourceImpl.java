@@ -7,7 +7,7 @@ package com.liferay.portal.search.rest.internal.resource.v1_0;
 
 import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.configuration.metatype.bnd.util.ConfigurableUtil;
+import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.Portlet;
@@ -44,9 +44,7 @@ import jakarta.portlet.WindowState;
 import jakarta.servlet.ServletContext;
 
 import java.util.Collections;
-import java.util.Map;
 
-import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ServiceScope;
@@ -55,7 +53,6 @@ import org.osgi.service.component.annotations.ServiceScope;
  * @author Petteri Karttunen
  */
 @Component(
-	configurationPid = "com.liferay.portal.search.rest.configuration.SearchSuggestionsCompanyConfiguration",
 	properties = "OSGI-INF/liferay/rest/v1_0/suggestion.properties",
 	scope = ServiceScope.PROTOTYPE, service = SuggestionResource.class
 )
@@ -70,11 +67,36 @@ public class SuggestionResourceImpl extends BaseSuggestionResourceImpl {
 				suggestionsContributorConfigurations)
 		throws Exception {
 
-		if (!_searchSuggestionsCompanyConfiguration.
+		SearchSuggestionsCompanyConfiguration
+			searchSuggestionsCompanyConfiguration =
+				_configurationProvider.getCompanyConfiguration(
+					SearchSuggestionsCompanyConfiguration.class,
+					contextCompany.getCompanyId());
+
+		if (!searchSuggestionsCompanyConfiguration.
 				enableSuggestionsEndpoint() ||
 			(suggestionsContributorConfigurations == null)) {
 
 			return Page.of(Collections.emptyList());
+		}
+
+		int suggestionsSizeLimit =
+			searchSuggestionsCompanyConfiguration.suggestionsSizeLimit();
+
+		if (suggestionsSizeLimit > 0) {
+			for (SuggestionsContributorConfiguration
+					suggestionsContributorConfiguration :
+						suggestionsContributorConfigurations) {
+
+				Integer size = suggestionsContributorConfiguration.getSize();
+
+				if ((size == null) || (size <= suggestionsSizeLimit)) {
+					continue;
+				}
+
+				suggestionsContributorConfiguration.setSize(
+					() -> suggestionsSizeLimit);
+			}
 		}
 
 		Layout layout = _layoutLocalService.getLayout(plid);
@@ -137,13 +159,6 @@ public class SuggestionResourceImpl extends BaseSuggestionResourceImpl {
 									Suggestion.class));
 						}
 					}));
-	}
-
-	@Activate
-	protected void activate(Map<String, Object> properties) {
-		_searchSuggestionsCompanyConfiguration =
-			ConfigurableUtil.createConfigurable(
-				SearchSuggestionsCompanyConfiguration.class, properties);
 	}
 
 	private LiferayRenderRequest _createLiferayRenderRequest(
@@ -269,6 +284,9 @@ public class SuggestionResourceImpl extends BaseSuggestionResourceImpl {
 	}
 
 	@Reference
+	private ConfigurationProvider _configurationProvider;
+
+	@Reference
 	private Language _language;
 
 	@Reference
@@ -279,9 +297,6 @@ public class SuggestionResourceImpl extends BaseSuggestionResourceImpl {
 
 	@Reference
 	private PortletLocalService _portletLocalService;
-
-	private volatile SearchSuggestionsCompanyConfiguration
-		_searchSuggestionsCompanyConfiguration;
 
 	@Reference
 	private SuggestionsRetriever _suggestionsRetriever;

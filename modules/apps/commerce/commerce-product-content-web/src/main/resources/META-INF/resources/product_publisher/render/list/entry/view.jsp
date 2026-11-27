@@ -35,7 +35,7 @@ boolean hasMultipleCPSkus = cpContentHelper.hasMultipleCPSkus(cpCatalogEntry);
 
 				<c:choose>
 					<c:when test="<%= Validator.isNotNull(cpDefinitionCDNURL) %>">
-						<img alt="thumbnail" class="img-fluid product-card-picture" src="<%= cpDefinitionCDNURL %>" />
+						<img alt="thumbnail" class="img-fluid product-card-picture" src="<%= HtmlUtil.escapeAttribute(cpDefinitionCDNURL) %>" />
 					</c:when>
 					<c:otherwise>
 						<liferay-adaptive-media:img
@@ -73,9 +73,9 @@ boolean hasMultipleCPSkus = cpContentHelper.hasMultipleCPSkus(cpCatalogEntry);
 				}
 				%>
 
-				<p class="card-subtitle" title="<%= sku %>">
+				<p class="card-subtitle" title="<%= HtmlUtil.escapeAttribute(sku) %>">
 					<span class="text-truncate-inline">
-						<span class="text-truncate"><%= sku %></span>
+						<span class="text-truncate"><%= HtmlUtil.escape(sku) %></span>
 					</span>
 				</p>
 

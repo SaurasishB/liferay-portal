@@ -71,6 +71,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -192,14 +193,18 @@ public class SectionDisplayContextUtil {
 			}
 		}
 
+		List<Long> depotEntryGroupIds =
+			DepotEntryLocalServiceUtil.getDepotEntryGroupIds(
+				themeDisplay.getCompanyId(), themeDisplay.getUserId(),
+				DepotConstants.TYPE_SPACE);
+
+		if (ListUtil.isEmpty(depotEntryGroupIds)) {
+			depotEntryGroupIds = Collections.singletonList(-1L);
+		}
+
 		return StringBundler.concat(
 			filterString, " and groupIds/any(g:g in (",
-			StringUtil.merge(
-				DepotEntryLocalServiceUtil.getDepotEntryGroupIds(
-					themeDisplay.getCompanyId(), themeDisplay.getUserId(),
-					DepotConstants.TYPE_SPACE),
-				StringPool.COMMA),
-			"))");
+			StringUtil.merge(depotEntryGroupIds, StringPool.COMMA), "))");
 	}
 
 	public static String appendStatus(String filterString) {
@@ -221,7 +226,7 @@ public class SectionDisplayContextUtil {
 			httpServletRequest.getAttribute(InfoDisplayWebKeys.INFO_ITEM),
 			rootObjectEntryFolderExternalReferenceCode);
 
-		StringBundler sb = new StringBundler(14);
+		StringBundler sb = new StringBundler(15);
 
 		sb.append("emptySearch=true&filter=");
 
@@ -246,13 +251,14 @@ public class SectionDisplayContextUtil {
 			sb.append(filterString);
 		}
 
-		sb.append("&nestedFields=embedded,embeddedTaxonomyCategory,");
+		sb.append("&nestedFields=embedded,embedded.images,");
+		sb.append("embeddedTaxonomyCategory,");
 		sb.append("file.metadata,file.previewURL,file.thumbnailURL,");
 		sb.append("modifiedBy,numberOfObjectEntries,");
 		sb.append("numberOfObjectEntryFolders,");
 		sb.append("systemProperties.collaboratorBrief,");
 		sb.append("systemProperties.objectDefinitionBrief");
-		sb.append("&sort=dateModified:desc");
+		sb.append("&nestedFieldsDepth=2&sort=dateModified:desc");
 
 		return sb.toString();
 	}
